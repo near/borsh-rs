@@ -14,12 +14,6 @@ Cargo.lock
 # OS X
 **/.DS_Store/
 
-# JS modules
-**/node_modules/
-package-lock.json
-yarn.lock
-.nyc_output
-
 # Borsh schema file
 **/schema_schema.dat
 
