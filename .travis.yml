@@ -1,11 +1,9 @@
 language: rust
 rust:
-  - 1.31.1
-  - 1.38.0
-  - 1.46.0
+  - 1.40.0
   - stable
   - beta
-  - nightly-2020-05-15
+  - nightly-2020-10-08  # this is what nearcore uses
   - nightly
 
 matrix:
