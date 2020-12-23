@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "borsh",
+    "borsh-derive",
+    "borsh-derive-internal",
+    "borsh-schema-derive-internal",
+    "benchmarks",
+]
+exclude = [
+    "fuzz",
+]
