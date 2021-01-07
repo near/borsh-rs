@@ -1,8 +1,9 @@
 language: rust
 rust:
+  - 1.40.0
   - stable
   - beta
-  - nightly-2020-05-15
+  - nightly-2020-10-08  # this is what nearcore uses
   - nightly
 
 matrix:
@@ -15,12 +16,12 @@ branches:
   - master
 
 install:
-  - cargo build --verbose --manifest-path=borsh-rs/Cargo.toml
+  - cargo build --verbose
 
 script:
-  - cargo build --verbose --manifest-path=borsh-rs/Cargo.toml
-  - cargo test --verbose --manifest-path=borsh-rs/Cargo.toml
-  - cd borsh-rs/borsh && cargo test --verbose --no-default-features
+  - cargo build --verbose
+  - cargo test --verbose
+  - cd borsh && cargo test --verbose --no-default-features
 
 addons:
   apt:
@@ -34,7 +35,6 @@ addons:
       - libiberty-dev
 
 after_success: |
-  cd borsh-rs
   wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
   tar xzf master.tar.gz &&
   cd kcov-master &&
