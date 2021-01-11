@@ -82,12 +82,10 @@ struct A {
 
 After you merged your change into the master branch and bumped the versions of all three crates it is time to officially release the new version.
 
-Make sure `borsh`, `borsh-derive` and `borsh-derive-internal` all have the new crate versions. Then navigate to each folder and run (in the given order):
+Make sure `borsh`, `borsh-derive`, `borsh-derive-internal`, and `borsh-schema-derive-internal` all have the new crate versions. Then run the `publish.sh` script:
 
 ```bash
-cd ../borsh-derive-internal; cargo publish
-cd ../borsh-derive; cargo publish
-cd ../borsh; cargo publish
+sh publish.sh
 ```
 
 Make sure you are on the master branch, then tag the code and push the tag:
