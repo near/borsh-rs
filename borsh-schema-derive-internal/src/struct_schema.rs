@@ -1,8 +1,8 @@
-use crate::helpers::{contains_skip, declaration};
-use quote::quote;
-use syn::export::{ToTokens, TokenStream2};
-use syn::{Fields, ItemStruct, Ident};
+use proc_macro2::TokenStream as TokenStream2;
+use quote::{quote, ToTokens};
+use syn::{Fields, Ident, ItemStruct};
 
+use crate::helpers::{contains_skip, declaration};
 
 pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
@@ -10,7 +10,8 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
     let generics = &input.generics;
     let (impl_generics, ty_generics, _) = generics.split_for_impl();
     // Generate function that returns the name of the type.
-    let (declaration, mut where_clause) = declaration(&name_str, &input.generics, cratename.clone());
+    let (declaration, mut where_clause) =
+        declaration(&name_str, &input.generics, cratename.clone());
 
     // Generate function that returns the schema of required types.
     let mut fields_vec = vec![];
@@ -111,7 +112,11 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process_struct(&item_struct, Ident::new("borsh", proc_macro2::Span::call_site())).unwrap();
+        let actual = process_struct(
+            &item_struct,
+            Ident::new("borsh", proc_macro2::Span::call_site()),
+        )
+        .unwrap();
         let expected = quote!{
             impl borsh::BorshSchema for A
             {
@@ -135,7 +140,11 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process_struct(&item_struct, Ident::new("borsh", proc_macro2::Span::call_site())).unwrap();
+        let actual = process_struct(
+            &item_struct,
+            Ident::new("borsh", proc_macro2::Span::call_site()),
+        )
+        .unwrap();
         let expected = quote!{
             impl<T> borsh::BorshSchema for A<T>
             where
@@ -169,7 +178,11 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process_struct(&item_struct, Ident::new("borsh", proc_macro2::Span::call_site())).unwrap();
+        let actual = process_struct(
+            &item_struct,
+            Ident::new("borsh", proc_macro2::Span::call_site()),
+        )
+        .unwrap();
         let expected = quote!{
             impl borsh::BorshSchema for A
             where
@@ -206,7 +219,11 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process_struct(&item_struct, Ident::new("borsh", proc_macro2::Span::call_site())).unwrap();
+        let actual = process_struct(
+            &item_struct,
+            Ident::new("borsh", proc_macro2::Span::call_site()),
+        )
+        .unwrap();
         let expected = quote!{
             impl<K, V> borsh::BorshSchema for A<K, V>
             where
@@ -247,7 +264,11 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process_struct(&item_struct, Ident::new("borsh", proc_macro2::Span::call_site())).unwrap();
+        let actual = process_struct(
+            &item_struct,
+            Ident::new("borsh", proc_macro2::Span::call_site()),
+        )
+        .unwrap();
         let expected = quote!{
             impl borsh::BorshSchema for A
             where
@@ -287,7 +308,11 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process_struct(&item_struct, Ident::new("borsh", proc_macro2::Span::call_site())).unwrap();
+        let actual = process_struct(
+            &item_struct,
+            Ident::new("borsh", proc_macro2::Span::call_site()),
+        )
+        .unwrap();
         let expected = quote!{
             impl<K, V> borsh::BorshSchema for A<K, V>
             where
@@ -327,7 +352,11 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process_struct(&item_struct, Ident::new("borsh", proc_macro2::Span::call_site())).unwrap();
+        let actual = process_struct(
+            &item_struct,
+            Ident::new("borsh", proc_macro2::Span::call_site()),
+        )
+        .unwrap();
         let expected = quote!{
             impl borsh::BorshSchema for A {
                 fn declaration() -> borsh::schema::Declaration {
@@ -355,7 +384,11 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process_struct(&item_struct, Ident::new("borsh", proc_macro2::Span::call_site())).unwrap();
+        let actual = process_struct(
+            &item_struct,
+            Ident::new("borsh", proc_macro2::Span::call_site()),
+        )
+        .unwrap();
         let expected = quote!{
             impl borsh::BorshSchema for A
             where
