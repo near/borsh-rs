@@ -1,6 +1,6 @@
+use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens};
-use syn::export::TokenStream2;
-use syn::{Attribute, Generics, Meta, Ident};
+use syn::{Attribute, Generics, Ident, Meta};
 
 pub fn contains_skip(attrs: &[Attribute]) -> bool {
     for attr in attrs.iter() {
@@ -13,7 +13,11 @@ pub fn contains_skip(attrs: &[Attribute]) -> bool {
     false
 }
 
-pub fn declaration(ident_str: &String, generics: &Generics, cratename: Ident) -> (TokenStream2, Vec<TokenStream2>) {
+pub fn declaration(
+    ident_str: &String,
+    generics: &Generics,
+    cratename: Ident,
+) -> (TokenStream2, Vec<TokenStream2>) {
     let (_, _, where_clause_generics) = generics.split_for_impl();
     // Generate function that returns the name of the type.
     let mut declaration_params = vec![];

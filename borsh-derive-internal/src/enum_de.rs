@@ -1,7 +1,7 @@
 use core::convert::TryFrom;
 
+use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::export::TokenStream2;
 use syn::{Fields, Ident, ItemEnum, WhereClause};
 
 use crate::attribute_helpers::{contains_initialize_with, contains_skip};
@@ -32,9 +32,12 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                         });
                     } else {
                         let field_type = &field.ty;
-                        where_clause.predicates.push(syn::parse2(quote! {
-                            #field_type: #cratename::BorshDeserialize
-                        }).unwrap());
+                        where_clause.predicates.push(
+                            syn::parse2(quote! {
+                                #field_type: #cratename::BorshDeserialize
+                            })
+                            .unwrap(),
+                        );
 
                         variant_header.extend(quote! {
                             #field_name: #cratename::BorshDeserialize::deserialize(buf)?,
@@ -49,9 +52,12 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                         variant_header.extend(quote! { Default::default(), });
                     } else {
                         let field_type = &field.ty;
-                        where_clause.predicates.push(syn::parse2(quote! {
-                            #field_type: #cratename::BorshDeserialize
-                        }).unwrap());
+                        where_clause.predicates.push(
+                            syn::parse2(quote! {
+                                #field_type: #cratename::BorshDeserialize
+                            })
+                            .unwrap(),
+                        );
 
                         variant_header
                             .extend(quote! { #cratename::BorshDeserialize::deserialize(buf)?, });

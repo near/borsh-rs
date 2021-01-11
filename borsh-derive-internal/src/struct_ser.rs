@@ -1,7 +1,7 @@
 use core::convert::TryFrom;
 
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::export::{Span, TokenStream2};
 use syn::{Fields, Ident, Index, ItemStruct, WhereClause};
 
 use crate::attribute_helpers::contains_skip;
@@ -30,9 +30,12 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
                 body.extend(delta);
 
                 let field_type = &field.ty;
-                where_clause.predicates.push(syn::parse2(quote! {
-                    #field_type: #cratename::ser::BorshSerialize
-                }).unwrap());
+                where_clause.predicates.push(
+                    syn::parse2(quote! {
+                        #field_type: #cratename::ser::BorshSerialize
+                    })
+                    .unwrap(),
+                );
             }
         }
         Fields::Unnamed(fields) => {

@@ -1,10 +1,11 @@
-use crate::helpers::declaration;
-use quote::quote;
-use syn::export::{Span, ToTokens, TokenStream2};
+use proc_macro2::{Span, TokenStream as TokenStream2};
+use quote::{quote, ToTokens};
 use syn::{
     parse_quote, AttrStyle, Attribute, Field, Fields, FieldsUnnamed, Ident, ItemEnum, ItemStruct,
     Visibility,
 };
+
+use crate::helpers::declaration;
 
 pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
