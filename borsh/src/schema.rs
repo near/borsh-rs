@@ -10,16 +10,17 @@
 //! * `Definition` is used to describe the structure of the type;
 //! * `BorshSchemaContainer` is used to store all declarations and defintions that are needed to work with a single type.
 
-#![allow(dead_code)]  // Unclear why rust check complains on fields of `Definition` variants.
+#![allow(dead_code)] // Unclear why rust check complains on fields of `Definition` variants.
 use crate as borsh; // For `#[derive(BorshSerialize, BorshDeserialize)]`.
-use crate::{BorshDeserialize, BorshSchema as BorshSchemaMacro, BorshSerialize};
 use crate::maybestd::{
-    collections::{hash_map::Entry, HashMap},
-    string::{ToString, String},
-    vec::Vec, vec,
     boxed::Box,
-    format
+    collections::{hash_map::Entry, HashMap},
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
 };
+use crate::{BorshDeserialize, BorshSchema as BorshSchemaMacro, BorshSerialize};
 
 /// The type that we use to represent the declaration of the Borsh type.
 pub type Declaration = String;

@@ -1,6 +1,6 @@
+use quote::ToTokens;
 use syn::spanned::Spanned;
 use syn::{Attribute, Error, Meta, NestedMeta, Path};
-use quote::ToTokens;
 
 pub fn contains_skip(attrs: &[Attribute]) -> bool {
     for attr in attrs.iter() {
