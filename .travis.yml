@@ -16,6 +16,7 @@ branches:
   - master
 
 install:
+  - rustup component add rustfmt
   - cargo build --verbose
 
 script:
