@@ -1,7 +1,7 @@
 //! Taken from https://github.com/bbqsrc/bare-io (with adjustments)
 
-use core::{convert::From, fmt, result};
 use crate::maybestd::string::String;
+use core::{convert::From, fmt, result};
 
 /// A specialized [`Result`] type for I/O operations.
 ///
@@ -348,7 +348,6 @@ fn _assert_error_is_sync_send() {
     _is_sync_send::<Error>();
 }
 
-
 /// A trait for objects which are byte-oriented sinks.
 ///
 /// Implementors of the `Write` trait are sometimes called 'writers'.
@@ -607,8 +606,8 @@ pub trait Write {
     /// }
     /// ```
     fn by_ref(&mut self) -> &mut Self
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         self
     }

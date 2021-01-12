@@ -1,5 +1,5 @@
-use borsh::schema::*;
 use borsh::maybestd::collections::HashMap;
+use borsh::schema::*;
 
 macro_rules! map(
     () => { HashMap::new() };

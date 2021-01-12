@@ -1,7 +1,7 @@
-#![allow(dead_code)]  // Local structures do not have their fields used.
+#![allow(dead_code)] // Local structures do not have their fields used.
+use borsh::maybestd::collections::HashMap;
 use borsh::schema::*;
 use borsh::schema_helpers::{try_from_slice_with_schema, try_to_vec_with_schema};
-use borsh::maybestd::collections::HashMap;
 
 macro_rules! map(
     () => { HashMap::new() };

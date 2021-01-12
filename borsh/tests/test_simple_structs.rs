@@ -1,5 +1,5 @@
-use borsh::{BorshDeserialize, BorshSerialize};
 use borsh::maybestd::collections::{HashMap, HashSet};
+use borsh::{BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 #[borsh_init(init)]
@@ -137,8 +137,5 @@ fn test_simple_struct() {
     let encoded_f1 = f1.try_to_vec().unwrap();
     let decoded_f2 = F2::try_from_slice(&encoded_f1).unwrap();
     assert_eq!(decoded_f2.aa.len(), 2);
-    assert!(decoded_f2
-        .aa
-        .iter()
-        .all(|f2_a| f2_a == &expected_a));
+    assert!(decoded_f2.aa.iter().all(|f2_a| f2_a == &expected_a));
 }

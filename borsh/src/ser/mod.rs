@@ -2,12 +2,12 @@ use core::convert::TryFrom;
 use core::mem::size_of;
 
 use crate::maybestd::{
-    io::{ErrorKind, Result, Write},
-    collections::{HashMap, HashSet},
-    borrow::{ToOwned, Cow},
-    string::String,
+    borrow::{Cow, ToOwned},
     boxed::Box,
-    vec::Vec
+    collections::{HashMap, HashSet},
+    io::{ErrorKind, Result, Write},
+    string::String,
+    vec::Vec,
 };
 
 const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;
@@ -159,7 +159,8 @@ where
             // The size of the memory should match because `size_of::<T>() == size_of::<u8>()`.
             //
             // `T::is_u8()` is a workaround for not being able to implement `Vec<u8>` separately.
-            let buf = unsafe { core::slice::from_raw_parts(self.as_ptr() as *const u8, self.len()) };
+            let buf =
+                unsafe { core::slice::from_raw_parts(self.as_ptr() as *const u8, self.len()) };
             writer.write_all(buf)?;
         } else {
             for item in self {
@@ -217,10 +218,9 @@ where
     }
 }
 
-
 impl<T> BorshSerialize for HashSet<T>
-    where
-        T: BorshSerialize + PartialOrd,
+where
+    T: BorshSerialize + PartialOrd,
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -235,7 +235,6 @@ impl<T> BorshSerialize for HashSet<T>
         Ok(())
     }
 }
-
 
 #[cfg(feature = "std")]
 impl BorshSerialize for std::net::SocketAddr {

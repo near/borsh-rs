@@ -16,9 +16,11 @@ branches:
   - master
 
 install:
+  - rustup component add rustfmt
   - cargo build --verbose
 
 script:
+  - cargo fmt --all -- --check
   - cargo build --verbose
   - cargo test --verbose
   - cd borsh && cargo test --verbose --no-default-features

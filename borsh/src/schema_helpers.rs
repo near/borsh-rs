@@ -1,6 +1,6 @@
 use crate::maybestd::{
     io::{Error, ErrorKind, Result},
-    vec::Vec
+    vec::Vec,
 };
 use crate::schema::BorshSchemaContainer;
 use crate::{BorshDeserialize, BorshSchema, BorshSerialize};
