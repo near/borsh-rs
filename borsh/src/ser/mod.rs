@@ -2,12 +2,12 @@ use core::convert::TryFrom;
 use core::mem::size_of;
 
 use crate::maybestd::{
-    io::{ErrorKind, Result, Write},
-    collections::{HashMap, HashSet},
-    borrow::{ToOwned, Cow},
-    string::String,
+    borrow::{Cow, ToOwned},
     boxed::Box,
-    vec::Vec
+    collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque},
+    io::{ErrorKind, Result, Write},
+    string::String,
+    vec::Vec,
 };
 
 const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;
@@ -145,6 +145,24 @@ impl BorshSerialize for String {
     }
 }
 
+/// Helper method that is used to serialize a slice of data (without the length marker).
+#[inline]
+fn serialize_slice<T: BorshSerialize, W: Write>(data: &[T], writer: &mut W) -> Result<()> {
+    if T::is_u8() && size_of::<T>() == size_of::<u8>() {
+        // The code below uses unsafe memory representation from `&[T]` to `&[u8]`.
+        // The size of the memory should match because `size_of::<T>() == size_of::<u8>()`.
+        //
+        // `T::is_u8()` is a workaround for not being able to implement `Vec<u8>` separately.
+        let buf = unsafe { core::slice::from_raw_parts(data.as_ptr() as *const u8, data.len()) };
+        writer.write_all(buf)?;
+    } else {
+        for item in data {
+            item.serialize(writer)?;
+        }
+    }
+    Ok(())
+}
+
 impl<T> BorshSerialize for [T]
 where
     T: BorshSerialize,
@@ -154,19 +172,7 @@ where
         writer.write_all(
             &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidInput)?).to_le_bytes(),
         )?;
-        if T::is_u8() && size_of::<T>() == size_of::<u8>() {
-            // The code below uses unsafe memory representation from `&[T]` to `&[u8]`.
-            // The size of the memory should match because `size_of::<T>() == size_of::<u8>()`.
-            //
-            // `T::is_u8()` is a workaround for not being able to implement `Vec<u8>` separately.
-            let buf = unsafe { core::slice::from_raw_parts(self.as_ptr() as *const u8, self.len()) };
-            writer.write_all(buf)?;
-        } else {
-            for item in self {
-                item.serialize(writer)?;
-            }
-        }
-        Ok(())
+        serialize_slice(self, writer)
     }
 }
 
@@ -197,6 +203,56 @@ where
     }
 }
 
+impl<T> BorshSerialize for VecDeque<T>
+where
+    T: BorshSerialize,
+{
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_all(
+            &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidInput)?).to_le_bytes(),
+        )?;
+        let slices = self.as_slices();
+        serialize_slice(slices.0, writer)?;
+        serialize_slice(slices.1, writer)
+    }
+}
+
+impl<T> BorshSerialize for LinkedList<T>
+where
+    T: BorshSerialize,
+{
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_all(
+            &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidInput)?).to_le_bytes(),
+        )?;
+        for item in self {
+            item.serialize(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl<T> BorshSerialize for BinaryHeap<T>
+where
+    T: BorshSerialize,
+{
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        // It could have been just `self.as_slice().serialize(writer)`, but there is no
+        // `as_slice()` method:
+        // https://internals.rust-lang.org/t/should-i-add-as-slice-method-to-binaryheap/13816
+        writer.write_all(
+            &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidInput)?).to_le_bytes(),
+        )?;
+        for item in self {
+            item.serialize(writer)?;
+        }
+        Ok(())
+    }
+}
+
 impl<K, V> BorshSerialize for HashMap<K, V>
 where
     K: BorshSerialize + PartialOrd,
@@ -217,10 +273,9 @@ where
     }
 }
 
-
 impl<T> BorshSerialize for HashSet<T>
-    where
-        T: BorshSerialize + PartialOrd,
+where
+    T: BorshSerialize + PartialOrd,
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -236,6 +291,43 @@ impl<T> BorshSerialize for HashSet<T>
     }
 }
 
+impl<K, V> BorshSerialize for BTreeMap<K, V>
+where
+    K: BorshSerialize + PartialOrd,
+    V: BorshSerialize,
+{
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        let mut vec = self.iter().collect::<Vec<_>>();
+        vec.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
+        u32::try_from(vec.len())
+            .map_err(|_| ErrorKind::InvalidInput)?
+            .serialize(writer)?;
+        for (key, value) in vec {
+            key.serialize(writer)?;
+            value.serialize(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl<T> BorshSerialize for BTreeSet<T>
+where
+    T: BorshSerialize + PartialOrd,
+{
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        let mut vec = self.iter().collect::<Vec<_>>();
+        vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        u32::try_from(vec.len())
+            .map_err(|_| ErrorKind::InvalidInput)?
+            .serialize(writer)?;
+        for item in vec {
+            item.serialize(writer)?;
+        }
+        Ok(())
+    }
+}
 
 #[cfg(feature = "std")]
 impl BorshSerialize for std::net::SocketAddr {

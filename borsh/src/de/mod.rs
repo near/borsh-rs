@@ -1,23 +1,18 @@
 use core::{
     convert::TryInto,
     hash::Hash,
-    mem::{forget, size_of}
+    mem::{forget, size_of},
 };
 
 use crate::maybestd::{
-    io::{Error, ErrorKind, Result},
-    borrow::{
-        Cow,
-        ToOwned,
-        Borrow
-    },
-    collections::{BTreeMap, HashMap, HashSet},
+    borrow::{Borrow, Cow, ToOwned},
+    boxed::Box,
+    collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque},
     format,
+    io::{Error, ErrorKind, Result},
     string::{String, ToString},
     vec::Vec,
-    boxed::Box
 };
-
 
 mod hint;
 
@@ -35,10 +30,7 @@ pub trait BorshDeserialize: Sized {
         let mut v_mut = v;
         let result = Self::deserialize(&mut v_mut)?;
         if !v_mut.is_empty() {
-            return Err(Error::new(
-                ErrorKind::InvalidData,
-                ERROR_NOT_ALL_BYTES_READ,
-            ));
+            return Err(Error::new(ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ));
         }
         Ok(result)
     }
@@ -153,15 +145,10 @@ impl BorshDeserialize for bool {
         } else {
             let msg = format!("Invalid bool representation: {}", b);
 
-            Err(Error::new(
-                ErrorKind::InvalidInput,
-                msg,
-            ))
+            Err(Error::new(ErrorKind::InvalidInput, msg))
         }
     }
 }
-
-
 
 impl<T> BorshDeserialize for Option<T>
 where
@@ -187,10 +174,7 @@ where
                 flag
             );
 
-            Err(Error::new(
-                ErrorKind::InvalidInput,
-                msg,
-            ))
+            Err(Error::new(ErrorKind::InvalidInput, msg))
         }
     }
 }
@@ -220,10 +204,7 @@ where
                 flag
             );
 
-            Err(Error::new(
-                ErrorKind::InvalidInput,
-                msg,
-            ))
+            Err(Error::new(ErrorKind::InvalidInput, msg))
         }
     }
 }
@@ -231,11 +212,10 @@ where
 impl BorshDeserialize for String {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        String::from_utf8(Vec::<u8>::deserialize(buf)?)
-            .map_err(|err| {     
-                let msg = err.to_string();
-                Error::new(ErrorKind::InvalidData, msg)
-            })
+        String::from_utf8(Vec::<u8>::deserialize(buf)?).map_err(|err| {
+            let msg = err.to_string();
+            Error::new(ErrorKind::InvalidData, msg)
+        })
     }
 }
 
@@ -310,6 +290,38 @@ where
     }
 }
 
+impl<T> BorshDeserialize for VecDeque<T>
+where
+    T: BorshDeserialize,
+{
+    #[inline]
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let vec = <Vec<T>>::deserialize(buf)?;
+        Ok(vec.into())
+    }
+}
+
+impl<T> BorshDeserialize for LinkedList<T>
+where
+    T: BorshDeserialize,
+{
+    #[inline]
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let vec = <Vec<T>>::deserialize(buf)?;
+        Ok(vec.into_iter().collect::<LinkedList<T>>())
+    }
+}
+
+impl<T> BorshDeserialize for BinaryHeap<T>
+where
+    T: BorshDeserialize + Ord,
+{
+    #[inline]
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let vec = <Vec<T>>::deserialize(buf)?;
+        Ok(vec.into_iter().collect::<BinaryHeap<T>>())
+    }
+}
 
 impl<T> BorshDeserialize for HashSet<T>
 where
@@ -321,7 +333,6 @@ where
         Ok(vec.into_iter().collect::<HashSet<T>>())
     }
 }
-
 
 impl<K, V> BorshDeserialize for HashMap<K, V>
 where
@@ -342,6 +353,16 @@ where
     }
 }
 
+impl<T> BorshDeserialize for BTreeSet<T>
+where
+    T: BorshDeserialize + Ord,
+{
+    #[inline]
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let vec = <Vec<T>>::deserialize(buf)?;
+        Ok(vec.into_iter().collect::<BTreeSet<T>>())
+    }
+}
 
 impl<K, V> BorshDeserialize for BTreeMap<K, V>
 where
