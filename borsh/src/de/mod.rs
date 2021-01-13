@@ -7,7 +7,7 @@ use core::{
 use crate::maybestd::{
     borrow::{Borrow, Cow, ToOwned},
     boxed::Box,
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque},
     format,
     io::{Error, ErrorKind, Result},
     string::{String, ToString},
@@ -290,6 +290,39 @@ where
     }
 }
 
+impl<T> BorshDeserialize for VecDeque<T>
+where
+    T: BorshDeserialize,
+{
+    #[inline]
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let vec = <Vec<T>>::deserialize(buf)?;
+        Ok(vec.into())
+    }
+}
+
+impl<T> BorshDeserialize for LinkedList<T>
+where
+    T: BorshDeserialize,
+{
+    #[inline]
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let vec = <Vec<T>>::deserialize(buf)?;
+        Ok(vec.into_iter().collect::<LinkedList<T>>())
+    }
+}
+
+impl<T> BorshDeserialize for BinaryHeap<T>
+where
+    T: BorshDeserialize + Ord,
+{
+    #[inline]
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let vec = <Vec<T>>::deserialize(buf)?;
+        Ok(vec.into_iter().collect::<BinaryHeap<T>>())
+    }
+}
+
 impl<T> BorshDeserialize for HashSet<T>
 where
     T: BorshDeserialize + Eq + Hash,
@@ -317,6 +350,17 @@ where
             result.insert(key, value);
         }
         Ok(result)
+    }
+}
+
+impl<T> BorshDeserialize for BTreeSet<T>
+where
+    T: BorshDeserialize + Ord,
+{
+    #[inline]
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let vec = <Vec<T>>::deserialize(buf)?;
+        Ok(vec.into_iter().collect::<BTreeSet<T>>())
     }
 }
 

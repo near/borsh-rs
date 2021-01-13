@@ -1,4 +1,4 @@
-use borsh::maybestd::collections::{HashMap, HashSet};
+use borsh::maybestd::collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque};
 use borsh::{BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
@@ -11,6 +11,10 @@ struct A<'a> {
     t: (String, u64),
     m: HashMap<String, String>,
     s: HashSet<u64>,
+    btree_map_string: BTreeMap<String, String>,
+    btree_set_u64: BTreeSet<u64>,
+    linked_list_string: LinkedList<String>,
+    vec_deque_u64: VecDeque<u64>,
     v: Vec<String>,
     w: Box<[u8]>,
     box_str: Box<str>,
@@ -89,6 +93,10 @@ fn test_simple_struct() {
         t: ("Hello".to_string(), 10),
         m: map.clone(),
         s: set.clone(),
+        btree_map_string: map.clone().into_iter().collect(),
+        btree_set_u64: set.clone().into_iter().collect(),
+        linked_list_string: vec!["a".to_string(), "b".to_string()].into_iter().collect(),
+        vec_deque_u64: vec![1, 2, 3].into_iter().collect(),
         v: vec!["qwe".to_string(), "zxc".to_string()],
         w: vec![0].into_boxed_slice(),
         box_str: Box::from("asd"),
@@ -117,6 +125,10 @@ fn test_simple_struct() {
         t: ("Hello".to_string(), 10),
         m: map.clone(),
         s: set.clone(),
+        btree_map_string: map.clone().into_iter().collect(),
+        btree_set_u64: set.clone().into_iter().collect(),
+        linked_list_string: vec!["a".to_string(), "b".to_string()].into_iter().collect(),
+        vec_deque_u64: vec![1, 2, 3].into_iter().collect(),
         v: a.v.clone(),
         w: a.w.clone(),
         box_str: Box::from("asd"),
