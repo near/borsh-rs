@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.8.1
+- Added support for BTreeMap, BTreeSet, BinaryHeap, LinkedList, and VecDeque
+
 ## 0.8.0
 - Add no_std support.
 
