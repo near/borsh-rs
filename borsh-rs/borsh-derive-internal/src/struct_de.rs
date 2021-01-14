@@ -1,6 +1,6 @@
 use crate::attribute_helpers::{contains_initialize_with, contains_skip};
+use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::export::TokenStream2;
 use syn::{Fields, ItemStruct, WhereClause};
 
 pub fn struct_de(input: &ItemStruct) -> syn::Result<TokenStream2> {
@@ -25,9 +25,12 @@ pub fn struct_de(input: &ItemStruct) -> syn::Result<TokenStream2> {
                     }
                 } else {
                     let field_type = &field.ty;
-                    where_clause.predicates.push(syn::parse2(quote! {
-                        #field_type: borsh::BorshDeserialize
-                    }).unwrap());
+                    where_clause.predicates.push(
+                        syn::parse2(quote! {
+                            #field_type: borsh::BorshDeserialize
+                        })
+                        .unwrap(),
+                    );
 
                     quote! {
                         #field_name: borsh::BorshDeserialize::deserialize(buf)?,

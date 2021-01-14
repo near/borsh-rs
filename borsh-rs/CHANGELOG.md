@@ -2,6 +2,7 @@
 
 ## 0.7.2
 - Implement `BorshSerialize` for reference fields (`&T`)
+- Fixed syn::export compilation errors
 
 ## 0.7.1
 - Implement `BorshSerialize` for `&T` if `T` implements `BorshSerialize`.

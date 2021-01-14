@@ -1,6 +1,6 @@
 use crate::helpers::{contains_skip, declaration};
-use quote::quote;
-use syn::export::{ToTokens, TokenStream2};
+use proc_macro2::TokenStream as TokenStream2;
+use quote::{quote, ToTokens};
 use syn::{Fields, ItemStruct};
 
 pub fn process_struct(input: &ItemStruct) -> syn::Result<TokenStream2> {

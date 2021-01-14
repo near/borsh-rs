@@ -2,7 +2,7 @@ extern crate proc_macro;
 use borsh_derive_internal::*;
 use borsh_schema_derive_internal::*;
 use proc_macro::TokenStream;
-use syn::export::Span;
+use proc_macro2::Span;
 use syn::{ItemEnum, ItemStruct, ItemUnion};
 
 #[proc_macro_derive(BorshSerialize, attributes(borsh_skip))]

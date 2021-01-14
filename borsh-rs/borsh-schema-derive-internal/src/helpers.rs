@@ -1,5 +1,5 @@
+use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens};
-use syn::export::TokenStream2;
 use syn::{Attribute, Generics, Meta};
 
 pub fn contains_skip(attrs: &[Attribute]) -> bool {
