@@ -50,10 +50,7 @@ impl BorshDeserialize for u8 {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         if buf.is_empty() {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-            ));
+            return Err(Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT));
         }
         let res = buf[0];
         *buf = &buf[1..];
@@ -95,6 +92,13 @@ impl_for_integer!(u32);
 impl_for_integer!(u64);
 impl_for_integer!(u128);
 
+impl BorshDeserialize for usize {
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let u: u64 = BorshDeserialize::deserialize(buf)?;
+        Ok(u as usize)
+    }
+}
+
 // Note NaNs have a portability issue. Specifically, signalling NaNs on MIPS are quiet NaNs on x86,
 // and vice-versa. We disallow NaNs to avoid this issue.
 macro_rules! impl_for_float {
@@ -131,10 +135,7 @@ impl BorshDeserialize for bool {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         if buf.is_empty() {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-            ));
+            return Err(Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT));
         }
         let b = buf[0];
         *buf = &buf[1..];
@@ -157,10 +158,7 @@ where
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         if buf.is_empty() {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-            ));
+            return Err(Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT));
         }
         let flag = buf[0];
         *buf = &buf[1..];
@@ -169,10 +167,8 @@ where
         } else if flag == 1 {
             Ok(Some(T::deserialize(buf)?))
         } else {
-            let msg = format!(
-                "Invalid Option representation: {}. The first byte must be 0 or 1",
-                flag
-            );
+            let msg =
+                format!("Invalid Option representation: {}. The first byte must be 0 or 1", flag);
 
             Err(Error::new(ErrorKind::InvalidInput, msg))
         }
@@ -187,10 +183,7 @@ where
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         if buf.is_empty() {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-            ));
+            return Err(Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT));
         }
         let flag = buf[0];
         *buf = &buf[1..];
@@ -199,10 +192,8 @@ where
         } else if flag == 1 {
             Ok(Ok(T::deserialize(buf)?))
         } else {
-            let msg = format!(
-                "Invalid Result representation: {}. The first byte must be 0 or 1",
-                flag
-            );
+            let msg =
+                format!("Invalid Result representation: {}. The first byte must be 0 or 1", flag);
 
             Err(Error::new(ErrorKind::InvalidInput, msg))
         }
@@ -231,10 +222,7 @@ where
         } else if T::is_u8() && size_of::<T>() == size_of::<u8>() {
             let len = len.try_into().map_err(|_| ErrorKind::InvalidInput)?;
             if buf.len() < len {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-                ));
+                return Err(Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT));
             }
             let result = buf[..len].to_vec();
             *buf = &buf[len..];
@@ -423,10 +411,7 @@ impl BorshDeserialize for std::net::Ipv4Addr {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         if buf.len() < 4 {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-            ));
+            return Err(Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT));
         }
         let bytes: [u8; 4] = buf[..4].try_into().unwrap();
         let res = std::net::Ipv4Addr::from(bytes);
@@ -440,10 +425,7 @@ impl BorshDeserialize for std::net::Ipv6Addr {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         if buf.len() < 16 {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-            ));
+            return Err(Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT));
         }
         let bytes: [u8; 16] = buf[..16].try_into().unwrap();
         let res = std::net::Ipv6Addr::from(bytes);
