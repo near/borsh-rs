@@ -268,7 +268,9 @@ where
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         let mut vec = self.iter().collect::<Vec<_>>();
         vec.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
-        u32::try_from(vec.len()).map_err(|_| ErrorKind::InvalidInput)?.serialize(writer)?;
+        u32::try_from(vec.len())
+            .map_err(|_| ErrorKind::InvalidInput)?
+            .serialize(writer)?;
         for (key, value) in vec {
             key.serialize(writer)?;
             value.serialize(writer)?;
@@ -285,7 +287,9 @@ where
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         let mut vec = self.iter().collect::<Vec<_>>();
         vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        u32::try_from(vec.len()).map_err(|_| ErrorKind::InvalidInput)?.serialize(writer)?;
+        u32::try_from(vec.len())
+            .map_err(|_| ErrorKind::InvalidInput)?
+            .serialize(writer)?;
         for item in vec {
             item.serialize(writer)?;
         }
@@ -303,7 +307,9 @@ where
         // NOTE: BTreeMap iterates over the entries that are sorted by key, so the serialization
         // result will be consistent without a need to sort the entries as we do for HashMap
         // serialization.
-        u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidInput)?.serialize(writer)?;
+        u32::try_from(self.len())
+            .map_err(|_| ErrorKind::InvalidInput)?
+            .serialize(writer)?;
         for (key, value) in self {
             key.serialize(writer)?;
             value.serialize(writer)?;
@@ -320,7 +326,9 @@ where
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         // NOTE: BTreeSet iterates over the items that are sorted, so the serialization result will
         // be consistent without a need to sort the entries as we do for HashSet serialization.
-        u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidInput)?.serialize(writer)?;
+        u32::try_from(self.len())
+            .map_err(|_| ErrorKind::InvalidInput)?
+            .serialize(writer)?;
         for item in self {
             item.serialize(writer)?;
         }
