@@ -102,7 +102,7 @@ impl BorshDeserialize for usize {
         let u = usize::try_from(u).map_err(|_| {
             Error::new(
                 ErrorKind::InvalidInput,
-                ERROR_USIZE_OVERFLOW_IN_32_BIT_MACHINE,
+                ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE,
             )
         })?;
         Ok(u)
