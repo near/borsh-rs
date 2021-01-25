@@ -1,5 +1,5 @@
 use core::{
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     hash::Hash,
     mem::{forget, size_of},
 };
@@ -18,6 +18,7 @@ mod hint;
 
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
+const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE: &str = "Overflow on machine with 32 bit usize";
 
 /// A data-structure that can be de-serialized from binary format by NBOR.
 pub trait BorshDeserialize: Sized {
@@ -94,6 +95,19 @@ impl_for_integer!(u16);
 impl_for_integer!(u32);
 impl_for_integer!(u64);
 impl_for_integer!(u128);
+
+impl BorshDeserialize for usize {
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let u: u64 = BorshDeserialize::deserialize(buf)?;
+        let u = usize::try_from(u).map_err(|_| {
+            Error::new(
+                ErrorKind::InvalidInput,
+                ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE,
+            )
+        })?;
+        Ok(u)
+    }
+}
 
 // Note NaNs have a portability issue. Specifically, signalling NaNs on MIPS are quiet NaNs on x86,
 // and vice-versa. We disallow NaNs to avoid this issue.
