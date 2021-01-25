@@ -1,5 +1,5 @@
 use core::{
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     hash::Hash,
     mem::{forget, size_of},
 };
@@ -18,6 +18,7 @@ mod hint;
 
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
+const ERROR_USIZE_OVERFLOW_IN_32_BIT_MACHINE: &str = "Deserialize usize overflow in 32 bit machine";
 
 /// A data-structure that can be de-serialized from binary format by NBOR.
 pub trait BorshDeserialize: Sized {
@@ -50,7 +51,10 @@ impl BorshDeserialize for u8 {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         if buf.is_empty() {
-            return Err(Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT));
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
+            ));
         }
         let res = buf[0];
         *buf = &buf[1..];
@@ -95,7 +99,13 @@ impl_for_integer!(u128);
 impl BorshDeserialize for usize {
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         let u: u64 = BorshDeserialize::deserialize(buf)?;
-        Ok(u as usize)
+        let u = usize::try_from(u).map_err(|_| {
+            Error::new(
+                ErrorKind::InvalidInput,
+                ERROR_USIZE_OVERFLOW_IN_32_BIT_MACHINE,
+            )
+        })?;
+        Ok(u)
     }
 }
 
@@ -135,7 +145,10 @@ impl BorshDeserialize for bool {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         if buf.is_empty() {
-            return Err(Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT));
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
+            ));
         }
         let b = buf[0];
         *buf = &buf[1..];
@@ -158,7 +171,10 @@ where
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         if buf.is_empty() {
-            return Err(Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT));
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
+            ));
         }
         let flag = buf[0];
         *buf = &buf[1..];
@@ -167,8 +183,10 @@ where
         } else if flag == 1 {
             Ok(Some(T::deserialize(buf)?))
         } else {
-            let msg =
-                format!("Invalid Option representation: {}. The first byte must be 0 or 1", flag);
+            let msg = format!(
+                "Invalid Option representation: {}. The first byte must be 0 or 1",
+                flag
+            );
 
             Err(Error::new(ErrorKind::InvalidInput, msg))
         }
@@ -183,7 +201,10 @@ where
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         if buf.is_empty() {
-            return Err(Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT));
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
+            ));
         }
         let flag = buf[0];
         *buf = &buf[1..];
@@ -192,8 +213,10 @@ where
         } else if flag == 1 {
             Ok(Ok(T::deserialize(buf)?))
         } else {
-            let msg =
-                format!("Invalid Result representation: {}. The first byte must be 0 or 1", flag);
+            let msg = format!(
+                "Invalid Result representation: {}. The first byte must be 0 or 1",
+                flag
+            );
 
             Err(Error::new(ErrorKind::InvalidInput, msg))
         }
@@ -222,7 +245,10 @@ where
         } else if T::is_u8() && size_of::<T>() == size_of::<u8>() {
             let len = len.try_into().map_err(|_| ErrorKind::InvalidInput)?;
             if buf.len() < len {
-                return Err(Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT));
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    ERROR_UNEXPECTED_LENGTH_OF_INPUT,
+                ));
             }
             let result = buf[..len].to_vec();
             *buf = &buf[len..];
@@ -411,7 +437,10 @@ impl BorshDeserialize for std::net::Ipv4Addr {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         if buf.len() < 4 {
-            return Err(Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT));
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
+            ));
         }
         let bytes: [u8; 4] = buf[..4].try_into().unwrap();
         let res = std::net::Ipv4Addr::from(bytes);
@@ -425,7 +454,10 @@ impl BorshDeserialize for std::net::Ipv6Addr {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         if buf.len() < 16 {
-            return Err(Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT));
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
+            ));
         }
         let bytes: [u8; 16] = buf[..16].try_into().unwrap();
         let res = std::net::Ipv6Addr::from(bytes);
