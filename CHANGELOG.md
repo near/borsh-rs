@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.8.2
+- Avoid collisions of imports due to derive-generated code (#14)
+
 ## 0.8.1
 - Added support for BTreeMap, BTreeSet, BinaryHeap, LinkedList, and VecDeque
 
