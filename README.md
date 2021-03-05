@@ -80,20 +80,39 @@ struct A {
 
 ## Releasing
 
-After you merged your change into the master branch and bumped the versions of all three crates it is time to officially release the new version.
+Before you release, make sure CHANGELOG.md is up to date.
 
-Make sure `borsh`, `borsh-derive`, `borsh-derive-internal`, and `borsh-schema-derive-internal` all have the new crate versions. Then run the `publish.sh` script:
+Use [`cargo-workspaces`](https://github.com/pksunkara/cargo-workspaces) to save time.
 
-```bash
-sh publish.sh
+### Bump Versions
+
+```sh
+cargo workspaces version --force 'borsh*' --exact --no-individual-tags patch
 ```
 
-Make sure you are on the master branch, then tag the code and push the tag:
+This will bump all the versions to the next "patch" release (see `cargo workspaces version --help`
+for more options), create a new commit, push `v0.x.x` tag, push to the master.
 
-```bash
-git tag -a v9.9.9 -m "My superawesome change."
-git push origin v9.9.9
+### Publish
+
+To publish on crates.io the version that is currently in git:
+
+```sh
+cargo workspaces publish --from-git --skip-published
 ```
+
+Alternatively, you may want to combine the version bumping with publishing:
+
+```sh
+cargo workspaces publish --force 'borsh*' --exact --no-individual-tags patch
+```
+
+### Release on GitHub
+
+1. Navigate to the [New Release](https://github.com/near/borsh-rs/releases/new) page
+2. Enter the tag name, e.g. `v0.8.0`
+3. Write down the release log (basically, copy-paste from the CHANGELOG)
+4. Publish the release
 
 ## License
 
