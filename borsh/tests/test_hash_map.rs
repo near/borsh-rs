@@ -1,9 +1,10 @@
+#[cfg(feature = "std")]
+use core::hash::BuildHasher;
+#[cfg(feature = "std")]
+use std::collections::hash_map::{DefaultHasher, RandomState};
+
+use borsh::maybestd::collections::HashMap;
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::collections::{
-    hash_map::{DefaultHasher, RandomState},
-    HashMap,
-};
-use std::hash::BuildHasher;
 
 #[test]
 fn test_default_hashmap() {
@@ -17,8 +18,10 @@ fn test_default_hashmap() {
 }
 
 #[derive(Default)]
+#[cfg(feature = "std")]
 struct NewHasher(RandomState);
 
+#[cfg(feature = "std")]
 impl BuildHasher for NewHasher {
     type Hasher = DefaultHasher;
     fn build_hasher(&self) -> DefaultHasher {
@@ -27,6 +30,7 @@ impl BuildHasher for NewHasher {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn test_generic_hash_hashmap() {
     let mut map = HashMap::with_hasher(NewHasher::default());
     map.insert("foo".to_string(), "bar".to_string());
