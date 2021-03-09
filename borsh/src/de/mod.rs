@@ -1,6 +1,6 @@
 use core::{
     convert::{TryFrom, TryInto},
-    hash::Hash,
+    hash::{BuildHasher, Hash},
     mem::{forget, size_of},
 };
 
@@ -337,27 +337,29 @@ where
     }
 }
 
-impl<T> BorshDeserialize for HashSet<T>
+impl<T, H> BorshDeserialize for HashSet<T, H>
 where
     T: BorshDeserialize + Eq + Hash,
+    H: BuildHasher + Default,
 {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         let vec = <Vec<T>>::deserialize(buf)?;
-        Ok(vec.into_iter().collect::<HashSet<T>>())
+        Ok(vec.into_iter().collect::<HashSet<T, H>>())
     }
 }
 
-impl<K, V> BorshDeserialize for HashMap<K, V>
+impl<K, V, H> BorshDeserialize for HashMap<K, V, H>
 where
     K: BorshDeserialize + Eq + Hash,
     V: BorshDeserialize,
+    H: BuildHasher + Default,
 {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         let len = u32::deserialize(buf)?;
         // TODO(16): return capacity allocation when we can safely do that.
-        let mut result = HashMap::new();
+        let mut result = HashMap::with_hasher(H::default());
         for _ in 0..len {
             let key = K::deserialize(buf)?;
             let value = V::deserialize(buf)?;
