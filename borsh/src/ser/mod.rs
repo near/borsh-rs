@@ -29,8 +29,12 @@ pub trait BorshSerialize {
     /// worth handling it as a special case to improve performance.
     /// It's a workaround for specific `Vec<u8>` implementation versus generic `Vec<T>`
     /// implementation. See https://github.com/rust-lang/rfcs/pull/1210 for details.
+    ///
+    /// It's marked unsafe, because if the type is not `u8` it leads to UB. See related issues:
+    /// - https://github.com/near/borsh-rs/issues/17
+    /// - https://github.com/near/borsh-rs/issues/18
     #[inline]
-    fn is_u8() -> bool {
+    unsafe fn is_u8() -> bool {
         false
     }
 }
@@ -42,7 +46,7 @@ impl BorshSerialize for u8 {
     }
 
     #[inline]
-    fn is_u8() -> bool {
+    unsafe fn is_u8() -> bool {
         true
     }
 }
@@ -155,7 +159,7 @@ impl BorshSerialize for String {
 /// Helper method that is used to serialize a slice of data (without the length marker).
 #[inline]
 fn serialize_slice<T: BorshSerialize, W: Write>(data: &[T], writer: &mut W) -> Result<()> {
-    if T::is_u8() && size_of::<T>() == size_of::<u8>() {
+    if unsafe { T::is_u8() } && size_of::<T>() == size_of::<u8>() {
         // The code below uses unsafe memory representation from `&[T]` to `&[u8]`.
         // The size of the memory should match because `size_of::<T>() == size_of::<u8>()`.
         //
@@ -404,7 +408,7 @@ macro_rules! impl_arrays {
         {
             #[inline]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-                if T::is_u8() && size_of::<T>() == size_of::<u8>() {
+                if unsafe { T::is_u8() } && size_of::<T>() == size_of::<u8>() {
                     // The code below uses unsafe memory representation from `&[T]` to `&[u8]`.
                     // The size of the memory should match because `size_of::<T>() == size_of::<u8>()`.
                     //
