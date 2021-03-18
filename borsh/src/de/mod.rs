@@ -41,8 +41,12 @@ pub trait BorshDeserialize: Sized {
     /// worth handling it as a special case to improve performance.
     /// It's a workaround for specific `Vec<u8>` implementation versus generic `Vec<T>`
     /// implementation. See https://github.com/rust-lang/rfcs/pull/1210 for details.
+    ///
+    /// It's marked unsafe, because if the type is not `u8` it leads to UB. See related issues:
+    /// - https://github.com/near/borsh-rs/issues/17
+    /// - https://github.com/near/borsh-rs/issues/18
     #[inline]
-    fn is_u8() -> bool {
+    unsafe fn is_u8() -> bool {
         false
     }
 }
@@ -62,7 +66,7 @@ impl BorshDeserialize for u8 {
     }
 
     #[inline]
-    fn is_u8() -> bool {
+    unsafe fn is_u8() -> bool {
         true
     }
 }
@@ -242,7 +246,7 @@ where
         let len = u32::deserialize(buf)?;
         if len == 0 {
             Ok(Vec::new())
-        } else if T::is_u8() && size_of::<T>() == size_of::<u8>() {
+        } else if unsafe { T::is_u8() } && size_of::<T>() == size_of::<u8>() {
             let len = len.try_into().map_err(|_| ErrorKind::InvalidInput)?;
             if buf.len() < len {
                 return Err(Error::new(
@@ -489,7 +493,7 @@ macro_rules! impl_arrays {
             #[inline]
             fn deserialize(buf: &mut &[u8]) -> Result<Self> {
                 let mut result = [T::default(); $len];
-                if T::is_u8() && size_of::<T>() == size_of::<u8>() {
+                if unsafe { T::is_u8() } && size_of::<T>() == size_of::<u8>() {
                     if buf.len() < $len {
                         return Err(Error::new(
                             ErrorKind::InvalidInput,
