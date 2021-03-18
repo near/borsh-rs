@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0
+- *BREAKING CHANGE*: `is_u8` optimization helper is now unsafe since it may
+  cause undefined behavior if it returns `true` for the type that is not safe
+  to Copy (#21)
+- Extended the schema impls to support longer arrays to match the
+  de/serialization impls (#22)
+
 ## 0.8.2
 - Avoid collisions of imports due to derive-generated code (#14)
 
