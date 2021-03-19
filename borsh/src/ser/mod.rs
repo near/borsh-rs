@@ -24,19 +24,40 @@ pub trait BorshSerialize {
         Ok(result)
     }
 
-    /// Whether Self is u8.
-    /// NOTE: `Vec<u8>` is the most common use-case for serialization and deserialization, it's
-    /// worth handling it as a special case to improve performance.
-    /// It's a workaround for specific `Vec<u8>` implementation versus generic `Vec<T>`
-    /// implementation. See https://github.com/rust-lang/rfcs/pull/1210 for details.
-    ///
-    /// It's marked unsafe, because if the type is not `u8` it leads to UB. See related issues:
-    /// - https://github.com/near/borsh-rs/issues/17
-    /// - https://github.com/near/borsh-rs/issues/18
+    /// Hidden private implementation detail, overriding this method is unsound.
+    // NOTE: `Vec<u8>` is the most common use-case for serialization and deserialization,
+    // it's worth handling it as a special case to improve performance. To do this properly,
+    // we need [specialization](https://github.com/rust-lang/rfcs/pull/1210), which is not
+    // currently available.
+    //
+    // As a work-around, we specialize manually. We need to ask a generic `T` if it is,
+    // in fact, an `u8`. We rely on the answer being correct for soundness, so overriding
+    // this method is unsafe. Ideally, we'd have an unsafe trait like
+    //
+    // ```
+    // unsafe trait IsU8 { const YES: bool = false; }
+    // ```
+    //
+    // Alas, that also needs specialization. So we just hide the method from crate's public
+    // API altogether.
+    //
+    // See https://github.com/near/borsh-rs/issues/24.
     #[inline]
-    unsafe fn is_u8() -> bool {
+    #[doc(hidden)]
+    fn __dont_override_me_is_u8() -> bool {
         false
     }
+}
+
+#[inline]
+fn is_u8<T: BorshSerialize>() -> bool {
+    let res = T::__dont_override_me_is_u8();
+    debug_assert!(
+        // Can't check `TypeId`, as that requires `: 'static`
+        !res || size_of::<T>() == size_of::<u8>(),
+        "Do not override `__dont_override_me_is_u8`, it is unsound"
+    );
+    res
 }
 
 impl BorshSerialize for u8 {
@@ -46,7 +67,10 @@ impl BorshSerialize for u8 {
     }
 
     #[inline]
-    unsafe fn is_u8() -> bool {
+    #[doc(hidden)]
+    fn __dont_override_me_is_u8() -> bool {
+        // SAFETY: this is technically an `unsafe { }` block,
+        // see the comment on the trait method for details.
         true
     }
 }
@@ -159,7 +183,7 @@ impl BorshSerialize for String {
 /// Helper method that is used to serialize a slice of data (without the length marker).
 #[inline]
 fn serialize_slice<T: BorshSerialize, W: Write>(data: &[T], writer: &mut W) -> Result<()> {
-    if unsafe { T::is_u8() } && size_of::<T>() == size_of::<u8>() {
+    if is_u8::<T>() {
         // The code below uses unsafe memory representation from `&[T]` to `&[u8]`.
         // The size of the memory should match because `size_of::<T>() == size_of::<u8>()`.
         //
@@ -408,7 +432,7 @@ macro_rules! impl_arrays {
         {
             #[inline]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-                if unsafe { T::is_u8() } && size_of::<T>() == size_of::<u8>() {
+                if is_u8::<T>() {
                     // The code below uses unsafe memory representation from `&[T]` to `&[u8]`.
                     // The size of the memory should match because `size_of::<T>() == size_of::<u8>()`.
                     //

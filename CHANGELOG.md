@@ -1,5 +1,11 @@
 # Changelog
 
+## vNext
+
+- *BREAKING CHANGE*: `is_u8` method is removed from the public API.
+  Consumers of the API don't need to call or override it, and doing
+  so might cause undefined behavior.
+
 ## 0.9.0
 - *BREAKING CHANGE*: `is_u8` optimization helper is now unsafe since it may
   cause undefined behavior if it returns `true` for the type that is not safe
@@ -28,4 +34,3 @@
 - Added support for `std::borrow::Cow`
 - Avoid silent integer casts since they can lead to hidden security issues.
 - Removed `Cargo.lock` as it is advised for lib crates.
-
