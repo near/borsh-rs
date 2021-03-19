@@ -36,18 +36,20 @@ pub trait BorshDeserialize: Sized {
         Ok(result)
     }
 
-    /// Whether Self is u8.
-    /// NOTE: `Vec<u8>` is the most common use-case for serialization and deserialization, it's
-    /// worth handling it as a special case to improve performance.
-    /// It's a workaround for specific `Vec<u8>` implementation versus generic `Vec<T>`
-    /// implementation. See https://github.com/rust-lang/rfcs/pull/1210 for details.
-    ///
-    /// It's marked unsafe, because if the type is not `u8` it leads to UB. See related issues:
-    /// - https://github.com/near/borsh-rs/issues/17
-    /// - https://github.com/near/borsh-rs/issues/18
     #[inline]
-    unsafe fn is_u8() -> bool {
-        false
+    #[doc(hidden)]
+    fn vec_from_bytes(len: u32, buf: &mut &[u8]) -> Result<Option<Vec<Self>>> {
+        let _ = len;
+        let _ = buf;
+        Ok(None)
+    }
+
+    #[inline]
+    #[doc(hidden)]
+    fn copy_from_bytes(buf: &mut &[u8], out: &mut [Self]) -> Result<bool> {
+        let _ = buf;
+        let _ = out;
+        Ok(false)
     }
 }
 
@@ -66,8 +68,33 @@ impl BorshDeserialize for u8 {
     }
 
     #[inline]
-    unsafe fn is_u8() -> bool {
-        true
+    #[doc(hidden)]
+    fn vec_from_bytes(len: u32, buf: &mut &[u8]) -> Result<Option<Vec<Self>>> {
+        let len = len.try_into().map_err(|_| ErrorKind::InvalidInput)?;
+        if buf.len() < len {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
+            ));
+        }
+        let (front, rest) = buf.split_at(len);
+        *buf = rest;
+        Ok(Some(front.to_vec()))
+    }
+
+    #[inline]
+    #[doc(hidden)]
+    fn copy_from_bytes(buf: &mut &[u8], out: &mut [Self]) -> Result<bool> {
+        if buf.len() < out.len() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
+            ));
+        }
+        let (front, rest) = buf.split_at(out.len());
+        out.copy_from_slice(front);
+        *buf = rest;
+        Ok(true)
     }
 }
 
@@ -246,35 +273,8 @@ where
         let len = u32::deserialize(buf)?;
         if len == 0 {
             Ok(Vec::new())
-        } else if unsafe { T::is_u8() } && size_of::<T>() == size_of::<u8>() {
-            let len = len.try_into().map_err(|_| ErrorKind::InvalidInput)?;
-            if buf.len() < len {
-                return Err(Error::new(
-                    ErrorKind::InvalidInput,
-                    ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-                ));
-            }
-            let result = buf[..len].to_vec();
-            *buf = &buf[len..];
-            // See comment from https://doc.rust-lang.org/std/mem/fn.transmute.html
-            // The no-copy, unsafe way, still using transmute, but not UB.
-            // This is equivalent to the original, but safer, and reuses the
-            // same `Vec` internals. Therefore, the new inner type must have the
-            // exact same size, and the same alignment, as the old type.
-            //
-            // The size of the memory should match because `size_of::<T>() == size_of::<u8>()`.
-            //
-            // `T::is_u8()` is a workaround for not being able to implement `Vec<u8>` separately.
-            let result = unsafe {
-                // Ensure the original vector is not dropped.
-                let mut v_clone = core::mem::ManuallyDrop::new(result);
-                Vec::from_raw_parts(
-                    v_clone.as_mut_ptr() as *mut T,
-                    v_clone.len(),
-                    v_clone.capacity(),
-                )
-            };
-            Ok(result)
+        } else if let Some(vec_bytes) = T::vec_from_bytes(len, buf)? {
+            Ok(vec_bytes)
         } else if size_of::<T>() == 0 {
             let mut result = Vec::new();
             result.push(T::deserialize(buf)?);
@@ -493,18 +493,7 @@ macro_rules! impl_arrays {
             #[inline]
             fn deserialize(buf: &mut &[u8]) -> Result<Self> {
                 let mut result = [T::default(); $len];
-                if unsafe { T::is_u8() } && size_of::<T>() == size_of::<u8>() {
-                    if buf.len() < $len {
-                        return Err(Error::new(
-                            ErrorKind::InvalidInput,
-                            ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-                        ));
-                    }
-                    // The size of the memory should match because `size_of::<T>() == size_of::<u8>()`.
-                    // `T::is_u8()` is a workaround for not being able to implement `[u8; *]` separately.
-                    result.copy_from_slice(unsafe { core::slice::from_raw_parts(buf.as_ptr() as *const T, $len) });
-                    *buf = &buf[$len..];
-                } else {
+                if !T::copy_from_bytes(buf, &mut result)? {
                     for i in 0..$len {
                         result[i] = T::deserialize(buf)?;
                     }

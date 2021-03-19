@@ -1,6 +1,5 @@
 use core::convert::TryFrom;
 use core::hash::BuildHasher;
-use core::mem::size_of;
 
 use crate::maybestd::{
     borrow::{Cow, ToOwned},
@@ -24,18 +23,14 @@ pub trait BorshSerialize {
         Ok(result)
     }
 
-    /// Whether Self is u8.
-    /// NOTE: `Vec<u8>` is the most common use-case for serialization and deserialization, it's
-    /// worth handling it as a special case to improve performance.
-    /// It's a workaround for specific `Vec<u8>` implementation versus generic `Vec<T>`
-    /// implementation. See https://github.com/rust-lang/rfcs/pull/1210 for details.
-    ///
-    /// It's marked unsafe, because if the type is not `u8` it leads to UB. See related issues:
-    /// - https://github.com/near/borsh-rs/issues/17
-    /// - https://github.com/near/borsh-rs/issues/18
     #[inline]
-    unsafe fn is_u8() -> bool {
-        false
+    #[doc(hidden)]
+    fn u8_slice(slice: &[Self]) -> Option<&[u8]>
+    where
+        Self: Sized,
+    {
+        let _ = slice;
+        None
     }
 }
 
@@ -46,8 +41,8 @@ impl BorshSerialize for u8 {
     }
 
     #[inline]
-    unsafe fn is_u8() -> bool {
-        true
+    fn u8_slice(slice: &[Self]) -> Option<&[u8]> {
+        Some(slice)
     }
 }
 
@@ -159,13 +154,8 @@ impl BorshSerialize for String {
 /// Helper method that is used to serialize a slice of data (without the length marker).
 #[inline]
 fn serialize_slice<T: BorshSerialize, W: Write>(data: &[T], writer: &mut W) -> Result<()> {
-    if unsafe { T::is_u8() } && size_of::<T>() == size_of::<u8>() {
-        // The code below uses unsafe memory representation from `&[T]` to `&[u8]`.
-        // The size of the memory should match because `size_of::<T>() == size_of::<u8>()`.
-        //
-        // `T::is_u8()` is a workaround for not being able to implement `Vec<u8>` separately.
-        let buf = unsafe { core::slice::from_raw_parts(data.as_ptr() as *const u8, data.len()) };
-        writer.write_all(buf)?;
+    if let Some(u8_slice) = T::u8_slice(data) {
+        writer.write_all(u8_slice)?;
     } else {
         for item in data {
             item.serialize(writer)?;
@@ -408,13 +398,8 @@ macro_rules! impl_arrays {
         {
             #[inline]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-                if unsafe { T::is_u8() } && size_of::<T>() == size_of::<u8>() {
-                    // The code below uses unsafe memory representation from `&[T]` to `&[u8]`.
-                    // The size of the memory should match because `size_of::<T>() == size_of::<u8>()`.
-                    //
-                    // `T::is_u8()` is a workaround for not being able to implement `[u8; *]` separately.
-                    let buf = unsafe { core::slice::from_raw_parts(self.as_ptr() as *const u8, self.len()) };
-                    writer.write_all(buf)?;
+                if let Some(u8_slice) = T::u8_slice(self) {
+                    writer.write_all(u8_slice)?;
                 } else {
                     for el in self.iter() {
                         el.serialize(writer)?;
