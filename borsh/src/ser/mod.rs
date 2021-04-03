@@ -10,6 +10,9 @@ use crate::maybestd::{
     vec::Vec,
 };
 
+#[cfg(feature = "rc")]
+use std::{rc::Rc, sync::Arc};
+
 const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;
 
 /// A data-structure that can be serialized into binary format by NBOR.
@@ -463,3 +466,17 @@ impl_tuple!(0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T
 impl_tuple!(0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 15 T15 16 T16 17 T17);
 impl_tuple!(0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 15 T15 16 T16 17 T17 18 T18);
 impl_tuple!(0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 15 T15 16 T16 17 T17 18 T18 19 T19);
+
+#[cfg(feature = "rc")]
+impl<T: BorshSerialize + ?Sized> BorshSerialize for Rc<T> {
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        (**self).serialize(writer)
+    }
+}
+
+#[cfg(feature = "rc")]
+impl<T: BorshSerialize + ?Sized> BorshSerialize for Arc<T> {
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        (**self).serialize(writer)
+    }
+}

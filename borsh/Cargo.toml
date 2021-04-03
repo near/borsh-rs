@@ -27,3 +27,4 @@ hashbrown = "0.9.1"
 [features]
 default = ["std"]
 std = []
+rc = []

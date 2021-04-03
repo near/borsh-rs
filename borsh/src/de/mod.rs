@@ -14,6 +14,9 @@ use crate::maybestd::{
     vec::Vec,
 };
 
+#[cfg(feature = "rc")]
+use std::{rc::Rc, sync::Arc};
+
 mod hint;
 
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
@@ -556,3 +559,27 @@ impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16);
 impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17);
 impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18);
 impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19);
+
+#[cfg(feature = "rc")]
+impl<T, U> BorshDeserialize for Rc<T>
+where
+    U: Into<Rc<T>> + Borrow<T>,
+    T: ToOwned<Owned = U> + ?Sized,
+    T::Owned: BorshDeserialize,
+{
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        Ok(T::Owned::deserialize(buf)?.into())
+    }
+}
+
+#[cfg(feature = "rc")]
+impl<T, U> BorshDeserialize for Arc<T>
+where
+    U: Into<Arc<T>> + Borrow<T>,
+    T: ToOwned<Owned = U> + ?Sized,
+    T::Owned: BorshDeserialize,
+{
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        Ok(T::Owned::deserialize(buf)?.into())
+    }
+}
