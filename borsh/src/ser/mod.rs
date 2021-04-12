@@ -16,6 +16,27 @@ use std::{rc::Rc, sync::Arc};
 const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;
 
 /// A data-structure that can be serialized into binary format by NBOR.
+///
+/// ```
+/// use borsh::BorshSerialize;
+///
+/// #[derive(BorshSerialize)]
+/// struct MyBorshSerializableStruct {
+///     value: String,
+/// }
+///
+/// let x = MyBorshSerializableStruct { value: "hello".to_owned() };
+/// let mut buffer: Vec<u8> = Vec::new();
+/// x.serialize(&mut buffer).unwrap();
+/// let single_serialized_buffer_len = buffer.len();
+///
+/// x.serialize(&mut buffer).unwrap();
+/// assert_eq!(buffer.len(), single_serialized_buffer_len * 2);
+///
+/// let mut buffer: Vec<u8> = vec![0; 1024 + single_serialized_buffer_len];
+/// let mut buffer_slice_enough_for_the_data = &mut buffer[1024..1024 + single_serialized_buffer_len];
+/// x.serialize(&mut buffer_slice_enough_for_the_data).unwrap();
+/// ```
 pub trait BorshSerialize {
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()>;
 
