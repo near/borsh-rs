@@ -13,6 +13,8 @@ use crate::maybestd::{
 #[cfg(feature = "rc")]
 use std::{rc::Rc, sync::Arc};
 
+pub(crate) mod helpers;
+
 const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;
 
 /// A data-structure that can be serialized into binary format by NBOR.

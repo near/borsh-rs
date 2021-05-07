@@ -13,6 +13,7 @@ pub mod ser;
 pub use de::BorshDeserialize;
 pub use schema::BorshSchema;
 pub use schema_helpers::{try_from_slice_with_schema, try_to_vec_with_schema};
+pub use ser::helpers::{serialize_to_vec, serialize_to_writer};
 pub use ser::BorshSerialize;
 
 /// A facade around all the types we need from the `std`, `core`, and `alloc`
