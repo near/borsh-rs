@@ -5,8 +5,7 @@ use crate::maybestd::{
 use crate::BorshSerialize;
 
 /// Serialize an object into a vector of bytes.
-#[inline]
-pub fn serialize_to_vec<T>(value: &T) -> Result<Vec<u8>>
+pub fn to_vec<T>(value: &T) -> Result<Vec<u8>>
 where
     T: BorshSerialize + ?Sized,
 {
@@ -14,8 +13,7 @@ where
 }
 
 /// Serializes an object directly into a `Writer`.
-#[inline]
-pub fn serialize_to_writer<T, W: Write>(value: &T, mut writer: W) -> Result<()>
+pub fn to_writer<T, W: Write>(mut writer: W, value: &T) -> Result<()>
 where
     T: BorshSerialize + ?Sized,
 {
