@@ -96,7 +96,7 @@ impl_for_integer!(u128);
 
 mod non_zero {
     use super::*;
-    use std::num::*;
+    use core::num::*;
 
     macro_rules! impl_for_non_zero_integers {
         ($($type:ty,)+) => {
