@@ -145,27 +145,50 @@ macro_rules! impl_for_primitives {
 impl_for_primitives!(bool char f32 f64 i8 i16 i32 i64 i128 u8 u16 u32 u64 u128);
 impl_for_renamed_primitives!(String: string);
 
-macro_rules! impl_arrays {
-    ($($len:expr)+) => {
-    $(
-    impl<T> BorshSchema for [T; $len]
+#[cfg(not(feature = "const-generics"))]
+const _: () = {
+    macro_rules! impl_arrays {
+        ($($len:expr)+) => {
+        $(
+        impl<T> BorshSchema for [T; $len]
+        where
+            T: BorshSchema,
+        {
+            fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+                let definition = Definition::Array { length: $len, elements: T::declaration() };
+                Self::add_definition(Self::declaration(), definition, definitions);
+                T::add_definitions_recursively(definitions);
+            }
+            fn declaration() -> Declaration {
+                format!(r#"Array<{}, {}>"#, T::declaration(), $len)
+            }
+        }
+        )+
+        };
+    }
+
+    impl_arrays!(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 64 65 128 256 512 1024 2048);
+};
+
+#[cfg(feature = "const-generics")]
+const _: () = {
+    impl<T, const N: usize> BorshSchema for [T; N]
     where
         T: BorshSchema,
     {
         fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
-            let definition = Definition::Array { length: $len, elements: T::declaration() };
+            let definition = Definition::Array {
+                length: N as u32,
+                elements: T::declaration(),
+            };
             Self::add_definition(Self::declaration(), definition, definitions);
             T::add_definitions_recursively(definitions);
         }
         fn declaration() -> Declaration {
-            format!(r#"Array<{}, {}>"#, T::declaration(), $len)
+            format!(r#"Array<{}, {}>"#, T::declaration(), N)
         }
     }
-    )+
-    };
-}
-
-impl_arrays!(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 64 65 128 256 512 1024 2048);
+};
 
 impl<T> BorshSchema for Option<T>
 where
