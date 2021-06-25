@@ -1,7 +1,7 @@
 use core::{
     convert::{TryFrom, TryInto},
     hash::{BuildHasher, Hash},
-    mem::{forget, size_of},
+    mem::size_of,
 };
 
 use crate::maybestd::{
@@ -278,20 +278,18 @@ where
             Ok(Vec::new())
         } else if let Some(vec_bytes) = T::vec_from_bytes(len, buf)? {
             Ok(vec_bytes)
-        } else if size_of::<T>() == 0 {
-            let mut result = Vec::new();
-            result.push(T::deserialize(buf)?);
+        } else if size_of::<T>() == 0 && len > 4096 {
+            // TODO find another way around DOS vector of calling deserialize up to u32::MAX times
+            //      without progressing buffer. Above this limit, the vector is resized which has
+            //      potential for UB, although safe for almost all cases.
+            let len = len as usize;
+            let mut result = Vec::<T>::with_capacity(len);
+            unsafe { result.set_len(len) };
 
-            let p = result.as_mut_ptr();
-            unsafe {
-                forget(result);
-                let len = len.try_into().map_err(|_| ErrorKind::InvalidInput)?;
-                let result = Vec::from_raw_parts(p, len, len);
-                Ok(result)
-            }
+            Ok(result)
         } else {
             // TODO(16): return capacity allocation when we can safely do that.
-            let mut result = Vec::with_capacity(hint::cautious::<T>(len));
+            let mut result = Vec::with_capacity(hint::cautious::<T>(len as usize));
             for _ in 0..len {
                 result.push(T::deserialize(buf)?);
             }
