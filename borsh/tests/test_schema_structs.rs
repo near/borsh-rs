@@ -35,7 +35,7 @@ pub fn simple_struct() {
     struct A {
         _f1: u64,
         _f2: String,
-    };
+    }
     assert_eq!("A".to_string(), A::declaration());
     let mut defs = Default::default();
     A::add_definitions_recursively(&mut defs);
@@ -44,6 +44,30 @@ pub fn simple_struct() {
         "A" => Definition::Struct{ fields: Fields::NamedFields(vec![
         ("_f1".to_string(), "u64".to_string()),
         ("_f2".to_string(), "string".to_string())
+        ])}
+        },
+        defs
+    );
+}
+
+#[test]
+pub fn boxed() {
+    #[derive(borsh::BorshSchema)]
+    struct A {
+        _f1: Box<u64>,
+        _f2: Box<str>,
+        _f3: Box<[u8]>,
+    }
+    assert_eq!("A".to_string(), A::declaration());
+    let mut defs = Default::default();
+    A::add_definitions_recursively(&mut defs);
+    assert_eq!(
+        map! {
+        "Vec<u8>" => Definition::Sequence { elements: "u8".to_string() },
+        "A" => Definition::Struct{ fields: Fields::NamedFields(vec![
+        ("_f1".to_string(), "u64".to_string()),
+        ("_f2".to_string(), "string".to_string()),
+        ("_f3".to_string(), "Vec<u8>".to_string())
         ])}
         },
         defs
@@ -108,7 +132,7 @@ pub fn simple_generics() {
     struct A<K, V> {
         _f1: HashMap<K, V>,
         _f2: String,
-    };
+    }
     assert_eq!(
         "A<u64, string>".to_string(),
         <A<u64, String>>::declaration()
