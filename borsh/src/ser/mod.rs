@@ -457,15 +457,13 @@ const _: () = {
 const _: () = {
     impl<T, const N: usize> BorshSerialize for [T; N]
     where
-        T: BorshSerialize 
+        T: BorshSerialize,
     {
         #[inline]
         fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
             if N == 0 {
-                return Ok(())
-            }
-
-            else if let Some(u8_slice) = T::u8_slice(self) {
+                return Ok(());
+            } else if let Some(u8_slice) = T::u8_slice(self) {
                 writer.write_all(u8_slice)?;
             } else {
                 for el in self.iter() {
