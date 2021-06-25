@@ -1,5 +1,6 @@
 use core::convert::TryFrom;
 use core::hash::BuildHasher;
+use std::marker::PhantomData;
 
 use crate::maybestd::{
     borrow::{Cow, ToOwned},
@@ -501,5 +502,11 @@ impl<T: BorshSerialize + ?Sized> BorshSerialize for Rc<T> {
 impl<T: BorshSerialize + ?Sized> BorshSerialize for Arc<T> {
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         (**self).serialize(writer)
+    }
+}
+
+impl<T: ?Sized> BorshSerialize for PhantomData<T> {
+    fn serialize<W: Write>(&self, _: &mut W) -> Result<()> {
+        Ok(())
     }
 }
