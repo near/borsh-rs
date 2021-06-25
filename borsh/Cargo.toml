@@ -28,3 +28,4 @@ hashbrown = "0.9.1"
 default = ["std"]
 std = []
 rc = []
+const-generics = []
