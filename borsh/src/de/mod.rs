@@ -1,9 +1,9 @@
+use core::marker::PhantomData;
 use core::{
     convert::{TryFrom, TryInto},
     hash::{BuildHasher, Hash},
     mem::{forget, size_of},
 };
-use core::marker::PhantomData;
 
 use crate::maybestd::{
     borrow::{Borrow, Cow, ToOwned},
