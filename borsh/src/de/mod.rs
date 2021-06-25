@@ -3,7 +3,7 @@ use core::{
     hash::{BuildHasher, Hash},
     mem::{forget, size_of},
 };
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 use crate::maybestd::{
     borrow::{Borrow, Cow, ToOwned},

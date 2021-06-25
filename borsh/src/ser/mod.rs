@@ -1,6 +1,6 @@
 use core::convert::TryFrom;
 use core::hash::BuildHasher;
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 use crate::maybestd::{
     borrow::{Cow, ToOwned},
