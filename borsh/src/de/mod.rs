@@ -524,23 +524,21 @@ const _: () = {
 };
 
 #[cfg(feature = "const-generics")]
-const _: () = {
-    impl<T, const N: usize> BorshDeserialize for [T; N]
-    where
-        T: BorshDeserialize + Default + Copy,
-    {
-        #[inline]
-        fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-            let mut result = [T::default(); N];
-            if N > 0 && !T::copy_from_bytes(buf, &mut result)? {
-                for i in 0..N {
-                    result[i] = T::deserialize(buf)?;
-                }
+impl<T, const N: usize> BorshDeserialize for [T; N]
+where
+    T: BorshDeserialize + Default + Copy,
+{
+    #[inline]
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let mut result = [T::default(); N];
+        if N > 0 && !T::copy_from_bytes(buf, &mut result)? {
+            for i in 0..N {
+                result[i] = T::deserialize(buf)?;
             }
-            Ok(result)
         }
+        Ok(result)
     }
-};
+}
 
 impl BorshDeserialize for () {
     fn deserialize(_buf: &mut &[u8]) -> Result<Self> {

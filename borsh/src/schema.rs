@@ -171,24 +171,22 @@ const _: () = {
 };
 
 #[cfg(feature = "const-generics")]
-const _: () = {
-    impl<T, const N: usize> BorshSchema for [T; N]
-    where
-        T: BorshSchema,
-    {
-        fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
-            let definition = Definition::Array {
-                length: N as u32,
-                elements: T::declaration(),
-            };
-            Self::add_definition(Self::declaration(), definition, definitions);
-            T::add_definitions_recursively(definitions);
-        }
-        fn declaration() -> Declaration {
-            format!(r#"Array<{}, {}>"#, T::declaration(), N)
-        }
+impl<T, const N: usize> BorshSchema for [T; N]
+where
+    T: BorshSchema,
+{
+    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+        let definition = Definition::Array {
+            length: N as u32,
+            elements: T::declaration(),
+        };
+        Self::add_definition(Self::declaration(), definition, definitions);
+        T::add_definitions_recursively(definitions);
     }
-};
+    fn declaration() -> Declaration {
+        format!(r#"Array<{}, {}>"#, T::declaration(), N)
+    }
+}
 
 impl<T> BorshSchema for Option<T>
 where
