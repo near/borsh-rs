@@ -1,3 +1,4 @@
+use core::marker::PhantomData;
 use core::{
     convert::{TryFrom, TryInto},
     hash::{BuildHasher, Hash},
@@ -601,5 +602,11 @@ where
 {
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         Ok(T::Owned::deserialize(buf)?.into())
+    }
+}
+
+impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
+    fn deserialize(_: &mut &[u8]) -> Result<Self> {
+        Ok(Self::default())
     }
 }

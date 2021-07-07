@@ -104,7 +104,7 @@ pub trait BorshSchema {
 
 impl<T> BorshSchema for Box<T>
 where
-    T: BorshSchema,
+    T: BorshSchema + ?Sized,
 {
     fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
         T::add_definitions_recursively(definitions);
@@ -144,6 +144,7 @@ macro_rules! impl_for_primitives {
 
 impl_for_primitives!(bool char f32 f64 i8 i16 i32 i64 i128 u8 u16 u32 u64 u128);
 impl_for_renamed_primitives!(String: string);
+impl_for_renamed_primitives!(str: string);
 
 #[cfg(not(feature = "const-generics"))]
 const _: () = {
@@ -230,6 +231,23 @@ where
 }
 
 impl<T> BorshSchema for Vec<T>
+where
+    T: BorshSchema,
+{
+    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+        let definition = Definition::Sequence {
+            elements: T::declaration(),
+        };
+        Self::add_definition(Self::declaration(), definition, definitions);
+        T::add_definitions_recursively(definitions);
+    }
+
+    fn declaration() -> Declaration {
+        format!(r#"Vec<{}>"#, T::declaration())
+    }
+}
+
+impl<T> BorshSchema for [T]
 where
     T: BorshSchema,
 {
@@ -480,5 +498,24 @@ mod tests {
             },
             actual_defs
         );
+    }
+
+    #[test]
+    fn string() {
+        let actual_name = str::declaration();
+        assert_eq!("string", actual_name);
+        let actual_name = String::declaration();
+        assert_eq!("string", actual_name);
+        let mut actual_defs = map!();
+        String::add_definitions_recursively(&mut actual_defs);
+        assert_eq!(map! {}, actual_defs);
+    }
+
+    #[test]
+    fn boxed_schema() {
+        let boxed_declaration = Box::<str>::declaration();
+        assert_eq!("string", boxed_declaration);
+        let boxed_declaration = Box::<[u8]>::declaration();
+        assert_eq!("Vec<u8>", boxed_declaration);
     }
 }

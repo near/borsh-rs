@@ -26,12 +26,12 @@ pub fn duplicated_instantiations() {
     struct Oil<K, V> {
         seeds: HashMap<K, V>,
         liquid: Option<K>,
-    };
+    }
     #[derive(borsh::BorshSchema)]
     struct Wrapper<T> {
         foo: Option<T>,
         bar: Box<A<T, T>>,
-    };
+    }
     #[derive(borsh::BorshSchema)]
     struct Filling;
     #[derive(borsh::BorshSchema)]
