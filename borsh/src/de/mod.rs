@@ -487,37 +487,57 @@ where
     }
 }
 
-macro_rules! impl_arrays {
-    ($($len:expr)+) => {
-    $(
-        impl<T> BorshDeserialize for [T; $len]
-        where
-            T: BorshDeserialize + Default + Copy
-        {
-            #[inline]
-            fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-                let mut result = [T::default(); $len];
-                if !T::copy_from_bytes(buf, &mut result)? {
-                    for i in 0..$len {
-                        result[i] = T::deserialize(buf)?;
+#[cfg(not(feature = "const-generics"))]
+const _: () = {
+    macro_rules! impl_arrays {
+        ($($len:expr)+) => {
+        $(
+            impl<T> BorshDeserialize for [T; $len]
+            where
+                T: BorshDeserialize + Default + Copy
+            {
+                #[inline]
+                fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+                    let mut result = [T::default(); $len];
+                    if !T::copy_from_bytes(buf, &mut result)? {
+                        for i in 0..$len {
+                            result[i] = T::deserialize(buf)?;
+                        }
                     }
+                    Ok(result)
                 }
-                Ok(result)
             }
+        )+
+        };
+    }
+
+    impl_arrays!(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 64 65 128 256 512 1024 2048);
+
+    impl<T> BorshDeserialize for [T; 0]
+    where
+        T: BorshDeserialize + Default + Copy,
+    {
+        #[inline]
+        fn deserialize(_buf: &mut &[u8]) -> Result<Self> {
+            Ok([T::default(); 0])
         }
-    )+
-    };
-}
+    }
+};
 
-impl_arrays!(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 64 65 128 256 512 1024 2048);
-
-impl<T> BorshDeserialize for [T; 0]
+#[cfg(feature = "const-generics")]
+impl<T, const N: usize> BorshDeserialize for [T; N]
 where
     T: BorshDeserialize + Default + Copy,
 {
     #[inline]
-    fn deserialize(_buf: &mut &[u8]) -> Result<Self> {
-        Ok([T::default(); 0])
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let mut result = [T::default(); N];
+        if N > 0 && !T::copy_from_bytes(buf, &mut result)? {
+            for i in 0..N {
+                result[i] = T::deserialize(buf)?;
+            }
+        }
+        Ok(result)
     }
 }
 
