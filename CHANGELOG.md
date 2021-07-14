@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.1
+- Eliminated unsafe code from both ser and de of u8 (#26)
+- Implemented ser/de for reference count types (#27)
+- Added serialization helpers to improve api ergonomics (#34)
+- Implemented schema for arrays and fix box bounds (#36)
+- Implemented (de)ser for PhantomData (#37)
+- Implemented const-generics under feature (#38)
+- Added an example of direct BorshSerialize::serialize usage with vector and slice buffers (#29)
+
 ## 0.9.0
 - *BREAKING CHANGE*: `is_u8` optimization helper is now unsafe since it may
   cause undefined behavior if it returns `true` for the type that is not safe
