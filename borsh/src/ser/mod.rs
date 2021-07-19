@@ -95,6 +95,31 @@ impl_for_integer!(u32);
 impl_for_integer!(u64);
 impl_for_integer!(u128);
 
+mod non_zero {
+    use super::*;
+    use core::num::*;
+
+    macro_rules! impl_for_non_zero_integers {
+        ($($type:ty,)+) => {
+            $(
+                impl BorshSerialize for $type {
+                    #[inline]
+                    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+                        let bytes = self.get().to_le_bytes();
+                        writer.write_all(&bytes)
+                    }
+                }
+            )+
+        };
+    }
+
+    impl_for_non_zero_integers! {
+        NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128,
+        NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI128,
+        NonZeroUsize, NonZeroIsize,
+    }
+}
+
 impl BorshSerialize for usize {
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         BorshSerialize::serialize(&(*self as u64), writer)

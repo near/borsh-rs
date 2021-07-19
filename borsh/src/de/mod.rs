@@ -144,6 +144,73 @@ impl BorshDeserialize for usize {
     }
 }
 
+mod non_zero {
+    use super::*;
+    use std::num::*;
+
+    trait NonZero {
+        type Primitive;
+    }
+
+    macro_rules! non_zero_primitives {
+        ($($type:ty => $primitive:ty,)+) => {
+            $(
+                impl NonZero for $type {
+                    type Primitive = $primitive;
+                }
+            )+
+        };
+    }
+
+    non_zero_primitives! {
+        NonZeroU8   => u8,
+        NonZeroU16  => u16,
+        NonZeroU32  => u32,
+        NonZeroU64  => u64,
+        NonZeroU128 => u128,
+
+        NonZeroI8   => i8,
+        NonZeroI16  => i16,
+        NonZeroI32  => i32,
+        NonZeroI64  => i64,
+        NonZeroI128 => i128,
+
+        NonZeroUsize => usize,
+        NonZeroIsize => isize,
+    }
+
+    macro_rules! impl_for_non_zero_integers {
+        ($($type:ty,)+) => {
+            $(
+                impl BorshDeserialize for $type {
+                    #[inline]
+                    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+                        let primitive_size = size_of::<<$type as NonZero>::Primitive>();
+                        if buf.len() < primitive_size {
+                            return Err(Error::new(
+                                ErrorKind::InvalidInput,
+                                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
+                            ));
+                        }
+                        let primitive = <$type as NonZero>::Primitive::from_le_bytes(
+                            buf[..primitive_size].try_into().unwrap(),
+                        );
+                        let non_zero = <$type>::new(primitive).unwrap();
+                        *buf = &buf[primitive_size..];
+                        Ok(non_zero)
+                    }
+                }
+            )+
+        };
+    }
+
+    impl_for_non_zero_integers! {
+        NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128,
+        NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI128,
+        NonZeroUsize, NonZeroIsize,
+    }
+}
+
 // Note NaNs have a portability issue. Specifically, signalling NaNs on MIPS are quiet NaNs on x86,
 // and vice-versa. We disallow NaNs to avoid this issue.
 macro_rules! impl_for_float {
