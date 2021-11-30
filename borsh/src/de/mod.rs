@@ -23,6 +23,7 @@ mod hint;
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
 const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE: &str = "Overflow on machine with 32 bit usize";
+const ERROR_NON_ZERO_EXPECTED: &str = "Unexpected zero value of non-zero type";
 
 /// A data-structure that can be de-serialized from binary format by NBOR.
 pub trait BorshDeserialize: Sized {
@@ -141,6 +142,92 @@ impl BorshDeserialize for usize {
             )
         })?;
         Ok(u)
+    }
+}
+
+mod non_zero {
+    use super::*;
+    use core::num::*;
+
+    trait NonZero {
+        type Primitive;
+    }
+
+    macro_rules! non_zero_primitives {
+        ($($type:ty => $primitive:ty,)+) => {
+            $(
+                impl NonZero for $type {
+                    type Primitive = $primitive;
+                }
+            )+
+        }
+    }
+
+    non_zero_primitives! {
+        NonZeroU8   => u8,
+        NonZeroU16  => u16,
+        NonZeroU32  => u32,
+        NonZeroU64  => u64,
+        NonZeroU128 => u128,
+
+        NonZeroI8   => i8,
+        NonZeroI16  => i16,
+        NonZeroI32  => i32,
+        NonZeroI64  => i64,
+        NonZeroI128 => i128,
+
+        NonZeroUsize => usize,
+    }
+
+    macro_rules! impl_for_non_zero_integer {
+        ($type:ty) => {
+            impl BorshDeserialize for $type {
+                #[inline]
+                fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+                    let value = <$type as NonZero>::Primitive::deserialize(buf)?;
+                    <$type>::new(value)
+                        .ok_or_else(|| Error::new(ErrorKind::InvalidInput, ERROR_NON_ZERO_EXPECTED))
+                }
+            }
+        };
+    }
+
+    impl_for_non_zero_integer!(NonZeroI8);
+    impl_for_non_zero_integer!(NonZeroI16);
+    impl_for_non_zero_integer!(NonZeroI32);
+    impl_for_non_zero_integer!(NonZeroI64);
+    impl_for_non_zero_integer!(NonZeroI128);
+
+    impl_for_non_zero_integer!(NonZeroU8);
+    impl_for_non_zero_integer!(NonZeroU16);
+    impl_for_non_zero_integer!(NonZeroU32);
+    impl_for_non_zero_integer!(NonZeroU64);
+    impl_for_non_zero_integer!(NonZeroU128);
+
+    impl_for_non_zero_integer!(NonZeroUsize);
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn it_handles_zero_correctly() {
+            let data = vec![0u8; 8];
+
+            let err = dbg!(NonZeroU64::try_from_slice(&data)).unwrap_err();
+            assert_eq!(err.kind(), ErrorKind::InvalidInput);
+            assert_eq!(
+                err.get_ref().map(|e| e.to_string()),
+                Some(ERROR_NON_ZERO_EXPECTED.to_string())
+            );
+
+            let err = dbg!(NonZeroUsize::try_from_slice(&data)).unwrap_err();
+            assert_eq!(err.kind(), ErrorKind::InvalidInput);
+            assert_eq!(
+                err.get_ref().map(|e| e.to_string()),
+                Some(ERROR_NON_ZERO_EXPECTED.to_string())
+            );
+        }
     }
 }
 

@@ -101,6 +101,37 @@ impl BorshSerialize for usize {
     }
 }
 
+mod non_zero {
+    use super::*;
+    use core::num::*;
+
+    macro_rules! impl_for_non_zero_integer {
+        ($type: ty) => {
+            impl BorshSerialize for $type {
+                #[inline]
+                fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+                    let value = self.get();
+                    value.serialize(writer)
+                }
+            }
+        };
+    }
+
+    impl_for_non_zero_integer!(NonZeroI8);
+    impl_for_non_zero_integer!(NonZeroI16);
+    impl_for_non_zero_integer!(NonZeroI32);
+    impl_for_non_zero_integer!(NonZeroI64);
+    impl_for_non_zero_integer!(NonZeroI128);
+
+    impl_for_non_zero_integer!(NonZeroU8);
+    impl_for_non_zero_integer!(NonZeroU16);
+    impl_for_non_zero_integer!(NonZeroU32);
+    impl_for_non_zero_integer!(NonZeroU64);
+    impl_for_non_zero_integer!(NonZeroU128);
+
+    impl_for_non_zero_integer!(NonZeroUsize);
+}
+
 // Note NaNs have a portability issue. Specifically, signalling NaNs on MIPS are quiet NaNs on x86,
 // and vice-versa. We disallow NaNs to avoid this issue.
 macro_rules! impl_for_float {
