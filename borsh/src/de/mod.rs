@@ -280,8 +280,7 @@ where
         } else if let Some(vec_bytes) = T::vec_from_bytes(len, buf)? {
             Ok(vec_bytes)
         } else if size_of::<T>() == 0 {
-            let mut result = Vec::new();
-            result.push(T::deserialize(buf)?);
+            let mut result = vec![T::deserialize(buf)?];
 
             let p = result.as_mut_ptr();
             unsafe {

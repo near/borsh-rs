@@ -21,6 +21,7 @@ install:
 
 script:
   - cargo fmt --all -- --check
+  - cargo clippy --all-targets
   - cargo build --verbose
   - cargo test --verbose
   - cd borsh && cargo test --verbose --no-default-features

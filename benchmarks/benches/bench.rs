@@ -109,28 +109,28 @@ where
             BenchmarkId::new("cbor", benchmark_param_display.clone()),
             cbor_data,
             |b, d| {
-                b.iter(|| serde_cbor::from_slice::<T>(&d).unwrap());
+                b.iter(|| serde_cbor::from_slice::<T>(d).unwrap());
             },
         );
         group.bench_with_input(
             BenchmarkId::new("bincode", benchmark_param_display.clone()),
             bincode_data,
             |b, d| {
-                b.iter(|| bincode::deserialize::<T>(&d).unwrap());
+                b.iter(|| bincode::deserialize::<T>(d).unwrap());
             },
         );
         group.bench_with_input(
             BenchmarkId::new("borsh", benchmark_param_display.clone()),
             borsh_data,
             |b, d| {
-                b.iter(|| T::try_from_slice(&d).unwrap());
+                b.iter(|| T::try_from_slice(d).unwrap());
             },
         );
         group.bench_with_input(
             BenchmarkId::new("speedy", benchmark_param_display),
             speedy_data,
             |b, d| {
-                b.iter(|| T::read_from_buffer(Endianness::LittleEndian, &d).unwrap());
+                b.iter(|| T::read_from_buffer(Endianness::LittleEndian, d).unwrap());
             },
         );
     }

@@ -14,7 +14,7 @@ pub fn contains_skip(attrs: &[Attribute]) -> bool {
 }
 
 pub fn declaration(
-    ident_str: &String,
+    ident_str: &str,
     generics: &Generics,
     cratename: Ident,
 ) -> (TokenStream2, Vec<TokenStream2>) {
