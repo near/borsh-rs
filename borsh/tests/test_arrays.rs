@@ -1,3 +1,5 @@
+#![allow(clippy::float_cmp)]
+
 use borsh::{BorshDeserialize, BorshSerialize};
 
 macro_rules! test_array {
@@ -6,6 +8,7 @@ macro_rules! test_array {
         let actual_v: [$t; $len] =
             BorshDeserialize::try_from_slice(&buf).expect("failed to deserialize");
         assert_eq!($v.len(), actual_v.len());
+        #[allow(clippy::reversed_empty_ranges)]
         for i in 0..$len {
             assert_eq!($v[i], actual_v[i]);
         }
