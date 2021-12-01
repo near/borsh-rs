@@ -10,7 +10,7 @@ use borsh_schema_derive_internal::*;
 #[proc_macro_derive(BorshSerialize, attributes(borsh_skip))]
 pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     let cratename = Ident::new(
-        &crate_name("borsh").unwrap_or("borsh".to_string()),
+        &crate_name("borsh").unwrap_or_else(|_| "borsh".to_string()),
         Span::call_site(),
     );
 
@@ -18,7 +18,7 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
         struct_ser(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
         enum_ser(&input, cratename)
-    } else if let Ok(input) = syn::parse::<ItemUnion>(input.clone()) {
+    } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
         union_ser(&input, cratename)
     } else {
         // Derive macros can only be defined on structs, enums, and unions.
@@ -33,7 +33,7 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh_init))]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     let cratename = Ident::new(
-        &crate_name("borsh").unwrap_or("borsh".to_string()),
+        &crate_name("borsh").unwrap_or_else(|_| "borsh".to_string()),
         Span::call_site(),
     );
 
@@ -41,7 +41,7 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
         struct_de(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
         enum_de(&input, cratename)
-    } else if let Ok(input) = syn::parse::<ItemUnion>(input.clone()) {
+    } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
         union_de(&input, cratename)
     } else {
         // Derive macros can only be defined on structs, enums, and unions.
@@ -56,7 +56,7 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(BorshSchema, attributes(borsh_skip))]
 pub fn borsh_schema(input: TokenStream) -> TokenStream {
     let cratename = Ident::new(
-        &crate_name("borsh").unwrap_or("borsh".to_string()),
+        &crate_name("borsh").unwrap_or_else(|_| "borsh".to_string()),
         Span::call_site(),
     );
 
@@ -64,7 +64,7 @@ pub fn borsh_schema(input: TokenStream) -> TokenStream {
         process_struct(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
         process_enum(&input, cratename)
-    } else if let Ok(_) = syn::parse::<ItemUnion>(input.clone()) {
+    } else if syn::parse::<ItemUnion>(input).is_ok() {
         Err(syn::Error::new(
             Span::call_site(),
             "Borsh schema does not support unions yet.",

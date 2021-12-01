@@ -289,10 +289,7 @@ macro_rules! impl_tuple {
         $($name: BorshSchema),+
     {
         fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
-            let mut elements = vec![];
-            $(
-                elements.push($name::declaration());
-            )+
+            let elements = vec![$($name::declaration()),+];
 
             let definition = Definition::Tuple { elements };
             Self::add_definition(Self::declaration(), definition, definitions);
