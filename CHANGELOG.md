@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.2
+- Upgrade hashbrown from `0.9` to `0.11`. This can breakage in the rare case
+  that you use borsh schema together with no-std support and rely on a specific
+  version hashbrown of `SchemaContainer`. This is considered to be obscure
+  enough to not warrant a semver bump.
+
 ## 0.9.1
 - Eliminated unsafe code from both ser and de of u8 (#26)
 - Implemented ser/de for reference count types (#27)
@@ -37,4 +43,3 @@
 - Added support for `std::borrow::Cow`
 - Avoid silent integer casts since they can lead to hidden security issues.
 - Removed `Cargo.lock` as it is advised for lib crates.
-
