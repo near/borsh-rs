@@ -25,7 +25,8 @@ borsh-derive = { path = "../borsh-derive", version = "=0.9.1" }
 hashbrown = "0.9.1"
 
 [features]
-default = ["std"]
+default = ["std", "alloc"]
 std = []
 rc = []
 const-generics = []
+alloc = []

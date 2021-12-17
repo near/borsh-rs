@@ -61,7 +61,7 @@ pub struct BorshSchemaContainer {
     /// Declaration of the type.
     pub declaration: Declaration,
     /// All definitions needed to deserialize the given type.
-    pub definitions: HashMap<Declaration, Definition>,
+    pub definitions: Vec<(Declaration, Definition)>,
 }
 
 /// The declaration and the definition of the type that can be used to (de)serialize Borsh without
@@ -95,7 +95,7 @@ pub trait BorshSchema {
         Self::add_definitions_recursively(&mut definitions);
         BorshSchemaContainer {
             declaration: Self::declaration(),
-            definitions,
+            definitions: definitions.into_iter().collect(),
         }
     }
 }

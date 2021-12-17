@@ -281,6 +281,7 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<K, V, H> BorshSerialize for HashMap<K, V, H>
 where
     K: BorshSerialize + PartialOrd,
@@ -302,6 +303,7 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<T, H> BorshSerialize for HashSet<T, H>
 where
     T: BorshSerialize + PartialOrd,
