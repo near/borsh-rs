@@ -2,14 +2,14 @@ use core::convert::TryFrom;
 use core::hash::BuildHasher;
 use core::marker::PhantomData;
 
-use crate::maybestd::{
-    borrow::{Cow, ToOwned},
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque},
-    io::{ErrorKind, Result, Write},
-    string::String,
-    vec::Vec,
+use crate::maybestd::borrow::{Cow, ToOwned};
+use crate::maybestd::boxed::Box;
+use crate::maybestd::collections::{
+    BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque,
 };
+use crate::maybestd::io::{ErrorKind, Result, Write};
+use crate::maybestd::string::String;
+use crate::maybestd::vec::Vec;
 
 #[cfg(feature = "rc")]
 use std::{rc::Rc, sync::Arc};

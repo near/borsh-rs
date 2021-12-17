@@ -2,8 +2,7 @@ use benchmarks::{Account, Block, BlockHeader, Generate, SignedTransaction};
 use borsh::{BorshDeserialize, BorshSerialize};
 use rand::SeedableRng;
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
-use speedy::Endianness;
-use speedy::{Readable, Writable};
+use speedy::{Endianness, Readable, Writable};
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 

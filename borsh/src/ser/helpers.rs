@@ -1,7 +1,5 @@
-use crate::maybestd::{
-    io::{Result, Write},
-    vec::Vec,
-};
+use crate::maybestd::io::{Result, Write};
+use crate::maybestd::vec::Vec;
 use crate::BorshSerialize;
 
 /// Serialize an object into a vector of bytes.

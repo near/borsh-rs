@@ -1,19 +1,17 @@
+use core::convert::{TryFrom, TryInto};
+use core::hash::{BuildHasher, Hash};
 use core::marker::PhantomData;
-use core::{
-    convert::{TryFrom, TryInto},
-    hash::{BuildHasher, Hash},
-    mem::{forget, size_of},
-};
+use core::mem::{forget, size_of};
 
-use crate::maybestd::{
-    borrow::{Borrow, Cow, ToOwned},
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque},
-    format,
-    io::{Error, ErrorKind, Result},
-    string::{String, ToString},
-    vec::Vec,
+use crate::maybestd::borrow::{Borrow, Cow, ToOwned};
+use crate::maybestd::boxed::Box;
+use crate::maybestd::collections::{
+    BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque,
 };
+use crate::maybestd::format;
+use crate::maybestd::io::{Error, ErrorKind, Result};
+use crate::maybestd::string::{String, ToString};
+use crate::maybestd::vec::Vec;
 
 #[cfg(feature = "rc")]
 use std::{rc::Rc, sync::Arc};
