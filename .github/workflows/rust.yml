@@ -25,7 +25,7 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-build
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}-build
     - name: Build
       run: RUSTFLAGS='-D warnings' cargo build --verbose --workspace
 
@@ -43,7 +43,7 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-tests
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}-tests
     - name: Run tests
       run: RUSTFLAGS='-D warnings' cargo test --verbose --workspace
 
@@ -61,7 +61,7 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-clippy
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}-clippy
     - name: Run clippy
       run: |
         pwd
@@ -83,7 +83,7 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-cargo-deny
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}-cargo-deny
     - name: Install cargo-deny
       if: steps.deny-cache.outputs.cache-hit != 'true'
       run: |
