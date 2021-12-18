@@ -13,12 +13,11 @@ branches:
   - master
 
 install:
-  - rustup component add rustfmt
+  - rustup component add rustfmt clippy
   - cargo build --verbose
 
 script:
   - cargo fmt --all -- --check
-  - cargo install clippy
   - cargo clippy --all-targets
   - cargo build --verbose
   - cargo test --verbose
