@@ -47,19 +47,20 @@ jobs:
     - name: Run tests
       run: |
         RUSTFLAGS='-D warnings' cargo test --verbose --workspace
-        cd borsh && cargo test --verbose # --no-default-features
-        wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
-        tar xzf master.tar.gz &&	  tar xzf master.tar.gz &&
-        cd kcov-master &&	  cd kcov-master &&
-        mkdir build &&	  mkdir build &&
-        cd build &&	  cd build &&
-        cmake .. &&	  cmake .. &&
-        make &&	  make &&
-        make install DESTDIR=../../kcov-build &&	  make install DESTDIR=../../kcov-build &&
-        cd ../.. &&	  cd ../.. &&
-        rm -rf kcov-master &&	  rm -rf kcov-master &&
-        for file in target/debug/*; do [ -x "${file}" ] || continue; mkdir -p "target/cov/$(basename $file)"; ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&	  for file in target/debug/*; do [ -x "${file}" ] || continue; mkdir -p "target/cov/$(basename $file)"; ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
-        bash <(curl -s https://codecov.io/bash) &&	  bash <(curl -s https://codecov.io/bash) &&
+        cd borsh
+        cargo test --verbose # --no-default-features
+        wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz
+        tar xzf master.tar.gz
+        cd kcov-master
+        mkdir build
+        cd build
+        cmake ..
+        make
+        make install DESTDIR=../../kcov-build
+        cd ../..
+        rm -rf kcov-master
+        for file in target/debug/*; do [ -x "${file}" ] || continue; mkdir -p "target/cov/$(basename $file)"; ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done
+        bash <(curl -s https://codecov.io/bash) &&	  bash <(curl -s https://codecov.io/bash)
         echo "Uploaded code coverage"	  echo "Uploaded code coverage"
 
 
