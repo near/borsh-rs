@@ -45,6 +45,8 @@ jobs:
           target/
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}-tests
     - name: Run tests
+      with:
+        fetch-depth: 0
       run: |
         RUSTFLAGS='-D warnings' cargo test --verbose --workspace
         sudo apt install libcurl4-openssl-dev libelf-dev libdw-dev cmake gcc binutils-dev libiberty-dev
