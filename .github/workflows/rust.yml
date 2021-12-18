@@ -47,7 +47,7 @@ jobs:
     - name: Run tests
       run: |
         RUSTFLAGS='-D warnings' cargo test --verbose --workspace
-        apt install libcurl4-openssl-dev libelf-dev libdw-dev cmake gcc binutils-dev libiberty-dev
+        sudo apt install libcurl4-openssl-dev libelf-dev libdw-dev cmake gcc binutils-dev libiberty-dev
         cd borsh
         cargo test --verbose # --no-default-features
         wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz
