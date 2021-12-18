@@ -45,7 +45,7 @@ jobs:
           target/
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}-tests
     - name: Run tests
-      run:
+      run: |
         RUSTFLAGS='-D warnings' cargo test --verbose --workspace
         cd borsh && cargo test --verbose --no-default-features
         wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
@@ -61,7 +61,6 @@ jobs:
         for file in target/debug/*; do [ -x "${file}" ] || continue; mkdir -p "target/cov/$(basename $file)"; ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&	  for file in target/debug/*; do [ -x "${file}" ] || continue; mkdir -p "target/cov/$(basename $file)"; ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
         bash <(curl -s https://codecov.io/bash) &&	  bash <(curl -s https://codecov.io/bash) &&
         echo "Uploaded code coverage"	  echo "Uploaded code coverage"
-
 
 
   clippy:
