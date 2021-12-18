@@ -1,9 +1,6 @@
 language: rust
 rust:
-  - 1.40.0
   - stable
-  - beta
-  - nightly-2020-10-08  # this is what nearcore uses
   - nightly
 
 matrix:
@@ -21,6 +18,7 @@ install:
 
 script:
   - cargo fmt --all -- --check
+  - cargo install clippy
   - cargo clippy --all-targets
   - cargo build --verbose
   - cargo test --verbose
