@@ -68,30 +68,6 @@ jobs:
         echo *
         cargo clippy -- -D clippy::all
 
-  cargo-deny:
-
-    runs-on: ubuntu-20.04
-
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions/cache@v2
-      id: deny-cache
-      with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}-cargo-deny
-    - name: Install cargo-deny
-      if: steps.deny-cache.outputs.cache-hit != 'true'
-      run: |
-        cargo install cargo-deny
-    - name: Run cargo-deny
-      run: |
-        cargo-deny --all-features --workspace check Advisories Bans Sources
-
   cargo-fmt:
     runs-on: ubuntu-20.04
 
