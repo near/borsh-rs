@@ -606,3 +606,11 @@ impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
         Ok(Self::default())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    fn test_alloc() {
+        // This should work on linux, but does it work on all platforms?
+        let _ = Vec::with_capacity(1_000_000_000_000);
+    }
+}
