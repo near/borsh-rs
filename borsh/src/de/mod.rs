@@ -18,8 +18,6 @@ use crate::maybestd::{
 #[cfg(feature = "rc")]
 use std::{rc::Rc, sync::Arc};
 
-mod hint;
-
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
 const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE: &str = "Overflow on machine with 32 bit usize";
@@ -290,8 +288,7 @@ where
                 Ok(result)
             }
         } else {
-            // TODO(16): return capacity allocation when we can safely do that.
-            let mut result = Vec::with_capacity(hint::cautious::<T>(len));
+            let mut result = Vec::with_capacity(len as usize);
             for _ in 0..len {
                 result.push(T::deserialize(buf)?);
             }
