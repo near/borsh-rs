@@ -610,7 +610,8 @@ impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
 #[cfg(test)]
 mod tests {
     fn test_alloc() {
-        // This should work on linux, but does it work on all platforms?
+        // This should work on Linux. The purpose of this test is to make sure if works
+        // on other platforms as well, otherwise, we will do optimization for linux only.
         let _ = Vec::<u8>::with_capacity(1_000_000_000_000);
     }
 }
