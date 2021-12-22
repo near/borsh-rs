@@ -10,17 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
-    runs-on: ubuntu-20.04
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Build
-      run: RUSTFLAGS='-D warnings' cargo build --verbose --workspace
-
   tests:
-
     runs-on: ubuntu-20.04
 
     steps:
@@ -48,7 +38,6 @@ jobs:
         echo "Uploaded code coverage"	  echo "Uploaded code coverage"
 
   clippy:
-
     runs-on: ubuntu-20.04
 
     steps:
