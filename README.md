@@ -1,8 +1,6 @@
-# Borsh in Rust &emsp; [![Build Status]][travis-ci] [![Latest Version]][crates.io] [![borsh: rustc 1.40+]][Rust 1.40] [![License Apache-2.0 badge]][License Apache-2.0] [![License MIT badge]][License MIT]
+# Borsh in Rust &emsp; [![Latest Version]][crates.io] [![borsh: rustc 1.40+]][Rust 1.40] [![License Apache-2.0 badge]][License Apache-2.0] [![License MIT badge]][License MIT]
 
 [Borsh]: https://borsh.io
-[Build Status]: https://travis-ci.com/near/borsh-rs.svg?branch=master
-[travis-ci]: https://travis-ci.com/near/borsh-rs
 [Latest Version]: https://img.shields.io/crates/v/borsh.svg
 [crates.io]: https://crates.io/crates/borsh
 [borsh: rustc 1.40+]: https://img.shields.io/badge/rustc-1.40+-lightgray.svg
