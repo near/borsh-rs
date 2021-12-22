@@ -8,7 +8,9 @@ enum A {
 
 #[derive(BorshDeserialize, Debug)]
 struct B {
+    #[allow(unused)]
     x: u64,
+    #[allow(unused)]
     y: u32,
 }
 

@@ -1,9 +1,6 @@
 language: rust
 rust:
-  - 1.40.0
   - stable
-  - beta
-  - nightly-2020-10-08  # this is what nearcore uses
   - nightly
 
 matrix:
@@ -16,7 +13,7 @@ branches:
   - master
 
 install:
-  - rustup component add rustfmt
+  - rustup component add rustfmt clippy
   - cargo build --verbose
 
 script:
@@ -24,7 +21,7 @@ script:
   - cargo clippy --all-targets
   - cargo build --verbose
   - cargo test --verbose
-  - cd borsh && cargo test --verbose --no-default-features
+  - cd borsh && cargo test --verbose # --no-default-features
 
 addons:
   apt:

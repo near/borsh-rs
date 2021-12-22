@@ -1,0 +1,54 @@
+name: Rust
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  tests:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Run tests
+      run: |
+        RUSTFLAGS='-D warnings' cargo test --verbose --workspace
+        sudo apt install libcurl4-openssl-dev libelf-dev libdw-dev cmake gcc binutils-dev libiberty-dev
+        cd borsh
+        cargo test --verbose # --no-default-features
+        wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz
+        tar xzf master.tar.gz
+        cd kcov-master
+        mkdir build
+        cd build
+        cmake ..
+        make
+        make install DESTDIR=../../kcov-build
+        cd ../..
+        rm -rf kcov-master
+        for file in target/debug/*; do [ -x "${file}" ] || continue; mkdir -p "target/cov/$(basename $file)"; ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done
+        bash <(curl -s https://codecov.io/bash)
+        echo "Uploaded code coverage"	  echo "Uploaded code coverage"
+
+  clippy:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run clippy
+      run: cargo clippy -- -D clippy::all
+
+  cargo-fmt:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run cargo fmt
+      run: cargo fmt --all -- --check
