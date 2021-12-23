@@ -8,6 +8,9 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: '-D warnings'
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
 
 jobs:
   tests:
@@ -19,7 +22,7 @@ jobs:
         fetch-depth: 0
     - name: Run tests
       run: |
-        RUSTFLAGS='-D warnings' cargo test --verbose --workspace
+        cargo test --verbose --workspace
         sudo apt install libcurl4-openssl-dev libelf-dev libdw-dev cmake gcc binutils-dev libiberty-dev
         cd borsh
         cargo test --verbose # --no-default-features
