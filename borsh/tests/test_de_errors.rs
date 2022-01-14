@@ -15,6 +15,7 @@ struct B {
 }
 
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
+const ERROR_INVALID_ZERO_VALUE: &str = "Invalid zero value";
 
 #[test]
 fn test_missing_bytes() {
@@ -141,6 +142,61 @@ fn test_evil_bytes_string_extra() {
     let bytes = vec![255, 255, 255, 255, 32, 32];
     assert_eq!(
         <String>::try_from_slice(&bytes).unwrap_err().to_string(),
+        ERROR_UNEXPECTED_LENGTH_OF_INPUT
+    );
+}
+
+#[test]
+fn test_zero_on_nonzero_integer_u8() {
+    let bytes = &[0];
+    assert_eq!(
+        <std::num::NonZeroU8>::try_from_slice(bytes)
+            .unwrap_err()
+            .to_string(),
+        ERROR_INVALID_ZERO_VALUE
+    );
+}
+
+#[test]
+fn test_zero_on_nonzero_integer_u32() {
+    let bytes = &[0; 4];
+    assert_eq!(
+        <std::num::NonZeroU32>::try_from_slice(bytes)
+            .unwrap_err()
+            .to_string(),
+        ERROR_INVALID_ZERO_VALUE
+    );
+}
+
+#[test]
+fn test_zero_on_nonzero_integer_i64() {
+    let bytes = &[0; 8];
+    assert_eq!(
+        <std::num::NonZeroI64>::try_from_slice(bytes)
+            .unwrap_err()
+            .to_string(),
+        ERROR_INVALID_ZERO_VALUE
+    );
+}
+
+#[test]
+fn test_zero_on_nonzero_integer_usize() {
+    let bytes = &[0; 8];
+    assert_eq!(
+        <std::num::NonZeroUsize>::try_from_slice(bytes)
+            .unwrap_err()
+            .to_string(),
+        ERROR_INVALID_ZERO_VALUE
+    );
+}
+
+#[test]
+fn test_zero_on_nonzero_integer_missing_byte() {
+    let bytes = &[0; 7];
+    assert_eq!(
+        <std::num::NonZeroUsize>::try_from_slice(bytes)
+            .unwrap_err()
+            .to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
     );
 }
