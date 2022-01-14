@@ -100,8 +100,7 @@ macro_rules! impl_for_nonzero_integer {
         impl BorshSerialize for $type {
             #[inline]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-                let bytes = self.get().to_le_bytes();
-                writer.write_all(&bytes)
+                BorshSerialize::serialize(&self.get(), writer)
             }
         }
     };
