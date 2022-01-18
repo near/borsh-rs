@@ -95,6 +95,29 @@ impl_for_integer!(u32);
 impl_for_integer!(u64);
 impl_for_integer!(u128);
 
+macro_rules! impl_for_nonzero_integer {
+    ($type: ty) => {
+        impl BorshSerialize for $type {
+            #[inline]
+            fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+                BorshSerialize::serialize(&self.get(), writer)
+            }
+        }
+    };
+}
+
+impl_for_nonzero_integer!(core::num::NonZeroI8);
+impl_for_nonzero_integer!(core::num::NonZeroI16);
+impl_for_nonzero_integer!(core::num::NonZeroI32);
+impl_for_nonzero_integer!(core::num::NonZeroI64);
+impl_for_nonzero_integer!(core::num::NonZeroI128);
+impl_for_nonzero_integer!(core::num::NonZeroU8);
+impl_for_nonzero_integer!(core::num::NonZeroU16);
+impl_for_nonzero_integer!(core::num::NonZeroU32);
+impl_for_nonzero_integer!(core::num::NonZeroU64);
+impl_for_nonzero_integer!(core::num::NonZeroU128);
+impl_for_nonzero_integer!(core::num::NonZeroUsize);
+
 impl BorshSerialize for usize {
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         BorshSerialize::serialize(&(*self as u64), writer)

@@ -23,6 +23,7 @@ mod hint;
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
 const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE: &str = "Overflow on machine with 32 bit usize";
+const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
 
 /// A data-structure that can be de-serialized from binary format by NBOR.
 pub trait BorshDeserialize: Sized {
@@ -130,6 +131,30 @@ impl_for_integer!(u16);
 impl_for_integer!(u32);
 impl_for_integer!(u64);
 impl_for_integer!(u128);
+
+macro_rules! impl_for_nonzero_integer {
+    ($type: ty) => {
+        impl BorshDeserialize for $type {
+            #[inline]
+            fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+                <$type>::new(BorshDeserialize::deserialize(buf)?)
+                    .ok_or_else(|| Error::new(ErrorKind::InvalidData, ERROR_INVALID_ZERO_VALUE))
+            }
+        }
+    };
+}
+
+impl_for_nonzero_integer!(core::num::NonZeroI8);
+impl_for_nonzero_integer!(core::num::NonZeroI16);
+impl_for_nonzero_integer!(core::num::NonZeroI32);
+impl_for_nonzero_integer!(core::num::NonZeroI64);
+impl_for_nonzero_integer!(core::num::NonZeroI128);
+impl_for_nonzero_integer!(core::num::NonZeroU8);
+impl_for_nonzero_integer!(core::num::NonZeroU16);
+impl_for_nonzero_integer!(core::num::NonZeroU32);
+impl_for_nonzero_integer!(core::num::NonZeroU64);
+impl_for_nonzero_integer!(core::num::NonZeroU128);
+impl_for_nonzero_integer!(core::num::NonZeroUsize);
 
 impl BorshDeserialize for usize {
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
