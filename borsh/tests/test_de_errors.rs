@@ -15,7 +15,7 @@ struct B {
 }
 
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
-const ERROR_INVALID_ZERO_VALUE: &str = "Invalid zero value";
+const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
 
 #[test]
 fn test_missing_bytes() {
