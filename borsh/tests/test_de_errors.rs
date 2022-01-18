@@ -141,7 +141,7 @@ fn test_evil_bytes_string_extra() {
     // Might fail if reading too much
     let bytes = vec![255, 255, 255, 255, 32, 32];
     assert_eq!(
-        <String>::try_from_slice(&bytes).unwrap_err().to_string(),
+        String::try_from_slice(&bytes).unwrap_err().to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
     );
 }
@@ -150,7 +150,7 @@ fn test_evil_bytes_string_extra() {
 fn test_zero_on_nonzero_integer_u8() {
     let bytes = &[0];
     assert_eq!(
-        <std::num::NonZeroU8>::try_from_slice(bytes)
+        std::num::NonZeroU8::try_from_slice(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
@@ -161,7 +161,7 @@ fn test_zero_on_nonzero_integer_u8() {
 fn test_zero_on_nonzero_integer_u32() {
     let bytes = &[0; 4];
     assert_eq!(
-        <std::num::NonZeroU32>::try_from_slice(bytes)
+        std::num::NonZeroU32::try_from_slice(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
@@ -172,7 +172,7 @@ fn test_zero_on_nonzero_integer_u32() {
 fn test_zero_on_nonzero_integer_i64() {
     let bytes = &[0; 8];
     assert_eq!(
-        <std::num::NonZeroI64>::try_from_slice(bytes)
+        std::num::NonZeroI64::try_from_slice(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
@@ -183,7 +183,7 @@ fn test_zero_on_nonzero_integer_i64() {
 fn test_zero_on_nonzero_integer_usize() {
     let bytes = &[0; 8];
     assert_eq!(
-        <std::num::NonZeroUsize>::try_from_slice(bytes)
+        std::num::NonZeroUsize::try_from_slice(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
@@ -194,7 +194,7 @@ fn test_zero_on_nonzero_integer_usize() {
 fn test_zero_on_nonzero_integer_missing_byte() {
     let bytes = &[0; 7];
     assert_eq!(
-        <std::num::NonZeroUsize>::try_from_slice(bytes)
+        std::num::NonZeroUsize::try_from_slice(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
