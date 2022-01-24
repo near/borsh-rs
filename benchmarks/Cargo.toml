@@ -3,6 +3,7 @@ name = "benchmarks"
 version = "0.1.0"
 authors = ["Near Inc <hello@nearprotocol.com>"]
 edition = "2018"
+publish = false
 
 # This is somehow needed for command line arguments to work: https://github.com/bheisler/criterion.rs/issues/193#issuecomment-415740713
 [lib]
