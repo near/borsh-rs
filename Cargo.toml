@@ -10,3 +10,4 @@ members = [
 
 [workspace.metadata.workspaces]
 version = "0.9.2"
+exclude = [ "fuzz/*", "benchmarks" ]
