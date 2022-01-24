@@ -63,17 +63,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Install cargo-workspaces
+    - name: Setup
       run: |
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         cargo install --git https://github.com/miraclx/cargo-workspaces --branch grouping-versioning-and-exclusion cargo-workspaces
-    - name: Publish to Crates.io and tag the commit responsible
+    - name: Publish to crates.io and tag the commit responsible
       run: |
         cargo ws publish --all --yes --exact \
           --skip-published --no-git-commit --allow-dirty \
-          --tag-existing --tag-prefix 'crates-' \
+          --tag-existing --tag-prefix 'v' \
           --tag-msg $'crates.io snapshot\n---%{\n- %n - https://crates.io/crates/%n/%v}' \
           --no-individual-tags --no-git-push
     - name: Push tags to GitHub (if any)
-      run: |
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git push --follow-tags origin 'crates-*'
+      run: git push --tags
