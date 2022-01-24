@@ -1,6 +1,6 @@
 [package]
 name = "borsh-derive"
-version = "0.9.2"
+version = "0.0.0"
 authors = ["Near Inc <hello@nearprotocol.com>"]
 edition = "2018"
 license = "Apache-2.0"
