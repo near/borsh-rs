@@ -55,3 +55,25 @@ jobs:
     - uses: actions/checkout@v2
     - name: Run cargo fmt
       run: cargo fmt --all -- --check
+
+  publish:
+    runs-on: ubuntu-20.04
+    needs: [tests, clippy, cargo-fmt]
+    if: github.ref == 'refs/heads/master'
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install cargo-workspaces
+      run: |
+        cargo install --git https://github.com/miraclx/cargo-workspaces --branch grouping-versioning-and-exclusion cargo-workspaces
+    - name: Publish to Crates.io and tag the commit responsible
+      run: |
+        cargo ws publish --all --yes \
+          --skip-published --no-git-commit --allow-dirty \
+          --tag-existing --tag-prefix 'crates-' \
+          --tag-msg $'crates.io snapshot\n---%{\n- %n - https://crates.io/crates/%n/%v}' \
+          --no-individual-tags --no-git-push
+    - name: Push tags to GitHub (if any)
+      run: |
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git push --follow-tags origin 'crates-*'
