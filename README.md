@@ -84,16 +84,7 @@ So, to publish a new version of all the crates, you can do so by simply bumping 
 
 We have CI Infrastructure put in place to automate the process of publishing all crates once a version change has merged into master.
 
-However, before you release, make sure the [CHANGELOG](CHANGELOG.md) is up to date.
-
-### Release on GitHub
-
-After the checks pass and the release to crates.io has succeeded, a new tag will be created on GitHub to match the new version. You can use this tag to manually create a new release on GitHub.
-
-1. Navigate to the [New Release](https://github.com/near/borsh-rs/releases/new) page
-2. Select the tag name, e.g. `v0.8.0`
-3. Write down the release log (basically, copy-paste from the [CHANGELOG](CHANGELOG.md))
-4. Publish the release
+However, before you release, make sure the [CHANGELOG](CHANGELOG.md) is up to date and that the `[Unreleased]` section is present but empty.
 
 ## License
 
