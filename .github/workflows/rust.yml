@@ -74,11 +74,11 @@ jobs:
         cargo ws publish --all --yes --exact \
           --skip-published --no-git-commit --allow-dirty \
           --tag-existing --tag-prefix 'v' \
-          --tag-msg 'crates.io snapshot' --tag-msg $'%{\n%n: https://crates.io/crates/%n/%v}' \
+          --tag-msg 'crates.io snapshot' --tag-msg $'%{\n - %n: https://crates.io/crates/%n/%v}' \
           --no-individual-tags --no-git-push
         echo "GIT_LATEST_TAG=$(git describe --abbrev=0)" >> $GITHUB_ENV
         echo "Latest git tag is ${{ env.GIT_LATEST_TAG }}"
-        echo "::set-output name=git_tag::$(git tag -l --format='%(body)' ${{ env.GIT_LATEST_TAG }})"
+        echo "::set-output name=git_tag_message::$(git tag -l --format='%(body)' ${{ env.GIT_LATEST_TAG }})"
 
     - name: Push tags to GitHub (if any)
       run: git push --tags
@@ -97,6 +97,6 @@ jobs:
         body: |
           ${{ steps.extract-release-notes.outputs.release_notes }}
 
-          ### Crates.io Links
+          #### Crate Links
 
-          ${{ steps.version-tag-and-publish.outputs.git_tag }}
+          ${{ steps.version-tag-and-publish.outputs.git_tag_message }}
