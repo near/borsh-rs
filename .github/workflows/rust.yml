@@ -76,7 +76,7 @@ jobs:
           --tag-existing --tag-prefix 'v' \
           --tag-msg 'crates.io snapshot' --tag-msg $'%{\n - %n: https://crates.io/crates/%n/%v}' \
           --no-individual-tags --no-git-push
-        echo "GIT_LATEST_TAG=$(git describe --abbrev=0)" >> $GITHUB_ENV
+        echo "GIT_LATEST_TAG=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
         echo "Latest git tag is ${{ env.GIT_LATEST_TAG }}"
         echo "::set-output name=git_tag_message::$(git tag -l --format='%(body)' ${{ env.GIT_LATEST_TAG }})"
 
