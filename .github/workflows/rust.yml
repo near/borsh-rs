@@ -66,24 +66,37 @@ jobs:
     - name: Setup
       run: |
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        cargo install --git https://github.com/miraclx/cargo-workspaces --branch grouping-versioning-and-exclusion cargo-workspaces
+        cargo install --git https://github.com/miraclx/cargo-workspaces --rev b2d49b9e575e29fd2395352e4d0df47def025039 cargo-workspaces
+
     - name: Publish to crates.io and tag the commit responsible
+      id: version-tag-and-publish
       run: |
         cargo ws publish --all --yes --exact \
           --skip-published --no-git-commit --allow-dirty \
           --tag-existing --tag-prefix 'v' \
-          --tag-msg $'crates.io snapshot\n---%{\n- %n - https://crates.io/crates/%n/%v}' \
+          --tag-msg 'crates.io snapshot' --tag-msg $'%{\n%n: https://crates.io/crates/%n/%v}' \
           --no-individual-tags --no-git-push
+        echo "GIT_LATEST_TAG=$(git describe --abbrev=0)" >> $GITHUB_ENV
+        echo "Latest git tag is ${{ env.GIT_LATEST_TAG }}"
+        echo "::set-output name=git_tag::$(git tag -l --format='%(body)' ${{ env.GIT_LATEST_TAG }})"
+
     - name: Push tags to GitHub (if any)
       run: git push --tags
+
     - name: Extract release notes
       id: extract-release-notes
       uses: ffurrer2/extract-release-notes@v1
+
     - name: Create release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: ${{ github.ref }}
-        body: ${{ steps.extract-release-notes.outputs.release_notes }}
+        tag_name: ${{ env.GIT_LATEST_TAG }}
+        release_name: ${{ env.GIT_LATEST_TAG }}
+        body: |
+          ${{ steps.extract-release-notes.outputs.release_notes }}
+
+          ### Crates.io Links
+
+          ${{ steps.version-tag-and-publish.outputs.git_tag }}
