@@ -78,39 +78,13 @@ struct A {
 
 ## Releasing
 
-Before you release, make sure CHANGELOG.md is up to date.
+The versions of all public crates in this repository are collectively managed by a single version in the [workspace manifest](https://github.com/near/borsh-rs/blob/master/Cargo.toml).
 
-Use [`cargo-workspaces`](https://github.com/pksunkara/cargo-workspaces) to save time.
+So, to publish a new version of all the crates, you can do so by simply bumping that to the next "patch" version and submit a PR.
 
-### Bump Versions
+We have CI Infrastructure put in place to automate the process of publishing all crates once a version change has merged into master.
 
-```sh
-cargo workspaces version --force 'borsh*' --exact --no-individual-tags patch
-```
-
-This will bump all the versions to the next "patch" release (see `cargo workspaces version --help`
-for more options), create a new commit, push `v0.x.x` tag, push to the master.
-
-### Publish
-
-To publish on crates.io the version that is currently in git:
-
-```sh
-cargo workspaces publish --from-git --skip-published
-```
-
-Alternatively, you may want to combine the version bumping with publishing:
-
-```sh
-cargo workspaces publish --force 'borsh*' --exact --no-individual-tags patch
-```
-
-### Release on GitHub
-
-1. Navigate to the [New Release](https://github.com/near/borsh-rs/releases/new) page
-2. Enter the tag name, e.g. `v0.8.0`
-3. Write down the release log (basically, copy-paste from the CHANGELOG)
-4. Publish the release
+However, before you release, make sure the [CHANGELOG](CHANGELOG.md) is up to date and that the `[Unreleased]` section is present but empty.
 
 ## License
 

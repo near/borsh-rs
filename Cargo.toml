@@ -4,8 +4,11 @@ members = [
     "borsh-derive",
     "borsh-derive-internal",
     "borsh-schema-derive-internal",
+    "fuzz/fuzz-run",
     "benchmarks",
 ]
-exclude = [
-    "fuzz",
-]
+
+[workspace.metadata.workspaces]
+# shared version of all public crates in the workspace
+version = "0.9.2"
+exclude = [ "fuzz/*", "benchmarks" ]
