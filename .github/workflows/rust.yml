@@ -85,7 +85,7 @@ jobs:
 
     - name: Extract release notes
       id: extract-release-notes
-      uses: ffurrer2/extract-release-notes@v1
+      uses: ffurrer2/extract-release-notes@c24866884b7a0d2fd2095be2e406b6f260479da8
 
     - name: Create release
       uses: actions/create-release@v1
