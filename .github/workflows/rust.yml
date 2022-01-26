@@ -63,6 +63,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
     - name: Setup
       run: |
         git config user.name github-actions
