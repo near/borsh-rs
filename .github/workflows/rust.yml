@@ -82,7 +82,7 @@ jobs:
         export GIT_LATEST_TAG=$(git describe --tags --abbrev=0)
         echo "GIT_LATEST_TAG=${GIT_LATEST_TAG}" >> $GITHUB_ENV
         echo "Latest git tag is ${GIT_LATEST_TAG}"
-        echo "::set-output name=git_tag_message::$(git tag -l --format='%(body)' ${GIT_LATEST_TAG})"
+        echo "::set-output name=git_tag_message::\"$(git tag -l --format='%(body)' ${GIT_LATEST_TAG})\""
 
     - name: Push tags to GitHub (if any)
       run: git push --tags
