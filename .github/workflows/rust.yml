@@ -82,7 +82,15 @@ jobs:
         export GIT_LATEST_TAG=$(git describe --tags --abbrev=0)
         echo "GIT_LATEST_TAG=${GIT_LATEST_TAG}" >> $GITHUB_ENV
         echo "Latest git tag is ${GIT_LATEST_TAG}"
-        echo "::set-output name=git_tag_message::\"$(git tag -l --format='%(body)' ${GIT_LATEST_TAG})\""
+
+        # returning multi-line outputs gets truncated to include only the first line
+        # we have to escape the newline chars, runner auto unescapes them later
+        # https://github.community/t/set-output-truncates-multiline-strings/16852/3
+        GIT_TAG_MESSAGE="$(git tag -l --format='%(body)' ${GIT_LATEST_TAG})"
+        GIT_TAG_MESSAGE="${GIT_TAG_MESSAGE//'%'/'%25'}"
+        GIT_TAG_MESSAGE="${GIT_TAG_MESSAGE//$'\n'/'%0A'}"
+        GIT_TAG_MESSAGE="${GIT_TAG_MESSAGE//$'\r'/'%0D'}"
+        echo "::set-output name=git_tag_message::\"${GIT_TAG_MESSAGE}\""
 
     - name: Push tags to GitHub (if any)
       run: git push --tags
