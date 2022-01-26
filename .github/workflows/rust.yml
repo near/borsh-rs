@@ -64,7 +64,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        fetch-depth: 0
+        fetch-depth: 0  # fetch tags for cargo ws publish
 
     - name: Setup
       run: |
