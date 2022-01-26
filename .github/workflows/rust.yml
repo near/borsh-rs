@@ -73,9 +73,12 @@ jobs:
         git config user.name github-actions
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         cargo install --git https://github.com/miraclx/cargo-workspaces --rev b2d49b9e575e29fd2395352e4d0df47def025039 cargo-workspaces
+        export GIT_PREVIOUS_TAG=$(git describe --tags --abbrev=0)
+        echo "GIT_PREVIOUS_TAG=${GIT_PREVIOUS_TAG}" >> $GITHUB_ENV
+        echo "[ pre run] current latest git tag is \"${GIT_PREVIOUS_TAG}\""
 
-    - name: Publish to crates.io and tag the commit responsible
-      id: version-tag-and-publish
+    - name: Publish to crates.io and tag the commit
+      id: tag-and-publish
       env:
         CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       run: |
@@ -86,7 +89,8 @@ jobs:
           --no-individual-tags --no-git-push
         export GIT_LATEST_TAG=$(git describe --tags --abbrev=0)
         echo "GIT_LATEST_TAG=${GIT_LATEST_TAG}" >> $GITHUB_ENV
-        echo "Latest git tag is ${GIT_LATEST_TAG}"
+        echo "[post run] current latest git tag is \"${GIT_LATEST_TAG}\""
+        echo "::set-output name=tagged::$( [[ "$GIT_LATEST_TAG" == "$GIT_PREVIOUS_TAG" ]] && echo 0 || echo 1 )"
 
         # returning multi-line outputs gets truncated to include only the first line
         # we have to escape the newline chars, runner auto unescapes them later
@@ -95,16 +99,19 @@ jobs:
         GIT_TAG_MESSAGE="${GIT_TAG_MESSAGE//'%'/'%25'}"
         GIT_TAG_MESSAGE="${GIT_TAG_MESSAGE//$'\n'/'%0A'}"
         GIT_TAG_MESSAGE="${GIT_TAG_MESSAGE//$'\r'/'%0D'}"
-        echo "::set-output name=git_tag_message::\"${GIT_TAG_MESSAGE}\""
+        echo "::set-output name=git_tag_message::${GIT_TAG_MESSAGE}"
 
     - name: Push tags to GitHub (if any)
+      if: steps.tag-and-publish.outputs.tagged == 1
       run: git push --tags
 
     - name: Extract release notes
+      if: steps.tag-and-publish.outputs.tagged == 1
       id: extract-release-notes
       uses: ffurrer2/extract-release-notes@c24866884b7a0d2fd2095be2e406b6f260479da8
 
     - name: Create release
+      if: steps.tag-and-publish.outputs.tagged == 1
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -116,4 +123,4 @@ jobs:
 
           #### Crate Links
 
-          ${{ steps.version-tag-and-publish.outputs.git_tag_message }}
+          ${{ steps.tag-and-publish.outputs.git_tag_message }}
