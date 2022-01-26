@@ -71,15 +71,18 @@ jobs:
 
     - name: Publish to crates.io and tag the commit responsible
       id: version-tag-and-publish
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       run: |
         cargo ws publish --all --yes --exact \
           --skip-published --no-git-commit --allow-dirty \
           --tag-existing --tag-prefix 'v' \
           --tag-msg 'crates.io snapshot' --tag-msg $'%{\n - %n: https://crates.io/crates/%n/%v}' \
           --no-individual-tags --no-git-push
-        echo "GIT_LATEST_TAG=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
-        echo "Latest git tag is ${{ env.GIT_LATEST_TAG }}"
-        echo "::set-output name=git_tag_message::$(git tag -l --format='%(body)' ${{ env.GIT_LATEST_TAG }})"
+        export GIT_LATEST_TAG=$(git describe --tags --abbrev=0)
+        echo "GIT_LATEST_TAG=${GIT_LATEST_TAG}" >> $GITHUB_ENV
+        echo "Latest git tag is ${GIT_LATEST_TAG}"
+        echo "::set-output name=git_tag_message::$(git tag -l --format='%(body)' ${GIT_LATEST_TAG})"
 
     - name: Push tags to GitHub (if any)
       run: git push --tags
