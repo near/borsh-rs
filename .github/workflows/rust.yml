@@ -64,7 +64,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        fetch-depth: 0  # fetch tags for cargo ws publish
+        # fetch tags for cargo ws publish
+        # might be a simple `fetch-tags: true` option soon, see https://github.com/actions/checkout/pull/579
+        fetch-depth: 0
 
     - name: Setup
       run: |
