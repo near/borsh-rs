@@ -12,6 +12,7 @@ use crate::maybestd::{
     format,
     io::{Error, ErrorKind, Result},
     string::{String, ToString},
+    vec,
     vec::Vec,
 };
 
