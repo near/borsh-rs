@@ -44,7 +44,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Run cargo fmt
-      run: cargo fmt --all -- --check
+      run: cargo fmt --check
 
   publish:
     runs-on: ubuntu-20.04
