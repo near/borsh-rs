@@ -22,9 +22,13 @@ jobs:
         fetch-depth: 0
     - name: Run tests
       run: |
-        cargo test --verbose --workspace
-        cd borsh
-        cargo test --verbose # --no-default-features
+        pushd borsh
+        cargo test --no-run
+        cargo test
+        cargo test --no-default-features
+        cargo test --all-features
+        popd
+        cargo test --workspace
 
   clippy:
     runs-on: ubuntu-20.04
