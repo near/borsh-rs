@@ -16,7 +16,8 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
         },
         Clone::clone,
     );
-    let mut body = TokenStream2::new();
+    let mut variant_idx_body = TokenStream2::new();
+    let mut fields_body = TokenStream2::new();
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_idx = u8::try_from(variant_idx).expect("up to 256 enum variants are supported");
         let variant_ident = &variant.ident;
@@ -44,6 +45,9 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                     })
                 }
                 variant_header = quote! { { #variant_header }};
+                variant_idx_body.extend(quote!(
+                    #name::#variant_ident { .. } => #variant_idx,
+                ));
             }
             Fields::Unnamed(fields) => {
                 for (field_idx, field) in fields.unnamed.iter().enumerate() {
@@ -72,13 +76,18 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                     }
                 }
                 variant_header = quote! { ( #variant_header )};
+                variant_idx_body.extend(quote!(
+                    #name::#variant_ident(..) => #variant_idx,
+                ));
             }
-            Fields::Unit => {}
+            Fields::Unit => {
+                variant_idx_body.extend(quote!(
+                    #name::#variant_ident => #variant_idx,
+                ));
+            }
         }
-        body.extend(quote!(
+        fields_body.extend(quote!(
             #name::#variant_ident #variant_header => {
-                let variant_idx: u8 = #variant_idx;
-                writer.write_all(&variant_idx.to_le_bytes())?;
                 #variant_body
             }
         ))
@@ -86,8 +95,13 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
     Ok(quote! {
         impl #impl_generics #cratename::ser::BorshSerialize for #name #ty_generics #where_clause {
             fn serialize<W: #cratename::maybestd::io::Write>(&self, writer: &mut W) -> core::result::Result<(), #cratename::maybestd::io::Error> {
+                let variant_idx: u8 = match self {
+                    #variant_idx_body
+                };
+                writer.write_all(&variant_idx.to_le_bytes())?;
+
                 match self {
-                    #body
+                    #fields_body
                 }
                 Ok(())
             }
