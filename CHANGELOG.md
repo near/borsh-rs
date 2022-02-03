@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Fix `no_std` compatibility.
+- Reduce code bloat in derived `BorshSerialize` impl for enums.
 
 ## [0.9.2] - 2022-01-25
 
