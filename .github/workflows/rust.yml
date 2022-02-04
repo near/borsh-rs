@@ -72,7 +72,7 @@ jobs:
       env:
         CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       run: |
-        cargo ws publish --all --yes --exact \
+        cargo ws publish --all --yes --exact --force '*' \
           --skip-published --no-git-commit --allow-dirty \
           --tag-existing --tag-prefix 'v' \
           --tag-msg 'crates.io snapshot' --tag-msg $'%{\n - %n: https://crates.io/crates/%n/%v}' \
