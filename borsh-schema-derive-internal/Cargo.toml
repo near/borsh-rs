@@ -15,3 +15,6 @@ Schema Generator for Borsh
 proc-macro2 = "1"
 syn = {version = "1", features = ["full", "fold"] }
 quote = "1"
+
+[dev-dependencies]
+pretty_assertions = "1.1.0"
