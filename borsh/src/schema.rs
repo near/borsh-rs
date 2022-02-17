@@ -22,6 +22,7 @@ use crate::maybestd::{
 };
 use crate::{BorshDeserialize, BorshSchema as BorshSchemaMacro, BorshSerialize};
 use core::marker::PhantomData;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// The type that we use to represent the declaration of the Borsh type.
 pub type Declaration = String;
@@ -300,6 +301,41 @@ where
     }
 }
 
+impl<K, V> BorshSchema for BTreeMap<K, V>
+where
+    K: BorshSchema,
+    V: BorshSchema,
+{
+    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+        let definition = Definition::Sequence {
+            elements: <(K, V)>::declaration(),
+        };
+        Self::add_definition(Self::declaration(), definition, definitions);
+        <(K, V)>::add_definitions_recursively(definitions);
+    }
+
+    fn declaration() -> Declaration {
+        format!(r#"BTreeMap<{}, {}>"#, K::declaration(), V::declaration())
+    }
+}
+
+impl<T> BorshSchema for BTreeSet<T>
+where
+    T: BorshSchema,
+{
+    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+        let definition = Definition::Sequence {
+            elements: <T>::declaration(),
+        };
+        Self::add_definition(Self::declaration(), definition, definitions);
+        <T>::add_definitions_recursively(definitions);
+    }
+
+    fn declaration() -> Declaration {
+        format!(r#"BTreeSet<{}>"#, T::declaration())
+    }
+}
+
 // Because it's a zero-sized marker, its type parameter doesn't need to be
 // included in the schema and so it's not bound to `BorshSchema`
 impl<T> BorshSchema for PhantomData<T> {
@@ -504,6 +540,35 @@ mod tests {
         assert_eq!(
             map! {
                 "HashSet<string>" => Definition::Sequence { elements: "string".to_string()}
+            },
+            actual_defs
+        );
+    }
+
+    #[test]
+    fn b_tree_map() {
+        let actual_name = BTreeMap::<u64, String>::declaration();
+        let mut actual_defs = map!();
+        BTreeMap::<u64, String>::add_definitions_recursively(&mut actual_defs);
+        assert_eq!("BTreeMap<u64, string>", actual_name);
+        assert_eq!(
+            map! {
+                "BTreeMap<u64, string>" => Definition::Sequence { elements: "Tuple<u64, string>".to_string()} ,
+                "Tuple<u64, string>" => Definition::Tuple { elements: vec![ "u64".to_string(), "string".to_string()]}
+            },
+            actual_defs
+        );
+    }
+
+    #[test]
+    fn b_tree_set() {
+        let actual_name = BTreeSet::<String>::declaration();
+        let mut actual_defs = map!();
+        BTreeSet::<String>::add_definitions_recursively(&mut actual_defs);
+        assert_eq!("BTreeSet<string>", actual_name);
+        assert_eq!(
+            map! {
+                "BTreeSet<string>" => Definition::Sequence { elements: "string".to_string()}
             },
             actual_defs
         );
