@@ -21,6 +21,7 @@ use crate::maybestd::{
     vec::Vec,
 };
 use crate::{BorshDeserialize, BorshSchema as BorshSchemaMacro, BorshSerialize};
+use core::marker::PhantomData;
 
 /// The type that we use to represent the declaration of the Borsh type.
 pub type Declaration = String;
@@ -299,6 +300,17 @@ where
     }
 }
 
+// Because it's a zero-sized marker, its type parameter doesn't need to be
+// included in the schema and so it's not bound to `BorshSchema`
+impl<T> BorshSchema for PhantomData<T> {
+    fn add_definitions_recursively(_definitions: &mut HashMap<Declaration, Definition>) {}
+
+    fn declaration() -> Declaration {
+        // We also skip the type parameter in the declaration
+        "PhantomData".into()
+    }
+}
+
 macro_rules! impl_tuple {
     ($($name:ident),+) => {
     impl<$($name),+> BorshSchema for ($($name),+)
@@ -545,5 +557,13 @@ mod tests {
         assert_eq!("string", boxed_declaration);
         let boxed_declaration = Box::<[u8]>::declaration();
         assert_eq!("Vec<u8>", boxed_declaration);
+    }
+
+    #[test]
+    fn phantom_data_schema() {
+        let phantom_declaration = PhantomData::<String>::declaration();
+        assert_eq!("PhantomData", phantom_declaration);
+        let phantom_declaration = PhantomData::<Vec<u8>>::declaration();
+        assert_eq!("PhantomData", phantom_declaration);
     }
 }
