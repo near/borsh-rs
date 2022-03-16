@@ -12,7 +12,7 @@ use crate::maybestd::{
 };
 
 #[cfg(feature = "rc")]
-use std::{rc::Rc, sync::Arc};
+use crate::maybestd::{rc::Rc, sync::Arc};
 
 pub(crate) mod helpers;
 

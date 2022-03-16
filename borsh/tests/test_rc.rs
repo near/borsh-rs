@@ -1,7 +1,8 @@
 #![cfg(feature = "rc")]
 
+use borsh::maybestd::rc::Rc;
+use borsh::maybestd::sync::Arc;
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::{rc::Rc, sync::Arc};
 
 #[test]
 fn test_rc_roundtrip() {
