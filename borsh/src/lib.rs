@@ -39,4 +39,10 @@ pub mod maybestd {
     pub mod io {
         pub use super::super::nostd_io::*;
     }
+
+    pub use hashbrown::{HashMap, HashSet};
+
+    pub mod hash_map {
+        pub use hashbrown::hash_map::Entry;
+    }
 }
