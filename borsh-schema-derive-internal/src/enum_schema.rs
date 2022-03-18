@@ -5,15 +5,16 @@ use syn::{
     Visibility,
 };
 
-use crate::helpers::declaration;
+use crate::helpers::{declaration, quote_where_clause};
 
 pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let name_str = name.to_token_stream().to_string();
     let generics = &input.generics;
-    let (impl_generics, ty_generics, _) = generics.split_for_impl();
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     // Generate function that returns the name of the type.
-    let (declaration, where_clause) = declaration(&name_str, &input.generics, cratename.clone());
+    let (declaration, where_clause_additions) =
+        declaration(&name_str, &input.generics, cratename.clone());
 
     // Generate function that returns the schema for variants.
     // Definitions of the variants.
@@ -113,11 +114,7 @@ pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStre
             Self::add_definition(Self::declaration(), definition, definitions);
         }
     };
-    let where_clause = if !where_clause.is_empty() {
-        quote! { where #(#where_clause),*}
-    } else {
-        TokenStream2::new()
-    };
+    let where_clause = quote_where_clause(where_clause, where_clause_additions);
     Ok(quote! {
         impl #impl_generics #cratename::BorshSchema for #name #ty_generics #where_clause {
             fn declaration() -> #cratename::schema::Declaration {
@@ -135,7 +132,7 @@ mod tests {
     use super::*;
 
     fn assert_eq(expected: TokenStream2, actual: TokenStream2) {
-        assert_eq!(expected.to_string(), actual.to_string())
+        pretty_assertions::assert_eq!(expected.to_string(), actual.to_string())
     }
 
     #[test]
@@ -316,6 +313,77 @@ mod tests {
                         ("Eggs".to_string(), <AEggs<C, W> >::declaration()),
                         ("Salad".to_string(), <ASalad<C, W> >::declaration()),
                         ("Sausage".to_string(), <ASausage<C, W> >::declaration())
+                    ];
+                    let definition = borsh::schema::Definition::Enum { variants };
+                    Self::add_definition(Self::declaration(), definition, definitions);
+                }
+            }
+        };
+        assert_eq(expected, actual);
+    }
+
+    #[test]
+    fn trailing_comma_generics() {
+        let item_struct: ItemEnum = syn::parse2(quote!{
+            enum Side<A, B>
+            where
+                A: Display + Debug,
+                B: Display + Debug,
+            {
+                Left(A),
+                Right(B),
+            }
+        })
+        .unwrap();
+
+        let actual = process_enum(
+            &item_struct,
+            Ident::new("borsh", proc_macro2::Span::call_site()),
+        )
+        .unwrap();
+        let expected = quote!{
+            impl<A, B> borsh::BorshSchema for Side<A, B>
+            where
+                A: Display + Debug,
+                B: Display + Debug,
+                A: borsh::BorshSchema,
+                B: borsh::BorshSchema
+            {
+                fn declaration() -> borsh::schema::Declaration {
+                    let params = borsh::maybestd::vec![<A>::declaration(), <B>::declaration()];
+                    format!(r#"{}<{}>"#, "Side", params.join(", "))
+                }
+                fn add_definitions_recursively(
+                    definitions: &mut borsh::maybestd::collections::HashMap<
+                        borsh::schema::Declaration,
+                        borsh::schema::Definition
+                    >
+                ) {
+                    #[derive(borsh :: BorshSchema)]
+                    struct SideLeft<A, B>
+                    (
+                        A, 
+                        #[borsh_skip] ::core::marker::PhantomData<(A, B, )>
+                    )
+                    where 
+                        A: Display + Debug, 
+                        B: Display + Debug,
+                    ;
+                    #[derive(borsh :: BorshSchema)]
+                    struct SideRight<A, B>
+                    (
+                        B, 
+                        #[borsh_skip] ::core::marker::PhantomData<(A, B, )>
+                    )
+                    where 
+                        A: Display + Debug, 
+                        B: Display + Debug,
+                    ;
+                    <SideLeft<A, B> >::add_definitions_recursively(definitions);
+                    <SideRight<A, B> >::add_definitions_recursively(definitions);
+                    let variants = borsh::maybestd::vec![
+                        ("Left".to_string(), <SideLeft<A, B> >::declaration()),
+                        ("Right".to_string(), <SideRight<A, B> >::declaration())
                     ];
                     let definition = borsh::schema::Definition::Enum { variants };
                     Self::add_definition(Self::declaration(), definition, definitions);
