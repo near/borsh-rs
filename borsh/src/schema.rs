@@ -14,7 +14,7 @@
 use crate as borsh; // For `#[derive(BorshSerialize, BorshDeserialize)]`.
 use crate::maybestd::{
     boxed::Box,
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, HashMap, HashSet},
     format,
     string::{String, ToString},
     vec,
@@ -282,6 +282,23 @@ where
     }
 }
 
+impl<T> BorshSchema for HashSet<T>
+where
+    T: BorshSchema,
+{
+    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+        let definition = Definition::Sequence {
+            elements: <T>::declaration(),
+        };
+        Self::add_definition(Self::declaration(), definition, definitions);
+        <T>::add_definitions_recursively(definitions);
+    }
+
+    fn declaration() -> Declaration {
+        format!(r#"HashSet<{}>"#, T::declaration())
+    }
+}
+
 macro_rules! impl_tuple {
     ($($name:ident),+) => {
     impl<$($name),+> BorshSchema for ($($name),+)
@@ -461,6 +478,20 @@ mod tests {
             map! {
                 "HashMap<u64, string>" => Definition::Sequence { elements: "Tuple<u64, string>".to_string()} ,
                 "Tuple<u64, string>" => Definition::Tuple { elements: vec![ "u64".to_string(), "string".to_string()]}
+            },
+            actual_defs
+        );
+    }
+
+    #[test]
+    fn simple_set() {
+        let actual_name = HashSet::<String>::declaration();
+        let mut actual_defs = map!();
+        HashSet::<String>::add_definitions_recursively(&mut actual_defs);
+        assert_eq!("HashSet<string>", actual_name);
+        assert_eq!(
+            map! {
+                "HashSet<string>" => Definition::Sequence { elements: "string".to_string()}
             },
             actual_defs
         );
