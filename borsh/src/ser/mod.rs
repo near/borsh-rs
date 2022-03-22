@@ -1,3 +1,5 @@
+use bigdecimal::BigDecimal;
+
 use core::convert::TryFrom;
 use core::hash::BuildHasher;
 use core::marker::PhantomData;
@@ -198,6 +200,13 @@ impl BorshSerialize for String {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         self.as_bytes().serialize(writer)
+    }
+}
+
+impl BorshSerialize for BigDecimal {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.to_string().serialize(writer)
     }
 }
 

@@ -21,6 +21,7 @@ name = "generate_schema_schema"
 path = "src/generate_schema_schema.rs"
 
 [dependencies]
+bigdecimal = { version = "0.2", optional = true }
 borsh-derive = { path = "../borsh-derive" }
 hashbrown = "0.11"
 

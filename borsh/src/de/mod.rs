@@ -1,3 +1,7 @@
+use std::str::FromStr;
+
+use bigdecimal::BigDecimal;
+
 use core::marker::PhantomData;
 use core::{
     convert::{TryFrom, TryInto},
@@ -288,6 +292,16 @@ impl BorshDeserialize for String {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         String::from_utf8(Vec::<u8>::deserialize(buf)?).map_err(|err| {
+            let msg = err.to_string();
+            Error::new(ErrorKind::InvalidData, msg)
+        })
+    }
+}
+
+impl BorshDeserialize for BigDecimal {
+    #[inline]
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        BigDecimal::from_str(&String::deserialize(buf)?).map_err(|err| {
             let msg = err.to_string();
             Error::new(ErrorKind::InvalidData, msg)
         })
