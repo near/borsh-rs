@@ -1,4 +1,5 @@
-use bigdecimal::BigDecimal;
+#[cfg(feature = "bigdecimal")]
+use bigdecimal;
 
 use core::convert::TryFrom;
 use core::hash::BuildHasher;
@@ -203,10 +204,35 @@ impl BorshSerialize for String {
     }
 }
 
-impl BorshSerialize for BigDecimal {
+#[cfg(feature = "bigdecimal")]
+impl BorshSerialize for bigdecimal::BigDecimal {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        self.to_string().serialize(writer)
+        let (bigint, exponent) = self.as_bigint_and_exponent();
+        bigint.serialize(writer)?;
+        exponent.serialize(writer)
+    }
+}
+
+#[cfg(feature = "bigdecimal")]
+impl BorshSerialize for bigdecimal::num_bigint::BigInt {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        let (sign, data) = self.to_u32_digits();
+        sign.serialize(writer)?;
+        data.serialize(writer)
+    }
+}
+
+#[cfg(feature = "bigdecimal")]
+impl BorshSerialize for bigdecimal::num_bigint::Sign {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        match self {
+            bigdecimal::num_bigint::Sign::Minus => 0u8.serialize(writer),
+            bigdecimal::num_bigint::Sign::NoSign => 1u8.serialize(writer),
+            bigdecimal::num_bigint::Sign::Plus => 2u8.serialize(writer),
+        }
     }
 }
 

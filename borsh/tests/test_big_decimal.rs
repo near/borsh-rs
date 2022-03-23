@@ -1,23 +1,26 @@
+#![cfg(feature = "bigdecimal")]
+
 use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
-macro_rules! test_big_decimal {
-    ($test_name: ident, $num: expr) => {
-        #[test]
-        fn $test_name() {
-            let buf = $num.try_to_vec().unwrap();
-            let actual_num =
-                <BigDecimal>::try_from_slice(&buf).expect("failed to deserialize BigDecimal");
+#[test]
+fn test_bigdecimal() {
+    let bigdecimals = vec![
+        BigDecimal::from(0),
+        BigDecimal::from_str("-0.0").unwrap(),
+        BigDecimal::from_str("3.14159265358979323846").unwrap(),
+        BigDecimal::from(666),
+        BigDecimal::from(-42),
+        BigDecimal::from_str(&"7".repeat(1024)).unwrap(),
+    ];
+    for bigdecimal in bigdecimals {
+        let serialized = bigdecimal.try_to_vec().unwrap();
+        let deserialized =
+            <BigDecimal>::try_from_slice(&serialized).expect("failed to deserialize BigDecimal");
 
-            assert_eq!(actual_num, $num);
-        }
-    };
+        assert_eq!(deserialized, bigdecimal);
+    }
 }
-
-test_big_decimal!(test_zero, BigDecimal::from(0));
-test_big_decimal!(test_666, BigDecimal::from(666));
-test_big_decimal!(test_negative, BigDecimal::from(-42));
-test_big_decimal!(test_big, BigDecimal::from_str(&"7".repeat(1024)).unwrap());

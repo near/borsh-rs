@@ -1,6 +1,5 @@
-use std::str::FromStr;
-
-use bigdecimal::BigDecimal;
+#[cfg(feature = "bigdecimal")]
+use bigdecimal;
 
 use core::marker::PhantomData;
 use core::{
@@ -298,13 +297,50 @@ impl BorshDeserialize for String {
     }
 }
 
-impl BorshDeserialize for BigDecimal {
+#[cfg(feature = "bigdecimal")]
+impl BorshDeserialize for bigdecimal::BigDecimal {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        BigDecimal::from_str(&String::deserialize(buf)?).map_err(|err| {
-            let msg = err.to_string();
-            Error::new(ErrorKind::InvalidData, msg)
-        })
+        let digits = bigdecimal::num_bigint::BigInt::deserialize(buf)?;
+        let scale = i64::deserialize(buf)?;
+        Ok(bigdecimal::BigDecimal::new(digits, scale))
+    }
+}
+
+#[cfg(feature = "bigdecimal")]
+impl BorshDeserialize for bigdecimal::num_bigint::BigInt {
+    #[inline]
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let sign = bigdecimal::num_bigint::Sign::deserialize(buf)?;
+        let digits = <Vec<u32>>::deserialize(buf)?;
+        Ok(bigdecimal::num_bigint::BigInt::new(sign, digits))
+    }
+}
+
+#[cfg(feature = "bigdecimal")]
+impl BorshDeserialize for bigdecimal::num_bigint::Sign {
+    #[inline]
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        if buf.is_empty() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
+            ));
+        }
+        let sign_flag = buf[0];
+        *buf = &buf[1..];
+        match sign_flag {
+            0 => Ok(bigdecimal::num_bigint::Sign::Minus),
+            1 => Ok(bigdecimal::num_bigint::Sign::NoSign),
+            2 => Ok(bigdecimal::num_bigint::Sign::Plus),
+            _ => {
+                let msg = format!(
+                    "Invalid Result representation: {}. The first byte must be 0, 1 or 2",
+                    sign_flag
+                );
+                Err(Error::new(ErrorKind::InvalidInput, msg))
+            }
+        }
     }
 }
 
