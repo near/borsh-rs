@@ -215,7 +215,10 @@ impl BorshSerialize for bigdecimal::BigDecimal {
 impl BorshSerialize for bigdecimal::num_bigint::BigInt {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let (sign, data) = self.to_bytes_le();
+        let (sign, mut data) = self.to_bytes_le();
+        while data.last() == Some(&0) {
+            data.pop();
+        }
         sign.serialize(writer)?;
         data.serialize(writer)
     }
