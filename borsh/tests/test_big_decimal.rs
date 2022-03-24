@@ -1,10 +1,7 @@
 #![cfg(feature = "bigdecimal")]
-
-use std::str::FromStr;
-
 use bigdecimal::BigDecimal;
-
 use borsh::{BorshDeserialize, BorshSerialize};
+use std::str::FromStr;
 
 #[test]
 fn test_bigdecimal() {

@@ -1,6 +1,3 @@
-#[cfg(feature = "bigdecimal")]
-use bigdecimal;
-
 use core::convert::TryFrom;
 use core::hash::BuildHasher;
 use core::marker::PhantomData;
