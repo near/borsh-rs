@@ -9,6 +9,7 @@ fn test_bigdecimal() {
         BigDecimal::from(0),
         BigDecimal::from_str("-0.0").unwrap(),
         BigDecimal::from_str("3.14159265358979323846").unwrap(),
+        BigDecimal::from(256),
         BigDecimal::from(666),
         BigDecimal::from(-42),
         BigDecimal::from_str(&"7".repeat(1024)).unwrap(),
