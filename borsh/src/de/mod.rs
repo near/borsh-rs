@@ -310,6 +310,10 @@ impl BorshDeserialize for bigdecimal::num_bigint::BigInt {
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         let sign = bigdecimal::num_bigint::Sign::deserialize(buf)?;
         let digits = <Vec<u8>>::deserialize(buf)?;
+        assert!(
+            sign == bigdecimal::num_bigint::Sign::NoSign
+                || (!digits.is_empty() && digits.last().unwrap() > &0)
+        );
         Ok(bigdecimal::num_bigint::BigInt::from_bytes_le(sign, &digits))
     }
 }
