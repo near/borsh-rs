@@ -1,5 +1,5 @@
 #![cfg(feature = "bigdecimal")]
-use bigdecimal::BigDecimal;
+use bigdecimal::{num_bigint::BigInt, BigDecimal};
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::str::FromStr;
 

@@ -205,7 +205,7 @@ impl BorshSerialize for String {
 impl BorshSerialize for bigdecimal::BigDecimal {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let (bigint, exponent) = self.as_bigint_and_exponent();
+        let (bigint, exponent) = self.normalized().as_bigint_and_exponent();
         bigint.serialize(writer)?;
         exponent.serialize(writer)
     }

@@ -25,6 +25,8 @@ const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
 const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE: &str = "Overflow on machine with 32 bit usize";
 const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
+#[cfg(feature = "bigdecimal")]
+const ERROR_NON_CANONICAL_VALUE: &str = "Padded zero bytes found";
 
 /// A data-structure that can be de-serialized from binary format by NBOR.
 pub trait BorshDeserialize: Sized {
@@ -310,10 +312,13 @@ impl BorshDeserialize for bigdecimal::num_bigint::BigInt {
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         let sign = bigdecimal::num_bigint::Sign::deserialize(buf)?;
         let digits = <Vec<u8>>::deserialize(buf)?;
-        assert!(
-            sign == bigdecimal::num_bigint::Sign::NoSign
-                || (!digits.is_empty() && digits.last().unwrap() > &0)
-        );
+        if digits.len() > 1 && digits.last().unwrap() == &0 {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                ERROR_NON_CANONICAL_VALUE,
+            ));
+        }
+
         Ok(bigdecimal::num_bigint::BigInt::from_bytes_le(sign, &digits))
     }
 }

@@ -16,6 +16,8 @@ struct B {
 
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
 const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
+#[cfg(feature = "bigdecimal")]
+const ERROR_NON_CANONICAL_VALUE: &str = "Padded zero bytes found";
 
 #[test]
 fn test_missing_bytes() {
@@ -198,5 +200,16 @@ fn test_zero_on_nonzero_integer_missing_byte() {
             .unwrap_err()
             .to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
+    );
+}
+
+#[cfg(feature = "bigdecimal")]
+#[test]
+fn test_bigint_contains_zero_padding() {
+    assert_eq!(
+        bigdecimal::num_bigint::BigInt::try_from_slice(&[1, 2, 0, 0, 0, 0, 0])
+            .unwrap_err()
+            .to_string(),
+        ERROR_NON_CANONICAL_VALUE
     );
 }
