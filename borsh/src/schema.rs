@@ -22,7 +22,7 @@ use crate::maybestd::{
 };
 use crate::{BorshDeserialize, BorshSchema as BorshSchemaMacro, BorshSerialize};
 use core::marker::PhantomData;
-use std::collections::{BTreeMap, BTreeSet};
+use crate::maybestd::collections::{BTreeMap, BTreeSet};
 
 /// The type that we use to represent the declaration of the Borsh type.
 pub type Declaration = String;
