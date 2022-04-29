@@ -626,8 +626,8 @@ mod tests {
     #[test]
     fn phantom_data_schema() {
         let phantom_declaration = PhantomData::<String>::declaration();
-        assert_eq!("PhantomData", phantom_declaration);
+        assert_eq!("nil", phantom_declaration);
         let phantom_declaration = PhantomData::<Vec<u8>>::declaration();
-        assert_eq!("PhantomData", phantom_declaration);
+        assert_eq!("nil", phantom_declaration);
     }
 }
