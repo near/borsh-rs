@@ -342,8 +342,7 @@ impl<T> BorshSchema for PhantomData<T> {
     fn add_definitions_recursively(_definitions: &mut HashMap<Declaration, Definition>) {}
 
     fn declaration() -> Declaration {
-        // We also skip the type parameter in the declaration
-        "PhantomData".into()
+        <()>::declaration()
     }
 }
 
