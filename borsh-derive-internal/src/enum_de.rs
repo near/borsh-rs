@@ -4,7 +4,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{Fields, Ident, ItemEnum, WhereClause};
 
-use crate::attribute_helpers::{contains_initialize_with, contains_skip};
+use crate::attribute_helpers::{contains_initialize_with, contains_skip, contains_exclude_from_where};
 
 pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
@@ -31,13 +31,15 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                             #field_name: Default::default(),
                         });
                     } else {
-                        let field_type = &field.ty;
-                        where_clause.predicates.push(
-                            syn::parse2(quote! {
-                                #field_type: #cratename::BorshDeserialize
-                            })
-                            .unwrap(),
-                        );
+                        if !contains_exclude_from_where(&field.attrs) {
+                            let field_type = &field.ty;
+                            where_clause.predicates.push(
+                                syn::parse2(quote! {
+                                    #field_type: #cratename::BorshDeserialize
+                                })
+                                .unwrap(),
+                            );
+                        }
 
                         variant_header.extend(quote! {
                             #field_name: #cratename::BorshDeserialize::deserialize(buf)?,
@@ -51,14 +53,15 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                     if contains_skip(&field.attrs) {
                         variant_header.extend(quote! { Default::default(), });
                     } else {
-                        let field_type = &field.ty;
-                        where_clause.predicates.push(
-                            syn::parse2(quote! {
-                                #field_type: #cratename::BorshDeserialize
-                            })
-                            .unwrap(),
-                        );
-
+                        if !contains_exclude_from_where(&field.attrs) {
+                            let field_type = &field.ty;
+                            where_clause.predicates.push(
+                                syn::parse2(quote! {
+                                    #field_type: #cratename::BorshDeserialize
+                                })
+                                .unwrap(),
+                            );
+                        }
                         variant_header
                             .extend(quote! { #cratename::BorshDeserialize::deserialize(buf)?, });
                     }

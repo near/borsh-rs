@@ -4,7 +4,7 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{Fields, Ident, ItemEnum, WhereClause};
 
-use crate::attribute_helpers::contains_skip;
+use crate::attribute_helpers::{contains_skip, contains_exclude_from_where};
 
 pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
@@ -31,13 +31,16 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                         variant_header.extend(quote! { _#field_name, });
                         continue;
                     } else {
-                        let field_type = &field.ty;
-                        where_clause.predicates.push(
-                            syn::parse2(quote! {
-                                #field_type: #cratename::ser::BorshSerialize
-                            })
-                            .unwrap(),
-                        );
+                        if !contains_exclude_from_where(&field.attrs) {
+                            let field_type = &field.ty;
+                            where_clause.predicates.push(
+                                syn::parse2(quote! {
+                                    #field_type: #cratename::ser::BorshSerialize
+                                })
+                                .unwrap(),
+                            );
+                        }
+
                         variant_header.extend(quote! { #field_name, });
                     }
                     variant_body.extend(quote! {
@@ -59,13 +62,15 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                         variant_header.extend(quote! { #field_ident, });
                         continue;
                     } else {
-                        let field_type = &field.ty;
-                        where_clause.predicates.push(
-                            syn::parse2(quote! {
-                                #field_type: #cratename::ser::BorshSerialize
-                            })
-                            .unwrap(),
-                        );
+                        if !contains_exclude_from_where(&field.attrs) {
+                            let field_type = &field.ty;
+                            where_clause.predicates.push(
+                                syn::parse2(quote! {
+                                    #field_type: #cratename::ser::BorshSerialize
+                                })
+                                .unwrap(),
+                            );
+                        }
 
                         let field_ident =
                             Ident::new(format!("id{}", field_idx).as_str(), Span::call_site());

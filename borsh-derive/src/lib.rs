@@ -30,7 +30,7 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     })
 }
 
-#[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh_init))]
+#[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh_init, borsh_exclude_from_where))]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     let cratename = Ident::new(
         &crate_name("borsh").unwrap_or_else(|_| "borsh".to_string()),

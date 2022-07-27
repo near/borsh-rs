@@ -13,6 +13,17 @@ pub fn contains_skip(attrs: &[Attribute]) -> bool {
     false
 }
 
+pub fn contains_exclude_from_where(attrs: &[Attribute]) -> bool {
+    for attr in attrs.iter() {
+        if let Ok(Meta::Path(path)) = attr.parse_meta() {
+            if path.to_token_stream().to_string().as_str() == "borsh_exclude_from_where" {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 pub fn contains_initialize_with(attrs: &[Attribute]) -> syn::Result<Option<Path>> {
     for attr in attrs.iter() {
         if let Ok(Meta::List(meta_list)) = attr.parse_meta() {
