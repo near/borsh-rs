@@ -1,5 +1,4 @@
 use borsh::schema::*;
-use std::collections::HashMap;
 
 #[test]
 fn isize_schema() {
@@ -8,7 +7,7 @@ fn isize_schema() {
         schema,
         BorshSchemaContainer {
             declaration: "i64".to_string(),
-            definitions: HashMap::new()
+            definitions: Default::default()
         }
     )
 }
@@ -20,7 +19,7 @@ fn usize_schema() {
         schema,
         BorshSchemaContainer {
             declaration: "u64".to_string(),
-            definitions: HashMap::new()
+            definitions: Default::default()
         }
     )
 }
