@@ -303,7 +303,7 @@ where
 
 macro_rules! impl_tuple {
     ($($name:ident),+) => {
-    impl<$($name),+> BorshSchema for ($($name),+)
+    impl<$($name),+> BorshSchema for ($($name,)+)
     where
         $($name: BorshSchema),+
     {
@@ -325,6 +325,7 @@ macro_rules! impl_tuple {
     };
 }
 
+impl_tuple!(T0);
 impl_tuple!(T0, T1);
 impl_tuple!(T0, T1, T2);
 impl_tuple!(T0, T1, T2, T3);

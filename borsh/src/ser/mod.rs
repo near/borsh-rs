@@ -511,7 +511,7 @@ impl BorshSerialize for () {
 
 macro_rules! impl_tuple {
     ($($idx:tt $name:ident)+) => {
-      impl<$($name),+> BorshSerialize for ($($name),+)
+      impl<$($name),+> BorshSerialize for ($($name,)+)
       where $($name: BorshSerialize,)+
       {
         #[inline]
@@ -523,6 +523,7 @@ macro_rules! impl_tuple {
     };
 }
 
+impl_tuple!(0 T0);
 impl_tuple!(0 T0 1 T1);
 impl_tuple!(0 T0 1 T1 2 T2);
 impl_tuple!(0 T0 1 T1 2 T2 3 T3);

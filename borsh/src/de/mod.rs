@@ -588,7 +588,7 @@ impl BorshDeserialize for () {
 
 macro_rules! impl_tuple {
     ($($name:ident)+) => {
-      impl<$($name),+> BorshDeserialize for ($($name),+)
+      impl<$($name),+> BorshDeserialize for ($($name,)+)
       where $($name: BorshDeserialize,)+
       {
         #[inline]
@@ -600,6 +600,7 @@ macro_rules! impl_tuple {
     };
 }
 
+impl_tuple!(T0);
 impl_tuple!(T0 T1);
 impl_tuple!(T0 T1 T2);
 impl_tuple!(T0 T1 T2 T3);
