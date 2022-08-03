@@ -145,6 +145,8 @@ macro_rules! impl_for_primitives {
 impl_for_primitives!(bool char f32 f64 i8 i16 i32 i64 i128 u8 u16 u32 u64 u128);
 impl_for_renamed_primitives!(String: string);
 impl_for_renamed_primitives!(str: string);
+impl_for_renamed_primitives!(isize: i64);
+impl_for_renamed_primitives!(usize: u64);
 
 #[cfg(not(feature = "const-generics"))]
 const _: () = {

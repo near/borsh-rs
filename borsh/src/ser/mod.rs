@@ -118,6 +118,12 @@ impl_for_nonzero_integer!(core::num::NonZeroU64);
 impl_for_nonzero_integer!(core::num::NonZeroU128);
 impl_for_nonzero_integer!(core::num::NonZeroUsize);
 
+impl BorshSerialize for isize {
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        BorshSerialize::serialize(&(*self as i64), writer)
+    }
+}
+
 impl BorshSerialize for usize {
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         BorshSerialize::serialize(&(*self as u64), writer)

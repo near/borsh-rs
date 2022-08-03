@@ -23,6 +23,7 @@ mod hint;
 
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
+const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_ISIZE: &str = "Overflow on machine with 32 bit isize";
 const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE: &str = "Overflow on machine with 32 bit usize";
 const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
 
@@ -156,6 +157,19 @@ impl_for_nonzero_integer!(core::num::NonZeroU32);
 impl_for_nonzero_integer!(core::num::NonZeroU64);
 impl_for_nonzero_integer!(core::num::NonZeroU128);
 impl_for_nonzero_integer!(core::num::NonZeroUsize);
+
+impl BorshDeserialize for isize {
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let i: i64 = BorshDeserialize::deserialize(buf)?;
+        let i = isize::try_from(i).map_err(|_| {
+            Error::new(
+                ErrorKind::InvalidInput,
+                ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_ISIZE,
+            )
+        })?;
+        Ok(i)
+    }
+}
 
 impl BorshDeserialize for usize {
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
