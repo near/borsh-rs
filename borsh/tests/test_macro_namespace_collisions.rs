@@ -5,3 +5,9 @@ mod core {}
 
 #[derive(borsh::BorshSerialize, borsh::BorshDeserialize)]
 struct A;
+
+#[derive(borsh::BorshSerialize, borsh::BorshDeserialize)]
+enum B {
+    C,
+    D,
+}
