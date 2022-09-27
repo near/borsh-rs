@@ -585,7 +585,7 @@ where
         let mut result: [MaybeUninit<T>; N] = unsafe { MaybeUninit::uninit().assume_init() };
 
         if !T::copy_from_bytes(buf, &mut result)? {
-            for elem in &mut result {
+            for elem in result.iter_mut() {
                 elem.write(T::deserialize(buf)?);
             }
         }
