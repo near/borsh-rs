@@ -1,4 +1,5 @@
 use core::marker::PhantomData;
+use core::mem::MaybeUninit;
 use core::{
     convert::{TryFrom, TryInto},
     hash::{BuildHasher, Hash},
@@ -53,7 +54,7 @@ pub trait BorshDeserialize: Sized {
 
     #[inline]
     #[doc(hidden)]
-    fn copy_from_bytes(buf: &mut &[u8], out: &mut [Self]) -> Result<bool> {
+    fn copy_from_bytes(buf: &mut &[u8], out: &mut [MaybeUninit<Self>]) -> Result<bool> {
         let _ = buf;
         let _ = out;
         Ok(false)
@@ -91,7 +92,7 @@ impl BorshDeserialize for u8 {
 
     #[inline]
     #[doc(hidden)]
-    fn copy_from_bytes(buf: &mut &[u8], out: &mut [Self]) -> Result<bool> {
+    fn copy_from_bytes(buf: &mut &[u8], out: &mut [MaybeUninit<Self>]) -> Result<bool> {
         if buf.len() < out.len() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -99,7 +100,9 @@ impl BorshDeserialize for u8 {
             ));
         }
         let (front, rest) = buf.split_at(out.len());
-        out.copy_from_slice(front);
+        for (o, f) in out.iter_mut().zip(front.iter()) {
+            o.write(*f);
+        }
         *buf = rest;
         Ok(true)
     }
@@ -533,17 +536,26 @@ const _: () = {
         $(
             impl<T> BorshDeserialize for [T; $len]
             where
-                T: BorshDeserialize + Default + Copy
+                T: BorshDeserialize
             {
                 #[inline]
                 fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-                    let mut result = [T::default(); $len];
+
+                    let mut result: [MaybeUninit<T>; $len] = unsafe { MaybeUninit::uninit().assume_init() };
+
                     if !T::copy_from_bytes(buf, &mut result)? {
-                        for i in 0..$len {
-                            result[i] = T::deserialize(buf)?;
+                        for elem in &mut result {
+                            elem.write(T::deserialize(buf)?);
                         }
                     }
-                    Ok(result)
+
+                    //* SAFETY: This cast is required because `mem::transmute` does not work with const generics
+                    //*         https://github.com/rust-lang/rust/issues/61956. This array is guaranteed to be
+                    //*         initialized by this point
+                    let res: Self = unsafe {
+                        (&*(&MaybeUninit::new(result) as *const _ as *const MaybeUninit<_>)).assume_init_read()
+                    };
+                    Ok(res)
                 }
             }
         )+
@@ -554,11 +566,11 @@ const _: () = {
 
     impl<T> BorshDeserialize for [T; 0]
     where
-        T: BorshDeserialize + Default + Copy,
+        T: BorshDeserialize,
     {
         #[inline]
         fn deserialize(_buf: &mut &[u8]) -> Result<Self> {
-            Ok([T::default(); 0])
+            Ok([])
         }
     }
 };
@@ -566,17 +578,25 @@ const _: () = {
 #[cfg(feature = "const-generics")]
 impl<T, const N: usize> BorshDeserialize for [T; N]
 where
-    T: BorshDeserialize + Default + Copy,
+    T: BorshDeserialize,
 {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let mut result = [T::default(); N];
-        if N > 0 && !T::copy_from_bytes(buf, &mut result)? {
-            for i in 0..N {
-                result[i] = T::deserialize(buf)?;
+        let mut result: [MaybeUninit<T>; N] = unsafe { MaybeUninit::uninit().assume_init() };
+
+        if !T::copy_from_bytes(buf, &mut result)? {
+            for elem in &mut result {
+                elem.write(T::deserialize(buf)?);
             }
         }
-        Ok(result)
+
+        //* SAFETY: This cast is required because `mem::transmute` does not work with const generics
+        //*         https://github.com/rust-lang/rust/issues/61956. This array is guaranteed to be
+        //*         initialized by this point
+        let res: Self = unsafe {
+            (&*(&MaybeUninit::new(result) as *const _ as *const MaybeUninit<_>)).assume_init_read()
+        };
+        Ok(res)
     }
 }
 
