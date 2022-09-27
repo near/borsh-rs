@@ -572,8 +572,8 @@ where
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         let mut result = [T::default(); N];
         if N > 0 && !T::copy_from_bytes(buf, &mut result)? {
-            for i in 0..N {
-                result[i] = T::deserialize(buf)?;
+            for i in result.iter_mut() {
+                *i = T::deserialize(buf)?;
             }
         }
         Ok(result)

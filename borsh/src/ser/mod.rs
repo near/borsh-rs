@@ -153,7 +153,7 @@ impl_for_float!(f64);
 impl BorshSerialize for bool {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        (if *self { 1u8 } else { 0u8 }).serialize(writer)
+        (u8::from(*self)).serialize(writer)
     }
 }
 

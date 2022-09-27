@@ -29,7 +29,7 @@ pub type VariantName = String;
 /// The name of the field in the struct (can be used to convert JSON to Borsh using the schema).
 pub type FieldName = String;
 /// The type that we use to represent the definition of the Borsh type.
-#[derive(Clone, PartialEq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
+#[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
 pub enum Definition {
     /// A fixed-size array with the length known at the compile time and the same-type elements.
     Array { length: u32, elements: Declaration },
@@ -47,7 +47,7 @@ pub enum Definition {
 }
 
 /// The collection representing the fields of a struct.
-#[derive(Clone, PartialEq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
+#[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
 pub enum Fields {
     /// The struct with named fields.
     NamedFields(Vec<(FieldName, Declaration)>),
@@ -58,7 +58,7 @@ pub enum Fields {
 }
 
 /// All schema information needed to deserialize a single type.
-#[derive(Clone, PartialEq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
+#[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
 pub struct BorshSchemaContainer {
     /// Declaration of the type.
     pub declaration: Declaration,
