@@ -536,17 +536,37 @@ where
             Ok(arr)
         } else {
             let mut result: [MaybeUninit<T>; N] = unsafe { MaybeUninit::uninit().assume_init() };
-            for elem in &mut result {
-                elem.write(T::deserialize(buf)?);
-            }
-            //* SAFETY: This cast is required because `mem::transmute` does not work with const generics
-            //*         https://github.com/rust-lang/rust/issues/61956. This array is guaranteed to be
-            //*         initialized by this point
-            let res: Self = unsafe {
-                (*(&MaybeUninit::new(result) as *const _ as *const MaybeUninit<_>))
-                    .assume_init_read()
+
+            let mut deserialize_array = || -> core::result::Result<_, (usize, Error)> {
+                // TODO: replace with `core::array::try_from_fn` when stabilized to avoid manually
+                // dropping below.
+                for (i, elem) in result.iter_mut().enumerate() {
+                    elem.write(T::deserialize(buf).map_err(|e| (i, e))?);
+                }
+                Ok(())
             };
-            Ok(res)
+
+            match deserialize_array() {
+                Ok(()) => {
+                    //* SAFETY: This cast is required because `mem::transmute` does not work with
+                    //*         const generics https://github.com/rust-lang/rust/issues/61956. This
+                    //*         array is guaranteed to be initialized by this point.
+                    let res: Self = unsafe {
+                        (*(&MaybeUninit::new(result) as *const _ as *const MaybeUninit<_>))
+                            .assume_init_read()
+                    };
+                    Ok(res)
+                }
+                Err((i, e)) => {
+                    // Drop all deserialized values to ensure they aren't leaked.
+                    for element in result.iter_mut().take(i) {
+                        //* SAFETY: The elements up to `i` have been initialized in
+                        //*         `deserialize_array`.
+                        unsafe { element.assume_init_drop() };
+                    }
+                    Err(e)
+                }
+            }
         }
     }
 }
