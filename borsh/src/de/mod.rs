@@ -54,10 +54,9 @@ pub trait BorshDeserialize: Sized {
 
     #[inline]
     #[doc(hidden)]
-    fn copy_from_bytes(buf: &mut &[u8], out: &mut [MaybeUninit<Self>]) -> Result<bool> {
+    fn array_from_bytes<const N: usize>(buf: &mut &[u8]) -> Result<Option<[Self; N]>> {
         let _ = buf;
-        let _ = out;
-        Ok(false)
+        Ok(None)
     }
 }
 
@@ -92,19 +91,17 @@ impl BorshDeserialize for u8 {
 
     #[inline]
     #[doc(hidden)]
-    fn copy_from_bytes(buf: &mut &[u8], out: &mut [MaybeUninit<Self>]) -> Result<bool> {
-        if buf.len() < out.len() {
+    fn array_from_bytes<const N: usize>(buf: &mut &[u8]) -> Result<Option<[Self; N]>> {
+        if buf.len() < N {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 ERROR_UNEXPECTED_LENGTH_OF_INPUT,
             ));
         }
-        let (front, rest) = buf.split_at(out.len());
-        for (o, f) in out.iter_mut().zip(front.iter()) {
-            o.write(*f);
-        }
+        let (front, rest) = buf.split_at(N);
         *buf = rest;
-        Ok(true)
+        let front: [u8; N] = front.try_into().unwrap();
+        Ok(Some(front))
     }
 }
 
@@ -540,22 +537,22 @@ const _: () = {
             {
                 #[inline]
                 fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-
-                    let mut result: [MaybeUninit<T>; $len] = unsafe { MaybeUninit::uninit().assume_init() };
-
-                    if !T::copy_from_bytes(buf, &mut result)? {
+                    if let Some(arr) = T::array_from_bytes(buf)? {
+                        Ok(arr)
+                    } else {
+                        let mut result: [MaybeUninit<T>; $len] = unsafe { MaybeUninit::uninit().assume_init() };
                         for elem in &mut result {
                             elem.write(T::deserialize(buf)?);
                         }
+                        //* SAFETY: This cast is required because `mem::transmute` does not work with const generics
+                        //*         https://github.com/rust-lang/rust/issues/61956. This array is guaranteed to be
+                        //*         initialized by this point
+                        let res: Self = unsafe {
+                            (*(&MaybeUninit::new(result) as *const _ as *const MaybeUninit<_>))
+                                .assume_init_read()
+                        };
+                        Ok(res)
                     }
-
-                    //* SAFETY: This cast is required because `mem::transmute` does not work with const generics
-                    //*         https://github.com/rust-lang/rust/issues/61956. This array is guaranteed to be
-                    //*         initialized by this point
-                    let res: Self = unsafe {
-                        (&*(&MaybeUninit::new(result) as *const _ as *const MaybeUninit<_>)).assume_init_read()
-                    };
-                    Ok(res)
                 }
             }
         )+
@@ -582,21 +579,22 @@ where
 {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let mut result: [MaybeUninit<T>; N] = unsafe { MaybeUninit::uninit().assume_init() };
-
-        if !T::copy_from_bytes(buf, &mut result)? {
-            for elem in result.iter_mut() {
+        if let Some(arr) = T::array_from_bytes(buf)? {
+            Ok(arr)
+        } else {
+            let mut result: [MaybeUninit<T>; N] = unsafe { MaybeUninit::uninit().assume_init() };
+            for elem in &mut result {
                 elem.write(T::deserialize(buf)?);
             }
+            //* SAFETY: This cast is required because `mem::transmute` does not work with const generics
+            //*         https://github.com/rust-lang/rust/issues/61956. This array is guaranteed to be
+            //*         initialized by this point
+            let res: Self = unsafe {
+                (*(&MaybeUninit::new(result) as *const _ as *const MaybeUninit<_>))
+                    .assume_init_read()
+            };
+            Ok(res)
         }
-
-        //* SAFETY: This cast is required because `mem::transmute` does not work with const generics
-        //*         https://github.com/rust-lang/rust/issues/61956. This array is guaranteed to be
-        //*         initialized by this point
-        let res: Self = unsafe {
-            (&*(&MaybeUninit::new(result) as *const _ as *const MaybeUninit<_>)).assume_init_read()
-        };
-        Ok(res)
     }
 }
 
