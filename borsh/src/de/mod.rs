@@ -526,53 +526,6 @@ where
     }
 }
 
-#[cfg(not(feature = "const-generics"))]
-const _: () = {
-    macro_rules! impl_arrays {
-        ($($len:expr)+) => {
-        $(
-            impl<T> BorshDeserialize for [T; $len]
-            where
-                T: BorshDeserialize
-            {
-                #[inline]
-                fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-                    if let Some(arr) = T::array_from_bytes(buf)? {
-                        Ok(arr)
-                    } else {
-                        let mut result: [MaybeUninit<T>; $len] = unsafe { MaybeUninit::uninit().assume_init() };
-                        for elem in &mut result {
-                            elem.write(T::deserialize(buf)?);
-                        }
-                        //* SAFETY: This cast is required because `mem::transmute` does not work with const generics
-                        //*         https://github.com/rust-lang/rust/issues/61956. This array is guaranteed to be
-                        //*         initialized by this point
-                        let res: Self = unsafe {
-                            (*(&MaybeUninit::new(result) as *const _ as *const MaybeUninit<_>))
-                                .assume_init_read()
-                        };
-                        Ok(res)
-                    }
-                }
-            }
-        )+
-        };
-    }
-
-    impl_arrays!(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 64 65 128 256 512 1024 2048);
-
-    impl<T> BorshDeserialize for [T; 0]
-    where
-        T: BorshDeserialize,
-    {
-        #[inline]
-        fn deserialize(_buf: &mut &[u8]) -> Result<Self> {
-            Ok([])
-        }
-    }
-};
-
-#[cfg(feature = "const-generics")]
 impl<T, const N: usize> BorshDeserialize for [T; N]
 where
     T: BorshDeserialize,
