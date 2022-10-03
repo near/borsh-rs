@@ -611,13 +611,16 @@ fn array_deserialization_doesnt_leak() {
     assert_eq!(DESERIALIZE_COUNT.load(Ordering::SeqCst), 3);
     assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 3);
 
-    // Test that during a panic in deserialize, the values are still dropped.
-    let result = std::panic::catch_unwind(|| {
-        <[MyType; 3] as BorshDeserialize>::deserialize(&mut &[0u8; 3][..]).unwrap();
-    });
-    assert!(result.is_err());
-    assert_eq!(DESERIALIZE_COUNT.load(Ordering::SeqCst), 6);
-    assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 5); // 5 because 6 panicked and was not init
+    #[cfg(feature = "std")]
+    {
+        // Test that during a panic in deserialize, the values are still dropped.
+        let result = std::panic::catch_unwind(|| {
+            <[MyType; 3] as BorshDeserialize>::deserialize(&mut &[0u8; 3][..]).unwrap();
+        });
+        assert!(result.is_err());
+        assert_eq!(DESERIALIZE_COUNT.load(Ordering::SeqCst), 6);
+        assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 5); // 5 because 6 panicked and was not init
+    }
 }
 
 impl BorshDeserialize for () {
