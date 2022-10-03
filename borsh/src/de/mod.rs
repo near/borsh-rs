@@ -555,7 +555,7 @@ where
                     //*         const generics https://github.com/rust-lang/rust/issues/61956. This
                     //*         array is guaranteed to be initialized by this point.
                     // TODO determine if ptr::read is actually safe and optimal.
-                    (*(&MaybeUninit::new(core::ptr::read(&mut self.buffer)) as *const _
+                    (*(&MaybeUninit::new(core::ptr::read(&self.buffer)) as *const _
                         as *const MaybeUninit<_>))
                         .assume_init_read()
                 }
