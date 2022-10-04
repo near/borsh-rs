@@ -538,17 +538,18 @@ where
         }
         impl<T, const N: usize> Drop for ArrayDropGuard<T, N> {
             fn drop(&mut self) {
+                let init_range = &mut self.buffer[..self.init_count];
                 // SAFETY: Elements up to self.init_count have been initialized. Assumes this value
                 //         is only incremented in `fill_buffer`, which writes the element before
                 //         increasing the init_count.
                 unsafe {
-                    let init_range = &mut self.buffer[..self.init_count];
                     core::ptr::drop_in_place(init_range as *mut _ as *mut [T]);
                 };
             }
         }
         impl<T, const N: usize> ArrayDropGuard<T, N> {
             unsafe fn transmute_to_array(mut self) -> [T; N] {
+                debug_assert_eq!(self.init_count, N);
                 // Set init_count to 0 so that the values do not get dropped twice.
                 self.init_count = 0;
                 // SAFETY: This cast is required because `mem::transmute` does not work with
@@ -582,7 +583,7 @@ where
             result.fill_buffer(|| T::deserialize(buf))?;
 
             // SAFETY: The elements up to `i` have been initialized in
-            //         `deserialize_array`.
+            //         `fill_buffer`.
             Ok(unsafe { result.transmute_to_array() })
         }
     }
@@ -608,7 +609,6 @@ fn array_deserialization_doesnt_leak() {
     }
     impl Drop for MyType {
         fn drop(&mut self) {
-            println!("drop");
             DROP_COUNT.fetch_add(1, Ordering::SeqCst);
         }
     }
