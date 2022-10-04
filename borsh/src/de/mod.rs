@@ -532,34 +532,46 @@ where
 {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        struct ArrayDropGuard<T, const N: usize> {
+            buffer: [MaybeUninit<T>; N],
+            init_count: usize,
+        }
+        impl<T, const N: usize> Drop for ArrayDropGuard<T, N> {
+            fn drop(&mut self) {
+                // SAFETY: Elements up to self.init_count have been initialized. Assumes this value
+                //         is only incremented in `fill_buffer`, which writes the element before
+                //         increasing the init_count.
+                unsafe {
+                    let init_range = &mut self.buffer[..self.init_count];
+                    core::ptr::drop_in_place(init_range as *mut _ as *mut [T]);
+                };
+            }
+        }
+        impl<T, const N: usize> ArrayDropGuard<T, N> {
+            unsafe fn transmute_to_array(mut self) -> [T; N] {
+                // Set init_count to 0 so that the values do not get dropped twice.
+                self.init_count = 0;
+                // SAFETY: This cast is required because `mem::transmute` does not work with
+                //         const generics https://github.com/rust-lang/rust/issues/61956. This
+                //         array is guaranteed to be initialized by this point.
+                (*(&MaybeUninit::new(core::ptr::read(&self.buffer as *const _)) as *const _
+                    as *const MaybeUninit<_>))
+                    .assume_init_read()
+            }
+            fn fill_buffer(&mut self, mut f: impl FnMut() -> Result<T>) -> Result<()> {
+                // TODO: replace with `core::array::try_from_fn` when stabilized to avoid manually
+                // dropping uninitialized values through the guard drop.
+                for elem in self.buffer.iter_mut() {
+                    elem.write(f()?);
+                    self.init_count += 1;
+                }
+                Ok(())
+            }
+        }
+
         if let Some(arr) = T::array_from_bytes(buf)? {
             Ok(arr)
         } else {
-            struct ArrayDropGuard<T, const N: usize> {
-                buffer: [MaybeUninit<T>; N],
-                init_count: usize,
-            }
-            impl<T, const N: usize> Drop for ArrayDropGuard<T, N> {
-                fn drop(&mut self) {
-                    for element in self.buffer.iter_mut().take(self.init_count) {
-                        //* SAFETY: The elements up to `i` have been initialized in
-                        //*         `deserialize_array`.
-                        unsafe { element.assume_init_drop() };
-                    }
-                }
-            }
-            impl<T, const N: usize> ArrayDropGuard<T, N> {
-                unsafe fn transmute_to_array(mut self) -> [T; N] {
-                    self.init_count = 0;
-                    //* SAFETY: This cast is required because `mem::transmute` does not work with
-                    //*         const generics https://github.com/rust-lang/rust/issues/61956. This
-                    //*         array is guaranteed to be initialized by this point.
-                    // TODO determine if ptr::read is actually safe and optimal.
-                    (*(&MaybeUninit::new(core::ptr::read(&self.buffer)) as *const _
-                        as *const MaybeUninit<_>))
-                        .assume_init_read()
-                }
-            }
             let mut result = unsafe {
                 ArrayDropGuard {
                     buffer: MaybeUninit::uninit().assume_init(),
@@ -567,15 +579,10 @@ where
                 }
             };
 
-            // TODO: replace with `core::array::try_from_fn` when stabilized to avoid manually
-            // dropping below.
-            for elem in result.buffer.iter_mut() {
-                elem.write(T::deserialize(buf)?);
-                result.init_count += 1;
-            }
+            result.fill_buffer(|| T::deserialize(buf))?;
 
-            //* SAFETY: The elements up to `i` have been initialized in
-            //*         `deserialize_array`.
+            // SAFETY: The elements up to `i` have been initialized in
+            //         `deserialize_array`.
             Ok(unsafe { result.transmute_to_array() })
         }
     }
@@ -601,6 +608,7 @@ fn array_deserialization_doesnt_leak() {
     }
     impl Drop for MyType {
         fn drop(&mut self) {
+            println!("drop");
             DROP_COUNT.fetch_add(1, Ordering::SeqCst);
         }
     }
