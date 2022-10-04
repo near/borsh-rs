@@ -555,9 +555,7 @@ where
                 // SAFETY: This cast is required because `mem::transmute` does not work with
                 //         const generics https://github.com/rust-lang/rust/issues/61956. This
                 //         array is guaranteed to be initialized by this point.
-                (*(&MaybeUninit::new(core::ptr::read(&self.buffer as *const _)) as *const _
-                    as *const MaybeUninit<_>))
-                    .assume_init_read()
+                core::ptr::read(&self.buffer as *const _ as *const [T; N])
             }
             fn fill_buffer(&mut self, mut f: impl FnMut() -> Result<T>) -> Result<()> {
                 // TODO: replace with `core::array::try_from_fn` when stabilized to avoid manually
