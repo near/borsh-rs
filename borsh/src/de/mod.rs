@@ -596,7 +596,7 @@ fn array_deserialization_doesnt_leak() {
         fn deserialize(buf: &mut &[u8]) -> Result<Self> {
             let val = u8::deserialize(buf)?;
             let v = DESERIALIZE_COUNT.fetch_add(1, Ordering::SeqCst);
-            if v >= 5 {
+            if v >= 7 {
                 panic!("panic in deserialize");
             }
             Ok(MyType(val))
@@ -612,6 +612,10 @@ fn array_deserialization_doesnt_leak() {
     assert_eq!(DESERIALIZE_COUNT.load(Ordering::SeqCst), 3);
     assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 3);
 
+    assert!(<[MyType; 2] as BorshDeserialize>::deserialize(&mut &[0u8; 2][..]).is_ok());
+    assert_eq!(DESERIALIZE_COUNT.load(Ordering::SeqCst), 5);
+    assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 5);
+
     #[cfg(feature = "std")]
     {
         // Test that during a panic in deserialize, the values are still dropped.
@@ -619,8 +623,8 @@ fn array_deserialization_doesnt_leak() {
             <[MyType; 3] as BorshDeserialize>::deserialize(&mut &[0u8; 3][..]).unwrap();
         });
         assert!(result.is_err());
-        assert_eq!(DESERIALIZE_COUNT.load(Ordering::SeqCst), 6);
-        assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 5); // 5 because 6 panicked and was not init
+        assert_eq!(DESERIALIZE_COUNT.load(Ordering::SeqCst), 8);
+        assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 7); // 5 because 6 panicked and was not init
     }
 }
 
