@@ -571,17 +571,14 @@ where
         if let Some(arr) = T::array_from_bytes(buf)? {
             Ok(arr)
         } else {
-            let mut result = unsafe {
-                ArrayDropGuard {
-                    buffer: MaybeUninit::uninit().assume_init(),
-                    init_count: 0,
-                }
+            let mut result = ArrayDropGuard {
+                buffer: unsafe { MaybeUninit::uninit().assume_init() },
+                init_count: 0,
             };
 
             result.fill_buffer(|| T::deserialize(buf))?;
 
-            // SAFETY: The elements up to `i` have been initialized in
-            //         `fill_buffer`.
+            // SAFETY: The elements up to `i` have been initialized in `fill_buffer`.
             Ok(unsafe { result.transmute_to_array() })
         }
     }
