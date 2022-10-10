@@ -44,3 +44,23 @@ test_arrays!(
 );
 test_arrays!(test_array_f32, 1000000000.0f32, f32);
 test_arrays!(test_array_array_u8, [100u8; 32], [u8; 32]);
+test_arrays!(test_array_zst, (), ());
+
+#[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug)]
+struct CustomStruct(u8);
+
+#[test]
+fn test_custom_struct_array() {
+    let arr = [CustomStruct(0), CustomStruct(1), CustomStruct(2)];
+    let serialized = arr.try_to_vec().unwrap();
+    let deserialized: [CustomStruct; 3] = BorshDeserialize::try_from_slice(&serialized).unwrap();
+    assert_eq!(arr, deserialized);
+}
+
+#[test]
+fn test_string_array() {
+    let arr = ["0".to_string(), "1".to_string(), "2".to_string()];
+    let serialized = arr.try_to_vec().unwrap();
+    let deserialized: [String; 3] = BorshDeserialize::try_from_slice(&serialized).unwrap();
+    assert_eq!(arr, deserialized);
+}
