@@ -44,6 +44,7 @@ test_arrays!(
 );
 test_arrays!(test_array_f32, 1000000000.0f32, f32);
 test_arrays!(test_array_array_u8, [100u8; 32], [u8; 32]);
+test_arrays!(test_array_zst, (), ());
 
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug)]
 struct CustomStruct(u8);
