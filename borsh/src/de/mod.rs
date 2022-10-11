@@ -19,13 +19,16 @@ use crate::maybestd::{
 #[cfg(feature = "rc")]
 use crate::maybestd::{rc::Rc, sync::Arc};
 
+#[cfg(all(feature = "bigdecimal", not(feature = "num-bigint")))]
+use bigdecimal::num_bigint;
+
 mod hint;
 
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
 const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE: &str = "Overflow on machine with 32 bit usize";
 const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
-#[cfg(feature = "bigdecimal")]
+#[cfg(any(feature = "num-bigint", feature = "bigdecimal"))]
 const ERROR_NON_CANONICAL_VALUE: &str = "Padded zero bytes found";
 
 /// A data-structure that can be de-serialized from binary format by NBOR.
@@ -300,31 +303,54 @@ impl BorshDeserialize for String {
 impl BorshDeserialize for bigdecimal::BigDecimal {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let digits = bigdecimal::num_bigint::BigInt::deserialize(buf)?;
+        let digits = num_bigint::BigInt::deserialize(buf)?;
         let scale = i64::deserialize(buf)?;
         Ok(bigdecimal::BigDecimal::new(digits, scale))
     }
 }
 
-#[cfg(feature = "bigdecimal")]
-impl BorshDeserialize for bigdecimal::num_bigint::BigInt {
+#[cfg(any(feature = "num-bigint", feature = "bigdecimal"))]
+impl BorshDeserialize for num_bigint::BigUint {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let sign = bigdecimal::num_bigint::Sign::deserialize(buf)?;
+        // TODO should be able to avoid this allocation with zero-copy deserialization.
         let digits = <Vec<u8>>::deserialize(buf)?;
-        if digits.len() > 1 && digits.last().unwrap() == &0 {
+        if digits.len() > 0 && digits.last().unwrap() == &0 {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 ERROR_NON_CANONICAL_VALUE,
             ));
         }
 
-        Ok(bigdecimal::num_bigint::BigInt::from_bytes_le(sign, &digits))
+        Ok(num_bigint::BigUint::from_bytes_le(&digits))
     }
 }
 
-#[cfg(feature = "bigdecimal")]
-impl BorshDeserialize for bigdecimal::num_bigint::Sign {
+#[cfg(any(feature = "num-bigint", feature = "bigdecimal"))]
+impl BorshDeserialize for num_bigint::BigInt {
+    #[inline]
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let sign = num_bigint::Sign::deserialize(buf)?;
+        let value = if matches!(sign, num_bigint::Sign::NoSign) {
+            num_bigint::BigUint::new(vec![])
+        } else {
+            let uint = num_bigint::BigUint::deserialize(buf)?;
+            if uint == num_bigint::BigUint::default() {
+                // If the abs value is 0 when sign is positive or negative, reject for being
+                // not canonical.
+                return Err(Error::new(
+                    ErrorKind::InvalidInput,
+                    ERROR_NON_CANONICAL_VALUE,
+                ));
+            }
+            uint
+        };
+        Ok(num_bigint::BigInt::from_biguint(sign, value))
+    }
+}
+
+#[cfg(any(feature = "num-bigint", feature = "bigdecimal"))]
+impl BorshDeserialize for num_bigint::Sign {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         if buf.is_empty() {
@@ -336,9 +362,9 @@ impl BorshDeserialize for bigdecimal::num_bigint::Sign {
         let sign_flag = buf[0];
         *buf = &buf[1..];
         match sign_flag {
-            0 => Ok(bigdecimal::num_bigint::Sign::Minus),
-            1 => Ok(bigdecimal::num_bigint::Sign::NoSign),
-            2 => Ok(bigdecimal::num_bigint::Sign::Plus),
+            0 => Ok(num_bigint::Sign::Minus),
+            1 => Ok(num_bigint::Sign::NoSign),
+            2 => Ok(num_bigint::Sign::Plus),
             _ => {
                 let msg = format!(
                     "Invalid Result representation: {}. The first byte must be 0, 1 or 2",

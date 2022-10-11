@@ -14,6 +14,9 @@ use crate::maybestd::{
 #[cfg(feature = "rc")]
 use crate::maybestd::{rc::Rc, sync::Arc};
 
+#[cfg(all(feature = "bigdecimal", not(feature = "num-bigint")))]
+use bigdecimal::num_bigint;
+
 pub(crate) mod helpers;
 
 const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;
@@ -205,30 +208,50 @@ impl BorshSerialize for String {
 impl BorshSerialize for bigdecimal::BigDecimal {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let (bigint, exponent) = self.normalized().as_bigint_and_exponent();
+        let (bigint, exponent) = self.as_bigint_and_exponent();
         bigint.serialize(writer)?;
         exponent.serialize(writer)
     }
 }
 
-#[cfg(feature = "bigdecimal")]
-impl BorshSerialize for bigdecimal::num_bigint::BigInt {
+#[cfg(any(feature = "num-bigint", feature = "bigdecimal"))]
+impl BorshSerialize for num_bigint::BigInt {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let (sign, data) = self.to_bytes_le();
-        sign.serialize(writer)?;
-        data.serialize(writer)
+        let sign = self.sign();
+        if matches!(sign, num_bigint::Sign::NoSign) {
+            sign.serialize(writer)
+        } else {
+            sign.serialize(writer)?;
+            self.magnitude().serialize(writer)
+        }
     }
 }
 
-#[cfg(feature = "bigdecimal")]
-impl BorshSerialize for bigdecimal::num_bigint::Sign {
+#[cfg(any(feature = "num-bigint", feature = "bigdecimal"))]
+impl BorshSerialize for num_bigint::BigUint {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        let data = self.to_bytes_le();
+        match data.iter().rev().position(|&v| v != 0) {
+            Some(index) => {
+                // Remove padding bytes to serialize canonically.
+                let (bytes, _): (&[u8], _) = data.split_at(data.len() - index);
+                (bytes).serialize(writer)
+            }
+            None => (&[] as &[u8]).serialize(writer),
+        }
+    }
+}
+
+#[cfg(any(feature = "num-bigint", feature = "bigdecimal"))]
+impl BorshSerialize for num_bigint::Sign {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self {
-            bigdecimal::num_bigint::Sign::Minus => 0u8.serialize(writer),
-            bigdecimal::num_bigint::Sign::NoSign => 1u8.serialize(writer),
-            bigdecimal::num_bigint::Sign::Plus => 2u8.serialize(writer),
+            num_bigint::Sign::Minus => 0u8.serialize(writer),
+            num_bigint::Sign::NoSign => 1u8.serialize(writer),
+            num_bigint::Sign::Plus => 2u8.serialize(writer),
         }
     }
 }
