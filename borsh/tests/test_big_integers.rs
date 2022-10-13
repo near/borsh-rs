@@ -6,7 +6,7 @@ use quickcheck::quickcheck;
 #[cfg(feature = "bigdecimal")]
 #[test]
 fn test_bigdecimal() {
-    use bigdecimal::BigDecimal;
+    use bigdecimal_dep::BigDecimal;
     let bigdecimals = vec![
         BigDecimal::from(0),
         "-0.0".parse().unwrap(),
@@ -29,7 +29,7 @@ fn test_bigdecimal() {
 #[cfg(feature = "num-bigint")]
 #[test]
 fn test_qc_bigint() {
-    use num_bigint::{BigInt, Sign};
+    use num_bigint_dep::{BigInt, Sign};
 
     fn prop(a: Option<bool>, value: Vec<u32>) -> bool {
         let sign = match a {
@@ -50,7 +50,7 @@ fn test_qc_bigint() {
 #[cfg(feature = "num-bigint")]
 #[test]
 fn test_qc_biguint() {
-    use num_bigint::BigUint;
+    use num_bigint_dep::BigUint;
 
     fn prop(value: Vec<u32>) -> bool {
         let value = BigUint::new(value);

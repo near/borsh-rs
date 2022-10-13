@@ -15,7 +15,7 @@ use crate::maybestd::{
 use crate::maybestd::{rc::Rc, sync::Arc};
 
 #[cfg(all(feature = "bigdecimal", not(feature = "num-bigint")))]
-use bigdecimal::num_bigint;
+use bigdecimal_dep::num_bigint;
 
 pub(crate) mod helpers;
 
@@ -201,58 +201,6 @@ impl BorshSerialize for String {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         self.as_bytes().serialize(writer)
-    }
-}
-
-#[cfg(feature = "bigdecimal")]
-impl BorshSerialize for bigdecimal::BigDecimal {
-    #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let (bigint, exponent) = self.as_bigint_and_exponent();
-        bigint.serialize(writer)?;
-        exponent.serialize(writer)
-    }
-}
-
-#[cfg(any(feature = "num-bigint", feature = "bigdecimal"))]
-impl BorshSerialize for num_bigint::BigInt {
-    #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let sign = self.sign();
-        if matches!(sign, num_bigint::Sign::NoSign) {
-            sign.serialize(writer)
-        } else {
-            sign.serialize(writer)?;
-            self.magnitude().serialize(writer)
-        }
-    }
-}
-
-#[cfg(any(feature = "num-bigint", feature = "bigdecimal"))]
-impl BorshSerialize for num_bigint::BigUint {
-    #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let data = self.to_bytes_le();
-        match data.iter().rev().position(|&v| v != 0) {
-            Some(index) => {
-                // Remove padding bytes to serialize canonically.
-                let (bytes, _): (&[u8], _) = data.split_at(data.len() - index);
-                (bytes).serialize(writer)
-            }
-            None => (&[] as &[u8]).serialize(writer),
-        }
-    }
-}
-
-#[cfg(any(feature = "num-bigint", feature = "bigdecimal"))]
-impl BorshSerialize for num_bigint::Sign {
-    #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        match self {
-            num_bigint::Sign::Minus => 0u8.serialize(writer),
-            num_bigint::Sign::NoSign => 1u8.serialize(writer),
-            num_bigint::Sign::Plus => 2u8.serialize(writer),
-        }
     }
 }
 

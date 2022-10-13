@@ -206,7 +206,7 @@ fn test_zero_on_nonzero_integer_missing_byte() {
 #[cfg(feature = "num-bigint")]
 #[test]
 fn test_bigint_contains_zero_padding() {
-    use num_bigint::BigInt;
+    use num_bigint_dep::BigInt;
 
     #[track_caller]
     fn assert_canonical_error(bytes: &[u8]) {
