@@ -217,9 +217,9 @@ fn test_bigint_contains_zero_padding() {
     }
 
     assert_eq!(BigInt::try_from_slice(&[1]).unwrap(), BigInt::default());
-    assert_canonical_error(&[2, 0, 0, 0, 0]);
-    assert_canonical_error(&[0, 0, 0, 0, 0]);
-    assert_canonical_error(&[2, 1, 0, 0, 0, 0]);
-    assert_canonical_error(&[0, 2, 0, 0, 0, 0, 0]);
-    assert!(BigInt::try_from_slice(&[1, 1, 0, 0, 0, 0]).is_err());
+    assert_canonical_error(&[2, 0]);
+    assert_canonical_error(&[0, 0]);
+    assert_canonical_error(&[2, 1, 0]);
+    assert_canonical_error(&[0, 2, 0, 0]);
+    assert!(BigInt::try_from_slice(&[1, 1, 0]).is_err());
 }
