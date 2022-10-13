@@ -25,6 +25,7 @@ bigdecimal-dep = { package = "bigdecimal", version = "0.3", optional = true }
 num-bigint-dep = { package = "num-bigint", version = "0.4.3", optional = true }
 borsh-derive = { path = "../borsh-derive" }
 hashbrown = "0.11"
+unsigned-varint = { version = "0.7", optional = true }
 
 [dev-dependencies]
 quickcheck = "1.0"
@@ -33,6 +34,6 @@ quickcheck = "1.0"
 default = ["std"]
 std = []
 rc = []
-bigdecimal = ["num-bigint"]
-num-bigint = ["num-bigint-dep"]
+bigdecimal = ["bigdecimal-dep", "num-bigint"]
+num-bigint = ["num-bigint-dep", "unsigned-varint"]
 const-generics = []

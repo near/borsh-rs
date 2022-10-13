@@ -6,8 +6,22 @@ use crate::maybestd::{
     vec::Vec,
 };
 use crate::{BorshDeserialize, BorshSerialize};
+use core::mem::size_of;
+use unsigned_varint as uvarint;
 
-#[cfg(feature = "num-bigint")]
+fn zig_zag_encode_i64(value: i64) -> u64 {
+    let s = (value << 1) ^ (value >> ((size_of::<i64>() * 8) - 1));
+    s as u64
+}
+
+fn zig_zag_decode_i64(value: u64) -> i64 {
+    let shr1 = value >> 1;
+    let a1: i64 = (value & 1) as i64;
+    let neg: u64 = (-a1) as u64;
+    let or = shr1 ^ neg;
+    or as i64
+}
+
 const ERROR_NON_CANONICAL_VALUE: &str = "Padded zero bytes found";
 
 #[cfg(feature = "bigdecimal")]
@@ -16,7 +30,9 @@ impl BorshSerialize for bigdecimal_dep::BigDecimal {
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         let (bigint, exponent) = self.as_bigint_and_exponent();
         bigint.serialize(writer)?;
-        exponent.serialize(writer)
+        let mut buffer = uvarint::encode::u64_buffer();
+        let bytes = uvarint::encode::u64(zig_zag_encode_i64(exponent), &mut buffer);
+        writer.write_all(&bytes)
     }
 }
 
@@ -25,8 +41,15 @@ impl BorshDeserialize for bigdecimal_dep::BigDecimal {
     #[inline]
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         let digits = num_bigint_dep::BigInt::deserialize(buf)?;
-        let scale = i64::deserialize(buf)?;
-        Ok(bigdecimal_dep::BigDecimal::new(digits, scale))
+        let (val, rem) = uvarint::decode::u64(&buf).map_err(|e| {
+            Error::new(
+                ErrorKind::InvalidInput,
+                format!("varint decoding error: {}", e),
+            )
+        })?;
+        *buf = rem;
+        let exponent = zig_zag_decode_i64(val);
+        Ok(bigdecimal_dep::BigDecimal::new(digits, exponent))
     }
 }
 
