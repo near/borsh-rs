@@ -24,7 +24,10 @@ pub use ser::BorshSerialize;
 /// module.
 #[cfg(feature = "std")]
 pub mod maybestd {
-    pub use std::{borrow, boxed, collections, format, io, rc, string, sync, vec};
+    pub use std::{borrow, boxed, collections, format, io, string, vec};
+
+    #[cfg(feature = "rc")]
+    pub use std::{rc, sync};
 }
 
 #[cfg(not(feature = "std"))]
@@ -32,7 +35,10 @@ mod nostd_io;
 
 #[cfg(not(feature = "std"))]
 pub mod maybestd {
-    pub use alloc::{borrow, boxed, format, rc, string, sync, vec};
+    pub use alloc::{borrow, boxed, format, string, vec};
+
+    #[cfg(feature = "rc")]
+    pub use alloc::{rc, sync};
 
     pub mod collections {
         pub use alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
@@ -41,11 +47,5 @@ pub mod maybestd {
 
     pub mod io {
         pub use super::super::nostd_io::*;
-    }
-
-    pub use hashbrown::{HashMap, HashSet};
-
-    pub mod hash_map {
-        pub use hashbrown::hash_map::Entry;
     }
 }

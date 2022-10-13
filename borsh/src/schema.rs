@@ -29,7 +29,7 @@ pub type VariantName = String;
 /// The name of the field in the struct (can be used to convert JSON to Borsh using the schema).
 pub type FieldName = String;
 /// The type that we use to represent the definition of the Borsh type.
-#[derive(PartialEq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
+#[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
 pub enum Definition {
     /// A fixed-size array with the length known at the compile time and the same-type elements.
     Array { length: u32, elements: Declaration },
@@ -47,7 +47,7 @@ pub enum Definition {
 }
 
 /// The collection representing the fields of a struct.
-#[derive(PartialEq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
+#[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
 pub enum Fields {
     /// The struct with named fields.
     NamedFields(Vec<(FieldName, Declaration)>),
@@ -58,7 +58,7 @@ pub enum Fields {
 }
 
 /// All schema information needed to deserialize a single type.
-#[derive(PartialEq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
+#[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
 pub struct BorshSchemaContainer {
     /// Declaration of the type.
     pub declaration: Declaration,
@@ -142,9 +142,11 @@ macro_rules! impl_for_primitives {
     };
 }
 
-impl_for_primitives!(bool char f32 f64 i8 i16 i32 i64 i128 u8 u16 u32 u64 u128);
+impl_for_primitives!(bool f32 f64 i8 i16 i32 i64 i128 u8 u16 u32 u64 u128);
 impl_for_renamed_primitives!(String: string);
 impl_for_renamed_primitives!(str: string);
+impl_for_renamed_primitives!(isize: i64);
+impl_for_renamed_primitives!(usize: u64);
 
 #[cfg(not(feature = "const-generics"))]
 const _: () = {
@@ -301,7 +303,7 @@ where
 
 macro_rules! impl_tuple {
     ($($name:ident),+) => {
-    impl<$($name),+> BorshSchema for ($($name),+)
+    impl<$($name),+> BorshSchema for ($($name,)+)
     where
         $($name: BorshSchema),+
     {
@@ -323,6 +325,7 @@ macro_rules! impl_tuple {
     };
 }
 
+impl_tuple!(T0);
 impl_tuple!(T0, T1);
 impl_tuple!(T0, T1, T2);
 impl_tuple!(T0, T1, T2, T3);
