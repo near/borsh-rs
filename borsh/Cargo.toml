@@ -22,8 +22,12 @@ path = "src/generate_schema_schema.rs"
 
 [dependencies]
 bigdecimal = { version = "0.3", optional = true }
+num-bigint = { version = "0.4.3", optional = true }
 borsh-derive = { path = "../borsh-derive" }
 hashbrown = "0.11"
+
+[dev-dependencies]
+quickcheck = "1.0"
 
 [features]
 default = ["std"]

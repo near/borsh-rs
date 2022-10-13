@@ -16,7 +16,7 @@ struct B {
 
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
 const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
-#[cfg(feature = "bigdecimal")]
+#[cfg(feature = "num-bigint")]
 const ERROR_NON_CANONICAL_VALUE: &str = "Padded zero bytes found";
 
 #[test]
@@ -203,13 +203,23 @@ fn test_zero_on_nonzero_integer_missing_byte() {
     );
 }
 
-#[cfg(feature = "bigdecimal")]
+#[cfg(feature = "num-bigint")]
 #[test]
 fn test_bigint_contains_zero_padding() {
-    assert_eq!(
-        bigdecimal::num_bigint::BigInt::try_from_slice(&[1, 2, 0, 0, 0, 0, 0])
-            .unwrap_err()
-            .to_string(),
-        ERROR_NON_CANONICAL_VALUE
-    );
+    use num_bigint::BigInt;
+
+    #[track_caller]
+    fn assert_canonical_error(bytes: &[u8]) {
+        assert_eq!(
+            BigInt::try_from_slice(bytes).unwrap_err().to_string(),
+            ERROR_NON_CANONICAL_VALUE
+        );
+    }
+
+    assert_eq!(BigInt::try_from_slice(&[1]).unwrap(), BigInt::default());
+    assert_canonical_error(&[2, 0, 0, 0, 0]);
+    assert_canonical_error(&[0, 0, 0, 0, 0]);
+    assert_canonical_error(&[2, 1, 0, 0, 0, 0]);
+    assert_canonical_error(&[0, 2, 0, 0, 0, 0, 0]);
+    assert!(BigInt::try_from_slice(&[1, 1, 0, 0, 0, 0]).is_err());
 }
