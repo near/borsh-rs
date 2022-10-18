@@ -14,9 +14,6 @@ use crate::maybestd::{
 #[cfg(feature = "rc")]
 use crate::maybestd::{rc::Rc, sync::Arc};
 
-#[cfg(all(feature = "bigdecimal", not(feature = "num-bigint")))]
-use bigdecimal_dep::num_bigint;
-
 pub(crate) mod helpers;
 
 const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;

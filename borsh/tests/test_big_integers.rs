@@ -13,47 +13,6 @@ where
     assert_eq!(&serialized, vector);
 }
 
-#[cfg(feature = "bigdecimal")]
-#[test]
-fn test_bigdecimal() {
-    use bigdecimal_dep::BigDecimal;
-    let bigdecimals = [
-        BigDecimal::from(0),
-        "-0.0".parse().unwrap(),
-        "3.14159265358979323846".parse().unwrap(),
-        "-0000.000023".parse().unwrap(),
-        BigDecimal::from(256),
-        BigDecimal::from(666),
-        BigDecimal::from(-42),
-        "7".repeat(1024).parse().unwrap(),
-    ];
-    for bigdecimal in &bigdecimals {
-        let serialized = bigdecimal.try_to_vec().unwrap();
-        let deserialized =
-            <BigDecimal>::try_from_slice(&serialized).expect("failed to deserialize BigDecimal");
-
-        assert_eq!(&deserialized, bigdecimal);
-    }
-}
-
-#[cfg(feature = "bigdecimal")]
-#[test]
-fn test_bigdecimal_vectors() {
-    use bigdecimal_dep::BigDecimal;
-    use num_bigint_dep::BigInt;
-
-    fn assert_big_decimal_encoding(integer: impl Into<BigInt>, exponent: i64, vector: &[u8]) {
-        let val = BigDecimal::new(integer.into(), exponent);
-        assert_encoding(val, vector)
-    }
-
-    assert_big_decimal_encoding(0, 0, &[1, 0]);
-    assert_big_decimal_encoding(-1, 1, &[0, 1, 1, 2]);
-    assert_big_decimal_encoding(-1, -1, &[0, 1, 1, 1]);
-    assert_big_decimal_encoding(1, -1, &[2, 1, 1, 1]);
-    assert_big_decimal_encoding(1, 1, &[2, 1, 1, 2]);
-}
-
 #[test]
 fn test_bigint_vectors() {
     use num_bigint_dep::{BigInt, BigUint};
