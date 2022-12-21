@@ -11,7 +11,7 @@ use crate::maybestd::{
     boxed::Box,
     collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque},
     format,
-    io::{Error, ErrorKind, Result},
+    io::{Error, ErrorKind, Read, Result},
     string::{String, ToString},
     vec,
     vec::Vec,
@@ -32,7 +32,11 @@ const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
 pub trait BorshDeserialize: Sized {
     /// Deserializes this instance from a given slice of bytes.
     /// Updates the buffer to point at the remaining bytes.
-    fn deserialize(buf: &mut &[u8]) -> Result<Self>;
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        Self::deserialize_reader(&mut *buf)
+    }
+
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self>;
 
     /// Deserialize this instance from a slice of bytes.
     fn try_from_slice(v: &[u8]) -> Result<Self> {
@@ -44,64 +48,68 @@ pub trait BorshDeserialize: Sized {
         Ok(result)
     }
 
+    fn try_from_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let result = Self::deserialize_reader(reader)?;
+        let mut buf = [0u8; 1];
+        match reader.read_exact(&mut buf) {
+            Err(f) if f.kind() == ErrorKind::UnexpectedEof => Ok(result),
+            _ => Err(Error::new(ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ)),
+        }
+    }
+
     #[inline]
     #[doc(hidden)]
-    fn vec_from_bytes(len: u32, buf: &mut &[u8]) -> Result<Option<Vec<Self>>> {
+    fn vec_from_reader<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
         let _ = len;
-        let _ = buf;
+        let _ = reader;
         Ok(None)
     }
 
     #[inline]
     #[doc(hidden)]
-    fn array_from_bytes<const N: usize>(buf: &mut &[u8]) -> Result<Option<[Self; N]>> {
-        let _ = buf;
+    fn array_from_reader<R: Read, const N: usize>(reader: &mut R) -> Result<Option<[Self; N]>> {
+        let _ = reader;
         Ok(None)
+    }
+}
+
+fn unexpected_eof_to_unexpected_length_of_input(e: Error) -> Error {
+    if e.kind() == ErrorKind::UnexpectedEof {
+        Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT)
+    } else {
+        e
     }
 }
 
 impl BorshDeserialize for u8 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        if buf.is_empty() {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-            ));
-        }
-        let res = buf[0];
-        *buf = &buf[1..];
-        Ok(res)
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let mut buf = [0u8; 1];
+        reader
+            .read_exact(&mut buf)
+            .map_err(unexpected_eof_to_unexpected_length_of_input)?;
+        Ok(buf[0])
     }
 
     #[inline]
     #[doc(hidden)]
-    fn vec_from_bytes(len: u32, buf: &mut &[u8]) -> Result<Option<Vec<Self>>> {
-        let len = len.try_into().map_err(|_| ErrorKind::InvalidInput)?;
-        if buf.len() < len {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-            ));
-        }
-        let (front, rest) = buf.split_at(len);
-        *buf = rest;
-        Ok(Some(front.to_vec()))
+    fn vec_from_reader<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
+        let len: usize = len.try_into().map_err(|_| ErrorKind::InvalidInput)?;
+        let mut vec = vec![0u8; len];
+        reader
+            .read_exact(vec.as_mut_slice())
+            .map_err(unexpected_eof_to_unexpected_length_of_input)?;
+        Ok(Some(vec))
     }
 
     #[inline]
     #[doc(hidden)]
-    fn array_from_bytes<const N: usize>(buf: &mut &[u8]) -> Result<Option<[Self; N]>> {
-        if buf.len() < N {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-            ));
-        }
-        let (front, rest) = buf.split_at(N);
-        *buf = rest;
-        let front: [u8; N] = front.try_into().unwrap();
-        Ok(Some(front))
+    fn array_from_reader<R: Read, const N: usize>(reader: &mut R) -> Result<Option<[Self; N]>> {
+        let mut arr = [0u8; N];
+        reader
+            .read_exact(&mut arr)
+            .map_err(unexpected_eof_to_unexpected_length_of_input)?;
+        Ok(Some(arr))
     }
 }
 
@@ -109,15 +117,12 @@ macro_rules! impl_for_integer {
     ($type: ident) => {
         impl BorshDeserialize for $type {
             #[inline]
-            fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-                if buf.len() < size_of::<$type>() {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-                    ));
-                }
-                let res = $type::from_le_bytes(buf[..size_of::<$type>()].try_into().unwrap());
-                *buf = &buf[size_of::<$type>()..];
+            fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+                let mut buf = [0u8; size_of::<$type>()];
+                reader
+                    .read_exact(&mut buf)
+                    .map_err(unexpected_eof_to_unexpected_length_of_input)?;
+                let res = $type::from_le_bytes(buf.try_into().unwrap());
                 Ok(res)
             }
         }
@@ -138,8 +143,8 @@ macro_rules! impl_for_nonzero_integer {
     ($type: ty) => {
         impl BorshDeserialize for $type {
             #[inline]
-            fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-                <$type>::new(BorshDeserialize::deserialize(buf)?)
+            fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+                <$type>::new(BorshDeserialize::deserialize_reader(reader)?)
                     .ok_or_else(|| Error::new(ErrorKind::InvalidData, ERROR_INVALID_ZERO_VALUE))
             }
         }
@@ -159,8 +164,8 @@ impl_for_nonzero_integer!(core::num::NonZeroU128);
 impl_for_nonzero_integer!(core::num::NonZeroUsize);
 
 impl BorshDeserialize for isize {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let i: i64 = BorshDeserialize::deserialize(buf)?;
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let i: i64 = BorshDeserialize::deserialize_reader(reader)?;
         let i = isize::try_from(i).map_err(|_| {
             Error::new(
                 ErrorKind::InvalidInput,
@@ -172,8 +177,8 @@ impl BorshDeserialize for isize {
 }
 
 impl BorshDeserialize for usize {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let u: u64 = BorshDeserialize::deserialize(buf)?;
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let u: u64 = BorshDeserialize::deserialize_reader(reader)?;
         let u = usize::try_from(u).map_err(|_| {
             Error::new(
                 ErrorKind::InvalidInput,
@@ -190,17 +195,12 @@ macro_rules! impl_for_float {
     ($type: ident, $int_type: ident) => {
         impl BorshDeserialize for $type {
             #[inline]
-            fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-                if buf.len() < size_of::<$type>() {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-                    ));
-                }
-                let res = $type::from_bits($int_type::from_le_bytes(
-                    buf[..size_of::<$int_type>()].try_into().unwrap(),
-                ));
-                *buf = &buf[size_of::<$int_type>()..];
+            fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+                let mut buf = [0u8; size_of::<$type>()];
+                reader
+                    .read_exact(&mut buf)
+                    .map_err(unexpected_eof_to_unexpected_length_of_input)?;
+                let res = $type::from_bits($int_type::from_le_bytes(buf.try_into().unwrap()));
                 if res.is_nan() {
                     return Err(Error::new(
                         ErrorKind::InvalidInput,
@@ -218,15 +218,8 @@ impl_for_float!(f64, u64);
 
 impl BorshDeserialize for bool {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        if buf.is_empty() {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-            ));
-        }
-        let b = buf[0];
-        *buf = &buf[1..];
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let b: u8 = BorshDeserialize::deserialize_reader(reader)?;
         if b == 0 {
             Ok(false)
         } else if b == 1 {
@@ -244,19 +237,12 @@ where
     T: BorshDeserialize,
 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        if buf.is_empty() {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-            ));
-        }
-        let flag = buf[0];
-        *buf = &buf[1..];
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let flag: u8 = BorshDeserialize::deserialize_reader(reader)?;
         if flag == 0 {
             Ok(None)
         } else if flag == 1 {
-            Ok(Some(T::deserialize(buf)?))
+            Ok(Some(T::deserialize_reader(reader)?))
         } else {
             let msg = format!(
                 "Invalid Option representation: {}. The first byte must be 0 or 1",
@@ -274,19 +260,12 @@ where
     E: BorshDeserialize,
 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        if buf.is_empty() {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-            ));
-        }
-        let flag = buf[0];
-        *buf = &buf[1..];
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let flag: u8 = BorshDeserialize::deserialize_reader(reader)?;
         if flag == 0 {
-            Ok(Err(E::deserialize(buf)?))
+            Ok(Err(E::deserialize_reader(reader)?))
         } else if flag == 1 {
-            Ok(Ok(T::deserialize(buf)?))
+            Ok(Ok(T::deserialize_reader(reader)?))
         } else {
             let msg = format!(
                 "Invalid Result representation: {}. The first byte must be 0 or 1",
@@ -300,8 +279,8 @@ where
 
 impl BorshDeserialize for String {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        String::from_utf8(Vec::<u8>::deserialize(buf)?).map_err(|err| {
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        String::from_utf8(Vec::<u8>::deserialize_reader(reader)?).map_err(|err| {
             let msg = err.to_string();
             Error::new(ErrorKind::InvalidData, msg)
         })
@@ -313,14 +292,14 @@ where
     T: BorshDeserialize,
 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let len = u32::deserialize(buf)?;
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let len = u32::deserialize_reader(reader)?;
         if len == 0 {
             Ok(Vec::new())
-        } else if let Some(vec_bytes) = T::vec_from_bytes(len, buf)? {
+        } else if let Some(vec_bytes) = T::vec_from_reader(len, reader)? {
             Ok(vec_bytes)
         } else if size_of::<T>() == 0 {
-            let mut result = vec![T::deserialize(buf)?];
+            let mut result = vec![T::deserialize_reader(reader)?];
 
             let p = result.as_mut_ptr();
             unsafe {
@@ -333,7 +312,7 @@ where
             // TODO(16): return capacity allocation when we can safely do that.
             let mut result = Vec::with_capacity(hint::cautious::<T>(len));
             for _ in 0..len {
-                result.push(T::deserialize(buf)?);
+                result.push(T::deserialize_reader(reader)?);
             }
             Ok(result)
         }
@@ -346,8 +325,8 @@ where
     T::Owned: BorshDeserialize,
 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        Ok(Cow::Owned(BorshDeserialize::deserialize(buf)?))
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        Ok(Cow::Owned(BorshDeserialize::deserialize_reader(reader)?))
     }
 }
 
@@ -356,8 +335,8 @@ where
     T: BorshDeserialize,
 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let vec = <Vec<T>>::deserialize(buf)?;
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let vec = <Vec<T>>::deserialize_reader(reader)?;
         Ok(vec.into())
     }
 }
@@ -367,8 +346,8 @@ where
     T: BorshDeserialize,
 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let vec = <Vec<T>>::deserialize(buf)?;
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let vec = <Vec<T>>::deserialize_reader(reader)?;
         Ok(vec.into_iter().collect::<LinkedList<T>>())
     }
 }
@@ -378,8 +357,8 @@ where
     T: BorshDeserialize + Ord,
 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let vec = <Vec<T>>::deserialize(buf)?;
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let vec = <Vec<T>>::deserialize_reader(reader)?;
         Ok(vec.into_iter().collect::<BinaryHeap<T>>())
     }
 }
@@ -390,8 +369,8 @@ where
     H: BuildHasher + Default,
 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let vec = <Vec<T>>::deserialize(buf)?;
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let vec = <Vec<T>>::deserialize_reader(reader)?;
         Ok(vec.into_iter().collect::<HashSet<T, H>>())
     }
 }
@@ -403,13 +382,13 @@ where
     H: BuildHasher + Default,
 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let len = u32::deserialize(buf)?;
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let len = u32::deserialize_reader(reader)?;
         // TODO(16): return capacity allocation when we can safely do that.
         let mut result = HashMap::with_hasher(H::default());
         for _ in 0..len {
-            let key = K::deserialize(buf)?;
-            let value = V::deserialize(buf)?;
+            let key = K::deserialize_reader(reader)?;
+            let value = V::deserialize_reader(reader)?;
             result.insert(key, value);
         }
         Ok(result)
@@ -421,8 +400,8 @@ where
     T: BorshDeserialize + Ord,
 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let vec = <Vec<T>>::deserialize(buf)?;
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let vec = <Vec<T>>::deserialize_reader(reader)?;
         Ok(vec.into_iter().collect::<BTreeSet<T>>())
     }
 }
@@ -433,12 +412,12 @@ where
     V: BorshDeserialize,
 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let len = u32::deserialize(buf)?;
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let len = u32::deserialize_reader(reader)?;
         let mut result = BTreeMap::new();
         for _ in 0..len {
-            let key = K::deserialize(buf)?;
-            let value = V::deserialize(buf)?;
+            let key = K::deserialize_reader(reader)?;
+            let value = V::deserialize_reader(reader)?;
             result.insert(key, value);
         }
         Ok(result)
@@ -448,11 +427,11 @@ where
 #[cfg(feature = "std")]
 impl BorshDeserialize for std::net::SocketAddr {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let kind = u8::deserialize(buf)?;
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let kind = u8::deserialize_reader(reader)?;
         match kind {
-            0 => std::net::SocketAddrV4::deserialize(buf).map(std::net::SocketAddr::V4),
-            1 => std::net::SocketAddrV6::deserialize(buf).map(std::net::SocketAddr::V6),
+            0 => std::net::SocketAddrV4::deserialize_reader(reader).map(std::net::SocketAddr::V4),
+            1 => std::net::SocketAddrV6::deserialize_reader(reader).map(std::net::SocketAddr::V6),
             value => Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!("Invalid SocketAddr variant: {}", value),
@@ -464,9 +443,9 @@ impl BorshDeserialize for std::net::SocketAddr {
 #[cfg(feature = "std")]
 impl BorshDeserialize for std::net::SocketAddrV4 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let ip = std::net::Ipv4Addr::deserialize(buf)?;
-        let port = u16::deserialize(buf)?;
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let ip = std::net::Ipv4Addr::deserialize_reader(reader)?;
+        let port = u16::deserialize_reader(reader)?;
         Ok(std::net::SocketAddrV4::new(ip, port))
     }
 }
@@ -474,9 +453,9 @@ impl BorshDeserialize for std::net::SocketAddrV4 {
 #[cfg(feature = "std")]
 impl BorshDeserialize for std::net::SocketAddrV6 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let ip = std::net::Ipv6Addr::deserialize(buf)?;
-        let port = u16::deserialize(buf)?;
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let ip = std::net::Ipv6Addr::deserialize_reader(reader)?;
+        let port = u16::deserialize_reader(reader)?;
         Ok(std::net::SocketAddrV6::new(ip, port, 0, 0))
     }
 }
@@ -484,34 +463,26 @@ impl BorshDeserialize for std::net::SocketAddrV6 {
 #[cfg(feature = "std")]
 impl BorshDeserialize for std::net::Ipv4Addr {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        if buf.len() < 4 {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-            ));
-        }
-        let bytes: [u8; 4] = buf[..4].try_into().unwrap();
-        let res = std::net::Ipv4Addr::from(bytes);
-        *buf = &buf[4..];
-        Ok(res)
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let mut buf = [0u8; 4];
+        reader
+            .read_exact(&mut buf)
+            .map_err(unexpected_eof_to_unexpected_length_of_input)?;
+        let bytes: [u8; 4] = buf.try_into().unwrap();
+        Ok(std::net::Ipv4Addr::from(bytes))
     }
 }
 
 #[cfg(feature = "std")]
 impl BorshDeserialize for std::net::Ipv6Addr {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        if buf.len() < 16 {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                ERROR_UNEXPECTED_LENGTH_OF_INPUT,
-            ));
-        }
-        let bytes: [u8; 16] = buf[..16].try_into().unwrap();
-        let res = std::net::Ipv6Addr::from(bytes);
-        *buf = &buf[16..];
-        Ok(res)
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let mut buf = [0u8; 16];
+        reader
+            .read_exact(&mut buf)
+            .map_err(unexpected_eof_to_unexpected_length_of_input)?;
+        let bytes: [u8; 16] = buf.try_into().unwrap();
+        Ok(std::net::Ipv6Addr::from(bytes))
     }
 }
 
@@ -521,8 +492,8 @@ where
     T: ToOwned<Owned = U> + ?Sized,
     T::Owned: BorshDeserialize,
 {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        Ok(T::Owned::deserialize(buf)?.into())
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        Ok(T::Owned::deserialize_reader(reader)?.into())
     }
 }
 
@@ -531,7 +502,7 @@ where
     T: BorshDeserialize,
 {
     #[inline]
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         struct ArrayDropGuard<T, const N: usize> {
             buffer: [MaybeUninit<T>; N],
             init_count: usize,
@@ -568,7 +539,7 @@ where
             }
         }
 
-        if let Some(arr) = T::array_from_bytes(buf)? {
+        if let Some(arr) = T::array_from_reader(reader)? {
             Ok(arr)
         } else {
             let mut result = ArrayDropGuard {
@@ -576,7 +547,7 @@ where
                 init_count: 0,
             };
 
-            result.fill_buffer(|| T::deserialize(buf))?;
+            result.fill_buffer(|| T::deserialize_reader(reader))?;
 
             // SAFETY: The elements up to `i` have been initialized in `fill_buffer`.
             Ok(unsafe { result.transmute_to_array() })
@@ -593,8 +564,8 @@ fn array_deserialization_doesnt_leak() {
 
     struct MyType(u8);
     impl BorshDeserialize for MyType {
-        fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-            let val = u8::deserialize(buf)?;
+        fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+            let val = u8::deserialize_reader(reader)?;
             let v = DESERIALIZE_COUNT.fetch_add(1, Ordering::SeqCst);
             if v >= 7 {
                 panic!("panic in deserialize");
@@ -629,7 +600,7 @@ fn array_deserialization_doesnt_leak() {
 }
 
 impl BorshDeserialize for () {
-    fn deserialize(_buf: &mut &[u8]) -> Result<Self> {
+    fn deserialize_reader<R: Read>(_reader: &mut R) -> Result<Self> {
         Ok(())
     }
 }
@@ -640,9 +611,9 @@ macro_rules! impl_tuple {
       where $($name: BorshDeserialize,)+
       {
         #[inline]
-        fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
 
-            Ok(($($name::deserialize(buf)?,)+))
+            Ok(($($name::deserialize_reader(reader)?,)+))
         }
       }
     };
@@ -676,8 +647,8 @@ where
     T: ToOwned<Owned = U> + ?Sized,
     T::Owned: BorshDeserialize,
 {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        Ok(T::Owned::deserialize(buf)?.into())
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        Ok(T::Owned::deserialize_reader(reader)?.into())
     }
 }
 
@@ -688,13 +659,13 @@ where
     T: ToOwned<Owned = U> + ?Sized,
     T::Owned: BorshDeserialize,
 {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        Ok(T::Owned::deserialize(buf)?.into())
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        Ok(T::Owned::deserialize_reader(reader)?.into())
     }
 }
 
 impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
-    fn deserialize(_: &mut &[u8]) -> Result<Self> {
+    fn deserialize_reader<R: Read>(_: &mut R) -> Result<Self> {
         Ok(Self::default())
     }
 }

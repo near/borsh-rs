@@ -688,3 +688,327 @@ impl Write for alloc::vec::Vec<u8> {
         Ok(())
     }
 }
+
+/// The `Read` trait allows for reading bytes from a source.
+///
+/// Implementors of the `Read` trait are called 'readers'.
+///
+/// Readers are defined by one required method, [`read()`]. Each call to [`read()`]
+/// will attempt to pull bytes from this source into a provided buffer. A
+/// number of other methods are implemented in terms of [`read()`], giving
+/// implementors a number of ways to read bytes while only needing to implement
+/// a single method.
+///
+/// Readers are intended to be composable with one another. Many implementors
+/// throughout [`std::io`] take and provide types which implement the `Read`
+/// trait.
+///
+/// Please note that each call to [`read()`] may involve a system call, and
+/// therefore, using something that implements [`BufRead`], such as
+/// [`BufReader`], will be more efficient.
+///
+/// # Examples
+///
+/// [`File`]s implement `Read`:
+///
+/// ```no_run
+/// use std::io;
+/// use std::io::prelude::*;
+/// use std::fs::File;
+///
+/// fn main() -> io::Result<()> {
+///     let mut f = File::open("foo.txt")?;
+///     let mut buffer = [0; 10];
+///
+///     // read up to 10 bytes
+///     f.read(&mut buffer)?;
+///
+///     let mut buffer = Vec::new();
+///     // read the whole file
+///     f.read_to_end(&mut buffer)?;
+///
+///     // read into a String, so that you don't need to do the conversion.
+///     let mut buffer = String::new();
+///     f.read_to_string(&mut buffer)?;
+///
+///     // and more! See the other methods for more details.
+///     Ok(())
+/// }
+/// ```
+///
+/// Read from [`&str`] because [`&[u8]`][prim@slice] implements `Read`:
+///
+/// ```no_run
+/// # use std::io;
+/// use std::io::prelude::*;
+///
+/// fn main() -> io::Result<()> {
+///     let mut b = "This string will be read".as_bytes();
+///     let mut buffer = [0; 10];
+///
+///     // read up to 10 bytes
+///     b.read(&mut buffer)?;
+///
+///     // etc... it works exactly as a File does!
+///     Ok(())
+/// }
+/// ```
+///
+/// [`read()`]: Read::read
+/// [`&str`]: prim@str
+/// [`std::io`]: self
+/// [`File`]: crate::fs::File
+pub trait Read {
+    /// Pull some bytes from this source into the specified buffer, returning
+    /// how many bytes were read.
+    ///
+    /// This function does not provide any guarantees about whether it blocks
+    /// waiting for data, but if an object needs to block for a read and cannot,
+    /// it will typically signal this via an [`Err`] return value.
+    ///
+    /// If the return value of this method is [`Ok(n)`], then implementations must
+    /// guarantee that `0 <= n <= buf.len()`. A nonzero `n` value indicates
+    /// that the buffer `buf` has been filled in with `n` bytes of data from this
+    /// source. If `n` is `0`, then it can indicate one of two scenarios:
+    ///
+    /// 1. This reader has reached its "end of file" and will likely no longer
+    ///    be able to produce bytes. Note that this does not mean that the
+    ///    reader will *always* no longer be able to produce bytes. As an example,
+    ///    on Linux, this method will call the `recv` syscall for a [`TcpStream`],
+    ///    where returning zero indicates the connection was shut down correctly. While
+    ///    for [`File`], it is possible to reach the end of file and get zero as result,
+    ///    but if more data is appended to the file, future calls to `read` will return
+    ///    more data.
+    /// 2. The buffer specified was 0 bytes in length.
+    ///
+    /// It is not an error if the returned value `n` is smaller than the buffer size,
+    /// even when the reader is not at the end of the stream yet.
+    /// This may happen for example because fewer bytes are actually available right now
+    /// (e. g. being close to end-of-file) or because read() was interrupted by a signal.
+    ///
+    /// As this trait is safe to implement, callers cannot rely on `n <= buf.len()` for safety.
+    /// Extra care needs to be taken when `unsafe` functions are used to access the read bytes.
+    /// Callers have to ensure that no unchecked out-of-bounds accesses are possible even if
+    /// `n > buf.len()`.
+    ///
+    /// No guarantees are provided about the contents of `buf` when this
+    /// function is called, implementations cannot rely on any property of the
+    /// contents of `buf` being true. It is recommended that *implementations*
+    /// only write data to `buf` instead of reading its contents.
+    ///
+    /// Correspondingly, however, *callers* of this method must not assume any guarantees
+    /// about how the implementation uses `buf`. The trait is safe to implement,
+    /// so it is possible that the code that's supposed to write to the buffer might also read
+    /// from it. It is your responsibility to make sure that `buf` is initialized
+    /// before calling `read`. Calling `read` with an uninitialized `buf` (of the kind one
+    /// obtains via [`MaybeUninit<T>`]) is not safe, and can lead to undefined behavior.
+    ///
+    /// [`MaybeUninit<T>`]: crate::mem::MaybeUninit
+    ///
+    /// # Errors
+    ///
+    /// If this function encounters any form of I/O or other error, an error
+    /// variant will be returned. If an error is returned then it must be
+    /// guaranteed that no bytes were read.
+    ///
+    /// An error of the [`ErrorKind::Interrupted`] kind is non-fatal and the read
+    /// operation should be retried if there is nothing else to do.
+    ///
+    /// # Examples
+    ///
+    /// [`File`]s implement `Read`:
+    ///
+    /// [`Ok(n)`]: Ok
+    /// [`File`]: crate::fs::File
+    /// [`TcpStream`]: crate::net::TcpStream
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut f = File::open("foo.txt")?;
+    ///     let mut buffer = [0; 10];
+    ///
+    ///     // read up to 10 bytes
+    ///     let n = f.read(&mut buffer[..])?;
+    ///
+    ///     println!("The bytes: {:?}", &buffer[..n]);
+    ///     Ok(())
+    /// }
+    /// ```
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
+
+    /// Read the exact number of bytes required to fill `buf`.
+    ///
+    /// This function reads as many bytes as necessary to completely fill the
+    /// specified buffer `buf`.
+    ///
+    /// No guarantees are provided about the contents of `buf` when this
+    /// function is called, implementations cannot rely on any property of the
+    /// contents of `buf` being true. It is recommended that implementations
+    /// only write data to `buf` instead of reading its contents. The
+    /// documentation on [`read`] has a more detailed explanation on this
+    /// subject.
+    ///
+    /// # Errors
+    ///
+    /// If this function encounters an error of the kind
+    /// [`ErrorKind::Interrupted`] then the error is ignored and the operation
+    /// will continue.
+    ///
+    /// If this function encounters an "end of file" before completely filling
+    /// the buffer, it returns an error of the kind [`ErrorKind::UnexpectedEof`].
+    /// The contents of `buf` are unspecified in this case.
+    ///
+    /// If any other read error is encountered then this function immediately
+    /// returns. The contents of `buf` are unspecified in this case.
+    ///
+    /// If this function returns an error, it is unspecified how many bytes it
+    /// has read, but it will never read more than would be necessary to
+    /// completely fill the buffer.
+    ///
+    /// # Examples
+    ///
+    /// [`File`]s implement `Read`:
+    ///
+    /// [`read`]: Read::read
+    /// [`File`]: crate::fs::File
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut f = File::open("foo.txt")?;
+    ///     let mut buffer = [0; 10];
+    ///
+    ///     // read exactly 10 bytes
+    ///     f.read_exact(&mut buffer)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
+        default_read_exact(self, buf)
+    }
+
+    /// Creates a "by reference" adaptor for this instance of `Read`.
+    ///
+    /// The returned adapter also implements `Read` and will simply borrow this
+    /// current reader.
+    ///
+    /// # Examples
+    ///
+    /// [`File`]s implement `Read`:
+    ///
+    /// [`File`]: crate::fs::File
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::io::Read;
+    /// use std::fs::File;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut f = File::open("foo.txt")?;
+    ///     let mut buffer = Vec::new();
+    ///     let mut other_buffer = Vec::new();
+    ///
+    ///     {
+    ///         let reference = f.by_ref();
+    ///
+    ///         // read at most 5 bytes
+    ///         reference.take(5).read_to_end(&mut buffer)?;
+    ///
+    ///     } // drop our &mut reference so we can use f again
+    ///
+    ///     // original file still usable, read the rest
+    ///     f.read_to_end(&mut other_buffer)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    fn by_ref(&mut self) -> &mut Self
+    where
+        Self: Sized,
+    {
+        self
+    }
+}
+
+fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [u8]) -> Result<()> {
+    while !buf.is_empty() {
+        match this.read(buf) {
+            Ok(0) => break,
+            Ok(n) => {
+                let tmp = buf;
+                buf = &mut tmp[n..];
+            }
+            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+            Err(e) => return Err(e),
+        }
+    }
+    if !buf.is_empty() {
+        Err(Error::new(
+            ErrorKind::UnexpectedEof,
+            "failed to fill whole buffer",
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+impl<R: Read + ?Sized> Read for &mut R {
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        (**self).read(buf)
+    }
+
+    #[inline]
+    fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
+        (**self).read_exact(buf)
+    }
+}
+
+impl Read for &[u8] {
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        let amt = core::cmp::min(buf.len(), self.len());
+        let (a, b) = self.split_at(amt);
+
+        // First check if the amount of bytes we want to read is small:
+        // `copy_from_slice` will generally expand to a call to `memcpy`, and
+        // for a single byte the overhead is significant.
+        if amt == 1 {
+            buf[0] = a[0];
+        } else {
+            buf[..amt].copy_from_slice(a);
+        }
+
+        *self = b;
+        Ok(amt)
+    }
+
+    #[inline]
+    fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
+        if buf.len() > self.len() {
+            return Err(Error::new(
+                ErrorKind::UnexpectedEof,
+                "failed to fill whole buffer",
+            ));
+        }
+        let (a, b) = self.split_at(buf.len());
+
+        // First check if the amount of bytes we want to read is small:
+        // `copy_from_slice` will generally expand to a call to `memcpy`, and
+        // for a single byte the overhead is significant.
+        if buf.len() == 1 {
+            buf[0] = a[0];
+        } else {
+            buf.copy_from_slice(a);
+        }
+
+        *self = b;
+        Ok(())
+    }
+}
