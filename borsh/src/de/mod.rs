@@ -468,8 +468,7 @@ impl BorshDeserialize for std::net::Ipv4Addr {
         reader
             .read_exact(&mut buf)
             .map_err(unexpected_eof_to_unexpected_length_of_input)?;
-        let bytes: [u8; 4] = buf.try_into().unwrap();
-        Ok(std::net::Ipv4Addr::from(bytes))
+        Ok(std::net::Ipv4Addr::from(buf))
     }
 }
 
@@ -481,8 +480,7 @@ impl BorshDeserialize for std::net::Ipv6Addr {
         reader
             .read_exact(&mut buf)
             .map_err(unexpected_eof_to_unexpected_length_of_input)?;
-        let bytes: [u8; 16] = buf.try_into().unwrap();
-        Ok(std::net::Ipv6Addr::from(bytes))
+        Ok(std::net::Ipv6Addr::from(buf))
     }
 }
 
