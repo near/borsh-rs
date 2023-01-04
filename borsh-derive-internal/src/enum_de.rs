@@ -40,7 +40,7 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                         );
 
                         variant_header.extend(quote! {
-                            #field_name: #cratename::BorshDeserialize::deserialize(buf)?,
+                            #field_name: #cratename::BorshDeserialize::deserialize_reader(reader)?,
                         });
                     }
                 }
@@ -59,8 +59,9 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                             .unwrap(),
                         );
 
-                        variant_header
-                            .extend(quote! { #cratename::BorshDeserialize::deserialize(buf)?, });
+                        variant_header.extend(
+                            quote! { #cratename::BorshDeserialize::deserialize_reader(reader)?, },
+                        );
                     }
                 }
                 variant_header = quote! { ( #variant_header )};
@@ -72,12 +73,12 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         });
     }
     let variant_idx = quote! {
-        let variant_idx: u8 = #cratename::BorshDeserialize::deserialize(buf)?;
+        let variant_idx: u8 = #cratename::BorshDeserialize::deserialize_reader(reader)?;
     };
     if let Some(method_ident) = init_method {
         Ok(quote! {
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
-                fn deserialize(buf: &mut &[u8]) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
+                fn deserialize_reader<R: borsh::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
                     #variant_idx
                     let mut return_value = match variant_idx {
                         #variant_arms
@@ -98,7 +99,7 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
     } else {
         Ok(quote! {
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
-                fn deserialize(buf: &mut &[u8]) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
+                fn deserialize_reader<R: borsh::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
                     #variant_idx
                     let return_value = match variant_idx {
                         #variant_arms
