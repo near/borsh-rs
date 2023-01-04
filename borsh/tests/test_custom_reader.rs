@@ -1,5 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
+const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
@@ -56,7 +57,7 @@ fn test_custom_reader_with_too_much_data() {
         item3: 1.2345,
     };
     let mut bytes = s.try_to_vec().unwrap();
-    bytes.pop().unwrap();
+    bytes.push(1);
     let mut reader = CustomReader {
         data: bytes,
         read_index: 0,
@@ -65,7 +66,7 @@ fn test_custom_reader_with_too_much_data() {
         <Serializable as BorshDeserialize>::try_from_reader(&mut reader)
             .unwrap_err()
             .to_string(),
-        ERROR_UNEXPECTED_LENGTH_OF_INPUT
+        ERROR_NOT_ALL_BYTES_READ
     );
 }
 
