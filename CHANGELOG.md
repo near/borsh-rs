@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- *BREAKING CHANGE*: `BorshDeserialize` now works by receiving an `&mut std::io::Read`
+  instead of a `&mut &[u8]`. This is a breaking change for code that provides custom 
+  implementations of `BorshDeserialize`; there is no impact on code that uses only the
+  derive macro.
+- Added `BorshDeserialize::try_from_reader` and `BorshDeserialize::deserialize_reader`.
+
 ## [0.9.3] - 2022-02-03
 
 - Fix `no_std` compatibility.
@@ -64,7 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Avoid silent integer casts since they can lead to hidden security issues.
 - Removed `Cargo.lock` as it is advised for lib crates.
 
-[unreleased]: https://github.com/near/borsh-rs/compare/v0.9.2...HEAD
+[unreleased]: https://github.com/near/borsh-rs/compare/v0.9.3...HEAD
+[0.9.3]: https://github.com/near/borsh-rs/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/near/borsh-rs/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/near/borsh-rs/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/near/borsh-rs/compare/v0.8.2...v0.9.0
