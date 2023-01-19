@@ -22,7 +22,7 @@ path = "src/generate_schema_schema.rs"
 
 [dependencies]
 borsh-derive = { path = "../borsh-derive" }
-hashbrown = "0.13"
+hashbrown = ">=0.11,<0.14"
 
 [features]
 default = ["std"]

@@ -7,11 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2023-01-19
+
+- Fix no-std feature (some of the imports incorrectly used `std::` instead of `crate::maybestd::`)
+- Fix borsh-schema derives with `for` bounds
+- Implemented BorshSchema for HashSet
+- Add support for isize, usize types
+- Delete schema for char
+- Implement ser/de and schema for (T,)
+- Add clone impls to borsh schema types
+- Remove unnecessary trait bounds requirements for array
 - *BREAKING CHANGE*: `BorshDeserialize` now works by receiving an `&mut std::io::Read`
   instead of a `&mut &[u8]`. This is a breaking change for code that provides custom 
   implementations of `BorshDeserialize`; there is no impact on code that uses only the
   derive macro.
 - Added `BorshDeserialize::try_from_reader` and `BorshDeserialize::deserialize_reader`.
+- Upgrade hashbrown version to be `>=0.11,<0.14` to allow wider range of versions.
 
 ## [0.9.3] - 2022-02-03
 
