@@ -73,6 +73,55 @@ pub trait BorshDeserialize: Sized {
     }
 }
 
+/// Additional methods offered on enums which uses `[derive(BorshDeserialize)]`.
+pub trait EnumExt: BorshDeserialize {
+    /// Deserialises given variant of an enum from the reader.
+    ///
+    /// This may be used to perform validation or filtering based on what
+    /// variant is being deserialised.
+    ///
+    /// ```
+    /// use borsh::BorshDeserialize;
+    /// use borsh::de::EnumExt as _;
+    ///
+    /// #[derive(Debug, PartialEq, Eq, BorshDeserialize)]
+    /// enum MyEnum {
+    ///     Zero,
+    ///     One(u8),
+    ///     Many(Vec<u8>)
+    /// }
+    ///
+    /// #[derive(Debug, PartialEq, Eq)]
+    /// struct OneOrZero(MyEnum);
+    ///
+    /// impl borsh::de::BorshDeserialize for OneOrZero {
+    ///     fn deserialize_reader<R: borsh::maybestd::io::Read>(
+    ///         reader: &mut R,
+    ///     ) -> borsh::maybestd::io::Result<Self> {
+    ///         use borsh::de::EnumExt;
+    ///         let tag = u8::deserialize_reader(reader)?;
+    ///         if tag == 2 {
+    ///             Err(borsh::maybestd::io::Error::new(
+    ///                 borsh::maybestd::io::ErrorKind::InvalidInput,
+    ///                 "MyEnum::Many not allowed here",
+    ///             ))
+    ///         } else {
+    ///             MyEnum::deserialize_variant(reader, tag).map(Self)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// let data = b"\0";
+    /// assert_eq!(MyEnum::Zero, MyEnum::try_from_slice(&data[..]).unwrap());
+    /// assert_eq!(MyEnum::Zero, OneOrZero::try_from_slice(&data[..]).unwrap().0);
+    ///
+    /// let data = b"\x02\0\0\0\0";
+    /// assert_eq!(MyEnum::Many(Vec::new()), MyEnum::try_from_slice(&data[..]).unwrap());
+    /// assert!(OneOrZero::try_from_slice(&data[..]).is_err());
+    /// ```
+    fn deserialize_variant<R: Read>(reader: &mut R, tag: u8) -> Result<Self>;
+}
+
 fn unexpected_eof_to_unexpected_length_of_input(e: Error) -> Error {
     if e.kind() == ErrorKind::UnexpectedEof {
         Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT)
