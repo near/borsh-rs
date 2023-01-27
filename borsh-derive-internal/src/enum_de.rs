@@ -72,49 +72,38 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
             #variant_idx => #name::#variant_ident #variant_header ,
         });
     }
-    let variant_idx = quote! {
-        let variant_idx: u8 = #cratename::BorshDeserialize::deserialize_reader(reader)?;
-    };
-    if let Some(method_ident) = init_method {
-        Ok(quote! {
-            impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
-                fn deserialize_reader<R: borsh::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
-                    #variant_idx
-                    let mut return_value = match variant_idx {
-                        #variant_arms
-                        _ => {
-                            let msg = #cratename::maybestd::format!("Unexpected variant index: {:?}", variant_idx);
 
-                            return Err(#cratename::maybestd::io::Error::new(
-                                #cratename::maybestd::io::ErrorKind::InvalidInput,
-                                msg,
-                            ));
-                        }
-                    };
-                    return_value.#method_ident();
-                    Ok(return_value)
-                }
-            }
-        })
+    let init = if let Some(method_ident) = init_method {
+        quote! {
+            return_value.#method_ident();
+        }
     } else {
-        Ok(quote! {
-            impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
-                fn deserialize_reader<R: borsh::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
-                    #variant_idx
-                    let return_value = match variant_idx {
-                        #variant_arms
-                        _ => {
-                            let msg = #cratename::maybestd::format!("Unexpected variant index: {:?}", variant_idx);
+        quote! {}
+    };
 
-                            return Err(#cratename::maybestd::io::Error::new(
-                                #cratename::maybestd::io::ErrorKind::InvalidInput,
-                                msg,
-                            ));
-                        }
-                    };
-                    Ok(return_value)
-                }
+    Ok(quote! {
+        impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
+            fn deserialize_reader<R: borsh::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
+                let tag = <u8 as #cratename::de::BorshDeserialize>::deserialize_reader(reader)?;
+                <Self as #cratename::de::EnumExt>::deserialize_variant(reader, tag)
             }
-        })
-    }
+        }
+
+        impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
+            fn deserialize_variant<R: borsh::maybestd::io::Read>(
+                reader: &mut R,
+                variant_idx: u8,
+            ) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
+                let mut return_value = match variant_idx {
+                    #variant_arms
+                    _ => return Err(#cratename::maybestd::io::Error::new(
+                        #cratename::maybestd::io::ErrorKind::InvalidInput,
+                        #cratename::maybestd::format!("Unexpected variant index: {:?}", variant_idx),
+                    ))
+                };
+                #init
+                Ok(return_value)
+            }
+        }
+    })
 }
