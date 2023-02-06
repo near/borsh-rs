@@ -274,7 +274,7 @@ impl BorshDeserialize for bool {
         } else if b == 1 {
             Ok(true)
         } else {
-            let msg = format!("Invalid bool representation: {}", b);
+            let msg = format!("Invalid bool representation: {b}");
 
             Err(Error::new(ErrorKind::InvalidInput, msg))
         }
@@ -294,8 +294,7 @@ where
             Ok(Some(T::deserialize_reader(reader)?))
         } else {
             let msg = format!(
-                "Invalid Option representation: {}. The first byte must be 0 or 1",
-                flag
+                "Invalid Option representation: {flag}. The first byte must be 0 or 1"
             );
 
             Err(Error::new(ErrorKind::InvalidInput, msg))
@@ -317,8 +316,7 @@ where
             Ok(Ok(T::deserialize_reader(reader)?))
         } else {
             let msg = format!(
-                "Invalid Result representation: {}. The first byte must be 0 or 1",
-                flag
+                "Invalid Result representation: {flag}. The first byte must be 0 or 1"
             );
 
             Err(Error::new(ErrorKind::InvalidInput, msg))
@@ -483,7 +481,7 @@ impl BorshDeserialize for std::net::SocketAddr {
             1 => std::net::SocketAddrV6::deserialize_reader(reader).map(std::net::SocketAddr::V6),
             value => Err(Error::new(
                 ErrorKind::InvalidInput,
-                format!("Invalid SocketAddr variant: {}", value),
+                format!("Invalid SocketAddr variant: {value}"),
             )),
         }
     }

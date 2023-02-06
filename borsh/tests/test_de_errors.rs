@@ -50,7 +50,7 @@ fn test_invalid_bool() {
         let bytes = [i];
         assert_eq!(
             <bool>::try_from_slice(&bytes).unwrap_err().to_string(),
-            format!("Invalid bool representation: {}", i)
+            format!("Invalid bool representation: {i}")
         );
     }
 }
@@ -64,8 +64,7 @@ fn test_invalid_option() {
                 .unwrap_err()
                 .to_string(),
             format!(
-                "Invalid Option representation: {}. The first byte must be 0 or 1",
-                i
+                "Invalid Option representation: {i}. The first byte must be 0 or 1"
             )
         );
     }
@@ -80,8 +79,7 @@ fn test_invalid_result() {
                 .unwrap_err()
                 .to_string(),
             format!(
-                "Invalid Result representation: {}. The first byte must be 0 or 1",
-                i
+                "Invalid Result representation: {i}. The first byte must be 0 or 1"
             )
         );
     }
