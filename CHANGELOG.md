@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Implemented (de)ser for `core::ops::range`
+
 ## [0.10.0] - 2023-01-19
 
 - Fix no-std feature (some of the imports incorrectly used `std::` instead of `crate::maybestd::`)
