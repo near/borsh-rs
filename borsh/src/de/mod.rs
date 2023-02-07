@@ -293,9 +293,8 @@ where
         } else if flag == 1 {
             Ok(Some(T::deserialize_reader(reader)?))
         } else {
-            let msg = format!(
-                "Invalid Option representation: {flag}. The first byte must be 0 or 1"
-            );
+            let msg =
+                format!("Invalid Option representation: {flag}. The first byte must be 0 or 1");
 
             Err(Error::new(ErrorKind::InvalidInput, msg))
         }
@@ -315,9 +314,8 @@ where
         } else if flag == 1 {
             Ok(Ok(T::deserialize_reader(reader)?))
         } else {
-            let msg = format!(
-                "Invalid Result representation: {flag}. The first byte must be 0 or 1"
-            );
+            let msg =
+                format!("Invalid Result representation: {flag}. The first byte must be 0 or 1");
 
             Err(Error::new(ErrorKind::InvalidInput, msg))
         }

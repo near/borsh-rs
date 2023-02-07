@@ -63,9 +63,7 @@ fn test_invalid_option() {
             <Option<u8>>::try_from_slice(&bytes)
                 .unwrap_err()
                 .to_string(),
-            format!(
-                "Invalid Option representation: {i}. The first byte must be 0 or 1"
-            )
+            format!("Invalid Option representation: {i}. The first byte must be 0 or 1")
         );
     }
 }
@@ -78,9 +76,7 @@ fn test_invalid_result() {
             <Result<u64, String>>::try_from_slice(&bytes)
                 .unwrap_err()
                 .to_string(),
-            format!(
-                "Invalid Result representation: {i}. The first byte must be 0 or 1"
-            )
+            format!("Invalid Result representation: {i}. The first byte must be 0 or 1")
         );
     }
 }
