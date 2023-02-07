@@ -25,7 +25,7 @@ pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStre
     let mut add_recursive_defs = TokenStream2::new();
     for variant in &input.variants {
         let variant_name_str = variant.ident.to_token_stream().to_string();
-        let full_variant_name_str = format!("{name_str}{variant_name_str}");
+        let full_variant_name_str = format!("{}{}", name_str, variant_name_str);
         let full_variant_ident = Ident::new(full_variant_name_str.as_str(), Span::call_site());
         let mut anonymous_struct = ItemStruct {
             attrs: vec![],

@@ -29,7 +29,7 @@ where
         let size = borsh_sizes[i];
         let obj = &objects[i];
 
-        let benchmark_param_display = format!("idx={i}; size={size}");
+        let benchmark_param_display = format!("idx={}; size={}", i, size);
 
         group.throughput(Throughput::Bytes(size as u64));
         group.bench_with_input(
@@ -102,7 +102,7 @@ where
         let borsh_data = &borsh_datas[i];
         let speedy_data = &speedy_datas[i];
 
-        let benchmark_param_display = format!("idx={i}; size={size}");
+        let benchmark_param_display = format!("idx={}; size={}", i, size);
 
         group.throughput(Throughput::Bytes(size as u64));
         group.bench_with_input(

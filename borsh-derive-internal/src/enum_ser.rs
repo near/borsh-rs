@@ -55,7 +55,7 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                         u32::try_from(field_idx).expect("up to 2^32 fields are supported");
                     if contains_skip(&field.attrs) {
                         let field_ident =
-                            Ident::new(format!("_id{field_idx}").as_str(), Span::call_site());
+                            Ident::new(format!("_id{}", field_idx).as_str(), Span::call_site());
                         variant_header.extend(quote! { #field_ident, });
                         continue;
                     } else {
@@ -68,7 +68,7 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                         );
 
                         let field_ident =
-                            Ident::new(format!("id{field_idx}").as_str(), Span::call_site());
+                            Ident::new(format!("id{}", field_idx).as_str(), Span::call_site());
                         variant_header.extend(quote! { #field_ident, });
                         variant_body.extend(quote! {
                             #cratename::BorshSerialize::serialize(#field_ident, writer)?;
