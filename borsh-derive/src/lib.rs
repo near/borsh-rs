@@ -1,3 +1,5 @@
+// TODO: re-enable this lint when we bump msrv to 1.58
+#![allow(clippy::uninlined_format_args)]
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
