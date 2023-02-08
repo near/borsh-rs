@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2022-02-08
+
 - Implemented (de)ser for `core::ops::range`
+- Introduce de::EnumExt trait with deserialize_variant method
 
 ## [0.10.0] - 2023-01-19
 
