@@ -157,6 +157,17 @@ impl BorshSerialize for bool {
     }
 }
 
+impl<T> BorshSerialize for core::ops::Range<T>
+where
+    T: BorshSerialize,
+{
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.start.serialize(writer)?;
+        self.end.serialize(writer)
+    }
+}
+
 impl<T> BorshSerialize for Option<T>
 where
     T: BorshSerialize,

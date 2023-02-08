@@ -281,6 +281,19 @@ impl BorshDeserialize for bool {
     }
 }
 
+impl<T> BorshDeserialize for core::ops::Range<T>
+where
+    T: BorshDeserialize,
+{
+    #[inline]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        Ok(Self {
+            start: T::deserialize_reader(reader)?,
+            end: T::deserialize_reader(reader)?,
+        })
+    }
+}
+
 impl<T> BorshDeserialize for Option<T>
 where
     T: BorshDeserialize,

@@ -23,6 +23,7 @@ struct A<'a> {
     lazy: Option<u64>,
     c: std::borrow::Cow<'a, str>,
     cow_arr: std::borrow::Cow<'a, [std::borrow::Cow<'a, str>]>,
+    range_u32: std::ops::Range<u32>,
     #[borsh_skip]
     skipped: Option<u64>,
 }
@@ -105,6 +106,7 @@ fn test_simple_struct() {
         lazy: Some(5),
         c: std::borrow::Cow::Borrowed("Hello"),
         cow_arr: std::borrow::Cow::Borrowed(&cow_arr),
+        range_u32: 12..71,
         skipped: Some(6),
     };
     let encoded_a = a.try_to_vec().unwrap();
@@ -140,6 +142,7 @@ fn test_simple_struct() {
             std::borrow::Cow::Borrowed("Hello1"),
             std::borrow::Cow::Owned("Hello2".to_string()),
         ]),
+        range_u32: 12..71,
         skipped: None,
     };
 
