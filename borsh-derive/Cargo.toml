@@ -19,5 +19,5 @@ proc-macro = true
 borsh-derive-internal = { path = "../borsh-derive-internal" }
 borsh-schema-derive-internal = { path = "../borsh-schema-derive-internal" }
 syn = {version = "1", features = ["full", "fold"] }
-proc-macro-crate = "0.1.5"
+proc-macro-crate = "1.3.0"
 proc-macro2 = "1"

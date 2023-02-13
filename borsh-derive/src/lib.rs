@@ -3,7 +3,6 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use proc_macro_crate::crate_name;
 use syn::{Ident, ItemEnum, ItemStruct, ItemUnion};
 
 use borsh_derive_internal::*;
@@ -11,10 +10,7 @@ use borsh_schema_derive_internal::*;
 
 #[proc_macro_derive(BorshSerialize, attributes(borsh_skip))]
 pub fn borsh_serialize(input: TokenStream) -> TokenStream {
-    let cratename = Ident::new(
-        &crate_name("borsh").unwrap_or_else(|_| "borsh".to_string()),
-        Span::call_site(),
-    );
+    let cratename = Ident::new("borsh", Span::call_site());
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
         struct_ser(&input, cratename)
@@ -34,10 +30,7 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh_init))]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
-    let cratename = Ident::new(
-        &crate_name("borsh").unwrap_or_else(|_| "borsh".to_string()),
-        Span::call_site(),
-    );
+    let cratename = Ident::new("borsh", Span::call_site());
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
         struct_de(&input, cratename)
@@ -57,10 +50,7 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(BorshSchema, attributes(borsh_skip))]
 pub fn borsh_schema(input: TokenStream) -> TokenStream {
-    let cratename = Ident::new(
-        &crate_name("borsh").unwrap_or_else(|_| "borsh".to_string()),
-        Span::call_site(),
-    );
+    let cratename = Ident::new("borsh", Span::call_site());
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
         process_struct(&input, cratename)
