@@ -144,10 +144,29 @@ impl BorshDeserialize for u8 {
     #[doc(hidden)]
     fn vec_from_reader<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
         let len: usize = len.try_into().map_err(|_| ErrorKind::InvalidInput)?;
-        let mut vec = vec![0u8; len];
-        reader
-            .read_exact(vec.as_mut_slice())
-            .map_err(unexpected_eof_to_unexpected_length_of_input)?;
+        // Avoid OOM by limiting the size of allocation.  This makes the read
+        // less efficient (since we need to loop and reallocate) but it protects
+        // us from someone sending us [0xff, 0xff, 0xff, 0xff] and forcing us to
+        // allocate 4GiB of memory.
+        let mut vec = vec![0u8; len.min(1024 * 1024)];
+        let mut pos = 0;
+        while pos < len {
+            if pos == vec.len() {
+                vec.resize(vec.len().saturating_mul(2).min(len), 0)
+            }
+            // TODO(mina86): Convert this to read_buf once that stabilises.
+            match reader.read(&mut vec.as_mut_slice()[pos..])? {
+                0 => {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        ERROR_UNEXPECTED_LENGTH_OF_INPUT,
+                    ))
+                }
+                read => {
+                    pos += read;
+                }
+            }
+        }
         Ok(Some(vec))
     }
 
