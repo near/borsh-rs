@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.2] - 2022-02-14
+
+- Prevent unbound allocation for vectors on deserialization
+
 ## [0.10.1] - 2022-02-08
 
 - Implemented (de)ser for `core::ops::range`
