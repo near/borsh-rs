@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Implemented (de)ser for `core::time::Duration`
+
 ## [0.10.2] - 2022-02-14
 
 - Prevent unbound allocation for vectors on deserialization

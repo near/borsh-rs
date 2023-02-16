@@ -536,3 +536,10 @@ impl<T: ?Sized> BorshSerialize for PhantomData<T> {
         Ok(())
     }
 }
+
+impl BorshSerialize for core::time::Duration {
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.as_secs().serialize(writer)?;
+        self.subsec_nanos().serialize(writer)
+    }
+}
