@@ -271,6 +271,22 @@ where
     }
 }
 
+#[cfg(any(test, feature = "bytes"))]
+impl BorshSerialize for bytes::Bytes {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.as_ref().serialize(writer)
+    }
+}
+
+#[cfg(any(test, feature = "bytes"))]
+impl BorshSerialize for bytes::BytesMut {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.as_ref().serialize(writer)
+    }
+}
+
 impl<T> BorshSerialize for VecDeque<T>
 where
     T: BorshSerialize,
