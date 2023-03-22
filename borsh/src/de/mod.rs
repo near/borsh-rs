@@ -773,3 +773,11 @@ impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
         Ok(Self::default())
     }
 }
+
+impl BorshDeserialize for core::time::Duration {
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let secs = u64::deserialize_reader(reader)?;
+        let nanos = u32::deserialize_reader(reader)?;
+        Ok(core::time::Duration::new(secs, nanos))
+    }
+}
