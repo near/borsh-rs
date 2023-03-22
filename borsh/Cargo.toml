@@ -23,6 +23,12 @@ path = "src/generate_schema_schema.rs"
 [dependencies]
 borsh-derive = { path = "../borsh-derive" }
 hashbrown = ">=0.11,<0.14"
+bytes = { version = "1", optional = true }
+
+[dev-dependencies]
+bytes = "1"
+# Enable the "bytes" feature in integ tests: https://github.com/rust-lang/cargo/issues/2911#issuecomment-1464060655
+borsh = { path = ".", features = ["bytes"] }
 
 [features]
 default = ["std"]

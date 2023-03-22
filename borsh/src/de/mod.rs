@@ -6,6 +6,9 @@ use core::{
     mem::{forget, size_of},
 };
 
+#[cfg(any(test, feature = "bytes"))]
+use bytes::{BufMut, BytesMut};
+
 use crate::maybestd::{
     borrow::{Borrow, Cow, ToOwned},
     boxed::Box,
@@ -397,6 +400,28 @@ where
             }
             Ok(result)
         }
+    }
+}
+
+#[cfg(any(test, feature = "bytes"))]
+impl BorshDeserialize for bytes::Bytes {
+    #[inline]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let vec = <Vec<u8>>::deserialize_reader(reader)?;
+        Ok(vec.into())
+    }
+}
+
+#[cfg(any(test, feature = "bytes"))]
+impl BorshDeserialize for bytes::BytesMut {
+    #[inline]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let len = u32::deserialize_reader(reader)?;
+        let mut out = BytesMut::with_capacity(hint::cautious::<u8>(len));
+        for _ in 0..len {
+            out.put_u8(u8::deserialize_reader(reader)?);
+        }
+        Ok(out)
     }
 }
 
