@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add optional BSON object id support
+
 ## [0.10.3] - 2022-03-22
 
 - Add optional bytes/bytesmut support
@@ -31,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add clone impls to borsh schema types
 - Remove unnecessary trait bounds requirements for array
 - *BREAKING CHANGE*: `BorshDeserialize` now works by receiving an `&mut std::io::Read`
-  instead of a `&mut &[u8]`. This is a breaking change for code that provides custom 
+  instead of a `&mut &[u8]`. This is a breaking change for code that provides custom
   implementations of `BorshDeserialize`; there is no impact on code that uses only the
   derive macro.
 - Added `BorshDeserialize::try_from_reader` and `BorshDeserialize::deserialize_reader`.
