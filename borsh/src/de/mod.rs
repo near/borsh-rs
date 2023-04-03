@@ -383,15 +383,8 @@ where
         } else if let Some(vec_bytes) = T::vec_from_reader(len, reader)? {
             Ok(vec_bytes)
         } else if size_of::<T>() == 0 {
-            let mut result = vec![T::deserialize_reader(reader)?];
-
-            let p = result.as_mut_ptr();
-            unsafe {
-                forget(result);
-                let len = len.try_into().map_err(|_| ErrorKind::InvalidInput)?;
-                let result = Vec::from_raw_parts(p, len, len);
-                Ok(result)
-            }
+            let result = vec![T::deserialize_reader(reader)?];
+            Ok(result)
         } else {
             // TODO(16): return capacity allocation when we can safely do that.
             let mut result = Vec::with_capacity(hint::cautious::<T>(len));
