@@ -31,7 +31,7 @@ fn test_invalid_enum_variant() {
     let bytes = vec![123];
     assert_eq!(
         A::try_from_slice(&bytes).unwrap_err().to_string(),
-        "Unexpected variant index: 123"
+        "Unexpected variant tag: 123"
     );
 }
 

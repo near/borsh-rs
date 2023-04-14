@@ -4,7 +4,7 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{Fields, Ident, ItemEnum, WhereClause};
 
-use crate::attribute_helpers::contains_skip;
+use crate::{attribute_helpers::contains_skip, enum_discriminant_map::discriminant_map};
 
 pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
@@ -18,11 +18,12 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
     );
     let mut variant_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
-    for (variant_idx, variant) in input.variants.iter().enumerate() {
-        let variant_idx = u8::try_from(variant_idx).expect("up to 256 enum variants are supported");
+    let discriminants = discriminant_map(&input.variants);
+    for variant in input.variants.iter() {
         let variant_ident = &variant.ident;
         let mut variant_header = TokenStream2::new();
         let mut variant_body = TokenStream2::new();
+        let discriminant_value = discriminants.get(variant_ident).unwrap();
         match &variant.fields {
             Fields::Named(fields) => {
                 for field in &fields.named {
@@ -46,7 +47,7 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                 }
                 variant_header = quote! { { #variant_header }};
                 variant_idx_body.extend(quote!(
-                    #name::#variant_ident { .. } => #variant_idx,
+                    #name::#variant_ident { .. } => #discriminant_value,
                 ));
             }
             Fields::Unnamed(fields) => {
@@ -77,12 +78,12 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                 }
                 variant_header = quote! { ( #variant_header )};
                 variant_idx_body.extend(quote!(
-                    #name::#variant_ident(..) => #variant_idx,
+                    #name::#variant_ident(..) => #discriminant_value,
                 ));
             }
             Fields::Unit => {
                 variant_idx_body.extend(quote!(
-                    #name::#variant_ident => #variant_idx,
+                    #name::#variant_ident => #discriminant_value,
                 ));
             }
         }

@@ -1,10 +1,11 @@
-use core::convert::TryFrom;
-
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{Fields, Ident, ItemEnum, WhereClause};
 
-use crate::attribute_helpers::{contains_initialize_with, contains_skip};
+use crate::{
+    attribute_helpers::{contains_initialize_with, contains_skip},
+    enum_discriminant_map::discriminant_map,
+};
 
 pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
@@ -18,9 +19,10 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
     );
     let init_method = contains_initialize_with(&input.attrs)?;
     let mut variant_arms = TokenStream2::new();
-    for (variant_idx, variant) in input.variants.iter().enumerate() {
-        let variant_idx = u8::try_from(variant_idx).expect("up to 256 enum variants are supported");
+    let discriminants = discriminant_map(&input.variants);
+    for variant in input.variants.iter() {
         let variant_ident = &variant.ident;
+        let discriminant = discriminants.get(variant_ident).unwrap();
         let mut variant_header = TokenStream2::new();
         match &variant.fields {
             Fields::Named(fields) => {
@@ -69,7 +71,7 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
             Fields::Unit => {}
         }
         variant_arms.extend(quote! {
-            #variant_idx => #name::#variant_ident #variant_header ,
+            if variant_tag == #discriminant { #name::#variant_ident #variant_header } else
         });
     }
 
@@ -92,13 +94,13 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
             fn deserialize_variant<R: borsh::maybestd::io::Read>(
                 reader: &mut R,
-                variant_idx: u8,
+                variant_tag: u8,
             ) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
-                let mut return_value = match variant_idx {
-                    #variant_arms
-                    _ => return Err(#cratename::maybestd::io::Error::new(
+                let mut return_value =
+                    #variant_arms {
+                    return Err(#cratename::maybestd::io::Error::new(
                         #cratename::maybestd::io::ErrorKind::InvalidInput,
-                        #cratename::maybestd::format!("Unexpected variant index: {:?}", variant_idx),
+                        #cratename::maybestd::format!("Unexpected variant tag: {variant_tag:?}"),
                     ))
                 };
                 #init
