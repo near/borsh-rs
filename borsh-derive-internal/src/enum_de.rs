@@ -100,7 +100,7 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                     #variant_arms {
                     return Err(#cratename::maybestd::io::Error::new(
                         #cratename::maybestd::io::ErrorKind::InvalidInput,
-                        #cratename::maybestd::format!("Unexpected variant tag: {variant_tag:?}"),
+                        #cratename::maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
                     ))
                 };
                 #init
