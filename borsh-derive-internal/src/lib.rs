@@ -4,6 +4,7 @@
 
 mod attribute_helpers;
 mod enum_de;
+mod enum_discriminant_map;
 mod enum_ser;
 mod struct_de;
 mod struct_ser;
