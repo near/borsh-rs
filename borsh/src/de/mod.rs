@@ -425,6 +425,16 @@ impl BorshDeserialize for bytes::BytesMut {
     }
 }
 
+#[cfg(any(test, feature = "bson"))]
+impl BorshDeserialize for bson::oid::ObjectId {
+    #[inline]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let mut buf = [0u8; 12];
+        reader.read_exact(&mut buf)?;
+        Ok(bson::oid::ObjectId::from_bytes(buf))
+    }
+}
+
 impl<T> BorshDeserialize for Cow<'_, T>
 where
     T: ToOwned + ?Sized,

@@ -287,6 +287,14 @@ impl BorshSerialize for bytes::BytesMut {
     }
 }
 
+#[cfg(any(test, feature = "bson"))]
+impl BorshSerialize for bson::oid::ObjectId {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.bytes().serialize(writer)
+    }
+}
+
 impl<T> BorshSerialize for VecDeque<T>
 where
     T: BorshSerialize,
