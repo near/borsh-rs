@@ -26,10 +26,10 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
                 let field_name = field.ident.as_ref().unwrap().to_token_stream().to_string();
                 let field_type = &field.ty;
                 fields_vec.push(quote! {
-                    (#field_name.to_string(), <#field_type>::declaration())
+                    (#field_name.to_string(), <#field_type as #cratename::BorshSchema>::declaration())
                 });
                 add_definitions_recursively_rec.extend(quote! {
-                    <#field_type>::add_definitions_recursively(definitions);
+                    <#field_type as #cratename::BorshSchema>::add_definitions_recursively(definitions);
                 });
                 where_clause_additions.push(quote! {
                     #field_type: #cratename::BorshSchema
@@ -48,10 +48,10 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
                 }
                 let field_type = &field.ty;
                 fields_vec.push(quote! {
-                    <#field_type>::declaration()
+                    <#field_type as #cratename::BorshSchema>::declaration()
                 });
                 add_definitions_recursively_rec.extend(quote! {
-                    <#field_type>::add_definitions_recursively(definitions);
+                    <#field_type as #cratename::BorshSchema>::add_definitions_recursively(definitions);
                 });
                 where_clause_additions.push(quote! {
                     #field_type: #cratename::BorshSchema

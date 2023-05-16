@@ -98,7 +98,7 @@ pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStre
             #anonymous_struct
         });
         add_recursive_defs.extend(quote! {
-            <#full_variant_ident #ty_generics>::add_definitions_recursively(definitions);
+            <#full_variant_ident #ty_generics as #cratename::BorshSchema>::add_definitions_recursively(definitions);
         });
         variants_defs.push(quote! {
             (#variant_name_str.to_string(), <#full_variant_ident #ty_generics>::declaration())
