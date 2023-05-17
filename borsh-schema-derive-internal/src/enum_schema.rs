@@ -160,8 +160,8 @@ mod tests {
                     struct ABacon;
                     #[derive(borsh :: BorshSchema)]
                     struct AEggs;
-                    <ABacon>::add_definitions_recursively(definitions);
-                    <AEggs>::add_definitions_recursively(definitions);
+                    <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
+                    <AEggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
                     let variants = borsh::maybestd::vec![
                         ("Bacon".to_string(), <ABacon>::declaration()),
                         ("Eggs".to_string(), <AEggs>::declaration())
@@ -196,7 +196,7 @@ mod tests {
                 ) {
                     #[derive(borsh :: BorshSchema)]
                     struct ABacon;
-                    <ABacon>::add_definitions_recursively(definitions);
+                    <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
                     let variants = borsh::maybestd::vec![("Bacon".to_string(), <ABacon>::declaration())];
                     let definition = borsh::schema::Definition::Enum { variants };
                     Self::add_definition(Self::declaration(), definition, definitions);
@@ -240,10 +240,10 @@ mod tests {
                         wrapper: Wrapper,
                         filling: Filling
                     }
-                    <ABacon>::add_definitions_recursively(definitions);
-                    <AEggs>::add_definitions_recursively(definitions);
-                    <ASalad>::add_definitions_recursively(definitions);
-                    <ASausage>::add_definitions_recursively(definitions);
+                    <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
+                    <AEggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
+                    <ASalad as borsh::BorshSchema>::add_definitions_recursively(definitions);
+                    <ASausage as borsh::BorshSchema>::add_definitions_recursively(definitions);
                     let variants = borsh::maybestd::vec![
                         ("Bacon".to_string(), <ABacon>::declaration()),
                         ("Eggs".to_string(), <AEggs>::declaration()),
@@ -304,10 +304,10 @@ mod tests {
                         #[borsh_skip]
                         borsh_schema_phantom_data: ::core::marker::PhantomData<(C, W, )>
                     }
-                    <ABacon<C, W> >::add_definitions_recursively(definitions);
-                    <AEggs<C, W> >::add_definitions_recursively(definitions);
-                    <ASalad<C, W> >::add_definitions_recursively(definitions);
-                    <ASausage<C, W> >::add_definitions_recursively(definitions);
+                    <ABacon<C, W> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+                    <AEggs<C, W> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+                    <ASalad<C, W> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+                    <ASausage<C, W> as borsh::BorshSchema>::add_definitions_recursively(definitions);
                     let variants = borsh::maybestd::vec![
                         ("Bacon".to_string(), <ABacon<C, W> >::declaration()),
                         ("Eggs".to_string(), <AEggs<C, W> >::declaration()),
@@ -379,8 +379,8 @@ mod tests {
                         A: Display + Debug, 
                         B: Display + Debug,
                     ;
-                    <SideLeft<A, B> >::add_definitions_recursively(definitions);
-                    <SideRight<A, B> >::add_definitions_recursively(definitions);
+                    <SideLeft<A, B> as borsh::BorshSchema >::add_definitions_recursively(definitions);
+                    <SideRight<A, B> as borsh::BorshSchema>::add_definitions_recursively(definitions);
                     let variants = borsh::maybestd::vec![
                         ("Left".to_string(), <SideLeft<A, B> >::declaration()),
                         ("Right".to_string(), <SideRight<A, B> >::declaration())
