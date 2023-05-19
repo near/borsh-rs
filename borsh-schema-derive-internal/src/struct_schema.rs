@@ -26,10 +26,10 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
                 let field_name = field.ident.as_ref().unwrap().to_token_stream().to_string();
                 let field_type = &field.ty;
                 fields_vec.push(quote! {
-                    (#field_name.to_string(), <#field_type>::declaration())
+                    (#field_name.to_string(), <#field_type as #cratename::BorshSchema>::declaration())
                 });
                 add_definitions_recursively_rec.extend(quote! {
-                    <#field_type>::add_definitions_recursively(definitions);
+                    <#field_type as #cratename::BorshSchema>::add_definitions_recursively(definitions);
                 });
                 where_clause_additions.push(quote! {
                     #field_type: #cratename::BorshSchema
@@ -48,10 +48,10 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
                 }
                 let field_type = &field.ty;
                 fields_vec.push(quote! {
-                    <#field_type>::declaration()
+                    <#field_type as #cratename::BorshSchema>::declaration()
                 });
                 add_definitions_recursively_rec.extend(quote! {
-                    <#field_type>::add_definitions_recursively(definitions);
+                    <#field_type as #cratename::BorshSchema>::add_definitions_recursively(definitions);
                 });
                 where_clause_additions.push(quote! {
                     #field_type: #cratename::BorshSchema
@@ -157,10 +157,10 @@ mod tests {
                         borsh::schema::Definition
                     >
                 ) {
-                    let fields = borsh::schema::Fields::UnnamedFields(borsh::maybestd::vec![<T>::declaration()]);
+                    let fields = borsh::schema::Fields::UnnamedFields(borsh::maybestd::vec![<T as borsh::BorshSchema>::declaration()]);
                     let definition = borsh::schema::Definition::Struct { fields };
                     Self::add_definition(Self::declaration(), definition, definitions);
-                    <T>::add_definitions_recursively(definitions);
+                    <T as borsh::BorshSchema>::add_definitions_recursively(definitions);
                 }
             }
         };
@@ -195,13 +195,13 @@ mod tests {
                     >
                 ) {
                     let fields = borsh::schema::Fields::UnnamedFields(borsh::maybestd::vec![
-                        <u64>::declaration(),
-                        <String>::declaration()
+                        <u64 as borsh::BorshSchema>::declaration(),
+                        <String as borsh::BorshSchema>::declaration()
                     ]);
                     let definition = borsh::schema::Definition::Struct { fields };
                     Self::add_definition(Self::declaration(), definition, definitions);
-                    <u64>::add_definitions_recursively(definitions);
-                    <String>::add_definitions_recursively(definitions);
+                    <u64 as borsh::BorshSchema>::add_definitions_recursively(definitions);
+                    <String as borsh::BorshSchema>::add_definitions_recursively(definitions);
                 }
             }
         };
@@ -239,11 +239,11 @@ mod tests {
                     >
                 ) {
                     let fields =
-                        borsh::schema::Fields::UnnamedFields(borsh::maybestd::vec![<K>::declaration(), <V>::declaration()]);
+                        borsh::schema::Fields::UnnamedFields(borsh::maybestd::vec![<K as borsh::BorshSchema>::declaration(), <V as borsh::BorshSchema>::declaration()]);
                     let definition = borsh::schema::Definition::Struct { fields };
                     Self::add_definition(Self::declaration(), definition, definitions);
-                    <K>::add_definitions_recursively(definitions);
-                    <V>::add_definitions_recursively(definitions);
+                    <K as borsh::BorshSchema>::add_definitions_recursively(definitions);
+                    <V as borsh::BorshSchema>::add_definitions_recursively(definitions);
                 }
             }
         };
@@ -281,13 +281,13 @@ mod tests {
                     >
                 ) {
                     let fields = borsh::schema::Fields::NamedFields(borsh::maybestd::vec![
-                        ("x".to_string(), <u64>::declaration()),
-                        ("y".to_string(), <String>::declaration())
+                        ("x".to_string(), <u64 as borsh::BorshSchema>::declaration()),
+                        ("y".to_string(), <String as borsh::BorshSchema>::declaration())
                     ]);
                     let definition = borsh::schema::Definition::Struct { fields };
                     Self::add_definition(Self::declaration(), definition, definitions);
-                    <u64>::add_definitions_recursively(definitions);
-                    <String>::add_definitions_recursively(definitions);
+                    <u64 as borsh::BorshSchema>::add_definitions_recursively(definitions);
+                    <String as borsh::BorshSchema>::add_definitions_recursively(definitions);
                 }
             }
         };
@@ -328,13 +328,13 @@ mod tests {
                     >
                 ) {
                     let fields = borsh::schema::Fields::NamedFields(borsh::maybestd::vec![
-                        ("x".to_string(), <HashMap<K, V> >::declaration()),
-                        ("y".to_string(), <String>::declaration())
+                        ("x".to_string(), <HashMap<K, V> as borsh::BorshSchema>::declaration()),
+                        ("y".to_string(), <String as borsh::BorshSchema>::declaration())
                     ]);
                     let definition = borsh::schema::Definition::Struct { fields };
                     Self::add_definition(Self::declaration(), definition, definitions);
-                    <HashMap<K, V> >::add_definitions_recursively(definitions);
-                    <String>::add_definitions_recursively(definitions);
+                    <HashMap<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+                    <String as borsh::BorshSchema>::add_definitions_recursively(definitions);
                 }
             }
         };
@@ -379,13 +379,13 @@ mod tests {
                     >
                 ) {
                     let fields = borsh::schema::Fields::NamedFields(borsh::maybestd::vec![
-                        ("x".to_string(), <HashMap<K, V> >::declaration()),
-                        ("y".to_string(), <String>::declaration())
+                        ("x".to_string(), <HashMap<K, V> as borsh::BorshSchema >::declaration()),
+                        ("y".to_string(), <String as borsh::BorshSchema>::declaration())
                     ]);
                     let definition = borsh::schema::Definition::Struct { fields };
                     Self::add_definition(Self::declaration(), definition, definitions);
-                    <HashMap<K, V> >::add_definitions_recursively(definitions);
-                    <String>::add_definitions_recursively(definitions);
+                    <HashMap<K, V> as borsh::BorshSchema >::add_definitions_recursively(definitions);
+                    <String as borsh::BorshSchema>::add_definitions_recursively(definitions);
                 }
             }
         };
@@ -450,10 +450,10 @@ mod tests {
                         borsh::schema::Definition
                     >
                 ) {
-                    let fields = borsh::schema::Fields::UnnamedFields(borsh::maybestd::vec![<String>::declaration()]);
+                    let fields = borsh::schema::Fields::UnnamedFields(borsh::maybestd::vec![<String as borsh::BorshSchema>::declaration()]);
                     let definition = borsh::schema::Definition::Struct { fields };
                     Self::add_definition(Self::declaration(), definition, definitions);
-                    <String>::add_definitions_recursively(definitions);
+                    <String as borsh::BorshSchema>::add_definitions_recursively(definitions);
                 }
             }
         };
