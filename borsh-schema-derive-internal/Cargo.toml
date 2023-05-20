@@ -6,7 +6,7 @@ edition = "2018"
 license = "Apache-2.0"
 categories = ["encoding", "network-programming"]
 repository = "https://github.com/nearprotocol/borsh"
-homepage = "http://borsh.io"
+homepage = "https://borsh.io"
 description = """
 Schema Generator for Borsh
 """
