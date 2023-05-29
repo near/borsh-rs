@@ -1,4 +1,4 @@
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, BorshSerialize};
 
 macro_rules! test_primitive {
     ($test_name: ident, $v: expr, $t: ty) => {
@@ -6,7 +6,7 @@ macro_rules! test_primitive {
         fn $test_name() {
             let expected: $t = $v;
             let buf = expected.try_to_vec().unwrap();
-            let actual = <$t>::try_from_slice(&buf).expect("failed to deserialize");
+            let actual = from_slice::<$t>(&buf).expect("failed to deserialize");
             assert_eq!(actual, expected);
         }
     };

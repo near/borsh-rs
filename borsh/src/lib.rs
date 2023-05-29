@@ -14,7 +14,7 @@ pub mod ser;
 
 pub use de::BorshDeserialize;
 pub use schema::BorshSchema;
-pub use schema_helpers::{try_from_slice_with_schema, try_to_vec_with_schema};
+pub use schema_helpers::{from_slice, try_from_slice_with_schema, try_to_vec_with_schema};
 pub use ser::helpers::{to_vec, to_writer};
 pub use ser::BorshSerialize;
 
@@ -41,7 +41,6 @@ pub mod maybestd {
 
     pub mod collections {
         pub use alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
-        pub use hashbrown::*;
     }
 
     pub mod io {

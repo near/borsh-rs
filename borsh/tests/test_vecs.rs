@@ -1,10 +1,9 @@
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, BorshSerialize};
 
 macro_rules! test_vec {
     ($v: expr, $t: ty) => {
         let buf = $v.try_to_vec().unwrap();
-        let actual_v: Vec<$t> =
-            BorshDeserialize::try_from_slice(&buf).expect("failed to deserialize");
+        let actual_v: Vec<$t> = from_slice(&buf).expect("failed to deserialize");
         assert_eq!(actual_v, $v);
     };
 }

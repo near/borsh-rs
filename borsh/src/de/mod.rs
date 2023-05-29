@@ -25,11 +25,13 @@ use crate::maybestd::{rc::Rc, sync::Arc};
 
 mod hint;
 
-const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
-const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
-const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_ISIZE: &str = "Overflow on machine with 32 bit isize";
-const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE: &str = "Overflow on machine with 32 bit usize";
-const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
+pub const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
+pub const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
+pub const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_ISIZE: &str =
+    "Overflow on machine with 32 bit isize";
+pub const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE: &str =
+    "Overflow on machine with 32 bit usize";
+pub const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
 
 /// A data-structure that can be de-serialized from binary format by NBOR.
 pub trait BorshDeserialize: Sized {
@@ -42,6 +44,10 @@ pub trait BorshDeserialize: Sized {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self>;
 
     /// Deserialize this instance from a slice of bytes.
+    #[deprecated(
+        since = "1.0.0",
+        note = "please use `borsh::from_slice` new function instead"
+    )]
     fn try_from_slice(v: &[u8]) -> Result<Self> {
         let mut v_mut = v;
         let result = Self::deserialize(&mut v_mut)?;

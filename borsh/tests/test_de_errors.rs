@@ -1,4 +1,4 @@
-use borsh::BorshDeserialize;
+use borsh::{from_slice, BorshDeserialize};
 
 #[derive(BorshDeserialize, Debug)]
 enum A {
@@ -21,7 +21,7 @@ const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
 fn test_missing_bytes() {
     let bytes = vec![1, 0];
     assert_eq!(
-        B::try_from_slice(&bytes).unwrap_err().to_string(),
+        from_slice::<B>(&bytes).unwrap_err().to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
     );
 }
@@ -30,7 +30,7 @@ fn test_missing_bytes() {
 fn test_invalid_enum_variant() {
     let bytes = vec![123];
     assert_eq!(
-        A::try_from_slice(&bytes).unwrap_err().to_string(),
+        from_slice::<A>(&bytes).unwrap_err().to_string(),
         "Unexpected variant tag: 123"
     );
 }
@@ -39,7 +39,7 @@ fn test_invalid_enum_variant() {
 fn test_extra_bytes() {
     let bytes = vec![1, 0, 0, 0, 32, 32];
     assert_eq!(
-        <Vec<u8>>::try_from_slice(&bytes).unwrap_err().to_string(),
+        from_slice::<Vec<u8>>(&bytes).unwrap_err().to_string(),
         "Not all bytes read"
     );
 }
@@ -49,7 +49,7 @@ fn test_invalid_bool() {
     for i in 2u8..=255 {
         let bytes = [i];
         assert_eq!(
-            <bool>::try_from_slice(&bytes).unwrap_err().to_string(),
+            from_slice::<bool>(&bytes).unwrap_err().to_string(),
             format!("Invalid bool representation: {}", i)
         );
     }
@@ -60,9 +60,7 @@ fn test_invalid_option() {
     for i in 2u8..=255 {
         let bytes = [i, 32];
         assert_eq!(
-            <Option<u8>>::try_from_slice(&bytes)
-                .unwrap_err()
-                .to_string(),
+            from_slice::<Option<u8>>(&bytes).unwrap_err().to_string(),
             format!(
                 "Invalid Option representation: {}. The first byte must be 0 or 1",
                 i
@@ -76,7 +74,7 @@ fn test_invalid_result() {
     for i in 2u8..=255 {
         let bytes = [i, 0];
         assert_eq!(
-            <Result<u64, String>>::try_from_slice(&bytes)
+            from_slice::<Result<u64, String>>(&bytes)
                 .unwrap_err()
                 .to_string(),
             format!(
@@ -91,7 +89,7 @@ fn test_invalid_result() {
 fn test_invalid_length() {
     let bytes = vec![255u8; 4];
     assert_eq!(
-        <Vec<u64>>::try_from_slice(&bytes).unwrap_err().to_string(),
+        from_slice::<Vec<u64>>(&bytes).unwrap_err().to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
     );
 }
@@ -100,7 +98,7 @@ fn test_invalid_length() {
 fn test_invalid_length_string() {
     let bytes = vec![255u8; 4];
     assert_eq!(
-        String::try_from_slice(&bytes).unwrap_err().to_string(),
+        from_slice::<String>(&bytes).unwrap_err().to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
     );
 }
@@ -109,7 +107,7 @@ fn test_invalid_length_string() {
 fn test_non_utf_string() {
     let bytes = vec![1, 0, 0, 0, 0xC0];
     assert_eq!(
-        String::try_from_slice(&bytes).unwrap_err().to_string(),
+        from_slice::<String>(&bytes).unwrap_err().to_string(),
         "invalid utf-8 sequence of 1 bytes from index 0"
     );
 }
@@ -118,7 +116,7 @@ fn test_non_utf_string() {
 fn test_nan_float() {
     let bytes = vec![0, 0, 192, 127];
     assert_eq!(
-        f32::try_from_slice(&bytes).unwrap_err().to_string(),
+        from_slice::<f32>(&bytes).unwrap_err().to_string(),
         "For portability reasons we do not allow to deserialize NaNs."
     );
 }
@@ -129,9 +127,7 @@ fn test_evil_bytes_vec_with_extra() {
     // test takes a really long time if read() is used instead of read_exact()
     let bytes = vec![255, 255, 255, 255, 32, 32];
     assert_eq!(
-        <Vec<[u8; 32]>>::try_from_slice(&bytes)
-            .unwrap_err()
-            .to_string(),
+        from_slice::<Vec<[u8; 32]>>(&bytes).unwrap_err().to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
     );
 }
@@ -141,7 +137,7 @@ fn test_evil_bytes_string_extra() {
     // Might fail if reading too much
     let bytes = vec![255, 255, 255, 255, 32, 32];
     assert_eq!(
-        String::try_from_slice(&bytes).unwrap_err().to_string(),
+        from_slice::<String>(&bytes).unwrap_err().to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
     );
 }
@@ -150,7 +146,7 @@ fn test_evil_bytes_string_extra() {
 fn test_zero_on_nonzero_integer_u8() {
     let bytes = &[0];
     assert_eq!(
-        std::num::NonZeroU8::try_from_slice(bytes)
+        from_slice::<std::num::NonZeroU8>(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
@@ -161,7 +157,7 @@ fn test_zero_on_nonzero_integer_u8() {
 fn test_zero_on_nonzero_integer_u32() {
     let bytes = &[0; 4];
     assert_eq!(
-        std::num::NonZeroU32::try_from_slice(bytes)
+        from_slice::<std::num::NonZeroU32>(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
@@ -172,7 +168,7 @@ fn test_zero_on_nonzero_integer_u32() {
 fn test_zero_on_nonzero_integer_i64() {
     let bytes = &[0; 8];
     assert_eq!(
-        std::num::NonZeroI64::try_from_slice(bytes)
+        from_slice::<std::num::NonZeroI64>(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
@@ -183,7 +179,7 @@ fn test_zero_on_nonzero_integer_i64() {
 fn test_zero_on_nonzero_integer_usize() {
     let bytes = &[0; 8];
     assert_eq!(
-        std::num::NonZeroUsize::try_from_slice(bytes)
+        from_slice::<std::num::NonZeroUsize>(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
@@ -194,7 +190,7 @@ fn test_zero_on_nonzero_integer_usize() {
 fn test_zero_on_nonzero_integer_missing_byte() {
     let bytes = &[0; 7];
     assert_eq!(
-        std::num::NonZeroUsize::try_from_slice(bytes)
+        from_slice::<std::num::NonZeroUsize>(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT

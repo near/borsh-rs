@@ -1,11 +1,10 @@
 use borsh::maybestd::collections::BinaryHeap;
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, BorshSerialize};
 
 macro_rules! test_binary_heap {
     ($v: expr, $t: ty) => {
         let buf = $v.try_to_vec().unwrap();
-        let actual_v: BinaryHeap<$t> =
-            BorshDeserialize::try_from_slice(&buf).expect("failed to deserialize");
+        let actual_v: BinaryHeap<$t> = from_slice(&buf).expect("failed to deserialize");
         assert_eq!(actual_v.into_vec(), $v.into_vec());
     };
 }

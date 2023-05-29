@@ -9,11 +9,30 @@ use crate::{BorshDeserialize, BorshSchema, BorshSerialize};
 /// bytes describing the schema of the type. We deserialize this schema and verify that it is
 /// correct.
 pub fn try_from_slice_with_schema<T: BorshDeserialize + BorshSchema>(v: &[u8]) -> Result<T> {
-    let (schema, object) = <(BorshSchemaContainer, T)>::try_from_slice(v)?;
+    let mut v_mut = v;
+    let (schema, object) = <(BorshSchemaContainer, T)>::deserialize(&mut v_mut)?;
+    if !v_mut.is_empty() {
+        return Err(Error::new(
+            ErrorKind::InvalidData,
+            crate::de::ERROR_NOT_ALL_BYTES_READ,
+        ));
+    }
     if T::schema_container() != schema {
         return Err(Error::new(
             ErrorKind::InvalidData,
             "Borsh schema does not match",
+        ));
+    }
+    Ok(object)
+}
+
+pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
+    let mut v_mut = v;
+    let object = T::deserialize(&mut v_mut)?;
+    if !v_mut.is_empty() {
+        return Err(Error::new(
+            ErrorKind::InvalidData,
+            crate::de::ERROR_NOT_ALL_BYTES_READ,
         ));
     }
     Ok(object)

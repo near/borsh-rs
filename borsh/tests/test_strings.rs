@@ -1,4 +1,4 @@
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, BorshSerialize};
 
 macro_rules! test_string {
     ($test_name: ident, $str: expr) => {
@@ -6,7 +6,7 @@ macro_rules! test_string {
         fn $test_name() {
             let s = $str.to_string();
             let buf = s.try_to_vec().unwrap();
-            let actual_s = <String>::try_from_slice(&buf).expect("failed to deserialize a string");
+            let actual_s = from_slice::<String>(&buf).expect("failed to deserialize a string");
             assert_eq!(actual_s, s);
         }
     };
