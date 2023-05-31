@@ -1,0 +1,18 @@
+[workspace]
+# disable changelog in all packages by default
+changelog_update = false
+
+[[package]]
+name = "borsh"
+# enable changelog in the package named "your_spacial_package"
+changelog_update = true
+# set the changelog of this package to the repository root
+changelog_path = "./CHANGELOG.md"
+
+[[package]]
+name = "fuzz-run"
+publish = false
+
+[[package]]
+name = "benchmark"
+publish = false
