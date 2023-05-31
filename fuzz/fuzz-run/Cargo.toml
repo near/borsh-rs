@@ -1,6 +1,6 @@
 [package]
 name = "borsh-fuzz"
-version = "0.0.0"
+version.workspace = true
 authors = ["Near Inc <hello@nearprotocol.com>"]
 edition = "2018"
 publish = false
