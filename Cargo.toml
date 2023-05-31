@@ -10,4 +10,4 @@ members = [
 
 [workspace.package]
 # shared version of all public crates in the workspace
-version = "0.10.3"
+version = "0.11.0"
