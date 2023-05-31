@@ -8,7 +8,6 @@ members = [
     "benchmarks",
 ]
 
-[workspace.metadata.workspaces]
+[workspace.package]
 # shared version of all public crates in the workspace
 version = "0.10.3"
-exclude = [ "fuzz/*", "benchmarks" ]

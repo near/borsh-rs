@@ -1,6 +1,6 @@
 [package]
 name = "borsh"
-version = "0.0.0"
+version.workspace = true
 authors = ["Near Inc <hello@near.org>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -29,7 +29,7 @@ bson = { version = "2", optional = true }
 bytes = "1"
 bson = "2"
 # Enable the "bytes" and "bson" features in integ tests: https://github.com/rust-lang/cargo/issues/2911#issuecomment-1464060655
-borsh = { path = ".", features = ["bytes", "bson"] }
+borsh = { path = ".", default_features = false, features = ["bytes", "bson"] }
 
 [features]
 default = ["std"]

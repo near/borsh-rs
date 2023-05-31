@@ -1,0 +1,16 @@
+[workspace]
+# Use `borsh` crate CHANGELOG as top-level one
+changelog_update = false
+
+[[package]]
+name = "borsh"
+changelog_update = true
+changelog_path = "./CHANGELOG.md"
+
+[[package]]
+name = "fuzz-run"
+publish = false
+
+[[package]]
+name = "benchmark"
+publish = false
