@@ -30,7 +30,7 @@ bson = { version = "2", optional = true }
 bytes = "1"
 bson = "2"
 # Enable the "bytes" and "bson" features in integ tests: https://github.com/rust-lang/cargo/issues/2911#issuecomment-1464060655
-borsh = { path = ".", features = ["bytes", "bson"] }
+borsh = { path = ".", default_features = false, features = ["bytes", "bson"] }
 
 [features]
 default = ["std"]
