@@ -7,17 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Add optional BSON object id support
+## [0.11.0](https://github.com/near/borsh-rs/compare/borsh-v0.10.3...borsh-v0.11.0) - 2023-05-31
 
-## [0.10.3] - 2022-03-22
+### Added
+- add BorshSchema for PhantomData, BTreeMap and BTreeSet ([#93](https://github.com/near/borsh-rs/pull/93))
+- Add optional bson::oid::ObjectId support ([#135](https://github.com/near/borsh-rs/pull/135))
+- [**breaking**] ser/de enum discriminant ([#138](https://github.com/near/borsh-rs/pull/138))
+
+### Fixed
+- no-std tests did not run due to dev-dependencies re-enabling std feature ([#144](https://github.com/near/borsh-rs/pull/144))
+
+### Other
+- use release-plz and specify common rust version correctly ([#134](https://github.com/near/borsh-rs/pull/134))
+- Upgrade plain-HTTP links to HTTPS in Cargo.toml files ([#141](https://github.com/near/borsh-rs/pull/141))
+
+## [0.10.3] - 2023-03-22
 
 - Add optional bytes/bytesmut support
 
-## [0.10.2] - 2022-02-14
+## [0.10.2] - 2023-02-14
 
 - Prevent unbound allocation for vectors on deserialization
 
-## [0.10.1] - 2022-02-08
+## [0.10.1] - 2023-02-08
 
 - Implemented (de)ser for `core::ops::range`
 - Introduce de::EnumExt trait with deserialize_variant method
