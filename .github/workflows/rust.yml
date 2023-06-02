@@ -52,7 +52,8 @@ jobs:
 
   release-plz:
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/master' }}
+    needs: [tests, clippy, cargo-fmt]
+    if: github.ref == 'refs/heads/master'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
