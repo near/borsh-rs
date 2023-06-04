@@ -44,10 +44,6 @@ pub trait BorshDeserialize: Sized {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self>;
 
     /// Deserialize this instance from a slice of bytes.
-    #[deprecated(
-        since = "1.0.0",
-        note = "please use `borsh::from_slice` new function instead"
-    )]
     fn try_from_slice(v: &[u8]) -> Result<Self> {
         let mut v_mut = v;
         let result = Self::deserialize(&mut v_mut)?;
@@ -788,4 +784,36 @@ impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
     fn deserialize_reader<R: Read>(_: &mut R) -> Result<Self> {
         Ok(Self::default())
     }
+}
+// Add documentation with examples.
+/// Deserializes an object from a slice of bytes.
+/// # Example
+/// ```
+/// use borsh::{BorshDeserialize, BorshSerialize, from_slice};
+/// #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+/// struct MyStruct {
+///    a: u64,
+///    b: Vec<u8>,
+/// }
+/// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
+/// let encoded = original.try_to_vec().unwrap();
+/// let decoded = from_slice::<MyStruct>(&encoded).unwrap();
+/// assert_eq!(original, decoded);
+/// ```
+/// # Panics
+/// If the data is invalid, this function will panic.
+/// # Errors
+/// If the data is invalid, this function will return an error.
+/// # Note
+/// This function will return an error if the data is not fully read.
+pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
+    let mut v_mut = v;
+    let object = T::deserialize(&mut v_mut)?;
+    if !v_mut.is_empty() {
+        return Err(Error::new(
+            ErrorKind::InvalidData,
+            crate::de::ERROR_NOT_ALL_BYTES_READ,
+        ));
+    }
+    Ok(object)
 }
