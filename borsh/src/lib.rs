@@ -42,6 +42,7 @@ pub mod maybestd {
 
     pub mod collections {
         pub use alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
+        pub use hashbrown::*;
     }
 
     pub mod io {
