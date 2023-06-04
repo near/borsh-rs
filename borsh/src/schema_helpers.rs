@@ -5,6 +5,7 @@ use crate::maybestd::{
 };
 use crate::schema::BorshSchemaContainer;
 use crate::{BorshDeserialize, BorshSchema, BorshSerialize};
+
 /// Deserialize this instance from a slice of bytes, but assume that at the beginning we have
 /// bytes describing the schema of the type. We deserialize this schema and verify that it is
 /// correct.

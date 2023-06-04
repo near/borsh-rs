@@ -88,6 +88,7 @@ pub trait EnumExt: BorshDeserialize {
     /// ```
     /// use borsh::BorshDeserialize;
     /// use borsh::de::EnumExt as _;
+    /// use borsh::from_slice;
     ///
     /// #[derive(Debug, PartialEq, Eq, BorshDeserialize)]
     /// enum MyEnum {
@@ -117,12 +118,12 @@ pub trait EnumExt: BorshDeserialize {
     /// }
     ///
     /// let data = b"\0";
-    /// assert_eq!(MyEnum::Zero, MyEnum::try_from_slice(&data[..]).unwrap());
-    /// assert_eq!(MyEnum::Zero, OneOrZero::try_from_slice(&data[..]).unwrap().0);
+    /// assert_eq!(MyEnum::Zero, from_slice::<MyEnum>(&data[..]).unwrap());
+    /// assert_eq!(MyEnum::Zero, from_slice::<OneOrZero>(&data[..]).unwrap().0);
     ///
     /// let data = b"\x02\0\0\0\0";
-    /// assert_eq!(MyEnum::Many(Vec::new()), MyEnum::try_from_slice(&data[..]).unwrap());
-    /// assert!(OneOrZero::try_from_slice(&data[..]).is_err());
+    /// assert_eq!(MyEnum::Many(Vec::new()), from_slice::<MyEnum>(&data[..]).unwrap());
+    /// assert!(from_slice::<OneOrZero>(&data[..]).is_err());
     /// ```
     fn deserialize_variant<R: Read>(reader: &mut R, tag: u8) -> Result<Self>;
 }
