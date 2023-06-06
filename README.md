@@ -19,7 +19,7 @@ strict [specification](https://github.com/near/borsh#specification).
 ## Example
 
 ```rust
-use borsh::{BorshSerialize, BorshDeserialize};
+use borsh::{BorshSerialize, BorshDeserialize, from_slice};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 struct A {
@@ -34,7 +34,7 @@ fn test_simple_struct() {
         y: "liber primus".to_string(),
     };
     let encoded_a = a.try_to_vec().unwrap();
-    let decoded_a = A::try_from_slice(&encoded_a).unwrap();
+    let decoded_a = from_slice::<A>(&encoded_a).unwrap();
     assert_eq!(a, decoded_a);
 }
 ```

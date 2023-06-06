@@ -1,5 +1,5 @@
 use borsh::maybestd::collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque};
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 use bytes::{Bytes, BytesMut};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
@@ -97,17 +97,14 @@ fn test_discriminant_serialization() {
 fn test_discriminant_deserialization() {
     let values = vec![X::A, X::B, X::C, X::D, X::E, X::F];
     for value in values {
-        assert_eq!(
-            <X as BorshDeserialize>::try_from_slice(&[value as u8]).unwrap(),
-            value,
-        );
+        assert_eq!(from_slice::<X>(&[value as u8]).unwrap(), value,);
     }
 }
 
 #[test]
 #[should_panic = "Unexpected variant tag: 2"]
 fn test_deserialize_invalid_discriminant() {
-    <X as BorshDeserialize>::try_from_slice(&[2]).unwrap();
+    from_slice::<X>(&[2]).unwrap();
 }
 
 #[test]
@@ -154,7 +151,7 @@ fn test_simple_struct() {
     let encoded_ref_a = e.try_to_vec().unwrap();
     assert_eq!(encoded_ref_a, encoded_a);
 
-    let decoded_a = A::try_from_slice(&encoded_a).unwrap();
+    let decoded_a = from_slice::<A>(&encoded_a).unwrap();
     let expected_a = A {
         x: 1,
         b: B {
@@ -192,7 +189,7 @@ fn test_simple_struct() {
 
     let f1 = F1 { aa: &[&a, &a] };
     let encoded_f1 = f1.try_to_vec().unwrap();
-    let decoded_f2 = F2::try_from_slice(&encoded_f1).unwrap();
+    let decoded_f2 = from_slice::<F2>(&encoded_f1).unwrap();
     assert_eq!(decoded_f2.aa.len(), 2);
     assert!(decoded_f2.aa.iter().all(|f2_a| f2_a == &expected_a));
 }

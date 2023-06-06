@@ -4,7 +4,7 @@ use core::hash::BuildHasher;
 use std::collections::hash_map::{DefaultHasher, RandomState};
 
 use borsh::maybestd::collections::HashMap;
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, BorshSerialize};
 
 #[test]
 fn test_default_hashmap() {
@@ -13,7 +13,7 @@ fn test_default_hashmap() {
     map.insert("one".to_string(), "two".to_string());
 
     let data = map.try_to_vec().unwrap();
-    let actual_map = HashMap::<String, String>::try_from_slice(&data).unwrap();
+    let actual_map = from_slice::<HashMap<String, String>>(&data).unwrap();
     assert_eq!(map, actual_map);
 }
 
@@ -37,6 +37,6 @@ fn test_generic_hash_hashmap() {
     map.insert("one".to_string(), "two".to_string());
 
     let data = map.try_to_vec().unwrap();
-    let actual_map = HashMap::<String, String, NewHasher>::try_from_slice(&data).unwrap();
+    let actual_map = from_slice::<HashMap<String, String, NewHasher>>(&data).unwrap();
     assert_eq!(map, actual_map);
 }

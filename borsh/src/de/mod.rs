@@ -86,6 +86,7 @@ pub trait EnumExt: BorshDeserialize {
     /// ```
     /// use borsh::BorshDeserialize;
     /// use borsh::de::EnumExt as _;
+    /// use borsh::from_slice;
     ///
     /// #[derive(Debug, PartialEq, Eq, BorshDeserialize)]
     /// enum MyEnum {
@@ -115,12 +116,12 @@ pub trait EnumExt: BorshDeserialize {
     /// }
     ///
     /// let data = b"\0";
-    /// assert_eq!(MyEnum::Zero, MyEnum::try_from_slice(&data[..]).unwrap());
-    /// assert_eq!(MyEnum::Zero, OneOrZero::try_from_slice(&data[..]).unwrap().0);
+    /// assert_eq!(MyEnum::Zero, from_slice::<MyEnum>(&data[..]).unwrap());
+    /// assert_eq!(MyEnum::Zero, from_slice::<OneOrZero>(&data[..]).unwrap().0);
     ///
     /// let data = b"\x02\0\0\0\0";
-    /// assert_eq!(MyEnum::Many(Vec::new()), MyEnum::try_from_slice(&data[..]).unwrap());
-    /// assert!(OneOrZero::try_from_slice(&data[..]).is_err());
+    /// assert_eq!(MyEnum::Many(Vec::new()), from_slice::<MyEnum>(&data[..]).unwrap());
+    /// assert!(from_slice::<OneOrZero>(&data[..]).is_err());
     /// ```
     fn deserialize_variant<R: Read>(reader: &mut R, tag: u8) -> Result<Self>;
 }
@@ -778,5 +779,60 @@ where
 impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
     fn deserialize_reader<R: Read>(_: &mut R) -> Result<Self> {
         Ok(PhantomData)
+    }
+}
+/// Deserializes an object from a slice of bytes.
+/// # Example
+/// ```
+/// use borsh::{BorshDeserialize, BorshSerialize, from_slice};
+/// #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+/// struct MyStruct {
+///    a: u64,
+///    b: Vec<u8>,
+/// }
+/// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
+/// let encoded = original.try_to_vec().unwrap();
+/// let decoded = from_slice::<MyStruct>(&encoded).unwrap();
+/// assert_eq!(original, decoded);
+/// ```
+/// # Panics
+/// If the data is invalid, this function will panic.
+/// # Errors
+/// If the data is invalid, this function will return an error.
+/// # Note
+/// This function will return an error if the data is not fully read.
+pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
+    let mut v_mut = v;
+    let object = T::deserialize(&mut v_mut)?;
+    if !v_mut.is_empty() {
+        return Err(Error::new(
+            ErrorKind::InvalidData,
+            crate::de::ERROR_NOT_ALL_BYTES_READ,
+        ));
+    }
+    Ok(object)
+}
+
+/// Deserializes an object from a reader.
+/// # Example
+/// ```
+/// use borsh::{BorshDeserialize, BorshSerialize, from_reader};
+///
+/// #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+/// struct MyStruct {
+///   a: u64,
+///  b: Vec<u8>,
+/// }
+/// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
+/// let encoded = original.try_to_vec().unwrap();
+/// let decoded = from_reader::<_, MyStruct>(&mut encoded.as_slice()).unwrap();
+/// assert_eq!(original, decoded);
+/// ```
+pub fn from_reader<R: Read, T: BorshDeserialize>(reader: &mut R) -> Result<T> {
+    let result = T::deserialize_reader(reader)?;
+    let mut buf = [0u8; 1];
+    match reader.read_exact(&mut buf) {
+        Err(f) if f.kind() == ErrorKind::UnexpectedEof => Ok(result),
+        _ => Err(Error::new(ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ)),
     }
 }

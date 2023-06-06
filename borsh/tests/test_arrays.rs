@@ -1,12 +1,11 @@
 #![allow(clippy::float_cmp)]
 
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 
 macro_rules! test_array {
     ($v: expr, $t: ty, $len: expr) => {
         let buf = $v.try_to_vec().unwrap();
-        let actual_v: [$t; $len] =
-            BorshDeserialize::try_from_slice(&buf).expect("failed to deserialize");
+        let actual_v: [$t; $len] = from_slice(&buf).expect("failed to deserialize");
         assert_eq!($v.len(), actual_v.len());
         #[allow(clippy::reversed_empty_ranges)]
         for i in 0..$len {
@@ -53,7 +52,7 @@ struct CustomStruct(u8);
 fn test_custom_struct_array() {
     let arr = [CustomStruct(0), CustomStruct(1), CustomStruct(2)];
     let serialized = arr.try_to_vec().unwrap();
-    let deserialized: [CustomStruct; 3] = BorshDeserialize::try_from_slice(&serialized).unwrap();
+    let deserialized: [CustomStruct; 3] = from_slice(&serialized).unwrap();
     assert_eq!(arr, deserialized);
 }
 
@@ -61,6 +60,6 @@ fn test_custom_struct_array() {
 fn test_string_array() {
     let arr = ["0".to_string(), "1".to_string(), "2".to_string()];
     let serialized = arr.try_to_vec().unwrap();
-    let deserialized: [String; 3] = BorshDeserialize::try_from_slice(&serialized).unwrap();
+    let deserialized: [String; 3] = from_slice(&serialized).unwrap();
     assert_eq!(arr, deserialized);
 }

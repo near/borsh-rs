@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 struct A<T, F, G> {
@@ -29,6 +29,6 @@ fn test_generic_struct() {
         d: [0, 1, 2, 3, 4],
     };
     let data = a.try_to_vec().unwrap();
-    let actual_a = A::<String, u64, String>::try_from_slice(&data).unwrap();
+    let actual_a = from_slice::<A<String, u64, String>>(&data).unwrap();
     assert_eq!(a, actual_a);
 }

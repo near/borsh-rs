@@ -1,6 +1,6 @@
 #![allow(clippy::float_cmp)]
 
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 use bson::oid::ObjectId;
 
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug)]
@@ -14,6 +14,6 @@ fn test_object_id() {
         33,
     );
     let serialized = obj.try_to_vec().unwrap();
-    let deserialized: StructWithObjectId = BorshDeserialize::try_from_slice(&serialized).unwrap();
+    let deserialized: StructWithObjectId = from_slice(&serialized).unwrap();
     assert_eq!(obj, deserialized);
 }

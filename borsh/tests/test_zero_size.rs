@@ -1,3 +1,4 @@
+use borsh::from_slice;
 use borsh::to_vec;
 use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
@@ -8,7 +9,7 @@ struct A();
 #[test]
 fn test_deserialize_zero_size() {
     let v = [0u8, 0u8, 0u8, 64u8];
-    let res = Vec::<A>::try_from_slice(&v);
+    let res = from_slice::<Vec<A>>(&v);
     assert!(res.is_err());
 }
 

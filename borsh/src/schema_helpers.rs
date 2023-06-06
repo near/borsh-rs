@@ -1,3 +1,4 @@
+use crate::from_slice;
 use crate::maybestd::{
     io::{Error, ErrorKind, Result},
     vec::Vec,
@@ -9,7 +10,7 @@ use crate::{BorshDeserialize, BorshSchema, BorshSerialize};
 /// bytes describing the schema of the type. We deserialize this schema and verify that it is
 /// correct.
 pub fn try_from_slice_with_schema<T: BorshDeserialize + BorshSchema>(v: &[u8]) -> Result<T> {
-    let (schema, object) = <(BorshSchemaContainer, T)>::try_from_slice(v)?;
+    let (schema, object) = from_slice::<(BorshSchemaContainer, T)>(v)?;
     if T::schema_container() != schema {
         return Err(Error::new(
             ErrorKind::InvalidData,

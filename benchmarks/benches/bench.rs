@@ -1,5 +1,5 @@
 use benchmarks::{Account, Block, BlockHeader, Generate, SignedTransaction};
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 use rand::SeedableRng;
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 use speedy::Endianness;
@@ -123,7 +123,7 @@ where
             BenchmarkId::new("borsh", benchmark_param_display.clone()),
             borsh_data,
             |b, d| {
-                b.iter(|| T::try_from_slice(d).unwrap());
+                b.iter(|| from_slice::<T>(d).unwrap());
             },
         );
         group.bench_with_input(

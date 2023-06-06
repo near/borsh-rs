@@ -1,4 +1,4 @@
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{from_reader, BorshDeserialize, BorshSerialize};
 
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
@@ -63,7 +63,7 @@ fn test_custom_reader_with_too_much_data() {
         read_index: 0,
     };
     assert_eq!(
-        <Serializable as BorshDeserialize>::try_from_reader(&mut reader)
+        from_reader::<CustomReader, Serializable>(&mut reader)
             .unwrap_err()
             .to_string(),
         ERROR_NOT_ALL_BYTES_READ
@@ -120,7 +120,8 @@ impl borsh::maybestd::io::Read for CustomReaderThatDoesntFillSlices {
 #[test]
 fn test_custom_reader_that_fails_preserves_error_information() {
     let mut reader = CustomReaderThatFails;
-    let err = <Serializable as BorshDeserialize>::try_from_reader(&mut reader).unwrap_err();
+
+    let err = from_reader::<CustomReaderThatFails, Serializable>(&mut reader).unwrap_err();
     assert_eq!(err.to_string(), "I don't like to run");
     assert_eq!(
         err.kind(),
