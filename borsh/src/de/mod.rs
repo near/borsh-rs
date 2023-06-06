@@ -3,7 +3,7 @@ use core::mem::MaybeUninit;
 use core::{
     convert::{TryFrom, TryInto},
     hash::{BuildHasher, Hash},
-    mem::{forget, size_of},
+    mem::size_of,
 };
 
 #[cfg(any(test, feature = "bytes"))]
@@ -377,21 +377,18 @@ where
 {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        if size_of::<T>() == 0 {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Vectors of zero-sized types are not allowed due to deny-of-service concerns on deserialization.",
+            ));
+        }
+
         let len = u32::deserialize_reader(reader)?;
         if len == 0 {
             Ok(Vec::new())
         } else if let Some(vec_bytes) = T::vec_from_reader(len, reader)? {
             Ok(vec_bytes)
-        } else if size_of::<T>() == 0 {
-            let mut result = vec![T::deserialize_reader(reader)?];
-
-            let p = result.as_mut_ptr();
-            unsafe {
-                forget(result);
-                let len = len.try_into().map_err(|_| ErrorKind::InvalidInput)?;
-                let result = Vec::from_raw_parts(p, len, len);
-                Ok(result)
-            }
         } else {
             // TODO(16): return capacity allocation when we can safely do that.
             let mut result = Vec::with_capacity(hint::cautious::<T>(len));
@@ -770,6 +767,6 @@ where
 
 impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
     fn deserialize_reader<R: Read>(_: &mut R) -> Result<Self> {
-        Ok(Self::default())
+        Ok(PhantomData)
     }
 }
