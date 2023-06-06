@@ -777,6 +777,6 @@ where
 
 impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
     fn deserialize_reader<R: Read>(_: &mut R) -> Result<Self> {
-        Ok(Self::default())
+        Ok(PhantomData)
     }
 }

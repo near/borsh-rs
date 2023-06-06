@@ -1,12 +1,13 @@
 use core::convert::TryFrom;
 use core::hash::BuildHasher;
 use core::marker::PhantomData;
+use core::mem::size_of;
 
 use crate::maybestd::{
     borrow::{Cow, ToOwned},
     boxed::Box,
     collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque},
-    io::{ErrorKind, Result, Write},
+    io::{Error, ErrorKind, Result, Write},
     string::String,
     vec::Vec,
 };
@@ -267,6 +268,12 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        if size_of::<T>() == 0 {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Zero-sized types are not allowed.",
+            ));
+        }
         self.as_slice().serialize(writer)
     }
 }
