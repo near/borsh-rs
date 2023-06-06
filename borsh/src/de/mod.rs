@@ -828,7 +828,7 @@ pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
 /// }
 /// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
 /// let encoded = original.try_to_vec().unwrap();
-/// let mut cursor = Cursor::new(encoded).as_slice();
+/// let mut cursor = Cursor::new(encoded.as_slice());
 /// let decoded = from_reader::<_, MyStruct>(&mut cursor).unwrap();
 /// assert_eq!(original, decoded);
 /// ```
