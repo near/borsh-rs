@@ -25,13 +25,11 @@ use crate::maybestd::{rc::Rc, sync::Arc};
 
 mod hint;
 
-pub const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
-pub const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
-pub const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_ISIZE: &str =
-    "Overflow on machine with 32 bit isize";
-pub const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE: &str =
-    "Overflow on machine with 32 bit usize";
-pub const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
+const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
+const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
+const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_ISIZE: &str = "Overflow on machine with 32 bit isize";
+const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE: &str = "Overflow on machine with 32 bit usize";
+const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
 
 /// A data-structure that can be de-serialized from binary format by NBOR.
 pub trait BorshDeserialize: Sized {
@@ -786,7 +784,6 @@ impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
         Ok(Self::default())
     }
 }
-// Add documentation with examples.
 /// Deserializes an object from a slice of bytes.
 /// # Example
 /// ```
@@ -817,4 +814,30 @@ pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
         ));
     }
     Ok(object)
+}
+
+// Add documentation with examples.
+/// Deserializes an object from a reader.
+/// # Example
+/// ```
+/// use borsh::{BorshDeserialize, BorshSerialize, from_reader};
+/// use std::io::Cursor;
+/// #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+/// struct MyStruct {
+///   a: u64,
+///  b: Vec<u8>,
+/// }
+/// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
+/// let encoded = original.try_to_vec().unwrap();
+/// let mut cursor = Cursor::new(encoded);
+/// let decoded = from_reader::<_, MyStruct>(&mut cursor).unwrap();
+/// assert_eq!(original, decoded);
+/// ```
+pub fn from_reader<R: Read, T: BorshDeserialize>(reader: &mut R) -> Result<T> {
+    let result = T::deserialize_reader(reader)?;
+    let mut buf = [0u8; 1];
+    match reader.read_exact(&mut buf) {
+        Err(f) if f.kind() == ErrorKind::UnexpectedEof => Ok(result),
+        _ => Err(Error::new(ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ)),
+    }
 }
