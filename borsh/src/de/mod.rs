@@ -820,7 +820,7 @@ pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
 /// # Example
 /// ```
 /// use borsh::{BorshDeserialize, BorshSerialize, from_reader};
-/// use std::io::Cursor;
+///
 /// #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 /// struct MyStruct {
 ///   a: u64,
@@ -828,8 +828,7 @@ pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
 /// }
 /// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
 /// let encoded = original.try_to_vec().unwrap();
-/// let mut cursor = Cursor::new(encoded.as_slice());
-/// let decoded = from_reader::<_, MyStruct>(&mut cursor).unwrap();
+/// let decoded = from_reader::<_, MyStruct>(&mut encoded.as_slice()).unwrap();
 /// assert_eq!(original, decoded);
 /// ```
 pub fn from_reader<R: Read, T: BorshDeserialize>(reader: &mut R) -> Result<T> {
