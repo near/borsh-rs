@@ -1,4 +1,3 @@
-use borsh::to_vec;
 use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
 
