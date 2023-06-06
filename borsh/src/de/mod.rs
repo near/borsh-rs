@@ -816,7 +816,6 @@ pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
     Ok(object)
 }
 
-// Add documentation with examples.
 /// Deserializes an object from a reader.
 /// # Example
 /// ```
