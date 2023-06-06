@@ -1,6 +1,7 @@
 use borsh::to_vec;
 use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
+
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug)]
 struct A();
 

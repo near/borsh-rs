@@ -380,7 +380,7 @@ where
         if size_of::<T>() == 0 {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
-                "Zero-sized types are not allowed.",
+                "Vectors of zero-sized types are not allowed due to deny-of-service concerns on deserialization.",
             ));
         }
 
