@@ -2,6 +2,8 @@ use core::convert::TryFrom;
 use core::hash::BuildHasher;
 use core::marker::PhantomData;
 
+use tokio::io::{AsyncWrite, AsyncWriteExt};
+
 use crate::maybestd::{
     borrow::{Cow, ToOwned},
     boxed::Box,
@@ -40,13 +42,14 @@ const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;
 /// let mut buffer_slice_enough_for_the_data = &mut buffer[1024..1024 + single_serialized_buffer_len];
 /// x.serialize(&mut buffer_slice_enough_for_the_data).unwrap();
 /// ```
+#[async_trait::async_trait]
 pub trait BorshSerialize {
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()>;
+    async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()>;
 
     /// Serialize this instance into a vector of bytes.
-    fn try_to_vec(&self) -> Result<Vec<u8>> {
+    async fn try_to_vec(&self) -> Result<Vec<u8>> {
         let mut result = Vec::with_capacity(DEFAULT_SERIALIZER_CAPACITY);
-        self.serialize(&mut result)?;
+        self.serialize(&mut result).await?;
         Ok(result)
     }
 
@@ -61,10 +64,11 @@ pub trait BorshSerialize {
     }
 }
 
+#[async_trait::async_trait]
 impl BorshSerialize for u8 {
     #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.write_all(core::slice::from_ref(self))
+    async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        writer.write_all(core::slice::from_ref(self)).await
     }
 
     #[inline]
@@ -75,11 +79,12 @@ impl BorshSerialize for u8 {
 
 macro_rules! impl_for_integer {
     ($type: ident) => {
+        #[async_trait::async_trait]
         impl BorshSerialize for $type {
             #[inline]
-            fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+            async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
                 let bytes = self.to_le_bytes();
-                writer.write_all(&bytes)
+                writer.write_all(&bytes).await
             }
         }
     };
@@ -97,10 +102,11 @@ impl_for_integer!(u128);
 
 macro_rules! impl_for_nonzero_integer {
     ($type: ty) => {
+        #[async_trait::async_trait]
         impl BorshSerialize for $type {
             #[inline]
-            fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-                BorshSerialize::serialize(&self.get(), writer)
+            async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+                BorshSerialize::serialize(&self.get(), writer).await
             }
         }
     };
@@ -118,15 +124,17 @@ impl_for_nonzero_integer!(core::num::NonZeroU64);
 impl_for_nonzero_integer!(core::num::NonZeroU128);
 impl_for_nonzero_integer!(core::num::NonZeroUsize);
 
+#[async_trait::async_trait]
 impl BorshSerialize for isize {
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        BorshSerialize::serialize(&(*self as i64), writer)
+    async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        BorshSerialize::serialize(&(*self as i64), writer).await
     }
 }
 
+#[async_trait::async_trait]
 impl BorshSerialize for usize {
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        BorshSerialize::serialize(&(*self as u64), writer)
+    async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        BorshSerialize::serialize(&(*self as u64), writer).await
     }
 }
 
@@ -134,14 +142,15 @@ impl BorshSerialize for usize {
 // and vice-versa. We disallow NaNs to avoid this issue.
 macro_rules! impl_for_float {
     ($type: ident) => {
+        #[async_trait::async_trait]
         impl BorshSerialize for $type {
             #[inline]
-            fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+            async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
                 assert!(
                     !self.is_nan(),
                     "For portability reasons we do not allow to serialize NaNs."
                 );
-                writer.write_all(&self.to_bits().to_le_bytes())
+                writer.write_all(&self.to_bits().to_le_bytes()).await
             }
         }
     };
@@ -150,104 +159,117 @@ macro_rules! impl_for_float {
 impl_for_float!(f32);
 impl_for_float!(f64);
 
+#[async_trait::async_trait]
 impl BorshSerialize for bool {
     #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        (u8::from(*self)).serialize(writer)
+    async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        (u8::from(*self)).serialize(writer).await
     }
 }
 
+#[async_trait::async_trait]
 impl<T> BorshSerialize for core::ops::Range<T>
 where
-    T: BorshSerialize,
+    T: BorshSerialize + Send + Sync,
 {
     #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        self.start.serialize(writer)?;
-        self.end.serialize(writer)
+    async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        self.start.serialize(writer).await?;
+        self.end.serialize(writer).await
     }
 }
 
+#[async_trait::async_trait]
 impl<T> BorshSerialize for Option<T>
 where
-    T: BorshSerialize,
+    T: BorshSerialize + Sync,
 {
     #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+    async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
         match self {
-            None => 0u8.serialize(writer),
+            None => 0u8.serialize(writer).await,
             Some(value) => {
-                1u8.serialize(writer)?;
-                value.serialize(writer)
+                1u8.serialize(writer).await?;
+                value.serialize(writer).await
             }
         }
     }
 }
 
+#[async_trait::async_trait]
 impl<T, E> BorshSerialize for core::result::Result<T, E>
 where
-    T: BorshSerialize,
-    E: BorshSerialize,
+    T: BorshSerialize + Sync,
+    E: BorshSerialize + Sync,
 {
     #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+    async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
         match self {
             Err(e) => {
-                0u8.serialize(writer)?;
-                e.serialize(writer)
+                0u8.serialize(writer).await?;
+                e.serialize(writer).await
             }
             Ok(v) => {
-                1u8.serialize(writer)?;
-                v.serialize(writer)
+                1u8.serialize(writer).await?;
+                v.serialize(writer).await
             }
         }
     }
 }
 
+#[async_trait::async_trait]
 impl BorshSerialize for str {
     #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        self.as_bytes().serialize(writer)
+    async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        self.as_bytes().serialize(writer).await
     }
 }
 
+#[async_trait::async_trait]
 impl BorshSerialize for String {
     #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        self.as_bytes().serialize(writer)
+    async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        self.as_bytes().serialize(writer).await
     }
 }
 
 /// Helper method that is used to serialize a slice of data (without the length marker).
 #[inline]
-fn serialize_slice<T: BorshSerialize, W: Write>(data: &[T], writer: &mut W) -> Result<()> {
+async fn serialize_slice<T: BorshSerialize, W: AsyncWrite + Send + Unpin>(
+    data: &[T],
+    writer: &mut W,
+) -> Result<()> {
     if let Some(u8_slice) = T::u8_slice(data) {
-        writer.write_all(u8_slice)?;
+        writer.write_all(u8_slice).await?;
     } else {
         for item in data {
-            item.serialize(writer)?;
+            item.serialize(writer).await?;
         }
     }
     Ok(())
 }
 
+#[async_trait::async_trait]
 impl<T> BorshSerialize for [T]
 where
-    T: BorshSerialize,
+    T: BorshSerialize + Sync,
 {
     #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.write_all(
-            &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidInput)?).to_le_bytes(),
-        )?;
-        serialize_slice(self, writer)
+    async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        writer
+            .write_all(
+                &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidInput)?).to_le_bytes(),
+            )
+            .await?;
+        serialize_slice(self, writer).await
     }
 }
 
+#[async_trait::async_trait]
 impl<T: BorshSerialize + ?Sized> BorshSerialize for &T {
     #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        (*self).serialize(writer)
+    async fn serialize<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        (*self).serialize(writer).await
     }
 }
 
