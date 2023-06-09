@@ -2,7 +2,7 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{quote, ToTokens};
 use syn::{
     parse_quote, AttrStyle, Attribute, Field, FieldMutability, Fields, FieldsUnnamed, Ident,
-    ItemEnum, ItemStruct, MacroDelimiter, Meta, MetaList, Path, Visibility,
+    ItemEnum, ItemStruct, Meta, Visibility,
 };
 
 use crate::helpers::{declaration, quote_where_clause};
