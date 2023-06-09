@@ -14,5 +14,5 @@ Binary Object Representation Serializer for Hashing
 
 [dependencies]
 proc-macro2 = "1"
-syn = {version = "1", features = ["full", "fold"] }
+syn = { version = "2.0.18", features = ["full", "fold"] }
 quote = "1"

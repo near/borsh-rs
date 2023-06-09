@@ -1,8 +1,8 @@
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{quote, ToTokens};
 use syn::{
-    parse_quote, AttrStyle, Attribute, Field, Fields, FieldsUnnamed, Ident, ItemEnum, ItemStruct,
-    Visibility,
+    parse_quote, AttrStyle, Attribute, Field, FieldMutability, Fields, FieldsUnnamed, Ident,
+    ItemEnum, ItemStruct, MacroDelimiter, Meta, MetaList, Path, Visibility,
 };
 
 use crate::helpers::{declaration, quote_where_clause};
@@ -50,14 +50,14 @@ pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStre
                 pound_token: Default::default(),
                 style: AttrStyle::Outer,
                 bracket_token: Default::default(),
-                path: parse_quote! {borsh_skip},
-                tokens: Default::default(),
+                meta: Meta::Path(parse_quote! {borsh_skip}),
             };
             // Whether we should convert the struct from unit struct to regular struct.
             let mut unit_to_regular = false;
             match &mut anonymous_struct.fields {
                 Fields::Named(named) => {
                     named.named.push(Field {
+                        mutability: FieldMutability::None,
                         attrs: vec![attr.clone()],
                         vis: Visibility::Inherited,
                         ident: Some(Ident::new("borsh_schema_phantom_data", Span::call_site())),
@@ -67,6 +67,7 @@ pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStre
                 }
                 Fields::Unnamed(unnamed) => {
                     unnamed.unnamed.push(Field {
+                        mutability: FieldMutability::None,
                         attrs: vec![attr.clone()],
                         vis: Visibility::Inherited,
                         ident: None,
@@ -84,6 +85,7 @@ pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStre
                     unnamed: Default::default(),
                 };
                 fields.unnamed.push(Field {
+                    mutability: FieldMutability::None,
                     attrs: vec![attr],
                     vis: Visibility::Inherited,
                     ident: None,

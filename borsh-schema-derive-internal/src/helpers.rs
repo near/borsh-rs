@@ -1,16 +1,13 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens};
-use syn::{Attribute, Generics, Ident, Meta, WhereClause};
+use syn::{Attribute, Generics, Ident, WhereClause};
 
 pub fn contains_skip(attrs: &[Attribute]) -> bool {
-    for attr in attrs.iter() {
-        if let Ok(Meta::Path(path)) = attr.parse_meta() {
-            if path.to_token_stream().to_string().as_str() == "borsh_skip" {
-                return true;
-            }
-        }
-    }
-    false
+    attrs
+        .iter()
+        .filter(|attr| attr.path().to_token_stream().to_string().as_str() == "borsh_skip")
+        .count()
+        > 0
 }
 
 pub fn declaration(
