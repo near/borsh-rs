@@ -80,3 +80,49 @@ pub fn borsh_schema(input: TokenStream) -> TokenStream {
         Err(err) => err.to_compile_error(),
     })
 }
+
+#[proc_macro_derive(AsyncBorshSerialize, attributes(borsh_skip))]
+pub fn async_borsh_serialize(input: TokenStream) -> TokenStream {
+    let cratename = Ident::new(
+        &crate_name("borsh").unwrap_or_else(|_| "borsh".to_string()),
+        Span::call_site(),
+    );
+
+    let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
+        tokio_struct_ser(&input, cratename)
+    } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
+        tokio_enum_ser(&input, cratename)
+    } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
+        tokio_union_ser(&input, cratename)
+    } else {
+        // Derive macros can only be defined on structs, enums, and unions.
+        unreachable!()
+    };
+    TokenStream::from(match res {
+        Ok(res) => res,
+        Err(err) => err.to_compile_error(),
+    })
+}
+
+#[proc_macro_derive(AsyncBorshDeserialize, attributes(borsh_skip, borsh_init))]
+pub fn async_borsh_deserialize(input: TokenStream) -> TokenStream {
+    let cratename = Ident::new(
+        &crate_name("borsh").unwrap_or_else(|_| "borsh".to_string()),
+        Span::call_site(),
+    );
+
+    let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
+        tokio_struct_de(&input, cratename)
+    } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
+        tokio_enum_de(&input, cratename)
+    } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
+        tokio_union_de(&input, cratename)
+    } else {
+        // Derive macros can only be defined on structs, enums, and unions.
+        unreachable!()
+    };
+    TokenStream::from(match res {
+        Ok(res) => res,
+        Err(err) => err.to_compile_error(),
+    })
+}

@@ -25,17 +25,21 @@ borsh-derive = { path = "../borsh-derive" }
 hashbrown = ">=0.11,<0.14"
 bytes = { version = "1", optional = true }
 bson = { version = "2", optional = true }
-async-trait = "0.1.68"
-tokio = { version = "1.28.1", default-features = false, features = ["io-util"]}
+
+# tokio feature flag
+async-trait = { version = "0.1.68", optional = true }
+tokio = { version = "1.28.1", default-features = false, features = [ "io-util" ], optional = true }
 
 [dev-dependencies]
 bytes = "1"
 bson = "2"
 # Enable the "bytes" and "bson" features in integ tests: https://github.com/rust-lang/cargo/issues/2911#issuecomment-1464060655
 borsh = { path = ".", features = ["bytes", "bson"] }
+tokio = { version = "1.28.1", default-features = false, features = [ "io-util", "test-util", "macros" ] }
 
 [features]
-default = ["std"]
+default = ["std", "tokio", "rc"]
 std = []
 rc = []
 const-generics = []
+tokio = ["dep:tokio", "dep:async-trait"]

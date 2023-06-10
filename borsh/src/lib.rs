@@ -12,6 +12,10 @@ pub mod schema;
 pub mod schema_helpers;
 pub mod ser;
 
+//TODO: Needs to handle no-std and `pub use` it here.
+#[cfg(feature = "tokio")]
+pub mod tokio;
+
 pub use de::BorshDeserialize;
 pub use schema::BorshSchema;
 pub use schema_helpers::{try_from_slice_with_schema, try_to_vec_with_schema};
