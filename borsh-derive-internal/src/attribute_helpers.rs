@@ -1,22 +1,15 @@
 use syn::{Attribute, Path};
 
 pub fn contains_skip(attrs: &[Attribute]) -> bool {
-    attrs
-        .iter()
-        .filter(|attr| attr.path().is_ident("borsh_skip"))
-        .count()
-        > 0
+    attrs.iter().any(|attr| attr.path().is_ident("borsh_skip"))
 }
 
-pub fn contains_initialize_with(attrs: &[Attribute]) -> syn::Result<Option<Path>> {
-    let mut res = None;
+pub fn contains_initialize_with(attrs: &[Attribute]) -> Option<Path> {
     for attr in attrs.iter() {
         if attr.path().is_ident("borsh_init") {
-            let _ = attr.parse_nested_meta(|meta| {
-                res = Some(meta.path);
-                Ok(())
-            });
+            return Some(attr.path().clone());
         }
     }
-    Ok(res)
+
+    None
 }
