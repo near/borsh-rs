@@ -5,9 +5,7 @@ use syn::{Attribute, Generics, Ident, WhereClause};
 pub fn contains_skip(attrs: &[Attribute]) -> bool {
     attrs
         .iter()
-        .filter(|attr| attr.path().to_token_stream().to_string().as_str() == "borsh_skip")
-        .count()
-        > 0
+        .any(|attr| attr.path().to_token_stream().to_string().as_str() == "borsh_skip")
 }
 
 pub fn declaration(
