@@ -17,7 +17,7 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         },
         Clone::clone,
     );
-    let init_method = contains_initialize_with(&input.attrs)?;
+    let init_method = contains_initialize_with(&input.attrs);
     let mut variant_arms = TokenStream2::new();
     let discriminants = discriminant_map(&input.variants);
     for variant in input.variants.iter() {
