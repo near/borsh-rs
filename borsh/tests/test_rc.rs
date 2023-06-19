@@ -1,7 +1,7 @@
 #![cfg(feature = "rc")]
 
-use borsh::maybestd::rc::Rc;
-use borsh::maybestd::sync::Arc;
+use borsh::__maybestd::rc::Rc;
+use borsh::__maybestd::sync::Arc;
 use borsh::{from_slice, BorshSerialize};
 
 #[test]

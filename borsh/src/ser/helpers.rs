@@ -1,8 +1,8 @@
-use crate::maybestd::{
+use crate::BorshSerialize;
+use crate::__maybestd::{
     io::{Result, Write},
     vec::Vec,
 };
-use crate::BorshSerialize;
 
 /// Serialize an object into a vector of bytes.
 pub fn to_vec<T>(value: &T) -> Result<Vec<u8>>

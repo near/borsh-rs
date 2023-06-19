@@ -95,7 +95,7 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
     }
     Ok(quote! {
         impl #impl_generics #cratename::ser::BorshSerialize for #name #ty_generics #where_clause {
-            fn serialize<W: #cratename::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::maybestd::io::Error> {
+            fn serialize<W: #cratename::__maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::__maybestd::io::Error> {
                 let variant_idx: u8 = match self {
                     #variant_idx_body
                 };

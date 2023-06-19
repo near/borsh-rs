@@ -54,7 +54,7 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
     }
     Ok(quote! {
         impl #impl_generics #cratename::ser::BorshSerialize for #name #ty_generics #where_clause {
-            fn serialize<W: #cratename::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::maybestd::io::Error> {
+            fn serialize<W: #cratename::__maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::__maybestd::io::Error> {
                 #body
                 Ok(())
             }
@@ -88,7 +88,7 @@ mod tests {
                 u64: borsh::ser::BorshSerialize,
                 String: borsh::ser::BorshSerialize
             {
-                fn serialize<W: borsh::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), borsh::maybestd::io::Error> {
+                fn serialize<W: borsh::__maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), borsh::__maybestd::io::Error> {
                     borsh::BorshSerialize::serialize(&self.x, writer)?;
                     borsh::BorshSerialize::serialize(&self.y, writer)?;
                     Ok(())
@@ -114,7 +114,7 @@ mod tests {
                 HashMap<K, V>: borsh::ser::BorshSerialize,
                 String: borsh::ser::BorshSerialize
             {
-                fn serialize<W: borsh::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), borsh::maybestd::io::Error> {
+                fn serialize<W: borsh::__maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), borsh::__maybestd::io::Error> {
                     borsh::BorshSerialize::serialize(&self.x, writer)?;
                     borsh::BorshSerialize::serialize(&self.y, writer)?;
                     Ok(())
@@ -141,7 +141,7 @@ mod tests {
                 HashMap<K, V>: borsh::ser::BorshSerialize,
                 String: borsh::ser::BorshSerialize
             {
-                fn serialize<W: borsh::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), borsh::maybestd::io::Error> {
+                fn serialize<W: borsh::__maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), borsh::__maybestd::io::Error> {
                     borsh::BorshSerialize::serialize(&self.x, writer)?;
                     borsh::BorshSerialize::serialize(&self.y, writer)?;
                     Ok(())

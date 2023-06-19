@@ -3,7 +3,7 @@ use core::hash::BuildHasher;
 #[cfg(feature = "std")]
 use std::collections::hash_map::{DefaultHasher, RandomState};
 
-use borsh::maybestd::collections::HashMap;
+use borsh::__maybestd::collections::HashMap;
 use borsh::{from_slice, BorshSerialize};
 
 #[test]
