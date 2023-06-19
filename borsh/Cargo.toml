@@ -1,6 +1,7 @@
 [package]
 name = "borsh"
 version.workspace = true
+rust-version.workspace = true
 authors = ["Near Inc <hello@near.org>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
