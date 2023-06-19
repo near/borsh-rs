@@ -31,29 +31,25 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     let mut use_discriminant = None;
     for attr in &derive_input.attrs {
         if attr.path().is_ident("use_discriminant") {
-            match attr.meta.clone() {
-                Meta::NameValue(value) => match value {
-                    MetaNameValue {
-                        path,
-                        eq_token: _,
-                        value,
-                    } => {
-                        if path.is_ident("use_discriminant") {
-                            let value = value.to_token_stream().to_string();
-                            use_discriminant = match value.as_str() {
-                                "true" => Some(true),
-                                "false" => Some(false),
-                                _ => {
-                                    return TokenStream::from(
-                                        syn::Error::new(Span::call_site(), "`use_discriminant` ")
-                                            .to_compile_error(),
-                                    );
-                                }
-                            };
+            if let Meta::NameValue(value) = attr.meta.clone() {
+                let MetaNameValue {
+                    path,
+                    eq_token: _,
+                    value,
+                } = value;
+                if path.is_ident("use_discriminant") {
+                    let value = value.to_token_stream().to_string();
+                    use_discriminant = match value.as_str() {
+                        "true" => Some(true),
+                        "false" => Some(false),
+                        _ => {
+                            return TokenStream::from(
+                                syn::Error::new(Span::call_site(), "`use_discriminant` ")
+                                    .to_compile_error(),
+                            );
                         }
-                    }
-                },
-                _ => {}
+                    };
+                }
             }
         }
     }
@@ -90,29 +86,25 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     let mut use_discriminant = None;
     for attr in &derive_input.attrs {
         if attr.path().is_ident("use_discriminant") {
-            match attr.meta.clone() {
-                Meta::NameValue(value) => match value {
-                    MetaNameValue {
-                        path,
-                        eq_token: _,
-                        value,
-                    } => {
-                        if path.is_ident("use_discriminant") {
-                            let value = value.to_token_stream().to_string();
-                            use_discriminant = match value.as_str() {
-                                "true" => Some(true),
-                                "false" => Some(false),
-                                _ => {
-                                    return TokenStream::from(
-                                        syn::Error::new(Span::call_site(), "`use_discriminant` ")
-                                            .to_compile_error(),
-                                    );
-                                }
-                            };
+            if let Meta::NameValue(value) = attr.meta.clone() {
+                let MetaNameValue {
+                    path,
+                    eq_token: _,
+                    value,
+                } = value;
+                if path.is_ident("use_discriminant") {
+                    let value = value.to_token_stream().to_string();
+                    use_discriminant = match value.as_str() {
+                        "true" => Some(true),
+                        "false" => Some(false),
+                        _ => {
+                            return TokenStream::from(
+                                syn::Error::new(Span::call_site(), "`use_discriminant` ")
+                                    .to_compile_error(),
+                            );
                         }
-                    }
-                },
-                _ => {}
+                    };
+                }
             }
         }
     }
