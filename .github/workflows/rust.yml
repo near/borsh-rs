@@ -18,12 +18,24 @@ env:
 
 jobs:
   tests:
+    strategy:
+      matrix:
+        rust_version: [1.65.0, stable]
     runs-on: ubuntu-20.04
 
     steps:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain:  ${{ matrix.rust_version }}
+
+    - name: set default rust toolchain
+      run: rustup default ${{ matrix.rust_version }}
+    - name: print rustc version
+      run: rustc --version
     - name: Run tests
       run: |
         pushd borsh
