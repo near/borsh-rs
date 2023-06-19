@@ -1,4 +1,4 @@
-use borsh::maybestd::collections::HashMap;
+use borsh::__maybestd::collections::HashMap;
 use borsh::schema::*;
 
 macro_rules! map(

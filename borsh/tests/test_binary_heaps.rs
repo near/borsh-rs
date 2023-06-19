@@ -1,4 +1,4 @@
-use borsh::maybestd::collections::BinaryHeap;
+use borsh::__maybestd::collections::BinaryHeap;
 use borsh::{from_slice, BorshSerialize};
 
 macro_rules! test_binary_heap {

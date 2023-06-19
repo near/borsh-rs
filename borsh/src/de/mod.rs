@@ -9,7 +9,7 @@ use core::{
 #[cfg(any(test, feature = "bytes"))]
 use bytes::{BufMut, BytesMut};
 
-use crate::maybestd::{
+use crate::__maybestd::{
     borrow::{Borrow, Cow, ToOwned},
     boxed::Box,
     collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque},
@@ -21,7 +21,7 @@ use crate::maybestd::{
 };
 
 #[cfg(feature = "rc")]
-use crate::maybestd::{rc::Rc, sync::Arc};
+use crate::__maybestd::{rc::Rc, sync::Arc};
 
 mod hint;
 
@@ -99,14 +99,14 @@ pub trait EnumExt: BorshDeserialize {
     /// struct OneOrZero(MyEnum);
     ///
     /// impl borsh::de::BorshDeserialize for OneOrZero {
-    ///     fn deserialize_reader<R: borsh::maybestd::io::Read>(
+    ///     fn deserialize_reader<R: borsh::__maybestd::io::Read>(
     ///         reader: &mut R,
-    ///     ) -> borsh::maybestd::io::Result<Self> {
+    ///     ) -> borsh::__maybestd::io::Result<Self> {
     ///         use borsh::de::EnumExt;
     ///         let tag = u8::deserialize_reader(reader)?;
     ///         if tag == 2 {
-    ///             Err(borsh::maybestd::io::Error::new(
-    ///                 borsh::maybestd::io::ErrorKind::InvalidInput,
+    ///             Err(borsh::__maybestd::io::Error::new(
+    ///                 borsh::__maybestd::io::ErrorKind::InvalidInput,
     ///                 "MyEnum::Many not allowed here",
     ///             ))
     ///         } else {

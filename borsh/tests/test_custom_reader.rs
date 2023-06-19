@@ -75,8 +75,8 @@ struct CustomReader {
     read_index: usize,
 }
 
-impl borsh::maybestd::io::Read for CustomReader {
-    fn read(&mut self, buf: &mut [u8]) -> borsh::maybestd::io::Result<usize> {
+impl borsh::__maybestd::io::Read for CustomReader {
+    fn read(&mut self, buf: &mut [u8]) -> borsh::__maybestd::io::Result<usize> {
         let len = buf.len().min(self.data.len() - self.read_index);
         buf[0..len].copy_from_slice(&self.data[self.read_index..self.read_index + len]);
         self.read_index += len;
@@ -107,8 +107,8 @@ struct CustomReaderThatDoesntFillSlices {
     read_index: usize,
 }
 
-impl borsh::maybestd::io::Read for CustomReaderThatDoesntFillSlices {
-    fn read(&mut self, buf: &mut [u8]) -> borsh::maybestd::io::Result<usize> {
+impl borsh::__maybestd::io::Read for CustomReaderThatDoesntFillSlices {
+    fn read(&mut self, buf: &mut [u8]) -> borsh::__maybestd::io::Result<usize> {
         let len = buf.len().min(self.data.len() - self.read_index);
         let len = if len <= 1 { len } else { len / 2 };
         buf[0..len].copy_from_slice(&self.data[self.read_index..self.read_index + len]);
@@ -125,16 +125,16 @@ fn test_custom_reader_that_fails_preserves_error_information() {
     assert_eq!(err.to_string(), "I don't like to run");
     assert_eq!(
         err.kind(),
-        borsh::maybestd::io::ErrorKind::ConnectionAborted
+        borsh::__maybestd::io::ErrorKind::ConnectionAborted
     );
 }
 
 struct CustomReaderThatFails;
 
-impl borsh::maybestd::io::Read for CustomReaderThatFails {
-    fn read(&mut self, _buf: &mut [u8]) -> borsh::maybestd::io::Result<usize> {
-        Err(borsh::maybestd::io::Error::new(
-            borsh::maybestd::io::ErrorKind::ConnectionAborted,
+impl borsh::__maybestd::io::Read for CustomReaderThatFails {
+    fn read(&mut self, _buf: &mut [u8]) -> borsh::__maybestd::io::Result<usize> {
+        Err(borsh::__maybestd::io::Error::new(
+            borsh::__maybestd::io::ErrorKind::ConnectionAborted,
             "I don't like to run",
         ))
     }

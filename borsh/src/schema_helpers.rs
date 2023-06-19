@@ -1,8 +1,8 @@
-use crate::from_slice;
-use crate::maybestd::{
+use crate::__maybestd::{
     io::{Error, ErrorKind, Result},
     vec::Vec,
 };
+use crate::from_slice;
 use crate::schema::BorshSchemaContainer;
 use crate::{BorshDeserialize, BorshSchema, BorshSerialize};
 

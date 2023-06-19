@@ -85,22 +85,22 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
 
     Ok(quote! {
         impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
-            fn deserialize_reader<R: borsh::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
+            fn deserialize_reader<R: borsh::__maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::__maybestd::io::Error> {
                 let tag = <u8 as #cratename::de::BorshDeserialize>::deserialize_reader(reader)?;
                 <Self as #cratename::de::EnumExt>::deserialize_variant(reader, tag)
             }
         }
 
         impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
-            fn deserialize_variant<R: borsh::maybestd::io::Read>(
+            fn deserialize_variant<R: borsh::__maybestd::io::Read>(
                 reader: &mut R,
                 variant_tag: u8,
-            ) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
+            ) -> ::core::result::Result<Self, #cratename::__maybestd::io::Error> {
                 let mut return_value =
                     #variant_arms {
-                    return Err(#cratename::maybestd::io::Error::new(
-                        #cratename::maybestd::io::ErrorKind::InvalidInput,
-                        #cratename::maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
+                    return Err(#cratename::__maybestd::io::Error::new(
+                        #cratename::__maybestd::io::ErrorKind::InvalidInput,
+                        #cratename::__maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
                     ))
                 };
                 #init

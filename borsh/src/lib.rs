@@ -22,8 +22,9 @@ pub use ser::BorshSerialize;
 /// A facade around all the types we need from the `std`, `core`, and `alloc`
 /// crates. This avoids elaborate import wrangling having to happen in every
 /// module.
+#[doc(hidden)]
 #[cfg(feature = "std")]
-pub mod maybestd {
+pub mod __maybestd {
     pub use std::{borrow, boxed, collections, format, io, string, vec};
 
     #[cfg(feature = "rc")]
@@ -33,8 +34,9 @@ pub mod maybestd {
 #[cfg(not(feature = "std"))]
 mod nostd_io;
 
+#[doc(hidden)]
 #[cfg(not(feature = "std"))]
-pub mod maybestd {
+pub mod __maybestd {
     pub use alloc::{borrow, boxed, format, string, vec};
 
     #[cfg(feature = "rc")]

@@ -3,7 +3,7 @@ use core::hash::BuildHasher;
 use core::marker::PhantomData;
 use core::mem::size_of;
 
-use crate::maybestd::{
+use crate::__maybestd::{
     borrow::{Cow, ToOwned},
     boxed::Box,
     collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque},
@@ -13,7 +13,7 @@ use crate::maybestd::{
 };
 
 #[cfg(feature = "rc")]
-use crate::maybestd::{rc::Rc, sync::Arc};
+use crate::__maybestd::{rc::Rc, sync::Arc};
 
 pub(crate) mod helpers;
 

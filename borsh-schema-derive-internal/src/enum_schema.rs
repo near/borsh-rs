@@ -108,10 +108,10 @@ pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStre
     }
 
     let type_definitions = quote! {
-        fn add_definitions_recursively(definitions: &mut #cratename::maybestd::collections::HashMap<#cratename::schema::Declaration, #cratename::schema::Definition>) {
+        fn add_definitions_recursively(definitions: &mut #cratename::__maybestd::collections::HashMap<#cratename::schema::Declaration, #cratename::schema::Definition>) {
             #anonymous_defs
             #add_recursive_defs
-            let variants = #cratename::maybestd::vec![#(#variants_defs),*];
+            let variants = #cratename::__maybestd::vec![#(#variants_defs),*];
             let definition = #cratename::schema::Definition::Enum{variants};
             Self::add_definition(Self::declaration(), definition, definitions);
         }
@@ -153,7 +153,7 @@ mod tests {
                     "A".to_string()
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::maybestd::collections::HashMap<
+                    definitions: &mut borsh::__maybestd::collections::HashMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
@@ -164,7 +164,7 @@ mod tests {
                     struct AEggs;
                     <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
                     <AEggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    let variants = borsh::maybestd::vec![
+                    let variants = borsh::__maybestd::vec![
                         ("Bacon".to_string(), <ABacon>::declaration()),
                         ("Eggs".to_string(), <AEggs>::declaration())
                     ];
@@ -191,7 +191,7 @@ mod tests {
                     "A".to_string()
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::maybestd::collections::HashMap<
+                    definitions: &mut borsh::__maybestd::collections::HashMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
@@ -199,7 +199,7 @@ mod tests {
                     #[derive(borsh :: BorshSchema)]
                     struct ABacon;
                     <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    let variants = borsh::maybestd::vec![("Bacon".to_string(), <ABacon>::declaration())];
+                    let variants = borsh::__maybestd::vec![("Bacon".to_string(), <ABacon>::declaration())];
                     let definition = borsh::schema::Definition::Enum { variants };
                     Self::add_definition(Self::declaration(), definition, definitions);
                 }
@@ -226,7 +226,7 @@ mod tests {
                     "A".to_string()
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::maybestd::collections::HashMap<
+                    definitions: &mut borsh::__maybestd::collections::HashMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
@@ -246,7 +246,7 @@ mod tests {
                     <AEggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
                     <ASalad as borsh::BorshSchema>::add_definitions_recursively(definitions);
                     <ASausage as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    let variants = borsh::maybestd::vec![
+                    let variants = borsh::__maybestd::vec![
                         ("Bacon".to_string(), <ABacon>::declaration()),
                         ("Eggs".to_string(), <AEggs>::declaration()),
                         ("Salad".to_string(), <ASalad>::declaration()),
@@ -279,11 +279,11 @@ mod tests {
                 W: borsh::BorshSchema
             {
                 fn declaration() -> borsh::schema::Declaration {
-                    let params = borsh::maybestd::vec![<C>::declaration(), <W>::declaration()];
+                    let params = borsh::__maybestd::vec![<C>::declaration(), <W>::declaration()];
                     format!(r#"{}<{}>"#, "A", params.join(", "))
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::maybestd::collections::HashMap<
+                    definitions: &mut borsh::__maybestd::collections::HashMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
@@ -310,7 +310,7 @@ mod tests {
                     <AEggs<C, W> as borsh::BorshSchema>::add_definitions_recursively(definitions);
                     <ASalad<C, W> as borsh::BorshSchema>::add_definitions_recursively(definitions);
                     <ASausage<C, W> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    let variants = borsh::maybestd::vec![
+                    let variants = borsh::__maybestd::vec![
                         ("Bacon".to_string(), <ABacon<C, W> >::declaration()),
                         ("Eggs".to_string(), <AEggs<C, W> >::declaration()),
                         ("Salad".to_string(), <ASalad<C, W> >::declaration()),
@@ -352,11 +352,11 @@ mod tests {
                 B: borsh::BorshSchema
             {
                 fn declaration() -> borsh::schema::Declaration {
-                    let params = borsh::maybestd::vec![<A>::declaration(), <B>::declaration()];
+                    let params = borsh::__maybestd::vec![<A>::declaration(), <B>::declaration()];
                     format!(r#"{}<{}>"#, "Side", params.join(", "))
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::maybestd::collections::HashMap<
+                    definitions: &mut borsh::__maybestd::collections::HashMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
@@ -383,7 +383,7 @@ mod tests {
                     ;
                     <SideLeft<A, B> as borsh::BorshSchema >::add_definitions_recursively(definitions);
                     <SideRight<A, B> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    let variants = borsh::maybestd::vec![
+                    let variants = borsh::__maybestd::vec![
                         ("Left".to_string(), <SideLeft<A, B> >::declaration()),
                         ("Right".to_string(), <SideRight<A, B> >::declaration())
                     ];

@@ -12,8 +12,8 @@
 
 #![allow(dead_code)] // Unclear why rust check complains on fields of `Definition` variants.
 use crate as borsh; // For `#[derive(BorshSerialize, BorshDeserialize)]`.
-use crate::maybestd::collections::{BTreeMap, BTreeSet};
-use crate::maybestd::{
+use crate::__maybestd::collections::{BTreeMap, BTreeSet};
+use crate::__maybestd::{
     boxed::Box,
     collections::{hash_map::Entry, HashMap, HashSet},
     format,
@@ -375,7 +375,7 @@ impl_tuple!(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::maybestd::collections::HashMap;
+    use crate::__maybestd::collections::HashMap;
 
     macro_rules! map(
     () => { HashMap::new() };
