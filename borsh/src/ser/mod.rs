@@ -1,12 +1,11 @@
 use core::convert::TryFrom;
-use core::hash::BuildHasher;
 use core::marker::PhantomData;
 use core::mem::size_of;
 
 use crate::__maybestd::{
     borrow::{Cow, ToOwned},
     boxed::Box,
-    collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque},
+    collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque},
     io::{Error, ErrorKind, Result, Write},
     string::String,
     vec::Vec,
@@ -352,43 +351,56 @@ where
     }
 }
 
-impl<K, V, H> BorshSerialize for HashMap<K, V, H>
-where
-    K: BorshSerialize + PartialOrd,
-    V: BorshSerialize,
-    H: BuildHasher,
-{
-    #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let mut vec = self.iter().collect::<Vec<_>>();
-        vec.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
-        u32::try_from(vec.len())
-            .map_err(|_| ErrorKind::InvalidInput)?
-            .serialize(writer)?;
-        for (key, value) in vec {
-            key.serialize(writer)?;
-            value.serialize(writer)?;
-        }
-        Ok(())
-    }
-}
+#[cfg(hash_collections)]
+pub mod hashes {
+    use crate::__maybestd::vec::Vec;
+    use crate::{
+        BorshSerialize,
+        __maybestd::collections::{HashMap, HashSet},
+    };
+    use core::convert::TryFrom;
+    use core::hash::BuildHasher;
 
-impl<T, H> BorshSerialize for HashSet<T, H>
-where
-    T: BorshSerialize + PartialOrd,
-    H: BuildHasher,
-{
-    #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let mut vec = self.iter().collect::<Vec<_>>();
-        vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        u32::try_from(vec.len())
-            .map_err(|_| ErrorKind::InvalidInput)?
-            .serialize(writer)?;
-        for item in vec {
-            item.serialize(writer)?;
+    use crate::__maybestd::io::{ErrorKind, Result, Write};
+
+    impl<K, V, H> BorshSerialize for HashMap<K, V, H>
+    where
+        K: BorshSerialize + PartialOrd,
+        V: BorshSerialize,
+        H: BuildHasher,
+    {
+        #[inline]
+        fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+            let mut vec = self.iter().collect::<Vec<_>>();
+            vec.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
+            u32::try_from(vec.len())
+                .map_err(|_| ErrorKind::InvalidInput)?
+                .serialize(writer)?;
+            for (key, value) in vec {
+                key.serialize(writer)?;
+                value.serialize(writer)?;
+            }
+            Ok(())
         }
-        Ok(())
+    }
+
+    impl<T, H> BorshSerialize for HashSet<T, H>
+    where
+        T: BorshSerialize + PartialOrd,
+        H: BuildHasher,
+    {
+        #[inline]
+        fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+            let mut vec = self.iter().collect::<Vec<_>>();
+            vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            u32::try_from(vec.len())
+                .map_err(|_| ErrorKind::InvalidInput)?
+                .serialize(writer)?;
+            for item in vec {
+                item.serialize(writer)?;
+            }
+            Ok(())
+        }
     }
 }
 

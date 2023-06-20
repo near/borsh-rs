@@ -1,5 +1,17 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg(hash_collections)]
 #![allow(dead_code)] // Local structures do not have their fields used.
-use borsh::__maybestd::collections::HashMap;
+
+#[cfg(feature = "hashbrown")]
+use hashbrown::HashMap;
+#[cfg(feature = "std")]
+use std::collections::HashMap;
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{format, string::ToString, vec};
+
 use borsh::schema::*;
 use borsh::schema_helpers::{try_from_slice_with_schema, try_to_vec_with_schema};
 

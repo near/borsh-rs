@@ -1,5 +1,18 @@
-use borsh::__maybestd::collections::BinaryHeap;
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "std")]
+use std::collections::BinaryHeap;
+
 use borsh::{from_slice, BorshSerialize};
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{
+    collections::BinaryHeap,
+    string::{String, ToString},
+    vec,
+};
 
 macro_rules! test_binary_heap {
     ($v: expr, $t: ty) => {

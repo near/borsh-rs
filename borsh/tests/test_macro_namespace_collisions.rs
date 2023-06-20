@@ -1,3 +1,4 @@
+#![cfg_attr(not(feature = "std"), no_std)]
 // Borsh macros should not collide with the local modules:
 // https://github.com/near/borsh-rs/issues/11
 mod std {}

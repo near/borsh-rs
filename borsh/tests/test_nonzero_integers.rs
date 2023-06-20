@@ -1,5 +1,6 @@
+#![cfg_attr(not(feature = "std"), no_std)]
 use borsh::from_slice;
-use std::num::*;
+use core::num::*;
 
 #[test]
 fn test_nonzero_integer_u8() {

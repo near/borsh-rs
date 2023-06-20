@@ -1,4 +1,15 @@
+#![cfg_attr(not(feature = "std"), no_std)]
 use borsh::{from_slice, BorshDeserialize};
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 
 #[derive(BorshDeserialize, Debug)]
 enum A {
@@ -146,7 +157,7 @@ fn test_evil_bytes_string_extra() {
 fn test_zero_on_nonzero_integer_u8() {
     let bytes = &[0];
     assert_eq!(
-        from_slice::<std::num::NonZeroU8>(bytes)
+        from_slice::<core::num::NonZeroU8>(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
@@ -157,7 +168,7 @@ fn test_zero_on_nonzero_integer_u8() {
 fn test_zero_on_nonzero_integer_u32() {
     let bytes = &[0; 4];
     assert_eq!(
-        from_slice::<std::num::NonZeroU32>(bytes)
+        from_slice::<core::num::NonZeroU32>(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
@@ -168,7 +179,7 @@ fn test_zero_on_nonzero_integer_u32() {
 fn test_zero_on_nonzero_integer_i64() {
     let bytes = &[0; 8];
     assert_eq!(
-        from_slice::<std::num::NonZeroI64>(bytes)
+        from_slice::<core::num::NonZeroI64>(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
@@ -179,7 +190,7 @@ fn test_zero_on_nonzero_integer_i64() {
 fn test_zero_on_nonzero_integer_usize() {
     let bytes = &[0; 8];
     assert_eq!(
-        from_slice::<std::num::NonZeroUsize>(bytes)
+        from_slice::<core::num::NonZeroUsize>(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
@@ -190,7 +201,7 @@ fn test_zero_on_nonzero_integer_usize() {
 fn test_zero_on_nonzero_integer_missing_byte() {
     let bytes = &[0; 7];
     assert_eq!(
-        from_slice::<std::num::NonZeroUsize>(bytes)
+        from_slice::<core::num::NonZeroUsize>(bytes)
             .unwrap_err()
             .to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT

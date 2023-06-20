@@ -6,21 +6,26 @@ extern crate alloc;
 pub use borsh_derive::{BorshDeserialize, BorshSchema, BorshSerialize};
 
 pub mod de;
+
+// See `hash_collections` alias definition in build.rs
+#[cfg(hash_collections)]
 pub mod schema;
+#[cfg(hash_collections)]
 pub mod schema_helpers;
 pub mod ser;
 
 pub use de::BorshDeserialize;
 pub use de::{from_reader, from_slice};
+#[cfg(hash_collections)]
 pub use schema::BorshSchema;
+#[cfg(hash_collections)]
 pub use schema_helpers::{try_from_slice_with_schema, try_to_vec_with_schema};
 pub use ser::helpers::{to_vec, to_writer};
 pub use ser::BorshSerialize;
 
-#[cfg(all(feature = "std", feature = "external-hashcollections"))]
-compile_error!(
-    "feature \"std\" and feature \"external-hashcollections\" don't make sense at the same time"
-);
+#[cfg(all(feature = "std", feature = "hashbrown"))]
+compile_error!("feature \"std\" and feature \"hashbrown\" don't make sense at the same time");
+
 /// A facade around all the types we need from the `std`, `core`, and `alloc`
 /// crates. This avoids elaborate import wrangling having to happen in every
 /// module.
@@ -34,7 +39,7 @@ pub mod __maybestd {
 }
 
 #[cfg(not(feature = "std"))]
-mod nostd_io;
+pub mod nostd_io;
 
 #[doc(hidden)]
 #[cfg(not(feature = "std"))]
@@ -46,7 +51,7 @@ pub mod __maybestd {
 
     pub mod collections {
         pub use alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
-        #[cfg(feature = "external-hashcollections")]
+        #[cfg(feature = "hashbrown")]
         pub use hashbrown::*;
     }
 

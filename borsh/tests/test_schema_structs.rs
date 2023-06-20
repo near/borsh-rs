@@ -1,5 +1,22 @@
-use borsh::__maybestd::collections::HashMap;
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg(hash_collections)]
+
 use borsh::schema::*;
+
+#[cfg(feature = "hashbrown")]
+use hashbrown::HashMap;
+#[cfg(feature = "std")]
+use std::collections::HashMap;
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{
+    boxed::Box,
+    format,
+    string::{String, ToString},
+    vec,
+};
 
 macro_rules! map(
     () => { HashMap::new() };

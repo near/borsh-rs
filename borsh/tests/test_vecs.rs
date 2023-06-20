@@ -1,4 +1,14 @@
+#![cfg_attr(not(feature = "std"), no_std)]
 use borsh::{from_slice, BorshSerialize};
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 
 macro_rules! test_vec {
     ($v: expr, $t: ty) => {
