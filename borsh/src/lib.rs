@@ -17,6 +17,10 @@ pub use schema_helpers::{try_from_slice_with_schema, try_to_vec_with_schema};
 pub use ser::helpers::{to_vec, to_writer};
 pub use ser::BorshSerialize;
 
+#[cfg(all(feature = "std", feature = "external-hashcollections"))]
+compile_error!(
+    "feature \"std\" and feature \"external-hashcollections\" don't make sense at the same time"
+);
 /// A facade around all the types we need from the `std`, `core`, and `alloc`
 /// crates. This avoids elaborate import wrangling having to happen in every
 /// module.
@@ -42,6 +46,7 @@ pub mod __maybestd {
 
     pub mod collections {
         pub use alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
+        #[cfg(feature = "external-hashcollections")]
         pub use hashbrown::*;
     }
 
