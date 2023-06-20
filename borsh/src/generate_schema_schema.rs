@@ -1,6 +1,4 @@
 //! Generate `BorshSchemaCointainer` for `BorshSchemaContainer` and save it into a file.
-// TODO: re-enable this lint when we bump msrv to 1.58
-#![allow(clippy::uninlined_format_args)]
 use borsh::schema::BorshSchema;
 use borsh::BorshSerialize;
 use std::fs::File;
