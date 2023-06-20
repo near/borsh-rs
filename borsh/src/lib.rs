@@ -1,6 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO: re-enable this lint when we bump msrv to 1.58
-#![allow(clippy::uninlined_format_args)]
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;

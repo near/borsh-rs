@@ -1,6 +1,4 @@
 #![recursion_limit = "128"]
-// TODO: re-enable this lint when we bump msrv to 1.58
-#![allow(clippy::uninlined_format_args)]
 
 mod helpers;
 
