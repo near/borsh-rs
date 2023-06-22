@@ -1,0 +1,10 @@
+---
+source: borsh/tests/test_binary_heaps.rs
+expression: buf
+---
+[
+    0,
+    0,
+    0,
+    0,
+]

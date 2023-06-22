@@ -1,0 +1,11 @@
+---
+source: borsh/tests/test_vecs.rs
+expression: buf
+---
+[
+    1,
+    0,
+    0,
+    0,
+    100,
+]

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -e
 set -x
+export INSTA_UPDATE=no
 pushd borsh
 cargo test --no-run
 cargo test

@@ -11,8 +11,12 @@ use alloc::{
 };
 
 macro_rules! test_vec {
-    ($v: expr, $t: ty) => {
+    ($v: expr, $t: ty, $snap: expr) => {
         let buf = $v.try_to_vec().unwrap();
+        #[cfg(feature = "std")]
+        if $snap {
+            insta::assert_debug_snapshot!(buf);
+        }
         let actual_v: Vec<$t> = from_slice(&buf).expect("failed to deserialize");
         assert_eq!(actual_v, $v);
     };
@@ -22,12 +26,12 @@ macro_rules! test_vecs {
     ($test_name: ident, $el: expr, $t: ty) => {
         #[test]
         fn $test_name() {
-            test_vec!(Vec::<$t>::new(), $t);
-            test_vec!(vec![$el], $t);
-            test_vec!(vec![$el; 10], $t);
-            test_vec!(vec![$el; 100], $t);
-            test_vec!(vec![$el; 1000], $t);
-            test_vec!(vec![$el; 10000], $t);
+            test_vec!(Vec::<$t>::new(), $t, true);
+            test_vec!(vec![$el], $t, true);
+            test_vec!(vec![$el; 10], $t, true);
+            test_vec!(vec![$el; 100], $t, true);
+            test_vec!(vec![$el; 1000], $t, false); // one assumes that the concept has been proved
+            test_vec!(vec![$el; 10000], $t, false);
         }
     };
 }

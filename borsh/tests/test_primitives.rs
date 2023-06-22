@@ -7,6 +7,8 @@ macro_rules! test_primitive {
         fn $test_name() {
             let expected: $t = $v;
             let buf = expected.try_to_vec().unwrap();
+            #[cfg(feature = "std")]
+            insta::assert_debug_snapshot!(buf);
             let actual = from_slice::<$t>(&buf).expect("failed to deserialize");
             assert_eq!(actual, expected);
         }

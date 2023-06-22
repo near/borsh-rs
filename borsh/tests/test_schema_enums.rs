@@ -160,6 +160,8 @@ pub fn complex_enum_with_schema() {
     // Then check that we serialize and deserialize with schema.
     let obj = A::default();
     let data = try_to_vec_with_schema(&obj).unwrap();
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(data);
     let obj2: A = try_from_slice_with_schema(&data).unwrap();
     assert_eq!(obj, obj2);
 }

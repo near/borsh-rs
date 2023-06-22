@@ -41,6 +41,8 @@ fn test_generic_struct() {
         d: [0, 1, 2, 3, 4],
     };
     let data = a.try_to_vec().unwrap();
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(data);
     let actual_a = from_slice::<A<String, u64, String>>(&data).unwrap();
     assert_eq!(a, actual_a);
 }

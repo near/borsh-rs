@@ -171,6 +171,8 @@ fn test_simple_struct() {
     let e = E { a: &a };
     let encoded_ref_a = e.try_to_vec().unwrap();
     assert_eq!(encoded_ref_a, encoded_a);
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(encoded_a);
 
     let decoded_a = from_slice::<A>(&encoded_a).unwrap();
     let expected_a = A {
@@ -208,6 +210,8 @@ fn test_simple_struct() {
 
     let f1 = F1 { aa: &[&a, &a] };
     let encoded_f1 = f1.try_to_vec().unwrap();
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(encoded_f1);
     let decoded_f2 = from_slice::<F2>(&encoded_f1).unwrap();
     assert_eq!(decoded_f2.aa.len(), 2);
     assert!(decoded_f2.aa.iter().all(|f2_a| f2_a == &expected_a));
