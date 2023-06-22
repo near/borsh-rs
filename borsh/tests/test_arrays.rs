@@ -1,6 +1,12 @@
+#![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::float_cmp)]
 
 use borsh::{from_slice, BorshDeserialize, BorshSerialize};
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::string::{String, ToString};
 
 macro_rules! test_array {
     ($v: expr, $t: ty, $len: expr) => {

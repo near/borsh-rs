@@ -2,7 +2,6 @@ use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use core::{
     convert::{TryFrom, TryInto},
-    hash::{BuildHasher, Hash},
     mem::size_of,
 };
 
@@ -12,7 +11,7 @@ use bytes::{BufMut, BytesMut};
 use crate::__maybestd::{
     borrow::{Borrow, Cow, ToOwned},
     boxed::Box,
-    collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque},
+    collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque},
     format,
     io::{Error, ErrorKind, Read, Result},
     string::{String, ToString},
@@ -477,35 +476,45 @@ where
     }
 }
 
-impl<T, H> BorshDeserialize for HashSet<T, H>
-where
-    T: BorshDeserialize + Eq + Hash,
-    H: BuildHasher + Default,
-{
-    #[inline]
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let vec = <Vec<T>>::deserialize_reader(reader)?;
-        Ok(vec.into_iter().collect::<HashSet<T, H>>())
-    }
-}
+#[cfg(hash_collections)]
+pub mod hashes {
+    use core::hash::{BuildHasher, Hash};
 
-impl<K, V, H> BorshDeserialize for HashMap<K, V, H>
-where
-    K: BorshDeserialize + Eq + Hash,
-    V: BorshDeserialize,
-    H: BuildHasher + Default,
-{
-    #[inline]
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let len = u32::deserialize_reader(reader)?;
-        // TODO(16): return capacity allocation when we can safely do that.
-        let mut result = HashMap::with_hasher(H::default());
-        for _ in 0..len {
-            let key = K::deserialize_reader(reader)?;
-            let value = V::deserialize_reader(reader)?;
-            result.insert(key, value);
+    use crate::BorshDeserialize;
+    use crate::__maybestd::collections::{HashMap, HashSet};
+    use crate::__maybestd::io::{Read, Result};
+    use crate::__maybestd::vec::Vec;
+
+    impl<T, H> BorshDeserialize for HashSet<T, H>
+    where
+        T: BorshDeserialize + Eq + Hash,
+        H: BuildHasher + Default,
+    {
+        #[inline]
+        fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+            let vec = <Vec<T>>::deserialize_reader(reader)?;
+            Ok(vec.into_iter().collect::<HashSet<T, H>>())
         }
-        Ok(result)
+    }
+
+    impl<K, V, H> BorshDeserialize for HashMap<K, V, H>
+    where
+        K: BorshDeserialize + Eq + Hash,
+        V: BorshDeserialize,
+        H: BuildHasher + Default,
+    {
+        #[inline]
+        fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+            let len = u32::deserialize_reader(reader)?;
+            // TODO(16): return capacity allocation when we can safely do that.
+            let mut result = HashMap::with_hasher(H::default());
+            for _ in 0..len {
+                let key = K::deserialize_reader(reader)?;
+                let value = V::deserialize_reader(reader)?;
+                result.insert(key, value);
+            }
+            Ok(result)
+        }
     }
 }
 

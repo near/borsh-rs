@@ -1,4 +1,16 @@
+#![cfg_attr(not(feature = "std"), no_std)]
 use core::marker::PhantomData;
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
+#[cfg(not(feature = "std"))]
+use core::result::Result;
 
 use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 
@@ -8,7 +20,7 @@ struct A<T, F, G> {
     y: String,
     b: B<F, G>,
     pd: PhantomData<T>,
-    c: std::result::Result<T, G>,
+    c: Result<T, G>,
     d: [u64; 5],
 }
 
