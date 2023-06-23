@@ -1,5 +1,48 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+/*!
+
+# Crate features
+
+### Ecosystem features
+
+* **std** -
+  When enabled, this will cause `borsh` to use the standard library. Currently,
+  disabling this feature will result in building the crate in `no_std` environment.
+
+### Default features
+
+* **std** - enabled by default.
+
+### Other features
+
+* **rc** -
+  Gates implementation of [BorshSerialize](crate::ser::BorshSerialize) and [BorshDeserialize](crate::de::BorshDeserialize)
+  for [`Rc<T>`](std::rc::Rc)/[`Arc<T>`](std::sync::Arc) respectively.
+  In `no_std` setting `Rc`/`Arc` are pulled from `alloc` crate.
+* **hashbrown** -
+  Pulls in [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet) when no `std` is available.
+  This feature is set to be mutually exclusive with **std** feature.
+* **bytes** -
+  Gates implementation of [BorshSerialize](crate::ser::BorshSerialize) and [BorshDeserialize](crate::de::BorshDeserialize)
+  for [Bytes](bytes::Bytes) and [BytesMut](bytes::BytesMut).
+* **bson** -
+  Gates implementation of [BorshSerialize](crate::ser::BorshSerialize) and [BorshDeserialize](crate::de::BorshDeserialize)
+  for [ObjectId](bson::oid::ObjectId).
+
+
+### Config aliases
+
+* **hash_collections** -
+  This is a feature alias, set up in `build.rs` to be equivalent to (**std** OR **hashbrown**).
+  This alias gates [schema](crate::schema) and [schema_helpers](crate::schema_helpers) modules, as
+  [BorshSchema](crate::schema::BorshSchema) relies on [HashMap](std::collections::HashMap) existing.
+  Gates implementation of [BorshSerialize](crate::ser::BorshSerialize) and [BorshDeserialize](crate::de::BorshDeserialize)
+  for [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
+
+
+*/
+
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
