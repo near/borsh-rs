@@ -1,0 +1,21 @@
+---
+source: borsh/tests/test_arrays.rs
+expression: serialized
+---
+[
+    1,
+    0,
+    0,
+    0,
+    48,
+    1,
+    0,
+    0,
+    0,
+    49,
+    1,
+    0,
+    0,
+    0,
+    50,
+]

@@ -12,6 +12,7 @@ homepage = "https://borsh.io"
 description = """
 Binary Object Representation Serializer for Hashing
 """
+exclude = ["tests/snapshots"]
 
 [lib]
 name = "borsh"
@@ -36,6 +37,7 @@ bytes = "1"
 bson = "2"
 # Enable the "bytes" and "bson" features in integ tests: https://github.com/rust-lang/cargo/issues/2911#issuecomment-1464060655
 borsh = { path = ".", default_features = false, features = ["bytes", "bson"] }
+insta = "1.29.0"
 
 [features]
 default = ["std"]

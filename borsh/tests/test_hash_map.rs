@@ -25,6 +25,8 @@ fn test_default_hashmap() {
     map.insert("one".to_string(), "two".to_string());
 
     let data = map.try_to_vec().unwrap();
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(data);
     let actual_map = from_slice::<HashMap<String, String>>(&data).unwrap();
     assert_eq!(map, actual_map);
 }
@@ -40,6 +42,8 @@ fn test_default_hashset() {
     set.insert("one".to_string());
 
     let data = set.try_to_vec().unwrap();
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(data);
     let actual_set = from_slice::<HashSet<String>>(&data).unwrap();
     assert_eq!(set, actual_set);
 }
@@ -64,6 +68,8 @@ fn test_generic_hash_hashmap() {
     map.insert("one".to_string(), "two".to_string());
 
     let data = map.try_to_vec().unwrap();
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(data);
     let actual_map = from_slice::<HashMap<String, String, NewHasher>>(&data).unwrap();
     assert_eq!(map, actual_map);
 }
@@ -80,6 +86,8 @@ fn test_generic_hashset() {
     set.insert("one".to_string());
 
     let data = set.try_to_vec().unwrap();
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(data);
     let actual_set = from_slice::<HashSet<String, NewHasher>>(&data).unwrap();
     assert_eq!(set, actual_set);
 }

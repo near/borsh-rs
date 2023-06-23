@@ -11,6 +11,8 @@ use alloc::string::{String, ToString};
 macro_rules! test_array {
     ($v: expr, $t: ty, $len: expr) => {
         let buf = $v.try_to_vec().unwrap();
+        #[cfg(feature = "std")]
+        insta::assert_debug_snapshot!(buf);
         let actual_v: [$t; $len] = from_slice(&buf).expect("failed to deserialize");
         assert_eq!($v.len(), actual_v.len());
         #[allow(clippy::reversed_empty_ranges)]
@@ -58,6 +60,8 @@ struct CustomStruct(u8);
 fn test_custom_struct_array() {
     let arr = [CustomStruct(0), CustomStruct(1), CustomStruct(2)];
     let serialized = arr.try_to_vec().unwrap();
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(serialized);
     let deserialized: [CustomStruct; 3] = from_slice(&serialized).unwrap();
     assert_eq!(arr, deserialized);
 }
@@ -66,6 +70,8 @@ fn test_custom_struct_array() {
 fn test_string_array() {
     let arr = ["0".to_string(), "1".to_string(), "2".to_string()];
     let serialized = arr.try_to_vec().unwrap();
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(serialized);
     let deserialized: [String; 3] = from_slice(&serialized).unwrap();
     assert_eq!(arr, deserialized);
 }

@@ -1,0 +1,14 @@
+---
+source: borsh/tests/test_primitives.rs
+expression: buf
+---
+[
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    128,
+]

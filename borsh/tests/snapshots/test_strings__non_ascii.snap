@@ -1,0 +1,14 @@
+---
+source: borsh/tests/test_strings.rs
+expression: buf
+---
+[
+    4,
+    0,
+    0,
+    0,
+    240,
+    159,
+    146,
+    169,
+]

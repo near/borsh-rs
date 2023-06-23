@@ -15,6 +15,8 @@ fn test_object_id() {
         33,
     );
     let serialized = obj.try_to_vec().unwrap();
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(serialized);
     let deserialized: StructWithObjectId = from_slice(&serialized).unwrap();
     assert_eq!(obj, deserialized);
 }

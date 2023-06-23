@@ -1,0 +1,9 @@
+---
+source: borsh/tests/test_arrays.rs
+expression: serialized
+---
+[
+    0,
+    1,
+    2,
+]
