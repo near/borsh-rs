@@ -5,7 +5,7 @@ use core::mem::size_of;
 use crate::__maybestd::{
     borrow::{Cow, ToOwned},
     boxed::Box,
-    collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque},
+    collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
     io::{Error, ErrorKind, Result, Write},
     string::String,
     vec::Vec,
@@ -322,25 +322,6 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        writer.write_all(
-            &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidInput)?).to_le_bytes(),
-        )?;
-        for item in self {
-            item.serialize(writer)?;
-        }
-        Ok(())
-    }
-}
-
-impl<T> BorshSerialize for BinaryHeap<T>
-where
-    T: BorshSerialize,
-{
-    #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // It could have been just `self.as_slice().serialize(writer)`, but there is no
-        // `as_slice()` method:
-        // https://internals.rust-lang.org/t/should-i-add-as-slice-method-to-binaryheap/13816
         writer.write_all(
             &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidInput)?).to_le_bytes(),
         )?;
