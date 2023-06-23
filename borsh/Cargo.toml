@@ -41,3 +41,4 @@ borsh = { path = ".", default_features = false, features = ["bytes", "bson"] }
 default = ["std"]
 std = []
 rc = []
+de_strict_order = []

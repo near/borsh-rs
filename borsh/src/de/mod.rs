@@ -1,3 +1,5 @@
+#[allow(unused)]
+use core::cmp::Ordering;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use core::{
@@ -29,6 +31,8 @@ const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
 const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_ISIZE: &str = "Overflow on machine with 32 bit isize";
 const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE: &str = "Overflow on machine with 32 bit usize";
 const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
+#[allow(unused)]
+const ERROR_WRONG_ORDER_OF_KEYS: &str = "keys were not serialized in ascending order";
 
 /// A data-structure that can be de-serialized from binary format by NBOR.
 pub trait BorshDeserialize: Sized {
@@ -474,6 +478,7 @@ pub mod hashes {
     use crate::__maybestd::io::{Read, Result};
     use crate::__maybestd::vec::Vec;
 
+    #[cfg(not(feature = "de_strict_order"))]
     impl<T, H> BorshDeserialize for HashSet<T, H>
     where
         T: BorshDeserialize + Eq + Hash,
@@ -486,6 +491,7 @@ pub mod hashes {
         }
     }
 
+    #[cfg(not(feature = "de_strict_order"))]
     impl<K, V, H> BorshDeserialize for HashMap<K, V, H>
     where
         K: BorshDeserialize + Eq + Hash,
@@ -505,6 +511,70 @@ pub mod hashes {
             Ok(result)
         }
     }
+
+    #[cfg(feature = "de_strict_order")]
+    pub mod strict_order {
+        use crate::BorshDeserialize;
+        use crate::__maybestd::collections::{HashMap, HashSet};
+        use crate::__maybestd::io::{Error, ErrorKind, Read, Result};
+        use crate::de::ERROR_WRONG_ORDER_OF_KEYS;
+        use core::cmp::Ordering;
+        use core::hash::{BuildHasher, Hash};
+
+        impl<T, H> BorshDeserialize for HashSet<T, H>
+        where
+            T: BorshDeserialize + Eq + Hash + PartialOrd,
+            H: BuildHasher + Default,
+        {
+            #[inline]
+            fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+                let vec = <Vec<T>>::deserialize_reader(reader)?;
+                //TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
+                for index in 0..(vec.len() - 1) {
+                    let (a, b) = (&vec[index], &vec[index + 1]);
+                    let cmp_res = a.partial_cmp(b).map_or(false, Ordering::is_le);
+                    if !cmp_res {
+                        return Err(Error::new(
+                            ErrorKind::InvalidData,
+                            ERROR_WRONG_ORDER_OF_KEYS,
+                        ));
+                    }
+                }
+                Ok(vec.into_iter().collect::<HashSet<T, H>>())
+            }
+        }
+
+        impl<K, V, H> BorshDeserialize for HashMap<K, V, H>
+        where
+            K: BorshDeserialize + Eq + Hash + PartialOrd,
+            V: BorshDeserialize,
+            H: BuildHasher + Default,
+        {
+            #[inline]
+            fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+                // TODO(16): return capacity allocation when we can safely do that.
+                let mut result = HashMap::with_hasher(H::default());
+
+                let vec = <Vec<(K, V)>>::deserialize_reader(reader)?;
+                //TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
+                for index in 0..(vec.len() - 1) {
+                    let ((k1, _), (k2, _)) = (&vec[index], &vec[index + 1]);
+                    let cmp_res = k1.partial_cmp(k2).map_or(false, Ordering::is_le);
+                    if !cmp_res {
+                        return Err(Error::new(
+                            ErrorKind::InvalidData,
+                            ERROR_WRONG_ORDER_OF_KEYS,
+                        ));
+                    }
+                }
+                for (k, v) in vec {
+                    result.insert(k, v);
+                }
+
+                Ok(result)
+            }
+        }
+    }
 }
 
 impl<T> BorshDeserialize for BTreeSet<T>
@@ -514,10 +584,23 @@ where
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let vec = <Vec<T>>::deserialize_reader(reader)?;
+        //TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
+        #[cfg(feature = "de_strict_order")]
+        for index in 0..(vec.len() - 1) {
+            let (a, b) = (&vec[index], &vec[index + 1]);
+            let cmp_res = a.partial_cmp(b).map_or(false, Ordering::is_le);
+            if !cmp_res {
+                return Err(Error::new(
+                    ErrorKind::InvalidData,
+                    ERROR_WRONG_ORDER_OF_KEYS,
+                ));
+            }
+        }
         Ok(vec.into_iter().collect::<BTreeSet<T>>())
     }
 }
 
+#[cfg(not(feature = "de_strict_order"))]
 impl<K, V> BorshDeserialize for BTreeMap<K, V>
 where
     K: BorshDeserialize + Ord + core::hash::Hash,
@@ -533,6 +616,31 @@ where
             result.insert(key, value);
         }
         Ok(result)
+    }
+}
+
+#[cfg(feature = "de_strict_order")]
+impl<K, V> BorshDeserialize for BTreeMap<K, V>
+where
+    K: BorshDeserialize + Ord + core::hash::Hash,
+    V: BorshDeserialize,
+{
+    #[inline]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let vec = <Vec<(K, V)>>::deserialize_reader(reader)?;
+        //TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
+        for index in 0..(vec.len() - 1) {
+            let ((k1, _), (k2, _)) = (&vec[index], &vec[index + 1]);
+            let cmp_res = k1.partial_cmp(k2).map_or(false, Ordering::is_le);
+            if !cmp_res {
+                return Err(Error::new(
+                    ErrorKind::InvalidData,
+                    ERROR_WRONG_ORDER_OF_KEYS,
+                ));
+            }
+        }
+
+        Ok(vec.into_iter().collect::<BTreeMap<K, V>>())
     }
 }
 
