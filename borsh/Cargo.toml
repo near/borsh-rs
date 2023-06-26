@@ -43,3 +43,4 @@ insta = "1.29.0"
 default = ["std"]
 std = []
 rc = []
+de_strict_order = []

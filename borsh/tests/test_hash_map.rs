@@ -11,10 +11,18 @@ use std::collections::{
     hash_map::{DefaultHasher, RandomState},
     HashMap, HashSet,
 };
+
+#[cfg(not(feature = "std"))]
+use core::iter::IntoIterator;
+
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::string::{String, ToString};
+use alloc::{
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 
 use borsh::{from_slice, BorshSerialize};
 
@@ -200,3 +208,15 @@ generic_hashmap_test_template!(test_8_element_generic_hashmap,
     "where".to_string() => "unpredictable".to_string(),
     "nowhere".to_string() => "pile".to_string()
 );
+
+#[cfg(feature = "de_strict_order")]
+const ERROR_WRONG_ORDER_OF_KEYS: &str = "keys were not serialized in ascending order";
+
+set_wrong_order_test!(test_hashset_deser_err_wrong_order, HashSet<String>);
+#[cfg(feature = "std")]
+set_wrong_order_test!(test_generic_hashset_deser_err_wrong_order, HashSet<String, NewHasher>);
+
+map_wrong_order_test!(test_hashmap_deser_err_wrong_order, HashMap<String, String>);
+
+#[cfg(feature = "std")]
+map_wrong_order_test!(test_generic_hashmap_deser_err_wrong_order, HashMap<String, String, NewHasher>);

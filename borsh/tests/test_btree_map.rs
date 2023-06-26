@@ -8,6 +8,8 @@ extern crate alloc;
 use alloc::{
     collections::{BTreeMap, BTreeSet},
     string::{String, ToString},
+    vec,
+    vec::Vec,
 };
 
 use borsh::{from_slice, BorshSerialize};
@@ -33,7 +35,6 @@ macro_rules! btreeset_test_template [
     ]
 
 ];
-
 
 macro_rules! btreemap_test_template [
     [$test_name: ident, $($key: expr => $value: expr),* ] => [
@@ -94,3 +95,10 @@ btreemap_test_template!(test_8_element_btreemap,
     "where".to_string() => "unpredictable".to_string(),
     "nowhere".to_string() => "pile".to_string()
 );
+
+#[cfg(feature = "de_strict_order")]
+const ERROR_WRONG_ORDER_OF_KEYS: &str = "keys were not serialized in ascending order";
+
+set_wrong_order_test!(test_btreeset_deser_err_wrong_order, BTreeSet<String>);
+
+map_wrong_order_test!(test_btreemap_deser_err_wrong_order, BTreeMap<String, String>);
