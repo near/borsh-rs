@@ -93,7 +93,7 @@ pub mod __maybestd {
     pub use alloc::{rc, sync};
 
     pub mod collections {
-        pub use alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
+        pub use alloc::collections::{BTreeMap, BTreeSet, LinkedList, VecDeque};
         #[cfg(feature = "hashbrown")]
         pub use hashbrown::*;
     }

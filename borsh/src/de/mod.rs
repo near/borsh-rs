@@ -11,7 +11,7 @@ use bytes::{BufMut, BytesMut};
 use crate::__maybestd::{
     borrow::{Borrow, Cow, ToOwned},
     boxed::Box,
-    collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque},
+    collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
     format,
     io::{Error, ErrorKind, Read, Result},
     string::{String, ToString},
@@ -462,17 +462,6 @@ where
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let vec = <Vec<T>>::deserialize_reader(reader)?;
         Ok(vec.into_iter().collect::<LinkedList<T>>())
-    }
-}
-
-impl<T> BorshDeserialize for BinaryHeap<T>
-where
-    T: BorshDeserialize + Ord,
-{
-    #[inline]
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let vec = <Vec<T>>::deserialize_reader(reader)?;
-        Ok(vec.into_iter().collect::<BinaryHeap<T>>())
     }
 }
 
