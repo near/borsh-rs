@@ -28,5 +28,13 @@ serde_cbor = "0.10"
 name = "bench"
 harness = false
 
+[[bench]]
+name = "maps_sets_inner_ser"
+harness = false
+
+[[bench]]
+name = "maps_sets_inner_de"
+harness = false
+
 [features]
 default = ["borsh/std"]
