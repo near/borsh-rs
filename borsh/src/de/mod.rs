@@ -506,28 +506,20 @@ pub mod hashes {
 
                 #[cfg(feature = "de_strict_order")]
                 {
-                    let mut prev: Option<T> = None;
-                    for _ in 0..len {
+                    let mut prev = T::deserialize_reader(reader)?;
+                    for _ in 1..len {
                         let next_val = T::deserialize_reader(reader)?;
-                        if let Some(ref prev) = prev {
-                            let cmp_result =
-                                prev.partial_cmp(&next_val).map_or(false, Ordering::is_lt);
-                            if !cmp_result {
-                                return Err(Error::new(
-                                    ErrorKind::InvalidData,
-                                    ERROR_WRONG_ORDER_OF_KEYS,
-                                ));
-                            }
+                        let cmp_result = prev.partial_cmp(&next_val).map_or(false, Ordering::is_lt);
+                        if !cmp_result {
+                            return Err(Error::new(
+                                ErrorKind::InvalidData,
+                                ERROR_WRONG_ORDER_OF_KEYS,
+                            ));
                         }
-
-                        let queued = prev.replace(next_val);
-                        if let Some(queued) = queued {
-                            result.insert(queued);
-                        }
+                        result.insert(prev);
+                        prev = next_val;
                     }
-                    if let Some(last_element) = prev {
-                        result.insert(last_element);
-                    }
+                    result.insert(prev);
                 }
 
                 Ok(result)
@@ -560,31 +552,26 @@ pub mod hashes {
 
                 #[cfg(feature = "de_strict_order")]
                 {
-                    let mut prev: Option<(K, V)> = None;
+                    let mut prev_key = K::deserialize_reader(reader)?;
+                    let mut prev_value = V::deserialize_reader(reader)?;
 
-                    for _ in 0..len {
+                    for _ in 1..len {
                         let next_key = K::deserialize_reader(reader)?;
                         let next_value = V::deserialize_reader(reader)?;
-                        if let Some((ref prev_key, ref _v)) = prev {
-                            let cmp_result = prev_key
-                                .partial_cmp(&next_key)
-                                .map_or(false, Ordering::is_lt);
-                            if !cmp_result {
-                                return Err(Error::new(
-                                    ErrorKind::InvalidData,
-                                    ERROR_WRONG_ORDER_OF_KEYS,
-                                ));
-                            }
+                        let cmp_result = prev_key
+                            .partial_cmp(&next_key)
+                            .map_or(false, Ordering::is_lt);
+                        if !cmp_result {
+                            return Err(Error::new(
+                                ErrorKind::InvalidData,
+                                ERROR_WRONG_ORDER_OF_KEYS,
+                            ));
                         }
 
-                        let queued = prev.replace((next_key, next_value));
-                        if let Some((queued_key, queued_value)) = queued {
-                            result.insert(queued_key, queued_value);
-                        }
+                        result.insert(prev_key, prev_value);
+                        (prev_key, prev_value) = (next_key, next_value);
                     }
-                    if let Some((last_key, last_value)) = prev {
-                        result.insert(last_key, last_value);
-                    }
+                    result.insert(prev_key, prev_value);
                 }
                 Ok(result)
             }
@@ -601,6 +588,11 @@ where
         let vec = <Vec<T>>::deserialize_reader(reader)?;
 
         #[cfg(feature = "de_strict_order")]
+        // NOTE: deserialize-as-you-go approach as in HashSet is better in the sense
+        // that it allows to fail early, and not allocate memory for all the elements
+        // which may fail `cmp()` checks
+        // TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
+        // TODO: first replace with `array_windows` api when stabilizes https://github.com/rust-lang/rust/issues/75027
         for pair in vec.windows(2) {
             let [a, b] = pair else {
                 unreachable!("`windows` always return a slice of length 2 or nothing");
@@ -629,6 +621,11 @@ where
         let vec = <Vec<(K, V)>>::deserialize_reader(reader)?;
 
         #[cfg(feature = "de_strict_order")]
+        // NOTE: deserialize-as-you-go approach as in HashMap is better in the sense
+        // that it allows to fail early, and not allocate memory for all the entries
+        // which may fail `cmp()` checks
+        // TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
+        // TODO: first replace with `array_windows` api when stabilizes https://github.com/rust-lang/rust/issues/75027
         for pair in vec.windows(2) {
             let [(a_k, _a_v), (b_k, _b_v)] = pair else {
                 unreachable!("`windows` always return a slice of length 2 or nothing");
