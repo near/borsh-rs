@@ -30,6 +30,10 @@ const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_ISIZE: &str = "Overflow on machine w
 const ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE: &str = "Overflow on machine with 32 bit usize";
 const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
 
+#[cfg(feature = "de_strict_order")]
+const ERROR_WRONG_ORDER_OF_KEYS: &str = "keys were not serialized in ascending order";
+// #[cfg(feature = "de_strict_order")]
+// use core::cmp::Ordering;
 /// A data-structure that can be de-serialized from binary format by NBOR.
 pub trait BorshDeserialize: Sized {
     /// Deserializes this instance from a given slice of bytes.
@@ -472,37 +476,119 @@ pub mod hashes {
     use crate::BorshDeserialize;
     use crate::__maybestd::collections::{HashMap, HashSet};
     use crate::__maybestd::io::{Read, Result};
-    use crate::__maybestd::vec::Vec;
+    use crate::de::hint;
+
+    #[cfg(feature = "de_strict_order")]
+    const ERROR_WRONG_ORDER_OF_KEYS: &str = "keys were not serialized in ascending order";
+    #[cfg(feature = "de_strict_order")]
+    use crate::__maybestd::io::{Error, ErrorKind};
+    #[cfg(feature = "de_strict_order")]
+    use core::cmp::Ordering;
 
     impl<T, H> BorshDeserialize for HashSet<T, H>
     where
-        T: BorshDeserialize + Eq + Hash,
+        T: BorshDeserialize + Eq + Hash + PartialOrd,
         H: BuildHasher + Default,
     {
         #[inline]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-            let vec = <Vec<T>>::deserialize_reader(reader)?;
-            Ok(vec.into_iter().collect::<HashSet<T, H>>())
+            let len = u32::deserialize_reader(reader)?;
+
+            if len == 0 {
+                Ok(HashSet::default())
+            } else {
+                let len_hint = hint::cautious::<T>(len);
+                let mut result = HashSet::with_capacity_and_hasher(len_hint, H::default());
+
+                #[cfg(not(feature = "de_strict_order"))]
+                for _ in 0..len {
+                    result.insert(T::deserialize_reader(reader)?);
+                }
+
+                #[cfg(feature = "de_strict_order")]
+                {
+                    let mut prev: Option<T> = None;
+                    for _ in 0..len {
+                        let next_val = T::deserialize_reader(reader)?;
+                        if let Some(ref prev) = prev {
+                            let cmp_result =
+                                prev.partial_cmp(&next_val).map_or(false, Ordering::is_lt);
+                            if !cmp_result {
+                                return Err(Error::new(
+                                    ErrorKind::InvalidData,
+                                    ERROR_WRONG_ORDER_OF_KEYS,
+                                ));
+                            }
+                        }
+
+                        let queued = prev.replace(next_val);
+                        if let Some(queued) = queued {
+                            result.insert(queued);
+                        }
+                    }
+                    if let Some(last_element) = prev {
+                        result.insert(last_element);
+                    }
+                }
+
+                Ok(result)
+            }
         }
     }
 
     impl<K, V, H> BorshDeserialize for HashMap<K, V, H>
     where
-        K: BorshDeserialize + Eq + Hash,
+        K: BorshDeserialize + Eq + Hash + PartialOrd,
         V: BorshDeserialize,
         H: BuildHasher + Default,
     {
         #[inline]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
             let len = u32::deserialize_reader(reader)?;
-            // TODO(16): return capacity allocation when we can safely do that.
-            let mut result = HashMap::with_hasher(H::default());
-            for _ in 0..len {
-                let key = K::deserialize_reader(reader)?;
-                let value = V::deserialize_reader(reader)?;
-                result.insert(key, value);
+            if len == 0 {
+                Ok(HashMap::default())
+            } else {
+                let len_hint = hint::cautious::<(K, V)>(len);
+                // TODO(16): return capacity allocation when we can safely do that.
+                let mut result = HashMap::with_capacity_and_hasher(len_hint, H::default());
+
+                #[cfg(not(feature = "de_strict_order"))]
+                for _ in 0..len {
+                    let key = K::deserialize_reader(reader)?;
+                    let value = V::deserialize_reader(reader)?;
+                    result.insert(key, value);
+                }
+
+                #[cfg(feature = "de_strict_order")]
+                {
+                    let mut prev: Option<(K, V)> = None;
+
+                    for _ in 0..len {
+                        let next_key = K::deserialize_reader(reader)?;
+                        let next_value = V::deserialize_reader(reader)?;
+                        if let Some((ref prev_key, ref _v)) = prev {
+                            let cmp_result = prev_key
+                                .partial_cmp(&next_key)
+                                .map_or(false, Ordering::is_lt);
+                            if !cmp_result {
+                                return Err(Error::new(
+                                    ErrorKind::InvalidData,
+                                    ERROR_WRONG_ORDER_OF_KEYS,
+                                ));
+                            }
+                        }
+
+                        let queued = prev.replace((next_key, next_value));
+                        if let Some((queued_key, queued_value)) = queued {
+                            result.insert(queued_key, queued_value);
+                        }
+                    }
+                    if let Some((last_key, last_value)) = prev {
+                        result.insert(last_key, last_value);
+                    }
+                }
+                Ok(result)
             }
-            Ok(result)
         }
     }
 }
@@ -514,6 +600,20 @@ where
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let vec = <Vec<T>>::deserialize_reader(reader)?;
+
+        #[cfg(feature = "de_strict_order")]
+        for pair in vec.windows(2) {
+            let [a, b] = pair else {
+                unreachable!("`windows` always return a slice of length 2 or nothing");
+            };
+            let cmp_result = a.cmp(b).is_lt();
+            if !cmp_result {
+                return Err(Error::new(
+                    ErrorKind::InvalidData,
+                    ERROR_WRONG_ORDER_OF_KEYS,
+                ));
+            }
+        }
         Ok(vec.into_iter().collect::<BTreeSet<T>>())
     }
 }
@@ -525,14 +625,22 @@ where
 {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let len = u32::deserialize_reader(reader)?;
-        let mut result = BTreeMap::new();
-        for _ in 0..len {
-            let key = K::deserialize_reader(reader)?;
-            let value = V::deserialize_reader(reader)?;
-            result.insert(key, value);
+        let vec = <Vec<(K, V)>>::deserialize_reader(reader)?;
+
+        #[cfg(feature = "de_strict_order")]
+        for pair in vec.windows(2) {
+            let [(a_k, _a_v), (b_k, _b_v)] = pair else {
+                unreachable!("`windows` always return a slice of length 2 or nothing");
+            };
+            let cmp_result = a_k.cmp(b_k).is_lt();
+            if !cmp_result {
+                return Err(Error::new(
+                    ErrorKind::InvalidData,
+                    ERROR_WRONG_ORDER_OF_KEYS,
+                ));
+            }
         }
-        Ok(result)
+        Ok(vec.into_iter().collect::<BTreeMap<K, V>>())
     }
 }
 
