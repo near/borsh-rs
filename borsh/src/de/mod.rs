@@ -32,8 +32,7 @@ const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
 
 #[cfg(feature = "de_strict_order")]
 const ERROR_WRONG_ORDER_OF_KEYS: &str = "keys were not serialized in ascending order";
-// #[cfg(feature = "de_strict_order")]
-// use core::cmp::Ordering;
+
 /// A data-structure that can be de-serialized from binary format by NBOR.
 pub trait BorshDeserialize: Sized {
     /// Deserializes this instance from a given slice of bytes.
@@ -614,6 +613,8 @@ where
                 ));
             }
         }
+        // NOTE: BTreeSet has an optimization inside of impl <T> FromIterator<T> for BTreeSet<T, Global>,
+        // based on BTreeMap::bulk_build_from_sorted_iter
         Ok(vec.into_iter().collect::<BTreeSet<T>>())
     }
 }
@@ -640,6 +641,9 @@ where
                 ));
             }
         }
+
+        // NOTE: BTreeMap has an optimization inside of impl<K, V> FromIterator<(K, V)> for BTreeMap<K, V, Global>,
+        // based on BTreeMap::bulk_build_from_sorted_iter
         Ok(vec.into_iter().collect::<BTreeMap<K, V>>())
     }
 }
