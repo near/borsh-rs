@@ -13,10 +13,7 @@ fn isize_schema() {
     let schema = isize::schema_container();
     assert_eq!(
         schema,
-        BorshSchemaContainer {
-            declaration: "i64".to_string(),
-            definitions: Default::default()
-        }
+        BorshSchemaContainer::new("i64".to_string(), Default::default())
     )
 }
 
@@ -25,9 +22,6 @@ fn usize_schema() {
     let schema = usize::schema_container();
     assert_eq!(
         schema,
-        BorshSchemaContainer {
-            declaration: "u64".to_string(),
-            definitions: Default::default()
-        }
+        BorshSchemaContainer::new("u64".to_string(), Default::default())
     )
 }

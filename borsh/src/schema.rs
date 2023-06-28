@@ -17,6 +17,7 @@ use crate::__maybestd::{
     boxed::Box,
     collections::{hash_map::Entry, HashMap, HashSet},
     format,
+    io::{Read, Result as IOResult, Write},
     string::{String, ToString},
     vec,
     vec::Vec,
@@ -60,12 +61,79 @@ pub enum Fields {
 }
 
 /// All schema information needed to deserialize a single type.
-#[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct BorshSchemaContainer {
     /// Declaration of the type.
-    pub declaration: Declaration,
+    declaration: Declaration,
     /// All definitions needed to deserialize the given type.
-    pub definitions: HashMap<Declaration, Definition>,
+    definitions: HashMap<Declaration, Definition>,
+}
+
+impl BorshSchemaContainer {
+    pub fn new(declaration: Declaration, definitions: HashMap<Declaration, Definition>) -> Self {
+        Self {
+            declaration,
+            definitions,
+        }
+    }
+
+    pub fn declaration(&self) -> &Declaration {
+        &self.declaration
+    }
+    pub fn definitions<'_self>(
+        &'_self self,
+    ) -> impl Iterator<Item = (&'_self Declaration, &'_self Definition)> {
+        self.definitions.iter()
+    }
+
+    pub fn get_definition(&self, declaration: &Declaration) -> Option<&Definition> {
+        self.definitions.get(declaration)
+    }
+
+    pub fn get_mut_definition(&mut self, declaration: &Declaration) -> Option<&mut Definition> {
+        self.definitions.get_mut(declaration)
+    }
+
+    pub fn insert_definition(
+        &mut self,
+        declaration: Declaration,
+        definition: Definition,
+    ) -> Option<Definition> {
+        self.definitions.insert(declaration, definition)
+    }
+    pub fn remove_definition(&mut self, declaration: &Declaration) -> Option<Definition> {
+        self.definitions.remove(declaration)
+    }
+}
+
+impl BorshSerialize for BorshSchemaContainer
+where
+    Declaration: BorshSerialize,
+    HashMap<Declaration, Definition>: BorshSerialize,
+{
+    fn serialize<W: Write>(&self, writer: &mut W) -> IOResult<()> {
+        let declaration = self.declaration();
+        let definitions: HashMap<Declaration, Definition> = self
+            .definitions()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        BorshSerialize::serialize(declaration, writer)?;
+        BorshSerialize::serialize(&definitions, writer)?;
+        Ok(())
+    }
+}
+
+impl BorshDeserialize for BorshSchemaContainer
+where
+    Declaration: BorshDeserialize,
+    HashMap<Declaration, Definition>: BorshDeserialize,
+{
+    fn deserialize_reader<R: Read>(reader: &mut R) -> IOResult<Self> {
+        let declaration: Declaration = BorshDeserialize::deserialize_reader(reader)?;
+        let definitions: HashMap<Declaration, Definition> =
+            BorshDeserialize::deserialize_reader(reader)?;
+        Ok(Self::new(declaration, definitions))
+    }
 }
 
 /// The declaration and the definition of the type that can be used to (de)serialize Borsh without
@@ -104,6 +172,35 @@ pub trait BorshSchema {
     }
 }
 
+impl BorshSchema for BorshSchemaContainer
+where
+    Declaration: BorshSchema,
+    HashMap<Declaration, Definition>: BorshSchema,
+{
+    fn declaration() -> Declaration {
+        "BorshSchemaContainer".to_string()
+    }
+    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+        let fields = Fields::NamedFields(<[_]>::into_vec(Box::new([
+            (
+                "declaration".to_string(),
+                <Declaration as BorshSchema>::declaration(),
+            ),
+            (
+                "definitions".to_string(),
+                <HashMap<Declaration, Definition> as BorshSchema>::declaration(),
+            ),
+        ])));
+        let definition = Definition::Struct { fields };
+        Self::add_definition(
+            <Self as BorshSchema>::declaration(),
+            definition,
+            definitions,
+        );
+        <Declaration as BorshSchema>::add_definitions_recursively(definitions);
+        <HashMap<Declaration, Definition> as BorshSchema>::add_definitions_recursively(definitions);
+    }
+}
 impl<T> BorshSchema for Box<T>
 where
     T: BorshSchema + ?Sized,
