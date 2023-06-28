@@ -475,7 +475,7 @@ pub mod hashes {
     use crate::BorshDeserialize;
     use crate::__maybestd::collections::{HashMap, HashSet};
     use crate::__maybestd::io::{Read, Result};
-    use crate::de::hint;
+    use crate::__maybestd::vec::Vec;
 
     #[cfg(feature = "de_strict_order")]
     const ERROR_WRONG_ORDER_OF_KEYS: &str = "keys were not serialized in ascending order";
@@ -491,39 +491,29 @@ pub mod hashes {
     {
         #[inline]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-            let len = u32::deserialize_reader(reader)?;
+            // NOTE: deserialize-as-you-go approach as once was in HashSet is better in the sense
+            // that it allows to fail early, and not allocate memory for all the elements
+            // which may fail `cmp()` checks
+            // NOTE: deserialize first to `Vec<T>` is faster
+            let vec = <Vec<T>>::deserialize_reader(reader)?;
 
-            if len == 0 {
-                Ok(HashSet::default())
-            } else {
-                let len_hint = hint::cautious::<T>(len);
-                let mut result = HashSet::with_capacity_and_hasher(len_hint, H::default());
-
-                #[cfg(not(feature = "de_strict_order"))]
-                for _ in 0..len {
-                    result.insert(T::deserialize_reader(reader)?);
+            #[cfg(feature = "de_strict_order")]
+            // TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
+            // TODO: first replace with `array_windows` api when stabilizes https://github.com/rust-lang/rust/issues/75027
+            for pair in vec.windows(2) {
+                let [a, b] = pair else {
+                    unreachable!("`windows` always return a slice of length 2 or nothing");
+                };
+                let cmp_result = a.partial_cmp(b).map_or(false, Ordering::is_lt);
+                if !cmp_result {
+                    return Err(Error::new(
+                        ErrorKind::InvalidData,
+                        ERROR_WRONG_ORDER_OF_KEYS,
+                    ));
                 }
-
-                #[cfg(feature = "de_strict_order")]
-                {
-                    let mut prev = T::deserialize_reader(reader)?;
-                    for _ in 1..len {
-                        let next_val = T::deserialize_reader(reader)?;
-                        let cmp_result = prev.partial_cmp(&next_val).map_or(false, Ordering::is_lt);
-                        if !cmp_result {
-                            return Err(Error::new(
-                                ErrorKind::InvalidData,
-                                ERROR_WRONG_ORDER_OF_KEYS,
-                            ));
-                        }
-                        result.insert(prev);
-                        prev = next_val;
-                    }
-                    result.insert(prev);
-                }
-
-                Ok(result)
             }
+
+            Ok(vec.into_iter().collect::<HashSet<T, H>>())
         }
     }
 
@@ -535,46 +525,29 @@ pub mod hashes {
     {
         #[inline]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-            let len = u32::deserialize_reader(reader)?;
-            if len == 0 {
-                Ok(HashMap::default())
-            } else {
-                let len_hint = hint::cautious::<(K, V)>(len);
-                // TODO(16): return capacity allocation when we can safely do that.
-                let mut result = HashMap::with_capacity_and_hasher(len_hint, H::default());
+            // NOTE: deserialize-as-you-go approach as once was in HashSet is better in the sense
+            // that it allows to fail early, and not allocate memory for all the entries
+            // which may fail `cmp()` checks
+            // NOTE: deserialize first to `Vec<(K, V)>` is faster
+            let vec = <Vec<(K, V)>>::deserialize_reader(reader)?;
 
-                #[cfg(not(feature = "de_strict_order"))]
-                for _ in 0..len {
-                    let key = K::deserialize_reader(reader)?;
-                    let value = V::deserialize_reader(reader)?;
-                    result.insert(key, value);
+            #[cfg(feature = "de_strict_order")]
+            // TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
+            // TODO: first replace with `array_windows` api when stabilizes https://github.com/rust-lang/rust/issues/75027
+            for pair in vec.windows(2) {
+                let [(a_k, _a_v), (b_k, _b_v)] = pair else {
+                    unreachable!("`windows` always return a slice of length 2 or nothing");
+                };
+                let cmp_result = a_k.partial_cmp(b_k).map_or(false, Ordering::is_lt);
+                if !cmp_result {
+                    return Err(Error::new(
+                        ErrorKind::InvalidData,
+                        ERROR_WRONG_ORDER_OF_KEYS,
+                    ));
                 }
-
-                #[cfg(feature = "de_strict_order")]
-                {
-                    let mut prev_key = K::deserialize_reader(reader)?;
-                    let mut prev_value = V::deserialize_reader(reader)?;
-
-                    for _ in 1..len {
-                        let next_key = K::deserialize_reader(reader)?;
-                        let next_value = V::deserialize_reader(reader)?;
-                        let cmp_result = prev_key
-                            .partial_cmp(&next_key)
-                            .map_or(false, Ordering::is_lt);
-                        if !cmp_result {
-                            return Err(Error::new(
-                                ErrorKind::InvalidData,
-                                ERROR_WRONG_ORDER_OF_KEYS,
-                            ));
-                        }
-
-                        result.insert(prev_key, prev_value);
-                        (prev_key, prev_value) = (next_key, next_value);
-                    }
-                    result.insert(prev_key, prev_value);
-                }
-                Ok(result)
             }
+
+            Ok(vec.into_iter().collect::<HashMap<K, V, H>>())
         }
     }
 }
@@ -585,12 +558,13 @@ where
 {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        // NOTE: deserialize-as-you-go approach as once was in HashSet is better in the sense
+        // that it allows to fail early, and not allocate memory for all the elements
+        // which may fail `cmp()` checks
+        // NOTE: deserialize first to `Vec<T>` is faster
         let vec = <Vec<T>>::deserialize_reader(reader)?;
 
         #[cfg(feature = "de_strict_order")]
-        // NOTE: deserialize-as-you-go approach as in HashSet is better in the sense
-        // that it allows to fail early, and not allocate memory for all the elements
-        // which may fail `cmp()` checks
         // TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
         // TODO: first replace with `array_windows` api when stabilizes https://github.com/rust-lang/rust/issues/75027
         for pair in vec.windows(2) {
@@ -618,12 +592,13 @@ where
 {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        // NOTE: deserialize-as-you-go approach as once was in HashSet is better in the sense
+        // that it allows to fail early, and not allocate memory for all the entries
+        // which may fail `cmp()` checks
+        // NOTE: deserialize first to `Vec<(K, V)>` is faster
         let vec = <Vec<(K, V)>>::deserialize_reader(reader)?;
 
         #[cfg(feature = "de_strict_order")]
-        // NOTE: deserialize-as-you-go approach as in HashMap is better in the sense
-        // that it allows to fail early, and not allocate memory for all the entries
-        // which may fail `cmp()` checks
         // TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
         // TODO: first replace with `array_windows` api when stabilizes https://github.com/rust-lang/rust/issues/75027
         for pair in vec.windows(2) {
