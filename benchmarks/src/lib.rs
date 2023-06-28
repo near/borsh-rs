@@ -108,7 +108,17 @@ impl<C: Context> Writable<C> for Signature {
 }
 
 #[derive(
-    BorshSerialize, BorshDeserialize, Debug, Clone, Eq, PartialEq, SerdeSerialize, SerdeDeserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    Debug,
+    Clone,
+    Eq,
+    PartialEq,
+    SerdeSerialize,
+    SerdeDeserialize,
+    PartialOrd,
+    Ord,
+    Hash,
 )]
 pub struct PublicKey([u8; 32]);
 impl Generate for PublicKey {
@@ -116,6 +126,12 @@ impl Generate for PublicKey {
         let mut res = [0u8; 32];
         rng.fill_bytes(&mut res);
         PublicKey(res)
+    }
+}
+
+impl Generate for (PublicKey, PublicKey) {
+    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+        (PublicKey::generate(rng), PublicKey::generate(rng))
     }
 }
 
@@ -156,6 +172,12 @@ impl Generate for String {
     fn generate<R: rand::Rng>(rng: &mut R) -> Self {
         let len: usize = rng.gen_range(5, 200);
         rng.sample_iter(&Alphanumeric).take(len).collect::<String>()
+    }
+}
+
+impl Generate for (String, String) {
+    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+        (String::generate(rng), String::generate(rng))
     }
 }
 
