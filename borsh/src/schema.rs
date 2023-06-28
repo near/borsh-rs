@@ -12,10 +12,9 @@
 
 #![allow(dead_code)] // Unclear why rust check complains on fields of `Definition` variants.
 use crate as borsh; // For `#[derive(BorshSerialize, BorshDeserialize)]`.
-use crate::__maybestd::collections::{BTreeMap, BTreeSet};
+use crate::__maybestd::collections::{btree_map::Entry, BTreeMap, BTreeSet};
 use crate::__maybestd::{
     boxed::Box,
-    collections::{hash_map::Entry, HashMap, HashSet},
     format,
     io::{Read, Result as IOResult, Write},
     string::{String, ToString},
@@ -66,11 +65,11 @@ pub struct BorshSchemaContainer {
     /// Declaration of the type.
     declaration: Declaration,
     /// All definitions needed to deserialize the given type.
-    definitions: HashMap<Declaration, Definition>,
+    definitions: BTreeMap<Declaration, Definition>,
 }
 
 impl BorshSchemaContainer {
-    pub fn new(declaration: Declaration, definitions: HashMap<Declaration, Definition>) -> Self {
+    pub fn new(declaration: Declaration, definitions: BTreeMap<Declaration, Definition>) -> Self {
         Self {
             declaration,
             definitions,
@@ -80,9 +79,7 @@ impl BorshSchemaContainer {
     pub fn declaration(&self) -> &Declaration {
         &self.declaration
     }
-    pub fn definitions<'_self>(
-        &'_self self,
-    ) -> impl Iterator<Item = (&'_self Declaration, &'_self Definition)> {
+    pub fn definitions(&self) -> impl Iterator<Item = (&'_ Declaration, &'_ Definition)> {
         self.definitions.iter()
     }
 
@@ -109,11 +106,11 @@ impl BorshSchemaContainer {
 impl BorshSerialize for BorshSchemaContainer
 where
     Declaration: BorshSerialize,
-    HashMap<Declaration, Definition>: BorshSerialize,
+    BTreeMap<Declaration, Definition>: BorshSerialize,
 {
     fn serialize<W: Write>(&self, writer: &mut W) -> IOResult<()> {
         let declaration = self.declaration();
-        let definitions: HashMap<Declaration, Definition> = self
+        let definitions: BTreeMap<Declaration, Definition> = self
             .definitions()
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
@@ -126,11 +123,11 @@ where
 impl BorshDeserialize for BorshSchemaContainer
 where
     Declaration: BorshDeserialize,
-    HashMap<Declaration, Definition>: BorshDeserialize,
+    BTreeMap<Declaration, Definition>: BorshDeserialize,
 {
     fn deserialize_reader<R: Read>(reader: &mut R) -> IOResult<Self> {
         let declaration: Declaration = BorshDeserialize::deserialize_reader(reader)?;
-        let definitions: HashMap<Declaration, Definition> =
+        let definitions: BTreeMap<Declaration, Definition> =
             BorshDeserialize::deserialize_reader(reader)?;
         Ok(Self::new(declaration, definitions))
     }
@@ -141,13 +138,13 @@ where
 pub trait BorshSchema {
     /// Recursively, using DFS, add type definitions required for this type. For primitive types
     /// this is an empty map. Type definition explains how to serialize/deserialize a type.
-    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>);
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>);
 
     /// Helper method to add a single type definition to the map.
     fn add_definition(
         declaration: Declaration,
         definition: Definition,
-        definitions: &mut HashMap<Declaration, Definition>,
+        definitions: &mut BTreeMap<Declaration, Definition>,
     ) {
         match definitions.entry(declaration) {
             Entry::Occupied(occ) => {
@@ -163,7 +160,7 @@ pub trait BorshSchema {
     fn declaration() -> Declaration;
 
     fn schema_container() -> BorshSchemaContainer {
-        let mut definitions = HashMap::new();
+        let mut definitions = BTreeMap::new();
         Self::add_definitions_recursively(&mut definitions);
         BorshSchemaContainer {
             declaration: Self::declaration(),
@@ -175,12 +172,12 @@ pub trait BorshSchema {
 impl BorshSchema for BorshSchemaContainer
 where
     Declaration: BorshSchema,
-    HashMap<Declaration, Definition>: BorshSchema,
+    BTreeMap<Declaration, Definition>: BorshSchema,
 {
     fn declaration() -> Declaration {
         "BorshSchemaContainer".to_string()
     }
-    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let fields = Fields::NamedFields(<[_]>::into_vec(Box::new([
             (
                 "declaration".to_string(),
@@ -188,7 +185,7 @@ where
             ),
             (
                 "definitions".to_string(),
-                <HashMap<Declaration, Definition> as BorshSchema>::declaration(),
+                <BTreeMap<Declaration, Definition> as BorshSchema>::declaration(),
             ),
         ])));
         let definition = Definition::Struct { fields };
@@ -198,14 +195,16 @@ where
             definitions,
         );
         <Declaration as BorshSchema>::add_definitions_recursively(definitions);
-        <HashMap<Declaration, Definition> as BorshSchema>::add_definitions_recursively(definitions);
+        <BTreeMap<Declaration, Definition> as BorshSchema>::add_definitions_recursively(
+            definitions,
+        );
     }
 }
 impl<T> BorshSchema for Box<T>
 where
     T: BorshSchema + ?Sized,
 {
-    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         T::add_definitions_recursively(definitions);
     }
 
@@ -215,7 +214,7 @@ where
 }
 
 impl BorshSchema for () {
-    fn add_definitions_recursively(_definitions: &mut HashMap<Declaration, Definition>) {}
+    fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
 
     fn declaration() -> Declaration {
         "nil".to_string()
@@ -226,7 +225,7 @@ macro_rules! impl_for_renamed_primitives {
     ($($type: ident : $name: ident)+) => {
     $(
         impl BorshSchema for $type {
-            fn add_definitions_recursively(_definitions: &mut HashMap<Declaration, Definition>) {}
+            fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
             fn declaration() -> Declaration {
                 stringify!($name).to_string()
             }
@@ -251,7 +250,7 @@ impl<T, const N: usize> BorshSchema for [T; N]
 where
     T: BorshSchema,
 {
-    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Array {
             length: N as u32,
             elements: T::declaration(),
@@ -268,7 +267,7 @@ impl<T> BorshSchema for Option<T>
 where
     T: BorshSchema,
 {
-    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Enum {
             variants: vec![
                 ("None".to_string(), <()>::declaration()),
@@ -289,7 +288,7 @@ where
     T: BorshSchema,
     E: BorshSchema,
 {
-    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Enum {
             variants: vec![
                 ("Ok".to_string(), T::declaration()),
@@ -309,7 +308,7 @@ impl<T> BorshSchema for Vec<T>
 where
     T: BorshSchema,
 {
-    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Sequence {
             elements: T::declaration(),
         };
@@ -326,7 +325,7 @@ impl<T> BorshSchema for [T]
 where
     T: BorshSchema,
 {
-    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Sequence {
             elements: T::declaration(),
         };
@@ -339,38 +338,49 @@ where
     }
 }
 
-impl<K, V> BorshSchema for HashMap<K, V>
-where
-    K: BorshSchema,
-    V: BorshSchema,
-{
-    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
-        let definition = Definition::Sequence {
-            elements: <(K, V)>::declaration(),
-        };
-        Self::add_definition(Self::declaration(), definition, definitions);
-        <(K, V)>::add_definitions_recursively(definitions);
-    }
+#[cfg(hash_collections)]
+pub mod hashes {
+    use crate::BorshSchema;
 
-    fn declaration() -> Declaration {
-        format!(r#"HashMap<{}, {}>"#, K::declaration(), V::declaration())
-    }
-}
+    use super::{Declaration, Definition};
+    use crate::__maybestd::collections::BTreeMap;
 
-impl<T> BorshSchema for HashSet<T>
-where
-    T: BorshSchema,
-{
-    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
-        let definition = Definition::Sequence {
-            elements: <T>::declaration(),
-        };
-        Self::add_definition(Self::declaration(), definition, definitions);
-        <T>::add_definitions_recursively(definitions);
-    }
+    use crate::__maybestd::collections::{HashMap, HashSet};
+    #[cfg(not(feature = "std"))]
+    use alloc::format;
 
-    fn declaration() -> Declaration {
-        format!(r#"HashSet<{}>"#, T::declaration())
+    impl<K, V> BorshSchema for HashMap<K, V>
+    where
+        K: BorshSchema,
+        V: BorshSchema,
+    {
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+            let definition = Definition::Sequence {
+                elements: <(K, V)>::declaration(),
+            };
+            Self::add_definition(Self::declaration(), definition, definitions);
+            <(K, V)>::add_definitions_recursively(definitions);
+        }
+
+        fn declaration() -> Declaration {
+            format!(r#"HashMap<{}, {}>"#, K::declaration(), V::declaration())
+        }
+    }
+    impl<T> BorshSchema for HashSet<T>
+    where
+        T: BorshSchema,
+    {
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+            let definition = Definition::Sequence {
+                elements: <T>::declaration(),
+            };
+            Self::add_definition(Self::declaration(), definition, definitions);
+            <T>::add_definitions_recursively(definitions);
+        }
+
+        fn declaration() -> Declaration {
+            format!(r#"HashSet<{}>"#, T::declaration())
+        }
     }
 }
 
@@ -379,7 +389,7 @@ where
     K: BorshSchema,
     V: BorshSchema,
 {
-    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Sequence {
             elements: <(K, V)>::declaration(),
         };
@@ -396,7 +406,7 @@ impl<T> BorshSchema for BTreeSet<T>
 where
     T: BorshSchema,
 {
-    fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Sequence {
             elements: <T>::declaration(),
         };
@@ -412,7 +422,7 @@ where
 // Because it's a zero-sized marker, its type parameter doesn't need to be
 // included in the schema and so it's not bound to `BorshSchema`
 impl<T> BorshSchema for PhantomData<T> {
-    fn add_definitions_recursively(_definitions: &mut HashMap<Declaration, Definition>) {}
+    fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
 
     fn declaration() -> Declaration {
         <()>::declaration()
@@ -425,7 +435,7 @@ macro_rules! impl_tuple {
     where
         $($name: BorshSchema),+
     {
-        fn add_definitions_recursively(definitions: &mut HashMap<Declaration, Definition>) {
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
             let elements = vec![$($name::declaration()),+];
 
             let definition = Definition::Tuple { elements };
@@ -472,13 +482,14 @@ impl_tuple!(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::__maybestd::collections::HashMap;
+    #[cfg(hash_collections)]
+    use crate::__maybestd::collections::{HashMap, HashSet};
 
     macro_rules! map(
-    () => { HashMap::new() };
+    () => { BTreeMap::new() };
     { $($key:expr => $value:expr),+ } => {
         {
-            let mut m = HashMap::new();
+            let mut m = BTreeMap::new();
             $(
                 m.insert($key.to_string(), $value);
             )+
@@ -589,6 +600,7 @@ mod tests {
         );
     }
 
+    #[cfg(hash_collections)]
     #[test]
     fn simple_map() {
         let actual_name = HashMap::<u64, String>::declaration();
@@ -604,6 +616,7 @@ mod tests {
         );
     }
 
+    #[cfg(hash_collections)]
     #[test]
     fn simple_set() {
         let actual_name = HashSet::<String>::declaration();

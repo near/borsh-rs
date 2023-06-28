@@ -1,23 +1,20 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg(hash_collections)]
 
-#[cfg(feature = "hashbrown")]
-use hashbrown::HashMap;
 #[cfg(feature = "std")]
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use borsh::schema::*;
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{string::ToString, vec};
+use alloc::{collections::BTreeMap, string::ToString, vec};
 
 macro_rules! map(
-    () => { HashMap::new() };
+    () => { BTreeMap::new() };
     { $($key:expr => $value:expr),+ } => {
         {
-            let mut m = HashMap::new();
+            let mut m = BTreeMap::new();
             $(
                 m.insert($key.to_string(), $value);
             )+

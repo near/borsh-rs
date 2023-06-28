@@ -51,17 +51,13 @@ pub use borsh_derive::{BorshDeserialize, BorshSchema, BorshSerialize};
 pub mod de;
 
 // See `hash_collections` alias definition in build.rs
-#[cfg(hash_collections)]
 pub mod schema;
-#[cfg(hash_collections)]
 pub mod schema_helpers;
 pub mod ser;
 
 pub use de::BorshDeserialize;
 pub use de::{from_reader, from_slice};
-#[cfg(hash_collections)]
 pub use schema::BorshSchema;
-#[cfg(hash_collections)]
 pub use schema_helpers::{try_from_slice_with_schema, try_to_vec_with_schema};
 pub use ser::helpers::{to_vec, to_writer};
 pub use ser::BorshSerialize;
@@ -93,7 +89,7 @@ pub mod __maybestd {
     pub use alloc::{rc, sync};
 
     pub mod collections {
-        pub use alloc::collections::{BTreeMap, BTreeSet, LinkedList, VecDeque};
+        pub use alloc::collections::{btree_map, BTreeMap, BTreeSet, LinkedList, VecDeque};
         #[cfg(feature = "hashbrown")]
         pub use hashbrown::*;
     }
