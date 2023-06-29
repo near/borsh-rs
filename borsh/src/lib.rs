@@ -12,10 +12,14 @@
 
 ### Default features
 
-* **std** - enabled by default.
+* **std**, **schema** - enabled by default.
 
 ### Other features
 
+
+* **schema** -
+  Gates [BorshSchema](crate::schema::BorshSchema) trait and its derive macro.
+  Gates [schema](crate::schema) and [schema_helpers](crate::schema_helpers) modules.
 * **rc** -
   Gates implementation of [BorshSerialize](crate::ser::BorshSerialize) and [BorshDeserialize](crate::de::BorshDeserialize)
   for [`Rc<T>`](std::rc::Rc)/[`Arc<T>`](std::sync::Arc) respectively.
@@ -41,9 +45,8 @@
 
 * **hash_collections** -
   This is a feature alias, set up in `build.rs` to be equivalent to (**std** OR **hashbrown**).
-  This alias gates [schema](crate::schema) and [schema_helpers](crate::schema_helpers) modules, as
-  [BorshSchema](crate::schema::BorshSchema) relies on [HashMap](std::collections::HashMap) existing.
-  Gates implementation of [BorshSerialize](crate::ser::BorshSerialize) and [BorshDeserialize](crate::de::BorshDeserialize)
+  Gates implementation of [BorshSerialize](crate::ser::BorshSerialize), [BorshDeserialize](crate::de::BorshDeserialize)
+  and [BorshSchema](crate::schema::BorshSchema)
   for [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
 
 
