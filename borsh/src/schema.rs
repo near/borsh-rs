@@ -112,10 +112,7 @@ where
 {
     fn serialize<W: Write>(&self, writer: &mut W) -> IOResult<()> {
         let declaration = self.declaration();
-        let definitions: BTreeMap<Declaration, Definition> = self
-            .definitions()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
+        let definitions: BTreeMap<&Declaration, &Definition> = self.definitions().collect();
         BorshSerialize::serialize(declaration, writer)?;
         BorshSerialize::serialize(&definitions, writer)?;
         Ok(())
