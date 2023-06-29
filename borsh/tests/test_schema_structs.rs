@@ -1,28 +1,30 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg(hash_collections)]
+#![cfg(feature = "schema")]
 
 use borsh::schema::*;
 
 #[cfg(feature = "hashbrown")]
 use hashbrown::HashMap;
+
 #[cfg(feature = "std")]
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::{
     boxed::Box,
+    collections::BTreeMap,
     format,
     string::{String, ToString},
     vec,
 };
 
 macro_rules! map(
-    () => { HashMap::new() };
+    () => { BTreeMap::new() };
     { $($key:expr => $value:expr),+ } => {
         {
-            let mut m = HashMap::new();
+            let mut m = BTreeMap::new();
             $(
                 m.insert($key.to_string(), $value);
             )+
@@ -143,6 +145,7 @@ pub fn tuple_struct_params() {
     );
 }
 
+#[cfg(hash_collections)]
 #[test]
 pub fn simple_generics() {
     #[derive(borsh::BorshSchema)]

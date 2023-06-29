@@ -1,28 +1,30 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(hash_collections)]
 #![allow(dead_code)] // Local structures do not have their fields used.
+#![cfg(feature = "schema")]
 
 use borsh::schema::*;
 #[cfg(feature = "hashbrown")]
 use hashbrown::HashMap;
 #[cfg(feature = "std")]
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::{
     boxed::Box,
+    collections::BTreeMap,
     format,
     string::{String, ToString},
     vec,
 };
 
 macro_rules! map(
-    () => { HashMap::new() };
+    () => { BTreeMap::new() };
     { $($key:expr => $value:expr),+ } => {
         {
-            let mut m = HashMap::new();
+            let mut m = BTreeMap::new();
             $(
                 m.insert($key.to_string(), $value);
             )+
@@ -32,6 +34,7 @@ macro_rules! map(
 );
 
 // Checks that recursive definitions work. Also checks that re-instantiations of templated types work.
+#[cfg(hash_collections)]
 #[test]
 pub fn duplicated_instantiations() {
     #[derive(borsh::BorshSchema)]

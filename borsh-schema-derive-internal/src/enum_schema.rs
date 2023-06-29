@@ -108,7 +108,7 @@ pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStre
     }
 
     let type_definitions = quote! {
-        fn add_definitions_recursively(definitions: &mut #cratename::__maybestd::collections::HashMap<#cratename::schema::Declaration, #cratename::schema::Definition>) {
+        fn add_definitions_recursively(definitions: &mut #cratename::__maybestd::collections::BTreeMap<#cratename::schema::Declaration, #cratename::schema::Definition>) {
             #anonymous_defs
             #add_recursive_defs
             let variants = #cratename::__maybestd::vec![#(#variants_defs),*];
@@ -153,7 +153,7 @@ mod tests {
                     "A".to_string()
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::__maybestd::collections::HashMap<
+                    definitions: &mut borsh::__maybestd::collections::BTreeMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
@@ -191,7 +191,7 @@ mod tests {
                     "A".to_string()
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::__maybestd::collections::HashMap<
+                    definitions: &mut borsh::__maybestd::collections::BTreeMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
@@ -226,7 +226,7 @@ mod tests {
                     "A".to_string()
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::__maybestd::collections::HashMap<
+                    definitions: &mut borsh::__maybestd::collections::BTreeMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
@@ -283,7 +283,7 @@ mod tests {
                     format!(r#"{}<{}>"#, "A", params.join(", "))
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::__maybestd::collections::HashMap<
+                    definitions: &mut borsh::__maybestd::collections::BTreeMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
@@ -356,7 +356,7 @@ mod tests {
                     format!(r#"{}<{}>"#, "Side", params.join(", "))
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::__maybestd::collections::HashMap<
+                    definitions: &mut borsh::__maybestd::collections::BTreeMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >

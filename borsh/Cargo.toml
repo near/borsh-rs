@@ -21,7 +21,7 @@ path = "src/lib.rs"
 [[bin]]
 name = "generate_schema_schema"
 path = "src/generate_schema_schema.rs"
-required-features = ["std"]
+required-features = ["std", "schema"]
 
 [build-dependencies]
 cfg_aliases = "0.1.0"
@@ -40,7 +40,8 @@ borsh = { path = ".", default_features = false, features = ["bytes", "bson"] }
 insta = "1.29.0"
 
 [features]
-default = ["std"]
+default = ["std", "schema"]
+schema = ["borsh-derive/schema"]
 std = []
 rc = []
 de_strict_order = []

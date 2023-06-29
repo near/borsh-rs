@@ -8,7 +8,7 @@ use std::io::Write;
 
 fn main() {
     let container = borsh::schema::BorshSchemaContainer::schema_container();
-    println!("{:?}", container);
+    println!("{:#?}", container);
     let data = container
         .try_to_vec()
         .expect("Failed to serialize BorshSchemaContainer");

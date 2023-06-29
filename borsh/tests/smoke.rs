@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg(hash_collections)]
 // Smoke tests that ensure that we don't accidentally remove top-level
 // re-exports in a minor release.
 
@@ -8,8 +7,11 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::vec;
 
-use borsh::{self, from_slice, try_from_slice_with_schema, BorshSchema};
+use borsh::{self, from_slice};
+#[cfg(feature = "schema")]
+use borsh::{try_from_slice_with_schema, BorshSchema};
 
+#[cfg(feature = "schema")]
 #[test]
 fn test_to_vec() {
     let value = 42u8;
