@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg(feature = "derive")]
 use borsh::{from_reader, BorshDeserialize, BorshSerialize};
 
 #[cfg(not(feature = "std"))]

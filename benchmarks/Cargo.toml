@@ -37,4 +37,4 @@ name = "maps_sets_inner_de"
 harness = false
 
 [features]
-default = ["borsh/std"]
+default = ["borsh/std", "borsh/derive"]

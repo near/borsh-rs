@@ -1,7 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::float_cmp)]
 
-use borsh::{from_slice, BorshDeserialize, BorshSerialize};
+#[cfg(feature = "derive")]
+use borsh::BorshDeserialize;
+use borsh::{from_slice, BorshSerialize};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -53,9 +55,11 @@ test_arrays!(test_array_f32, 1000000000.0f32, f32);
 test_arrays!(test_array_array_u8, [100u8; 32], [u8; 32]);
 test_arrays!(test_array_zst, (), ());
 
+#[cfg(feature = "derive")]
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug)]
 struct CustomStruct(u8);
 
+#[cfg(feature = "derive")]
 #[test]
 fn test_custom_struct_array() {
     let arr = [CustomStruct(0), CustomStruct(1), CustomStruct(2)];

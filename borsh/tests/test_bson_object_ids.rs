@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::float_cmp)]
+#![cfg(feature = "derive")]
 
 use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 use bson::oid::ObjectId;

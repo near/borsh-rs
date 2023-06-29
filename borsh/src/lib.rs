@@ -12,14 +12,17 @@
 
 ### Default features
 
-* **std**, **schema** - enabled by default.
+* **std** - enabled by default.
 
 ### Other features
 
-
+* **derive** -
+  Gates derive macros of [BorshSerialize](crate::ser::BorshSerialize) and
+  [BorshDeserialize](crate::de::BorshDeserialize) traits.
 * **schema** -
   Gates [BorshSchema](crate::schema::BorshSchema) trait and its derive macro.
   Gates [schema](crate::schema) and [schema_helpers](crate::schema_helpers) modules.
+  This feature requires **derive** to be enabled too.
 * **rc** -
   Gates implementation of [BorshSerialize](crate::ser::BorshSerialize) and [BorshDeserialize](crate::de::BorshDeserialize)
   for [`Rc<T>`](std::rc::Rc)/[`Arc<T>`](std::sync::Arc) respectively.
@@ -48,6 +51,8 @@
   Gates implementation of [BorshSerialize](crate::ser::BorshSerialize), [BorshDeserialize](crate::de::BorshDeserialize)
   and [BorshSchema](crate::schema::BorshSchema)
   for [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
+* **derive_schema** -
+  This is a feature alias, set up in `build.rs` to be equivalent to (**derive** AND **schema**).
 
 
 */
@@ -55,30 +60,41 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[cfg(feature = "schema")]
+/// Derive macro available if borsh is built with `features = ["derive", "schema"]`.
+#[cfg(derive_schema)]
 pub use borsh_derive::BorshSchema;
+
+/// Derive macro available if borsh is built with `features = ["derive"]`.
+#[cfg(feature = "derive")]
 pub use borsh_derive::{BorshDeserialize, BorshSerialize};
 
 pub mod de;
 
 // See `hash_collections` alias definition in build.rs
-#[cfg(feature = "schema")]
+/// Module is available if borsh is built with `features = ["derive", "schema"]`.
+#[cfg(derive_schema)]
 pub mod schema;
-#[cfg(feature = "schema")]
+/// Module is available if borsh is built with `features = ["derive", "schema"]`.
+#[cfg(derive_schema)]
 pub mod schema_helpers;
 pub mod ser;
 
 pub use de::BorshDeserialize;
 pub use de::{from_reader, from_slice};
-#[cfg(feature = "schema")]
+#[cfg(derive_schema)]
 pub use schema::BorshSchema;
-#[cfg(feature = "schema")]
+#[cfg(derive_schema)]
 pub use schema_helpers::{try_from_slice_with_schema, try_to_vec_with_schema};
 pub use ser::helpers::{to_vec, to_writer};
 pub use ser::BorshSerialize;
 
 #[cfg(all(feature = "std", feature = "hashbrown"))]
 compile_error!("feature \"std\" and feature \"hashbrown\" don't make sense at the same time");
+
+#[cfg(all(feature = "schema", not(feature = "derive")))]
+compile_error!(
+    "feature \"schema\" depends on \"derive\" feature in its implementation; enable it too.."
+);
 
 /// A facade around all the types we need from the `std`, `core`, and `alloc`
 /// crates. This avoids elaborate import wrangling having to happen in every

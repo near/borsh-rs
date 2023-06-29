@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg(feature = "derive")]
 use core::marker::PhantomData;
 
 #[cfg(not(feature = "std"))]

@@ -1,3 +1,4 @@
+//!
 //! Since Borsh is not a self-descriptive format we have a way to describe types serialized with Borsh so that
 //! we can deserialize serialized blobs without having Rust types available. Additionally, this can be used to
 //! serialize content provided in a different format, e.g. JSON object `{"user": "alice", "message": "Message"}`
@@ -337,8 +338,12 @@ where
     }
 }
 
+/// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
 #[cfg(hash_collections)]
 pub mod hashes {
+    //!
+    //! Module defines [BorshSchema](crate::schema::BorshSchema) implementation for  
+    //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use crate::BorshSchema;
 
     use super::{Declaration, Definition};

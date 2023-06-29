@@ -78,7 +78,7 @@ pub trait BorshDeserialize: Sized {
     }
 }
 
-/// Additional methods offered on enums which uses `[derive(BorshDeserialize)]`.
+/// Additional methods offered on enums which is used by `[derive(BorshDeserialize)]`.
 pub trait EnumExt: BorshDeserialize {
     /// Deserialises given variant of an enum from the reader.
     ///
@@ -88,8 +88,9 @@ pub trait EnumExt: BorshDeserialize {
     /// ```
     /// use borsh::BorshDeserialize;
     /// use borsh::de::EnumExt as _;
-    /// use borsh::from_slice;
     ///
+    /// /// derive is only available if borsh is built with `features = ["derive"]`
+    /// # #[cfg(feature = "derive")]
     /// #[derive(Debug, PartialEq, Eq, BorshDeserialize)]
     /// enum MyEnum {
     ///     Zero,
@@ -97,9 +98,11 @@ pub trait EnumExt: BorshDeserialize {
     ///     Many(Vec<u8>)
     /// }
     ///
+    /// # #[cfg(feature = "derive")]
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct OneOrZero(MyEnum);
     ///
+    /// # #[cfg(feature = "derive")]
     /// impl borsh::de::BorshDeserialize for OneOrZero {
     ///     fn deserialize_reader<R: borsh::__maybestd::io::Read>(
     ///         reader: &mut R,
@@ -117,12 +120,17 @@ pub trait EnumExt: BorshDeserialize {
     ///     }
     /// }
     ///
+    /// use borsh::from_slice;
     /// let data = b"\0";
+    /// # #[cfg(feature = "derive")]
     /// assert_eq!(MyEnum::Zero, from_slice::<MyEnum>(&data[..]).unwrap());
+    /// # #[cfg(feature = "derive")]
     /// assert_eq!(MyEnum::Zero, from_slice::<OneOrZero>(&data[..]).unwrap().0);
     ///
     /// let data = b"\x02\0\0\0\0";
+    /// # #[cfg(feature = "derive")]
     /// assert_eq!(MyEnum::Many(Vec::new()), from_slice::<MyEnum>(&data[..]).unwrap());
+    /// # #[cfg(feature = "derive")]
     /// assert!(from_slice::<OneOrZero>(&data[..]).is_err());
     /// ```
     fn deserialize_variant<R: Read>(reader: &mut R, tag: u8) -> Result<Self>;
@@ -468,8 +476,12 @@ where
     }
 }
 
+/// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
 #[cfg(hash_collections)]
 pub mod hashes {
+    //!
+    //! Module defines [BorshDeserialize](crate::de::BorshDeserialize) implementation for  
+    //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use core::hash::{BuildHasher, Hash};
 
     use crate::BorshDeserialize;
@@ -863,14 +875,22 @@ impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
 /// # Example
 /// ```
 /// use borsh::{BorshDeserialize, BorshSerialize, from_slice};
+///
+/// /// derive is only available if borsh is built with `features = ["derive"]`
+/// # #[cfg(feature = "derive")]
 /// #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 /// struct MyStruct {
 ///    a: u64,
 ///    b: Vec<u8>,
 /// }
+///
+/// # #[cfg(feature = "derive")]
 /// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
+/// # #[cfg(feature = "derive")]
 /// let encoded = original.try_to_vec().unwrap();
+/// # #[cfg(feature = "derive")]
 /// let decoded = from_slice::<MyStruct>(&encoded).unwrap();
+/// # #[cfg(feature = "derive")]
 /// assert_eq!(original, decoded);
 /// ```
 /// # Panics
@@ -896,14 +916,21 @@ pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
 /// ```
 /// use borsh::{BorshDeserialize, BorshSerialize, from_reader};
 ///
+/// /// derive is only available if borsh is built with `features = ["derive"]`
+/// # #[cfg(feature = "derive")]
 /// #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 /// struct MyStruct {
-///   a: u64,
-///  b: Vec<u8>,
+///     a: u64,
+///     b: Vec<u8>,
 /// }
+///
+/// # #[cfg(feature = "derive")]
 /// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
+/// # #[cfg(feature = "derive")]
 /// let encoded = original.try_to_vec().unwrap();
+/// # #[cfg(feature = "derive")]
 /// let decoded = from_reader::<_, MyStruct>(&mut encoded.as_slice()).unwrap();
+/// # #[cfg(feature = "derive")]
 /// assert_eq!(original, decoded);
 /// ```
 pub fn from_reader<R: Read, T: BorshDeserialize>(reader: &mut R) -> Result<T> {
