@@ -29,6 +29,12 @@
 * **bson** -
   Gates implementation of [BorshSerialize](crate::ser::BorshSerialize) and [BorshDeserialize](crate::de::BorshDeserialize)
   for [ObjectId](bson::oid::ObjectId).
+* **de_strict_order** -
+  Enables check that keys, parsed during deserialization of
+  [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet) and
+  [BTreeSet](std::collections::BTreeSet)/[BTreeMap](std::collections::BTreeMap)
+  are encountered in ascending order with respect to [PartialOrd](core::cmp::PartialOrd) for hash collections,
+  and [Ord](core::cmp::Ord) for btree ones. Deserialization emits error otherwise.
 
 
 ### Config aliases
