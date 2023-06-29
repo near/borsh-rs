@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(dead_code)] // Local structures do not have their fields used.
+#![cfg(feature = "schema")]
 
 #[cfg(feature = "std")]
 use std::collections::BTreeMap;

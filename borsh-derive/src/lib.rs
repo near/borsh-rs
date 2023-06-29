@@ -6,6 +6,7 @@ use proc_macro_crate::FoundCrate;
 use syn::{Ident, ItemEnum, ItemStruct, ItemUnion};
 
 use borsh_derive_internal::*;
+#[cfg(feature = "schema")]
 use borsh_schema_derive_internal::*;
 
 #[proc_macro_derive(BorshSerialize, attributes(borsh_skip))]
@@ -58,6 +59,7 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     })
 }
 
+#[cfg(feature = "schema")]
 #[proc_macro_derive(BorshSchema, attributes(borsh_skip))]
 pub fn borsh_schema(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();

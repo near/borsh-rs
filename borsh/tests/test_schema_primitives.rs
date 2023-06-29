@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(hash_collections)]
+#![cfg(feature = "schema")]
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;

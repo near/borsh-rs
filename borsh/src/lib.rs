@@ -46,18 +46,24 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-pub use borsh_derive::{BorshDeserialize, BorshSchema, BorshSerialize};
+#[cfg(feature = "schema")]
+pub use borsh_derive::BorshSchema;
+pub use borsh_derive::{BorshDeserialize, BorshSerialize};
 
 pub mod de;
 
 // See `hash_collections` alias definition in build.rs
+#[cfg(feature = "schema")]
 pub mod schema;
+#[cfg(feature = "schema")]
 pub mod schema_helpers;
 pub mod ser;
 
 pub use de::BorshDeserialize;
 pub use de::{from_reader, from_slice};
+#[cfg(feature = "schema")]
 pub use schema::BorshSchema;
+#[cfg(feature = "schema")]
 pub use schema_helpers::{try_from_slice_with_schema, try_to_vec_with_schema};
 pub use ser::helpers::{to_vec, to_writer};
 pub use ser::BorshSerialize;
