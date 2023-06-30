@@ -238,7 +238,7 @@ where
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.write_all(
-            &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidInput)?).to_le_bytes(),
+            &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidData)?).to_le_bytes(),
         )?;
         serialize_slice(self, writer)
     }
@@ -269,7 +269,7 @@ where
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         if size_of::<T>() == 0 {
             return Err(Error::new(
-                ErrorKind::InvalidInput,
+                ErrorKind::InvalidData,
                 "Vectors of zero-sized types are not allowed due to deny-of-service concerns on deserialization.",
             ));
         }
@@ -308,7 +308,7 @@ where
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.write_all(
-            &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidInput)?).to_le_bytes(),
+            &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidData)?).to_le_bytes(),
         )?;
         let slices = self.as_slices();
         serialize_slice(slices.0, writer)?;
@@ -323,7 +323,7 @@ where
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.write_all(
-            &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidInput)?).to_le_bytes(),
+            &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidData)?).to_le_bytes(),
         )?;
         for item in self {
             item.serialize(writer)?;
@@ -355,7 +355,7 @@ pub mod hashes {
             let mut vec = self.iter().collect::<Vec<_>>();
             vec.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
             u32::try_from(vec.len())
-                .map_err(|_| ErrorKind::InvalidInput)?
+                .map_err(|_| ErrorKind::InvalidData)?
                 .serialize(writer)?;
             for (key, value) in vec {
                 key.serialize(writer)?;
@@ -375,7 +375,7 @@ pub mod hashes {
             let mut vec = self.iter().collect::<Vec<_>>();
             vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
             u32::try_from(vec.len())
-                .map_err(|_| ErrorKind::InvalidInput)?
+                .map_err(|_| ErrorKind::InvalidData)?
                 .serialize(writer)?;
             for item in vec {
                 item.serialize(writer)?;
@@ -396,7 +396,7 @@ where
         // result will be consistent without a need to sort the entries as we do for HashMap
         // serialization.
         u32::try_from(self.len())
-            .map_err(|_| ErrorKind::InvalidInput)?
+            .map_err(|_| ErrorKind::InvalidData)?
             .serialize(writer)?;
         for (key, value) in self {
             key.serialize(writer)?;
@@ -415,7 +415,7 @@ where
         // NOTE: BTreeSet iterates over the items that are sorted, so the serialization result will
         // be consistent without a need to sort the entries as we do for HashSet serialization.
         u32::try_from(self.len())
-            .map_err(|_| ErrorKind::InvalidInput)?
+            .map_err(|_| ErrorKind::InvalidData)?
             .serialize(writer)?;
         for item in self {
             item.serialize(writer)?;

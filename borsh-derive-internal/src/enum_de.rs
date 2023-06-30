@@ -99,7 +99,7 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                 let mut return_value =
                     #variant_arms {
                     return Err(#cratename::__maybestd::io::Error::new(
-                        #cratename::__maybestd::io::ErrorKind::InvalidInput,
+                        #cratename::__maybestd::io::ErrorKind::InvalidData,
                         #cratename::__maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
                     ))
                 };
