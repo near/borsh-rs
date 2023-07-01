@@ -108,7 +108,7 @@ pub trait EnumExt: BorshDeserialize {
     ///         let tag = u8::deserialize_reader(reader)?;
     ///         if tag == 2 {
     ///             Err(borsh::__maybestd::io::Error::new(
-    ///                 borsh::__maybestd::io::ErrorKind::InvalidInput,
+    ///                 borsh::__maybestd::io::ErrorKind::InvalidData,
     ///                 "MyEnum::Many not allowed here",
     ///             ))
     ///         } else {
@@ -130,7 +130,7 @@ pub trait EnumExt: BorshDeserialize {
 
 fn unexpected_eof_to_unexpected_length_of_input(e: Error) -> Error {
     if e.kind() == ErrorKind::UnexpectedEof {
-        Error::new(ErrorKind::InvalidInput, ERROR_UNEXPECTED_LENGTH_OF_INPUT)
+        Error::new(ErrorKind::InvalidData, ERROR_UNEXPECTED_LENGTH_OF_INPUT)
     } else {
         e
     }
@@ -149,7 +149,7 @@ impl BorshDeserialize for u8 {
     #[inline]
     #[doc(hidden)]
     fn vec_from_reader<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
-        let len: usize = len.try_into().map_err(|_| ErrorKind::InvalidInput)?;
+        let len: usize = len.try_into().map_err(|_| ErrorKind::InvalidData)?;
         // Avoid OOM by limiting the size of allocation.  This makes the read
         // less efficient (since we need to loop and reallocate) but it protects
         // us from someone sending us [0xff, 0xff, 0xff, 0xff] and forcing us to
@@ -164,7 +164,7 @@ impl BorshDeserialize for u8 {
             match reader.read(&mut vec.as_mut_slice()[pos..])? {
                 0 => {
                     return Err(Error::new(
-                        ErrorKind::InvalidInput,
+                        ErrorKind::InvalidData,
                         ERROR_UNEXPECTED_LENGTH_OF_INPUT,
                     ))
                 }
@@ -242,7 +242,7 @@ impl BorshDeserialize for isize {
         let i: i64 = BorshDeserialize::deserialize_reader(reader)?;
         let i = isize::try_from(i).map_err(|_| {
             Error::new(
-                ErrorKind::InvalidInput,
+                ErrorKind::InvalidData,
                 ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_ISIZE,
             )
         })?;
@@ -255,7 +255,7 @@ impl BorshDeserialize for usize {
         let u: u64 = BorshDeserialize::deserialize_reader(reader)?;
         let u = usize::try_from(u).map_err(|_| {
             Error::new(
-                ErrorKind::InvalidInput,
+                ErrorKind::InvalidData,
                 ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE,
             )
         })?;
@@ -277,7 +277,7 @@ macro_rules! impl_for_float {
                 let res = $type::from_bits($int_type::from_le_bytes(buf.try_into().unwrap()));
                 if res.is_nan() {
                     return Err(Error::new(
-                        ErrorKind::InvalidInput,
+                        ErrorKind::InvalidData,
                         "For portability reasons we do not allow to deserialize NaNs.",
                     ));
                 }
@@ -301,7 +301,7 @@ impl BorshDeserialize for bool {
         } else {
             let msg = format!("Invalid bool representation: {}", b);
 
-            Err(Error::new(ErrorKind::InvalidInput, msg))
+            Err(Error::new(ErrorKind::InvalidData, msg))
         }
     }
 }
@@ -336,7 +336,7 @@ where
                 flag
             );
 
-            Err(Error::new(ErrorKind::InvalidInput, msg))
+            Err(Error::new(ErrorKind::InvalidData, msg))
         }
     }
 }
@@ -359,7 +359,7 @@ where
                 flag
             );
 
-            Err(Error::new(ErrorKind::InvalidInput, msg))
+            Err(Error::new(ErrorKind::InvalidData, msg))
         }
     }
 }
@@ -382,7 +382,7 @@ where
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         if size_of::<T>() == 0 {
             return Err(Error::new(
-                ErrorKind::InvalidInput,
+                ErrorKind::InvalidData,
                 "Vectors of zero-sized types are not allowed due to deny-of-service concerns on deserialization.",
             ));
         }
@@ -629,7 +629,7 @@ impl BorshDeserialize for std::net::SocketAddr {
             0 => std::net::SocketAddrV4::deserialize_reader(reader).map(std::net::SocketAddr::V4),
             1 => std::net::SocketAddrV6::deserialize_reader(reader).map(std::net::SocketAddr::V6),
             value => Err(Error::new(
-                ErrorKind::InvalidInput,
+                ErrorKind::InvalidData,
                 format!("Invalid SocketAddr variant: {}", value),
             )),
         }
