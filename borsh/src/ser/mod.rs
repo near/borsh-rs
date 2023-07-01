@@ -23,21 +23,32 @@ const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;
 /// ```
 /// use borsh::BorshSerialize;
 ///
+/// /// derive is only available if borsh is built with `features = ["derive"]`
+/// # #[cfg(feature = "derive")]
 /// #[derive(BorshSerialize)]
 /// struct MyBorshSerializableStruct {
 ///     value: String,
 /// }
 ///
+///
+/// # #[cfg(feature = "derive")]
 /// let x = MyBorshSerializableStruct { value: "hello".to_owned() };
 /// let mut buffer: Vec<u8> = Vec::new();
+/// # #[cfg(feature = "derive")]
 /// x.serialize(&mut buffer).unwrap();
+/// # #[cfg(feature = "derive")]
 /// let single_serialized_buffer_len = buffer.len();
 ///
+/// # #[cfg(feature = "derive")]
 /// x.serialize(&mut buffer).unwrap();
+/// # #[cfg(feature = "derive")]
 /// assert_eq!(buffer.len(), single_serialized_buffer_len * 2);
 ///
+/// # #[cfg(feature = "derive")]
 /// let mut buffer: Vec<u8> = vec![0; 1024 + single_serialized_buffer_len];
+/// # #[cfg(feature = "derive")]
 /// let mut buffer_slice_enough_for_the_data = &mut buffer[1024..1024 + single_serialized_buffer_len];
+/// # #[cfg(feature = "derive")]
 /// x.serialize(&mut buffer_slice_enough_for_the_data).unwrap();
 /// ```
 pub trait BorshSerialize {
@@ -332,8 +343,12 @@ where
     }
 }
 
+/// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
 #[cfg(hash_collections)]
 pub mod hashes {
+    //!
+    //! Module defines [BorshSerialize](crate::ser::BorshSerialize) implementation for  
+    //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use crate::__maybestd::vec::Vec;
     use crate::{
         BorshSerialize,

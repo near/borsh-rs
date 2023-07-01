@@ -1,5 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-use borsh::{from_slice, BorshDeserialize};
+
+use borsh::from_slice;
+#[cfg(feature = "derive")]
+use borsh::BorshDeserialize;
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -11,12 +14,14 @@ use alloc::{
     vec::Vec,
 };
 
+#[cfg(feature = "derive")]
 #[derive(BorshDeserialize, Debug)]
 enum A {
     X,
     Y,
 }
 
+#[cfg(feature = "derive")]
 #[derive(BorshDeserialize, Debug)]
 struct B {
     #[allow(unused)]
@@ -28,6 +33,7 @@ struct B {
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
 const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
 
+#[cfg(feature = "derive")]
 #[test]
 fn test_missing_bytes() {
     let bytes = vec![1, 0];
@@ -37,6 +43,7 @@ fn test_missing_bytes() {
     );
 }
 
+#[cfg(feature = "derive")]
 #[test]
 fn test_invalid_enum_variant() {
     let bytes = vec![123];

@@ -5,10 +5,15 @@ export INSTA_UPDATE=no
 pushd borsh
 cargo test --no-run
 cargo test
-cargo test --no-default-features
-cargo test --no-default-features --features schema
-cargo test --no-default-features --features hashbrown,rc
-cargo test --features rc
+cargo test --features derive
+cargo test --features derive,schema
+cargo test --test test_rc --features rc
 cargo test --test test_hash_map --test test_btree_map --features de_strict_order
+
+cargo test --no-default-features
+cargo test --no-default-features --features derive
+cargo test --no-default-features --features derive,schema
+cargo test --no-default-features --test test_rc --features rc
+cargo test --no-default-features --features hashbrown
 popd
 cargo test --workspace

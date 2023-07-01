@@ -21,13 +21,13 @@ path = "src/lib.rs"
 [[bin]]
 name = "generate_schema_schema"
 path = "src/generate_schema_schema.rs"
-required-features = ["std", "schema"]
+required-features = ["std", "derive", "schema"]
 
 [build-dependencies]
 cfg_aliases = "0.1.0"
 
 [dependencies]
-borsh-derive = { path = "../borsh-derive", version = "0.11.0" }
+borsh-derive = { path = "../borsh-derive", version = "0.11.0", optional = true }
 hashbrown = { version = ">=0.11,<0.14", optional = true }
 bytes = { version = "1", optional = true }
 bson = { version = "2", optional = true }
@@ -39,8 +39,13 @@ bson = "2"
 borsh = { path = ".", default_features = false, features = ["bytes", "bson"] }
 insta = "1.29.0"
 
+[package.metadata.docs.rs]
+features = ["derive", "schema"]
+targets = ["x86_64-unknown-linux-gnu"]
+
 [features]
-default = ["std", "schema"]
+default = ["std"]
+derive = ["borsh-derive"]
 schema = ["borsh-derive/schema"]
 std = []
 rc = []
