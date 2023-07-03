@@ -2,7 +2,7 @@ use core::convert::TryFrom;
 use core::marker::PhantomData;
 use core::mem::size_of;
 
-use crate::__maybestd::{
+use crate::__private::maybestd::{
     borrow::{Cow, ToOwned},
     boxed::Box,
     collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
@@ -12,7 +12,7 @@ use crate::__maybestd::{
 };
 
 #[cfg(feature = "rc")]
-use crate::__maybestd::{rc::Rc, sync::Arc};
+use crate::__private::maybestd::{rc::Rc, sync::Arc};
 
 pub(crate) mod helpers;
 
@@ -349,15 +349,15 @@ pub mod hashes {
     //!
     //! Module defines [BorshSerialize](crate::ser::BorshSerialize) implementation for  
     //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
-    use crate::__maybestd::vec::Vec;
+    use crate::__private::maybestd::vec::Vec;
     use crate::{
         BorshSerialize,
-        __maybestd::collections::{HashMap, HashSet},
+        __private::maybestd::collections::{HashMap, HashSet},
     };
     use core::convert::TryFrom;
     use core::hash::BuildHasher;
 
-    use crate::__maybestd::io::{ErrorKind, Result, Write};
+    use crate::__private::maybestd::io::{ErrorKind, Result, Write};
 
     impl<K, V, H> BorshSerialize for HashMap<K, V, H>
     where

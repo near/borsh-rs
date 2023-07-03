@@ -8,7 +8,7 @@ use core::{
 #[cfg(any(test, feature = "bytes"))]
 use bytes::{BufMut, BytesMut};
 
-use crate::__maybestd::{
+use crate::__private::maybestd::{
     borrow::{Borrow, Cow, ToOwned},
     boxed::Box,
     collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
@@ -20,7 +20,7 @@ use crate::__maybestd::{
 };
 
 #[cfg(feature = "rc")]
-use crate::__maybestd::{rc::Rc, sync::Arc};
+use crate::__private::maybestd::{rc::Rc, sync::Arc};
 
 mod hint;
 
@@ -104,14 +104,14 @@ pub trait EnumExt: BorshDeserialize {
     ///
     /// # #[cfg(feature = "derive")]
     /// impl borsh::de::BorshDeserialize for OneOrZero {
-    ///     fn deserialize_reader<R: borsh::__maybestd::io::Read>(
+    ///     fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
     ///         reader: &mut R,
-    ///     ) -> borsh::__maybestd::io::Result<Self> {
+    ///     ) -> borsh::__private::maybestd::io::Result<Self> {
     ///         use borsh::de::EnumExt;
     ///         let tag = u8::deserialize_reader(reader)?;
     ///         if tag == 2 {
-    ///             Err(borsh::__maybestd::io::Error::new(
-    ///                 borsh::__maybestd::io::ErrorKind::InvalidData,
+    ///             Err(borsh::__private::maybestd::io::Error::new(
+    ///                 borsh::__private::maybestd::io::ErrorKind::InvalidData,
     ///                 "MyEnum::Many not allowed here",
     ///             ))
     ///         } else {
@@ -485,14 +485,14 @@ pub mod hashes {
     use core::hash::{BuildHasher, Hash};
 
     use crate::BorshDeserialize;
-    use crate::__maybestd::collections::{HashMap, HashSet};
-    use crate::__maybestd::io::{Read, Result};
-    use crate::__maybestd::vec::Vec;
+    use crate::__private::maybestd::collections::{HashMap, HashSet};
+    use crate::__private::maybestd::io::{Read, Result};
+    use crate::__private::maybestd::vec::Vec;
 
     #[cfg(feature = "de_strict_order")]
     const ERROR_WRONG_ORDER_OF_KEYS: &str = "keys were not serialized in ascending order";
     #[cfg(feature = "de_strict_order")]
-    use crate::__maybestd::io::{Error, ErrorKind};
+    use crate::__private::maybestd::io::{Error, ErrorKind};
     #[cfg(feature = "de_strict_order")]
     use core::cmp::Ordering;
 

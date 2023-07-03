@@ -96,36 +96,37 @@ compile_error!(
     "feature \"schema\" depends on \"derive\" feature in its implementation; enable it too.."
 );
 
-/// A facade around all the types we need from the `std`, `core`, and `alloc`
-/// crates. This avoids elaborate import wrangling having to happen in every
-/// module.
-#[doc(hidden)]
-#[cfg(feature = "std")]
-pub mod __maybestd {
-    pub use std::{borrow, boxed, collections, format, io, string, vec};
-
-    #[cfg(feature = "rc")]
-    pub use std::{rc, sync};
-}
-
 #[cfg(not(feature = "std"))]
 pub mod nostd_io;
 
 #[doc(hidden)]
-#[cfg(not(feature = "std"))]
-pub mod __maybestd {
-    pub use alloc::{borrow, boxed, format, string, vec};
+pub mod __private {
 
-    #[cfg(feature = "rc")]
-    pub use alloc::{rc, sync};
+    /// A facade around all the types we need from the `std`, and `alloc`
+    /// crates. This avoids elaborate import wrangling having to happen in every
+    /// module.
+    #[cfg(feature = "std")]
+    pub mod maybestd {
+        pub use std::{borrow, boxed, collections, format, io, string, vec};
 
-    pub mod collections {
-        pub use alloc::collections::{btree_map, BTreeMap, BTreeSet, LinkedList, VecDeque};
-        #[cfg(feature = "hashbrown")]
-        pub use hashbrown::*;
+        #[cfg(feature = "rc")]
+        pub use std::{rc, sync};
     }
+    #[cfg(not(feature = "std"))]
+    pub mod maybestd {
+        pub use alloc::{borrow, boxed, format, string, vec};
 
-    pub mod io {
-        pub use super::super::nostd_io::*;
+        #[cfg(feature = "rc")]
+        pub use alloc::{rc, sync};
+
+        pub mod collections {
+            pub use alloc::collections::{btree_map, BTreeMap, BTreeSet, LinkedList, VecDeque};
+            #[cfg(feature = "hashbrown")]
+            pub use hashbrown::*;
+        }
+
+        pub mod io {
+            pub use crate::nostd_io::*;
+        }
     }
 }
