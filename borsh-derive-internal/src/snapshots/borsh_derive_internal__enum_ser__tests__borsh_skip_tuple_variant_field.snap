@@ -1,0 +1,27 @@
+---
+source: borsh-derive-internal/src/enum_ser.rs
+expression: pretty_print_syn_str(&actual)
+---
+impl borsh::ser::BorshSerialize for AATTB
+where
+    u8: borsh::ser::BorshSerialize,
+{
+    fn serialize<W: borsh::__private::maybestd::io::Write>(
+        &self,
+        writer: &mut W,
+    ) -> ::core::result::Result<(), borsh::__private::maybestd::io::Error> {
+        let variant_idx: u8 = match self {
+            AATTB::B(..) => 0,
+            AATTB::NegatedVariant { .. } => 0 + 1,
+        };
+        writer.write_all(&variant_idx.to_le_bytes())?;
+        match self {
+            AATTB::B(_id0, _id1) => {}
+            AATTB::NegatedVariant { beta } => {
+                borsh::BorshSerialize::serialize(beta, writer)?;
+            }
+        }
+        Ok(())
+    }
+}
+

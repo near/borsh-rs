@@ -109,3 +109,50 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         }
     })
 }
+
+#[rustfmt::skip]
+#[cfg(test)]
+mod tests {
+    use crate::test_helpers::pretty_print_syn_str;
+
+    use super::*;
+    use proc_macro2::Span;
+
+    #[test]
+    fn borsh_skip_struct_variant_field() {
+
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum AA {
+                B {
+                    #[borsh_skip]
+                    c: i32,
+                    d: u32,
+                },
+                NegatedVariant {
+                    beta: u8,
+                }
+            }
+        }).unwrap(); 
+        let actual = enum_de(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+
+    }
+
+    #[test]
+    fn borsh_skip_tuple_variant_field() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum AAT {
+                B(#[borsh_skip] i32, u32),
+
+                NegatedVariant {
+                    beta: u8,
+                }
+            }
+        }).unwrap(); 
+        let actual = enum_de(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+}
