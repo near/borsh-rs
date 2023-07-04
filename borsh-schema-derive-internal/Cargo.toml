@@ -18,4 +18,6 @@ syn = { version = "2", features = ["full", "fold"] }
 quote = "1"
 
 [dev-dependencies]
-pretty_assertions = "1.1.0"
+syn = { version = "2", features = ["full", "fold", "parsing"] }
+prettyplease = "0.2.9"
+insta = "1.29.0"

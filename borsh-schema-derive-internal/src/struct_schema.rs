@@ -91,19 +91,15 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
     })
 }
 
-// Rustfmt removes comas.
-#[rustfmt::skip::macros(quote)]
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::test_helpers::pretty_print_syn_str;
 
-    fn assert_eq(expected: TokenStream2, actual: TokenStream2) {
-        pretty_assertions::assert_eq!(expected.to_string(), actual.to_string())
-    }
+    use super::*;
 
     #[test]
     fn unit_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote!{
+        let item_struct: ItemStruct = syn::parse2(quote! {
             struct A;
         })
         .unwrap();
@@ -113,25 +109,12 @@ mod tests {
             Ident::new("borsh", proc_macro2::Span::call_site()),
         )
         .unwrap();
-        let expected = quote!{
-            impl borsh::BorshSchema for A
-            {
-                fn declaration() -> borsh::schema::Declaration {
-                    "A".to_string()
-                }
-                fn add_definitions_recursively(definitions: &mut borsh::__private::maybestd::collections::BTreeMap<borsh::schema::Declaration, borsh::schema::Definition>) {
-                    let fields = borsh::schema::Fields::Empty;
-                    let definition = borsh::schema::Definition::Struct { fields };
-                    Self::add_definition(Self::declaration(), definition, definitions);
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn wrapper_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote!{
+        let item_struct: ItemStruct = syn::parse2(quote! {
             struct A<T>(T);
         })
         .unwrap();
@@ -141,35 +124,12 @@ mod tests {
             Ident::new("borsh", proc_macro2::Span::call_site()),
         )
         .unwrap();
-        let expected = quote!{
-            impl<T> borsh::BorshSchema for A<T>
-            where
-                T: borsh::BorshSchema,
-                T: borsh::BorshSchema
-            {
-                fn declaration() -> borsh::schema::Declaration {
-                    let params = borsh::__private::maybestd::vec![<T>::declaration()];
-                    format!(r#"{}<{}>"#, "A", params.join(", "))
-                }
-                fn add_definitions_recursively(
-                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
-                        borsh::schema::Declaration,
-                        borsh::schema::Definition
-                    >
-                ) {
-                    let fields = borsh::schema::Fields::UnnamedFields(borsh::__private::maybestd::vec![<T as borsh::BorshSchema>::declaration()]);
-                    let definition = borsh::schema::Definition::Struct { fields };
-                    Self::add_definition(Self::declaration(), definition, definitions);
-                    <T as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn tuple_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote!{
+        let item_struct: ItemStruct = syn::parse2(quote! {
             struct A(u64, String);
         })
         .unwrap();
@@ -179,38 +139,12 @@ mod tests {
             Ident::new("borsh", proc_macro2::Span::call_site()),
         )
         .unwrap();
-        let expected = quote!{
-            impl borsh::BorshSchema for A
-            where
-                u64: borsh::BorshSchema,
-                String: borsh::BorshSchema
-            {
-                fn declaration() -> borsh::schema::Declaration {
-                    "A".to_string()
-                }
-                fn add_definitions_recursively(
-                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
-                        borsh::schema::Declaration,
-                        borsh::schema::Definition
-                    >
-                ) {
-                    let fields = borsh::schema::Fields::UnnamedFields(borsh::__private::maybestd::vec![
-                        <u64 as borsh::BorshSchema>::declaration(),
-                        <String as borsh::BorshSchema>::declaration()
-                    ]);
-                    let definition = borsh::schema::Definition::Struct { fields };
-                    Self::add_definition(Self::declaration(), definition, definitions);
-                    <u64 as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    <String as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn tuple_struct_params() {
-        let item_struct: ItemStruct = syn::parse2(quote!{
+        let item_struct: ItemStruct = syn::parse2(quote! {
             struct A<K, V>(K, V);
         })
         .unwrap();
@@ -220,39 +154,12 @@ mod tests {
             Ident::new("borsh", proc_macro2::Span::call_site()),
         )
         .unwrap();
-        let expected = quote!{
-            impl<K, V> borsh::BorshSchema for A<K, V>
-            where
-                K: borsh::BorshSchema,
-                V: borsh::BorshSchema,
-                K: borsh::BorshSchema,
-                V: borsh::BorshSchema
-            {
-                fn declaration() -> borsh::schema::Declaration {
-                    let params = borsh::__private::maybestd::vec![<K>::declaration(), <V>::declaration()];
-                    format!(r#"{}<{}>"#, "A", params.join(", "))
-                }
-                fn add_definitions_recursively(
-                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
-                        borsh::schema::Declaration,
-                        borsh::schema::Definition
-                    >
-                ) {
-                    let fields =
-                        borsh::schema::Fields::UnnamedFields(borsh::__private::maybestd::vec![<K as borsh::BorshSchema>::declaration(), <V as borsh::BorshSchema>::declaration()]);
-                    let definition = borsh::schema::Definition::Struct { fields };
-                    Self::add_definition(Self::declaration(), definition, definitions);
-                    <K as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    <V as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn simple_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote!{
+        let item_struct: ItemStruct = syn::parse2(quote! {
             struct A {
                 x: u64,
                 y: String,
@@ -265,38 +172,12 @@ mod tests {
             Ident::new("borsh", proc_macro2::Span::call_site()),
         )
         .unwrap();
-        let expected = quote!{
-            impl borsh::BorshSchema for A
-            where
-                u64: borsh::BorshSchema,
-                String: borsh::BorshSchema
-            {
-                fn declaration() -> borsh::schema::Declaration {
-                    "A".to_string()
-                }
-                fn add_definitions_recursively(
-                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
-                        borsh::schema::Declaration,
-                        borsh::schema::Definition
-                    >
-                ) {
-                    let fields = borsh::schema::Fields::NamedFields(borsh::__private::maybestd::vec![
-                        ("x".to_string(), <u64 as borsh::BorshSchema>::declaration()),
-                        ("y".to_string(), <String as borsh::BorshSchema>::declaration())
-                    ]);
-                    let definition = borsh::schema::Definition::Struct { fields };
-                    Self::add_definition(Self::declaration(), definition, definitions);
-                    <u64 as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    <String as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn simple_generics() {
-        let item_struct: ItemStruct = syn::parse2(quote!{
+        let item_struct: ItemStruct = syn::parse2(quote! {
             struct A<K, V> {
                 x: HashMap<K, V>,
                 y: String,
@@ -309,41 +190,12 @@ mod tests {
             Ident::new("borsh", proc_macro2::Span::call_site()),
         )
         .unwrap();
-        let expected = quote!{
-            impl<K, V> borsh::BorshSchema for A<K, V>
-            where
-                K: borsh::BorshSchema,
-                V: borsh::BorshSchema,
-                HashMap<K, V>: borsh::BorshSchema,
-                String: borsh::BorshSchema
-            {
-                fn declaration() -> borsh::schema::Declaration {
-                    let params = borsh::__private::maybestd::vec![<K>::declaration(), <V>::declaration()];
-                    format!(r#"{}<{}>"#, "A", params.join(", "))
-                }
-                fn add_definitions_recursively(
-                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
-                        borsh::schema::Declaration,
-                        borsh::schema::Definition
-                    >
-                ) {
-                    let fields = borsh::schema::Fields::NamedFields(borsh::__private::maybestd::vec![
-                        ("x".to_string(), <HashMap<K, V> as borsh::BorshSchema>::declaration()),
-                        ("y".to_string(), <String as borsh::BorshSchema>::declaration())
-                    ]);
-                    let definition = borsh::schema::Definition::Struct { fields };
-                    Self::add_definition(Self::declaration(), definition, definitions);
-                    <HashMap<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    <String as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn trailing_comma_generics() {
-        let item_struct: ItemStruct = syn::parse2(quote!{
+        let item_struct: ItemStruct = syn::parse2(quote! {
             struct A<K, V>
             where
                 K: Display + Debug,
@@ -359,42 +211,12 @@ mod tests {
             Ident::new("borsh", proc_macro2::Span::call_site()),
         )
         .unwrap();
-        let expected = quote!{
-            impl<K, V> borsh::BorshSchema for A<K, V>
-            where
-                K: Display + Debug,
-                K: borsh::BorshSchema,
-                V: borsh::BorshSchema,
-                HashMap<K, V>: borsh::BorshSchema,
-                String: borsh::BorshSchema
-            {
-                fn declaration() -> borsh::schema::Declaration {
-                    let params = borsh::__private::maybestd::vec![<K>::declaration(), <V>::declaration()];
-                    format!(r#"{}<{}>"#, "A", params.join(", "))
-                }
-                fn add_definitions_recursively(
-                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
-                        borsh::schema::Declaration,
-                        borsh::schema::Definition
-                    >
-                ) {
-                    let fields = borsh::schema::Fields::NamedFields(borsh::__private::maybestd::vec![
-                        ("x".to_string(), <HashMap<K, V> as borsh::BorshSchema >::declaration()),
-                        ("y".to_string(), <String as borsh::BorshSchema>::declaration())
-                    ]);
-                    let definition = borsh::schema::Definition::Struct { fields };
-                    Self::add_definition(Self::declaration(), definition, definitions);
-                    <HashMap<K, V> as borsh::BorshSchema >::add_definitions_recursively(definitions);
-                    <String as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn tuple_struct_whole_skip() {
-        let item_struct: ItemStruct = syn::parse2(quote!{
+        let item_struct: ItemStruct = syn::parse2(quote! {
             struct A(#[borsh_skip] String);
         })
         .unwrap();
@@ -404,29 +226,12 @@ mod tests {
             Ident::new("borsh", proc_macro2::Span::call_site()),
         )
         .unwrap();
-        let expected = quote!{
-            impl borsh::BorshSchema for A {
-                fn declaration() -> borsh::schema::Declaration {
-                    "A".to_string()
-                }
-                fn add_definitions_recursively(
-                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
-                        borsh::schema::Declaration,
-                        borsh::schema::Definition
-                    >
-                ) {
-                    let fields = borsh::schema::Fields::Empty;
-                    let definition = borsh::schema::Definition::Struct { fields };
-                    Self::add_definition(Self::declaration(), definition, definitions);
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn tuple_struct_partial_skip() {
-        let item_struct: ItemStruct = syn::parse2(quote!{
+        let item_struct: ItemStruct = syn::parse2(quote! {
             struct A(#[borsh_skip] u64, String);
         })
         .unwrap();
@@ -436,27 +241,6 @@ mod tests {
             Ident::new("borsh", proc_macro2::Span::call_site()),
         )
         .unwrap();
-        let expected = quote!{
-            impl borsh::BorshSchema for A
-            where
-                String: borsh::BorshSchema
-            {
-                fn declaration() -> borsh::schema::Declaration {
-                    "A".to_string()
-                }
-                fn add_definitions_recursively(
-                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
-                        borsh::schema::Declaration,
-                        borsh::schema::Definition
-                    >
-                ) {
-                    let fields = borsh::schema::Fields::UnnamedFields(borsh::__private::maybestd::vec![<String as borsh::BorshSchema>::declaration()]);
-                    let definition = borsh::schema::Definition::Struct { fields };
-                    Self::add_definition(Self::declaration(), definition, definitions);
-                    <String as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 }
