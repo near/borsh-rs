@@ -31,7 +31,7 @@ pub fn declaration(
         }
     } else {
         quote! {
-                let params = #cratename::__maybestd::vec![#(#declaration_params),*];
+                let params = #cratename::__private::maybestd::vec![#(#declaration_params),*];
                 format!(r#"{}<{}>"#, #ident_str, params.join(", "))
         }
     };

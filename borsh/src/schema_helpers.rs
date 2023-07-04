@@ -1,4 +1,4 @@
-use crate::__maybestd::{
+use crate::__private::maybestd::{
     io::{Error, ErrorKind, Result},
     vec::Vec,
 };

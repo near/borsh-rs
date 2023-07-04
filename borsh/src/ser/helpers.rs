@@ -1,5 +1,5 @@
 use crate::BorshSerialize;
-use crate::__maybestd::{
+use crate::__private::maybestd::{
     io::{Result, Write},
     vec::Vec,
 };

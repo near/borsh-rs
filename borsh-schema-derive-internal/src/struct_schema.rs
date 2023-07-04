@@ -37,7 +37,7 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
             }
             if !fields_vec.is_empty() {
                 struct_fields = quote! {
-                    let fields = #cratename::schema::Fields::NamedFields(#cratename::__maybestd::vec![#(#fields_vec),*]);
+                    let fields = #cratename::schema::Fields::NamedFields(#cratename::__private::maybestd::vec![#(#fields_vec),*]);
                 };
             }
         }
@@ -59,7 +59,7 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
             }
             if !fields_vec.is_empty() {
                 struct_fields = quote! {
-                    let fields = #cratename::schema::Fields::UnnamedFields(#cratename::__maybestd::vec![#(#fields_vec),*]);
+                    let fields = #cratename::schema::Fields::UnnamedFields(#cratename::__private::maybestd::vec![#(#fields_vec),*]);
                 };
             }
         }
@@ -73,7 +73,7 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
     }
 
     let add_definitions_recursively = quote! {
-        fn add_definitions_recursively(definitions: &mut #cratename::__maybestd::collections::BTreeMap<#cratename::schema::Declaration, #cratename::schema::Definition>) {
+        fn add_definitions_recursively(definitions: &mut #cratename::__private::maybestd::collections::BTreeMap<#cratename::schema::Declaration, #cratename::schema::Definition>) {
             #struct_fields
             let definition = #cratename::schema::Definition::Struct { fields };
             Self::add_definition(Self::declaration(), definition, definitions);
@@ -119,7 +119,7 @@ mod tests {
                 fn declaration() -> borsh::schema::Declaration {
                     "A".to_string()
                 }
-                fn add_definitions_recursively(definitions: &mut borsh::__maybestd::collections::BTreeMap<borsh::schema::Declaration, borsh::schema::Definition>) {
+                fn add_definitions_recursively(definitions: &mut borsh::__private::maybestd::collections::BTreeMap<borsh::schema::Declaration, borsh::schema::Definition>) {
                     let fields = borsh::schema::Fields::Empty;
                     let definition = borsh::schema::Definition::Struct { fields };
                     Self::add_definition(Self::declaration(), definition, definitions);
@@ -148,16 +148,16 @@ mod tests {
                 T: borsh::BorshSchema
             {
                 fn declaration() -> borsh::schema::Declaration {
-                    let params = borsh::__maybestd::vec![<T>::declaration()];
+                    let params = borsh::__private::maybestd::vec![<T>::declaration()];
                     format!(r#"{}<{}>"#, "A", params.join(", "))
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::__maybestd::collections::BTreeMap<
+                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
                 ) {
-                    let fields = borsh::schema::Fields::UnnamedFields(borsh::__maybestd::vec![<T as borsh::BorshSchema>::declaration()]);
+                    let fields = borsh::schema::Fields::UnnamedFields(borsh::__private::maybestd::vec![<T as borsh::BorshSchema>::declaration()]);
                     let definition = borsh::schema::Definition::Struct { fields };
                     Self::add_definition(Self::declaration(), definition, definitions);
                     <T as borsh::BorshSchema>::add_definitions_recursively(definitions);
@@ -189,12 +189,12 @@ mod tests {
                     "A".to_string()
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::__maybestd::collections::BTreeMap<
+                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
                 ) {
-                    let fields = borsh::schema::Fields::UnnamedFields(borsh::__maybestd::vec![
+                    let fields = borsh::schema::Fields::UnnamedFields(borsh::__private::maybestd::vec![
                         <u64 as borsh::BorshSchema>::declaration(),
                         <String as borsh::BorshSchema>::declaration()
                     ]);
@@ -229,17 +229,17 @@ mod tests {
                 V: borsh::BorshSchema
             {
                 fn declaration() -> borsh::schema::Declaration {
-                    let params = borsh::__maybestd::vec![<K>::declaration(), <V>::declaration()];
+                    let params = borsh::__private::maybestd::vec![<K>::declaration(), <V>::declaration()];
                     format!(r#"{}<{}>"#, "A", params.join(", "))
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::__maybestd::collections::BTreeMap<
+                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
                 ) {
                     let fields =
-                        borsh::schema::Fields::UnnamedFields(borsh::__maybestd::vec![<K as borsh::BorshSchema>::declaration(), <V as borsh::BorshSchema>::declaration()]);
+                        borsh::schema::Fields::UnnamedFields(borsh::__private::maybestd::vec![<K as borsh::BorshSchema>::declaration(), <V as borsh::BorshSchema>::declaration()]);
                     let definition = borsh::schema::Definition::Struct { fields };
                     Self::add_definition(Self::declaration(), definition, definitions);
                     <K as borsh::BorshSchema>::add_definitions_recursively(definitions);
@@ -275,12 +275,12 @@ mod tests {
                     "A".to_string()
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::__maybestd::collections::BTreeMap<
+                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
                 ) {
-                    let fields = borsh::schema::Fields::NamedFields(borsh::__maybestd::vec![
+                    let fields = borsh::schema::Fields::NamedFields(borsh::__private::maybestd::vec![
                         ("x".to_string(), <u64 as borsh::BorshSchema>::declaration()),
                         ("y".to_string(), <String as borsh::BorshSchema>::declaration())
                     ]);
@@ -318,16 +318,16 @@ mod tests {
                 String: borsh::BorshSchema
             {
                 fn declaration() -> borsh::schema::Declaration {
-                    let params = borsh::__maybestd::vec![<K>::declaration(), <V>::declaration()];
+                    let params = borsh::__private::maybestd::vec![<K>::declaration(), <V>::declaration()];
                     format!(r#"{}<{}>"#, "A", params.join(", "))
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::__maybestd::collections::BTreeMap<
+                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
                 ) {
-                    let fields = borsh::schema::Fields::NamedFields(borsh::__maybestd::vec![
+                    let fields = borsh::schema::Fields::NamedFields(borsh::__private::maybestd::vec![
                         ("x".to_string(), <HashMap<K, V> as borsh::BorshSchema>::declaration()),
                         ("y".to_string(), <String as borsh::BorshSchema>::declaration())
                     ]);
@@ -369,16 +369,16 @@ mod tests {
                 String: borsh::BorshSchema
             {
                 fn declaration() -> borsh::schema::Declaration {
-                    let params = borsh::__maybestd::vec![<K>::declaration(), <V>::declaration()];
+                    let params = borsh::__private::maybestd::vec![<K>::declaration(), <V>::declaration()];
                     format!(r#"{}<{}>"#, "A", params.join(", "))
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::__maybestd::collections::BTreeMap<
+                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
                 ) {
-                    let fields = borsh::schema::Fields::NamedFields(borsh::__maybestd::vec![
+                    let fields = borsh::schema::Fields::NamedFields(borsh::__private::maybestd::vec![
                         ("x".to_string(), <HashMap<K, V> as borsh::BorshSchema >::declaration()),
                         ("y".to_string(), <String as borsh::BorshSchema>::declaration())
                     ]);
@@ -410,7 +410,7 @@ mod tests {
                     "A".to_string()
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::__maybestd::collections::BTreeMap<
+                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
@@ -445,12 +445,12 @@ mod tests {
                     "A".to_string()
                 }
                 fn add_definitions_recursively(
-                    definitions: &mut borsh::__maybestd::collections::BTreeMap<
+                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
                         borsh::schema::Declaration,
                         borsh::schema::Definition
                     >
                 ) {
-                    let fields = borsh::schema::Fields::UnnamedFields(borsh::__maybestd::vec![<String as borsh::BorshSchema>::declaration()]);
+                    let fields = borsh::schema::Fields::UnnamedFields(borsh::__private::maybestd::vec![<String as borsh::BorshSchema>::declaration()]);
                     let definition = borsh::schema::Definition::Struct { fields };
                     Self::add_definition(Self::declaration(), definition, definitions);
                     <String as borsh::BorshSchema>::add_definitions_recursively(definitions);
