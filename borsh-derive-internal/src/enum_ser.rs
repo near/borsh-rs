@@ -26,12 +26,18 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
         let discriminant_value = discriminants.get(variant_ident).unwrap();
         match &variant.fields {
             Fields::Named(fields) => {
+                let mut dot_dot_pattern_match: Option<syn::Token![..]> = None;
                 for field in &fields.named {
-                    let field_name = field.ident.as_ref().unwrap();
-                    if contains_skip(&field.attrs) {
-                        variant_header.extend(quote! { _#field_name, });
-                        continue;
+                    let field_name = if contains_skip(&field.attrs) {
+                        dot_dot_pattern_match = Some(syn::Token![..](Span::call_site()));
+                        None
                     } else {
+                        Some(field.ident.clone().unwrap())
+                    };
+                    if let Some(ref field_name) = field_name {
+                        variant_header.extend(quote! { #field_name, });
+                    }
+                    if !contains_skip(&field.attrs) {
                         let field_type = &field.ty;
                         where_clause.predicates.push(
                             syn::parse2(quote! {
@@ -39,11 +45,13 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                             })
                             .unwrap(),
                         );
-                        variant_header.extend(quote! { #field_name, });
+                        variant_body.extend(quote! {
+                             #cratename::BorshSerialize::serialize(#field_name, writer)?;
+                        })
                     }
-                    variant_body.extend(quote! {
-                         #cratename::BorshSerialize::serialize(#field_name, writer)?;
-                    })
+                }
+                if let Some(dot_dot) = dot_dot_pattern_match {
+                    variant_header.extend(quote! { #dot_dot });
                 }
                 variant_header = quote! { { #variant_header }};
                 variant_idx_body.extend(quote!(
@@ -134,6 +142,28 @@ mod tests {
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
+
+    #[test]
+    fn struct_variant_field() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum AB {
+                B {
+                    c: i32,
+                    d: u32,
+                },
+
+                NegatedVariant {
+                    beta: String,
+                }
+            }
+        }).unwrap(); 
+
+        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        
+    }
+
     #[test]
     fn borsh_skip_struct_variant_field() {
         let item_enum: ItemEnum = syn::parse2(quote! {
@@ -154,9 +184,7 @@ mod tests {
 
         let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
-        println!("{}", quote!(#actual));
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
-        assert!(false);
         
     }
 
@@ -181,9 +209,7 @@ mod tests {
 
         let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
-        println!("{}", quote!(#actual));
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
-        assert!(false);
         
     }
 }
