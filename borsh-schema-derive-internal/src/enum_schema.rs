@@ -96,6 +96,7 @@ pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStre
             }
         }
         anonymous_defs.extend(quote! {
+            #[allow(dead_code)]
             #[derive(#cratename::BorshSchema)]
             #anonymous_struct
         });
@@ -158,8 +159,10 @@ mod tests {
                         borsh::schema::Definition
                     >
                 ) {
+                    #[allow(dead_code)]
                     #[derive(borsh :: BorshSchema)]
                     struct ABacon;
+                    #[allow(dead_code)]
                     #[derive(borsh :: BorshSchema)]
                     struct AEggs;
                     <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
@@ -196,6 +199,7 @@ mod tests {
                         borsh::schema::Definition
                     >
                 ) {
+                    #[allow(dead_code)]
                     #[derive(borsh :: BorshSchema)]
                     struct ABacon;
                     <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
@@ -231,12 +235,16 @@ mod tests {
                         borsh::schema::Definition
                     >
                 ) {
+                    #[allow(dead_code)]
                     #[derive(borsh :: BorshSchema)]
                     struct ABacon;
+                    #[allow(dead_code)]
                     #[derive(borsh :: BorshSchema)]
                     struct AEggs;
+                    #[allow(dead_code)]
                     #[derive(borsh :: BorshSchema)]
                     struct ASalad(Tomatoes, Cucumber, Oil);
+                    #[allow(dead_code)]
                     #[derive(borsh :: BorshSchema)]
                     struct ASausage {
                         wrapper: Wrapper,
@@ -288,10 +296,13 @@ mod tests {
                         borsh::schema::Definition
                     >
                 ) {
+                    #[allow(dead_code)]
                     #[derive(borsh :: BorshSchema)]
                     struct ABacon<C, W>(#[borsh_skip] ::core::marker::PhantomData<(C, W, )>);
+                    #[allow(dead_code)]
                     #[derive(borsh :: BorshSchema)]
                     struct AEggs<C, W>(#[borsh_skip] ::core::marker::PhantomData<(C, W, )>);
+                    #[allow(dead_code)]
                     #[derive(borsh :: BorshSchema)]
                     struct ASalad<C, W>(
                         Tomatoes,
@@ -299,6 +310,7 @@ mod tests {
                         Oil,
                         #[borsh_skip] ::core::marker::PhantomData<(C, W, )>
                     );
+                    #[allow(dead_code)]
                     #[derive(borsh :: BorshSchema)]
                     struct ASausage<C, W> {
                         wrapper: W,
@@ -361,6 +373,7 @@ mod tests {
                         borsh::schema::Definition
                     >
                 ) {
+                    #[allow(dead_code)]
                     #[derive(borsh :: BorshSchema)]
                     struct SideLeft<A, B>
                     (
@@ -371,6 +384,7 @@ mod tests {
                         A: Display + Debug, 
                         B: Display + Debug,
                     ;
+                    #[allow(dead_code)]
                     #[derive(borsh :: BorshSchema)]
                     struct SideRight<A, B>
                     (
