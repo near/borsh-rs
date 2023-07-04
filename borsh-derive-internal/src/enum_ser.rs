@@ -180,7 +180,6 @@ fn unnamed_fields(
     })
 }
 
-#[rustfmt::skip]
 #[cfg(test)]
 mod tests {
     use crate::test_helpers::pretty_print_syn_str;
@@ -189,7 +188,6 @@ mod tests {
     use proc_macro2::Span;
     #[test]
     fn borsh_skip_tuple_variant_field() {
-
         let item_enum: ItemEnum = syn::parse2(quote! {
             enum AATTB {
                 B(#[borsh_skip] i32, #[borsh_skip] u32),
@@ -198,12 +196,12 @@ mod tests {
                     beta: u8,
                 }
             }
-        }).unwrap(); 
+        })
+        .unwrap();
         let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
-
 
     #[test]
     fn struct_variant_field() {
@@ -218,12 +216,12 @@ mod tests {
                     beta: String,
                 }
             }
-        }).unwrap(); 
+        })
+        .unwrap();
 
         let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
-        
     }
 
     #[test]
@@ -242,12 +240,12 @@ mod tests {
                     beta: String,
                 }
             }
-        }).unwrap(); 
+        })
+        .unwrap();
 
         let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
-        
     }
 
     #[test]
@@ -267,11 +265,11 @@ mod tests {
                     beta: String,
                 }
             }
-        }).unwrap(); 
+        })
+        .unwrap();
 
         let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
-        
     }
 }

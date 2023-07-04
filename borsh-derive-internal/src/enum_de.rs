@@ -110,7 +110,6 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
     })
 }
 
-#[rustfmt::skip]
 #[cfg(test)]
 mod tests {
     use crate::test_helpers::pretty_print_syn_str;
@@ -120,7 +119,6 @@ mod tests {
 
     #[test]
     fn borsh_skip_struct_variant_field() {
-
         let item_enum: ItemEnum = syn::parse2(quote! {
             enum AA {
                 B {
@@ -132,11 +130,11 @@ mod tests {
                     beta: u8,
                 }
             }
-        }).unwrap(); 
+        })
+        .unwrap();
         let actual = enum_de(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
-
     }
 
     #[test]
@@ -149,10 +147,10 @@ mod tests {
                     beta: u8,
                 }
             }
-        }).unwrap(); 
+        })
+        .unwrap();
         let actual = enum_de(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
-
 }
