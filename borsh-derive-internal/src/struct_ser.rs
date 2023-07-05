@@ -66,11 +66,9 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
 #[rustfmt::skip]
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::test_helpers::pretty_print_syn_str;
 
-    fn assert_eq(expected: TokenStream2, actual: TokenStream2) {
-        assert_eq!(expected.to_string(), actual.to_string())
-    }
+    use super::*;
 
     #[test]
     fn simple_struct() {
@@ -82,20 +80,8 @@ mod tests {
         }).unwrap();
 
         let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
-        let expected = quote!{
-            impl borsh::ser::BorshSerialize for A
-            where
-                u64: borsh::ser::BorshSerialize,
-                String: borsh::ser::BorshSerialize
-            {
-                fn serialize<W: borsh::__private::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), borsh::__private::maybestd::io::Error> {
-                    borsh::BorshSerialize::serialize(&self.x, writer)?;
-                    borsh::BorshSerialize::serialize(&self.y, writer)?;
-                    Ok(())
-                }
-            }
-        };
-        assert_eq(expected, actual);
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
@@ -108,20 +94,7 @@ mod tests {
         }).unwrap();
 
         let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
-        let expected = quote!{
-            impl<K, V> borsh::ser::BorshSerialize for A<K, V>
-            where
-                HashMap<K, V>: borsh::ser::BorshSerialize,
-                String: borsh::ser::BorshSerialize
-            {
-                fn serialize<W: borsh::__private::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), borsh::__private::maybestd::io::Error> {
-                    borsh::BorshSerialize::serialize(&self.x, writer)?;
-                    borsh::BorshSerialize::serialize(&self.y, writer)?;
-                    Ok(())
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
@@ -134,20 +107,6 @@ mod tests {
         }).unwrap();
 
         let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
-        let expected = quote!{
-            impl<K: Key, V> borsh::ser::BorshSerialize for A<K, V>
-            where
-                V: Value,
-                HashMap<K, V>: borsh::ser::BorshSerialize,
-                String: borsh::ser::BorshSerialize
-            {
-                fn serialize<W: borsh::__private::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), borsh::__private::maybestd::io::Error> {
-                    borsh::BorshSerialize::serialize(&self.x, writer)?;
-                    borsh::BorshSerialize::serialize(&self.y, writer)?;
-                    Ok(())
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 }

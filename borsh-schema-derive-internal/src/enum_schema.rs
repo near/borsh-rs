@@ -128,55 +128,25 @@ pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStre
     })
 }
 
-// Rustfmt removes comas.
-#[rustfmt::skip]
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::test_helpers::pretty_print_syn_str;
 
-    fn assert_eq(expected: TokenStream2, actual: TokenStream2) {
-        pretty_assertions::assert_eq!(expected.to_string(), actual.to_string())
-    }
+    use super::*;
 
     #[test]
     fn simple_enum() {
-        let item_enum: ItemEnum = syn::parse2(quote!{
+        let item_enum: ItemEnum = syn::parse2(quote! {
             enum A {
                 Bacon,
                 Eggs
             }
-        }).unwrap();
+        })
+        .unwrap();
 
         let actual = process_enum(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
-        let expected = quote!{
-            impl borsh::BorshSchema for A {
-                fn declaration() -> borsh::schema::Declaration {
-                    "A".to_string()
-                }
-                fn add_definitions_recursively(
-                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
-                        borsh::schema::Declaration,
-                        borsh::schema::Definition
-                    >
-                ) {
-                    #[allow(dead_code)]
-                    #[derive(borsh :: BorshSchema)]
-                    struct ABacon;
-                    #[allow(dead_code)]
-                    #[derive(borsh :: BorshSchema)]
-                    struct AEggs;
-                    <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    <AEggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    let variants = borsh::__private::maybestd::vec![
-                        ("Bacon".to_string(), <ABacon>::declaration()),
-                        ("Eggs".to_string(), <AEggs>::declaration())
-                    ];
-                    let definition = borsh::schema::Definition::Enum { variants };
-                    Self::add_definition(Self::declaration(), definition, definitions);
-                }
-            }
-        };
-        assert_eq(expected, actual);
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
@@ -185,31 +155,11 @@ mod tests {
             enum A {
                 Bacon,
             }
-        }).unwrap();
+        })
+        .unwrap();
 
         let actual = process_enum(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
-        let expected = quote!{
-            impl borsh::BorshSchema for A {
-                fn declaration() -> borsh::schema::Declaration {
-                    "A".to_string()
-                }
-                fn add_definitions_recursively(
-                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
-                        borsh::schema::Declaration,
-                        borsh::schema::Definition
-                    >
-                ) {
-                    #[allow(dead_code)]
-                    #[derive(borsh :: BorshSchema)]
-                    struct ABacon;
-                    <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    let variants = borsh::__private::maybestd::vec![("Bacon".to_string(), <ABacon>::declaration())];
-                    let definition = borsh::schema::Definition::Enum { variants };
-                    Self::add_definition(Self::declaration(), definition, definitions);
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
@@ -221,51 +171,11 @@ mod tests {
                 Salad(Tomatoes, Cucumber, Oil),
                 Sausage{wrapper: Wrapper, filling: Filling},
             }
-        }).unwrap();
+        })
+        .unwrap();
 
         let actual = process_enum(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
-        let expected = quote!{
-            impl borsh::BorshSchema for A {
-                fn declaration() -> borsh::schema::Declaration {
-                    "A".to_string()
-                }
-                fn add_definitions_recursively(
-                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
-                        borsh::schema::Declaration,
-                        borsh::schema::Definition
-                    >
-                ) {
-                    #[allow(dead_code)]
-                    #[derive(borsh :: BorshSchema)]
-                    struct ABacon;
-                    #[allow(dead_code)]
-                    #[derive(borsh :: BorshSchema)]
-                    struct AEggs;
-                    #[allow(dead_code)]
-                    #[derive(borsh :: BorshSchema)]
-                    struct ASalad(Tomatoes, Cucumber, Oil);
-                    #[allow(dead_code)]
-                    #[derive(borsh :: BorshSchema)]
-                    struct ASausage {
-                        wrapper: Wrapper,
-                        filling: Filling
-                    }
-                    <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    <AEggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    <ASalad as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    <ASausage as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    let variants = borsh::__private::maybestd::vec![
-                        ("Bacon".to_string(), <ABacon>::declaration()),
-                        ("Eggs".to_string(), <AEggs>::declaration()),
-                        ("Salad".to_string(), <ASalad>::declaration()),
-                        ("Sausage".to_string(), <ASausage>::declaration())
-                    ];
-                    let definition = borsh::schema::Definition::Enum { variants };
-                    Self::add_definition(Self::declaration(), definition, definitions);
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
@@ -277,68 +187,16 @@ mod tests {
                 Salad(Tomatoes, C, Oil),
                 Sausage{wrapper: W, filling: Filling},
             }
-        }).unwrap();
+        })
+        .unwrap();
 
         let actual = process_enum(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
-        let expected = quote!{
-            impl<C, W> borsh::BorshSchema for A<C, W>
-            where
-                C: borsh::BorshSchema,
-                W: borsh::BorshSchema
-            {
-                fn declaration() -> borsh::schema::Declaration {
-                    let params = borsh::__private::maybestd::vec![<C>::declaration(), <W>::declaration()];
-                    format!(r#"{}<{}>"#, "A", params.join(", "))
-                }
-                fn add_definitions_recursively(
-                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
-                        borsh::schema::Declaration,
-                        borsh::schema::Definition
-                    >
-                ) {
-                    #[allow(dead_code)]
-                    #[derive(borsh :: BorshSchema)]
-                    struct ABacon<C, W>(#[borsh_skip] ::core::marker::PhantomData<(C, W, )>);
-                    #[allow(dead_code)]
-                    #[derive(borsh :: BorshSchema)]
-                    struct AEggs<C, W>(#[borsh_skip] ::core::marker::PhantomData<(C, W, )>);
-                    #[allow(dead_code)]
-                    #[derive(borsh :: BorshSchema)]
-                    struct ASalad<C, W>(
-                        Tomatoes,
-                        C,
-                        Oil,
-                        #[borsh_skip] ::core::marker::PhantomData<(C, W, )>
-                    );
-                    #[allow(dead_code)]
-                    #[derive(borsh :: BorshSchema)]
-                    struct ASausage<C, W> {
-                        wrapper: W,
-                        filling: Filling,
-                        #[borsh_skip]
-                        borsh_schema_phantom_data: ::core::marker::PhantomData<(C, W, )>
-                    }
-                    <ABacon<C, W> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    <AEggs<C, W> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    <ASalad<C, W> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    <ASausage<C, W> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    let variants = borsh::__private::maybestd::vec![
-                        ("Bacon".to_string(), <ABacon<C, W> >::declaration()),
-                        ("Eggs".to_string(), <AEggs<C, W> >::declaration()),
-                        ("Salad".to_string(), <ASalad<C, W> >::declaration()),
-                        ("Sausage".to_string(), <ASausage<C, W> >::declaration())
-                    ];
-                    let definition = borsh::schema::Definition::Enum { variants };
-                    Self::add_definition(Self::declaration(), definition, definitions);
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn trailing_comma_generics() {
-        let item_struct: ItemEnum = syn::parse2(quote!{
+        let item_struct: ItemEnum = syn::parse2(quote! {
             enum Side<A, B>
             where
                 A: Display + Debug,
@@ -355,57 +213,6 @@ mod tests {
             Ident::new("borsh", proc_macro2::Span::call_site()),
         )
         .unwrap();
-        let expected = quote!{
-            impl<A, B> borsh::BorshSchema for Side<A, B>
-            where
-                A: Display + Debug,
-                B: Display + Debug,
-                A: borsh::BorshSchema,
-                B: borsh::BorshSchema
-            {
-                fn declaration() -> borsh::schema::Declaration {
-                    let params = borsh::__private::maybestd::vec![<A>::declaration(), <B>::declaration()];
-                    format!(r#"{}<{}>"#, "Side", params.join(", "))
-                }
-                fn add_definitions_recursively(
-                    definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
-                        borsh::schema::Declaration,
-                        borsh::schema::Definition
-                    >
-                ) {
-                    #[allow(dead_code)]
-                    #[derive(borsh :: BorshSchema)]
-                    struct SideLeft<A, B>
-                    (
-                        A, 
-                        #[borsh_skip] ::core::marker::PhantomData<(A, B, )>
-                    )
-                    where 
-                        A: Display + Debug, 
-                        B: Display + Debug,
-                    ;
-                    #[allow(dead_code)]
-                    #[derive(borsh :: BorshSchema)]
-                    struct SideRight<A, B>
-                    (
-                        B, 
-                        #[borsh_skip] ::core::marker::PhantomData<(A, B, )>
-                    )
-                    where 
-                        A: Display + Debug, 
-                        B: Display + Debug,
-                    ;
-                    <SideLeft<A, B> as borsh::BorshSchema >::add_definitions_recursively(definitions);
-                    <SideRight<A, B> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-                    let variants = borsh::__private::maybestd::vec![
-                        ("Left".to_string(), <SideLeft<A, B> >::declaration()),
-                        ("Right".to_string(), <SideRight<A, B> >::declaration())
-                    ];
-                    let definition = borsh::schema::Definition::Enum { variants };
-                    Self::add_definition(Self::declaration(), definition, definitions);
-                }
-            }
-        };
-        assert_eq(expected, actual);
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 }
