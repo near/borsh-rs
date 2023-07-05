@@ -8,17 +8,8 @@ pub fn contains_skip(attrs: &[Attribute]) -> bool {
         .any(|attr| attr.path().to_token_stream().to_string().as_str() == "borsh_skip")
 }
 
-pub fn filter_skip(attrs: &[Attribute]) -> Vec<Attribute> {
-    attrs
-        .iter()
-        .filter_map(|attr| {
-            if attr.path().to_token_stream().to_string().as_str() == "borsh_skip" {
-                Some(attr.clone())
-            } else {
-                None
-            }
-        })
-        .collect()
+pub fn filter_skip(attrs: impl Iterator<Item = Attribute>) -> impl Iterator<Item = Attribute> {
+    attrs.filter(|attr| attr.path().to_token_stream().to_string().as_str() == "borsh_skip")
 }
 
 pub fn declaration(

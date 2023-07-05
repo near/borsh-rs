@@ -7,8 +7,26 @@ use syn::{
 
 use crate::helpers::{declaration, filter_skip, quote_where_clause};
 
+fn transform_variant_fields(mut input: Fields) -> Fields {
+    match input {
+        Fields::Named(ref mut named) => {
+            for field in &mut named.named {
+                let field_attrs = filter_skip(field.attrs.drain(..)).collect::<Vec<_>>();
+                field.attrs = field_attrs;
+            }
+        }
+        Fields::Unnamed(ref mut unnamed) => {
+            for field in &mut unnamed.unnamed {
+                let field_attrs = filter_skip(field.attrs.drain(..)).collect::<Vec<_>>();
+                field.attrs = field_attrs;
+            }
+        }
+        _ => {}
+    }
+    input
+}
+
 pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
-    let mut input = input.clone();
     let name = &input.ident;
     let name_str = name.to_token_stream().to_string();
     let generics = &input.generics;
@@ -24,7 +42,7 @@ pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStre
     let mut anonymous_defs = TokenStream2::new();
     // Recursive calls to `add_definitions_recursively`.
     let mut add_recursive_defs = TokenStream2::new();
-    for variant in &mut input.variants {
+    for variant in &input.variants {
         let variant_name_str = variant.ident.to_token_stream().to_string();
         let full_variant_name_str = format!("{}{}", name_str, variant_name_str);
         let full_variant_ident = Ident::new(full_variant_name_str.as_str(), Span::call_site());
@@ -34,7 +52,7 @@ pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStre
             struct_token: Default::default(),
             ident: full_variant_ident.clone(),
             generics: (*generics).clone(),
-            fields: variant.fields.clone(),
+            fields: transform_variant_fields(variant.fields.clone()),
             semi_token: Some(Default::default()),
         };
         let generic_params = generics
@@ -47,19 +65,6 @@ pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStre
                 }
             });
 
-        match &mut anonymous_struct.fields {
-            Fields::Named(named) => {
-                for field in &mut named.named {
-                    field.attrs = filter_skip(&field.attrs);
-                }
-            }
-            Fields::Unnamed(unnamed) => {
-                for field in &mut unnamed.unnamed {
-                    field.attrs = filter_skip(&field.attrs);
-                }
-            }
-            _ => {}
-        }
         if !generic_params.is_empty() {
             let attr = Attribute {
                 pound_token: Default::default(),
