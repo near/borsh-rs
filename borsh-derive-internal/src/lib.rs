@@ -15,3 +15,6 @@ pub use struct_de::struct_de;
 pub use struct_ser::struct_ser;
 pub use union_de::union_de;
 pub use union_ser::union_ser;
+
+#[cfg(test)]
+pub mod test_helpers;
