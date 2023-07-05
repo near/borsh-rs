@@ -8,6 +8,10 @@ pub fn contains_skip(attrs: &[Attribute]) -> bool {
         .any(|attr| attr.path().to_token_stream().to_string().as_str() == "borsh_skip")
 }
 
+pub fn filter_skip(attrs: impl Iterator<Item = Attribute>) -> impl Iterator<Item = Attribute> {
+    attrs.filter(|attr| attr.path().to_token_stream().to_string().as_str() == "borsh_skip")
+}
+
 pub fn declaration(
     ident_str: &str,
     generics: &Generics,
