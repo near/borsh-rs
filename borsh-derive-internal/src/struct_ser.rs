@@ -4,7 +4,7 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{Fields, Ident, Index, ItemStruct, WhereClause};
 
-use crate::attribute_helpers::contains_skip;
+use crate::{attribute_helpers::contains_skip, generics::compute_predicates};
 
 pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
@@ -16,6 +16,10 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
         },
         Clone::clone,
     );
+    let predicates = compute_predicates(&input.generics, &cratename);
+    predicates
+        .into_iter()
+        .for_each(|predicate| where_clause.predicates.push(predicate));
     let mut body = TokenStream2::new();
     match &input.fields {
         Fields::Named(fields) => {
@@ -28,14 +32,6 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
                     #cratename::BorshSerialize::serialize(&self.#field_name, writer)?;
                 };
                 body.extend(delta);
-
-                let field_type = &field.ty;
-                where_clause.predicates.push(
-                    syn::parse2(quote! {
-                        #field_type: #cratename::ser::BorshSerialize
-                    })
-                    .unwrap(),
-                );
             }
         }
         Fields::Unnamed(fields) => {
@@ -98,6 +94,16 @@ mod tests {
     }
 
     #[test]
+    fn simple_generic_tuple_struct() {
+        let item_struct: ItemStruct = syn::parse2(quote!{
+            struct TupleA<T>(T, u32);
+        }).unwrap();
+
+        let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
     fn bound_generics() {
         let item_struct: ItemStruct = syn::parse2(quote!{
             struct A<K: Key, V> where V: Value {
@@ -107,6 +113,20 @@ mod tests {
         }).unwrap();
 
         let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn recursive_struct() {
+        let item_struct: ItemStruct = syn::parse2(quote!{
+            struct CRecC {
+                a: String,
+                b: HashMap<String, CRecC>,
+            }
+        }).unwrap();
+
+        let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 }

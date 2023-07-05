@@ -5,8 +5,8 @@ expression: pretty_print_syn_str(&actual).unwrap()
 impl<K: Key, V> borsh::ser::BorshSerialize for A<K, V>
 where
     V: Value,
-    HashMap<K, V>: borsh::ser::BorshSerialize,
-    String: borsh::ser::BorshSerialize,
+    K: borsh::ser::BorshSerialize,
+    V: borsh::ser::BorshSerialize,
 {
     fn serialize<W: borsh::__private::maybestd::io::Write>(
         &self,
