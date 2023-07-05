@@ -18,11 +18,11 @@ where
         };
         writer.write_all(&variant_idx.to_le_bytes())?;
         match self {
-            AB::B { c, d } => {
+            AB::B { c, d, .. } => {
                 borsh::BorshSerialize::serialize(c, writer)?;
                 borsh::BorshSerialize::serialize(d, writer)?;
             }
-            AB::NegatedVariant { beta } => {
+            AB::NegatedVariant { beta, .. } => {
                 borsh::BorshSerialize::serialize(beta, writer)?;
             }
         }

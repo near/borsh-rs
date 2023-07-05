@@ -1,6 +1,6 @@
 ---
 source: borsh-derive-internal/src/enum_ser.rs
-expression: pretty_print_syn_str(&actual)
+expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl borsh::ser::BorshSerialize for AATTB
 where
@@ -17,7 +17,7 @@ where
         writer.write_all(&variant_idx.to_le_bytes())?;
         match self {
             AATTB::B(_id0, _id1) => {}
-            AATTB::NegatedVariant { beta } => {
+            AATTB::NegatedVariant { beta, .. } => {
                 borsh::BorshSerialize::serialize(beta, writer)?;
             }
         }

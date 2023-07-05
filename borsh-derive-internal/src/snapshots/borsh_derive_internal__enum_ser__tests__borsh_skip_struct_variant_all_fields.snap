@@ -17,7 +17,7 @@ where
         writer.write_all(&variant_idx.to_le_bytes())?;
         match self {
             AAB::B { .. } => {}
-            AAB::NegatedVariant { beta } => {
+            AAB::NegatedVariant { beta, .. } => {
                 borsh::BorshSerialize::serialize(beta, writer)?;
             }
         }

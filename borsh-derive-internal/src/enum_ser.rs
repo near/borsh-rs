@@ -97,18 +97,12 @@ fn named_fields(
     let mut where_predicates: Vec<WherePredicate> = vec![];
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
-    let mut dot_dot_pattern_match: Option<syn::Token![..]> = None;
     for field in &fields.named {
-        let field_name = if contains_skip(&field.attrs) {
-            dot_dot_pattern_match = Some(syn::Token![..](Span::call_site()));
-            None
-        } else {
-            Some(field.ident.clone().unwrap())
-        };
-        if let Some(ref field_name) = field_name {
-            variant_header.extend(quote! { #field_name, });
-        }
         if !contains_skip(&field.attrs) {
+            let field_ident = field.ident.clone().unwrap();
+
+            variant_header.extend(quote! { #field_ident, });
+
             let field_type = &field.ty;
             where_predicates.push(
                 syn::parse2(quote! {
@@ -116,15 +110,14 @@ fn named_fields(
                 })
                 .unwrap(),
             );
+
             variant_body.extend(quote! {
-                 #cratename::BorshSerialize::serialize(#field_name, writer)?;
+                 #cratename::BorshSerialize::serialize(#field_ident, writer)?;
             })
         }
     }
-    if let Some(dot_dot) = dot_dot_pattern_match {
-        variant_header.extend(quote! { #dot_dot });
-    }
-    variant_header = quote! { { #variant_header }};
+    // `..` pattern matching works even if all fields were specified
+    variant_header = quote! { { #variant_header .. }};
     let variant_idx_body = quote!(
         #enum_ident::#variant_ident { .. } => #discriminant_value,
     );
@@ -149,10 +142,13 @@ fn unnamed_fields(
     for (field_idx, field) in fields.unnamed.iter().enumerate() {
         let field_idx = u32::try_from(field_idx).expect("up to 2^32 fields are supported");
         if contains_skip(&field.attrs) {
-            let field_ident = Ident::new(format!("_id{}", field_idx).as_str(), Span::call_site());
+            let field_ident = Ident::new(format!("_id{}", field_idx).as_str(), Span::mixed_site());
             variant_header.extend(quote! { #field_ident, });
-            continue;
         } else {
+            let field_ident = Ident::new(format!("id{}", field_idx).as_str(), Span::mixed_site());
+
+            variant_header.extend(quote! { #field_ident, });
+
             let field_type = &field.ty;
             where_predicates.push(
                 syn::parse2(quote! {
@@ -161,8 +157,6 @@ fn unnamed_fields(
                 .unwrap(),
             );
 
-            let field_ident = Ident::new(format!("id{}", field_idx).as_str(), Span::call_site());
-            variant_header.extend(quote! { #field_ident, });
             variant_body.extend(quote! {
                 #cratename::BorshSerialize::serialize(#field_ident, writer)?;
             })
