@@ -43,6 +43,12 @@ struct CRecC {
     b: HashMap<String, CRecC>,
 }
 
+#[derive(BorshSerialize)]
+enum ERecD {
+    B { x: String, y: i32 },
+    C(u8, Vec<ERecD>),
+}
+
 #[test]
 fn test_recursive_struct() {
     let one = CRecB {
@@ -63,4 +69,20 @@ fn test_recursive_struct() {
     insta::assert_debug_snapshot!(data);
     let actual_three = from_slice::<CRecB>(&data).unwrap();
     assert_eq!(three, actual_three);
+}
+
+#[test]
+fn test_recursive_enum() {
+    let one = ERecD::B {
+        x: "one".to_string(),
+        y: 3213123,
+    };
+    let two = ERecD::C(10, vec![]);
+
+    let three = ERecD::C(11, vec![one, two]);
+    let _data = three.try_to_vec().unwrap();
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(_data);
+    // let actual_three = from_slice::<ERecD>(&data).unwrap();
+    // assert_eq!(three, actual_three);
 }

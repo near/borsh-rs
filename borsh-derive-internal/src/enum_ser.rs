@@ -2,9 +2,12 @@ use core::convert::TryFrom;
 
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{Fields, FieldsNamed, FieldsUnnamed, Ident, ItemEnum, WhereClause, WherePredicate};
+use syn::{Fields, FieldsNamed, FieldsUnnamed, Ident, ItemEnum, Path, WhereClause};
 
-use crate::{attribute_helpers::contains_skip, enum_discriminant_map::discriminant_map};
+use crate::{
+    attribute_helpers::contains_skip, enum_discriminant_map::discriminant_map,
+    generics::compute_predicates,
+};
 
 pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let enum_ident = &input.ident;
@@ -16,6 +19,14 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
         },
         Clone::clone,
     );
+
+    let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
+    let predicates = compute_predicates(&input.generics, &trait_path);
+
+    predicates
+        .into_iter()
+        .for_each(|predicate| where_clause.predicates.push(predicate));
+
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
     let discriminants = discriminant_map(&input.variants);
@@ -23,7 +34,6 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
         let variant_ident = &variant.ident;
         let discriminant_value = discriminants.get(variant_ident).unwrap();
         let VariantParts {
-            where_predicates,
             variant_header,
             variant_body,
             variant_idx_body,
@@ -47,16 +57,12 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                     #enum_ident::#variant_ident => #discriminant_value,
                 );
                 VariantParts {
-                    where_predicates: vec![],
                     variant_header: TokenStream2::new(),
                     variant_body: TokenStream2::new(),
                     variant_idx_body,
                 }
             }
         };
-        where_predicates
-            .into_iter()
-            .for_each(|predicate| where_clause.predicates.push(predicate));
         all_variants_idx_body.extend(variant_idx_body);
         fields_body.extend(quote!(
             #enum_ident::#variant_ident #variant_header => {
@@ -82,7 +88,6 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
 }
 
 struct VariantParts {
-    where_predicates: Vec<WherePredicate>,
     variant_header: TokenStream2,
     variant_body: TokenStream2,
     variant_idx_body: TokenStream2,
@@ -94,7 +99,6 @@ fn named_fields(
     discriminant_value: &TokenStream2,
     fields: &FieldsNamed,
 ) -> syn::Result<VariantParts> {
-    let mut where_predicates: Vec<WherePredicate> = vec![];
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
     for field in &fields.named {
@@ -102,14 +106,6 @@ fn named_fields(
             let field_ident = field.ident.clone().unwrap();
 
             variant_header.extend(quote! { #field_ident, });
-
-            let field_type = &field.ty;
-            where_predicates.push(
-                syn::parse2(quote! {
-                    #field_type: #cratename::ser::BorshSerialize
-                })
-                .unwrap(),
-            );
 
             variant_body.extend(quote! {
                  #cratename::BorshSerialize::serialize(#field_ident, writer)?;
@@ -122,7 +118,6 @@ fn named_fields(
         #enum_ident::#variant_ident { .. } => #discriminant_value,
     );
     Ok(VariantParts {
-        where_predicates,
         variant_header,
         variant_body,
         variant_idx_body,
@@ -136,7 +131,6 @@ fn unnamed_fields(
     discriminant_value: &TokenStream2,
     fields: &FieldsUnnamed,
 ) -> syn::Result<VariantParts> {
-    let mut where_predicates: Vec<WherePredicate> = vec![];
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
     for (field_idx, field) in fields.unnamed.iter().enumerate() {
@@ -149,14 +143,6 @@ fn unnamed_fields(
 
             variant_header.extend(quote! { #field_ident, });
 
-            let field_type = &field.ty;
-            where_predicates.push(
-                syn::parse2(quote! {
-                    #field_type: #cratename::ser::BorshSerialize
-                })
-                .unwrap(),
-            );
-
             variant_body.extend(quote! {
                 #cratename::BorshSerialize::serialize(#field_ident, writer)?;
             })
@@ -167,7 +153,6 @@ fn unnamed_fields(
         #enum_ident::#variant_ident(..) => #discriminant_value,
     );
     Ok(VariantParts {
-        where_predicates,
         variant_header,
         variant_body,
         variant_idx_body,
@@ -263,6 +248,58 @@ mod tests {
         .unwrap();
 
         let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn simple_generics() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum A<K, V, U> {
+                B {
+                    x: HashMap<K, V>,
+                    y: String,
+                },
+                C(K, Vec<U>),
+            }
+        })
+        .unwrap();
+
+        let actual = enum_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn bound_generics() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum A<K: Key, V, U> where V: Value {
+                B {
+                    x: HashMap<K, V>,
+                    y: String,
+                },
+                C(K, Vec<U>),
+            }
+        })
+        .unwrap();
+
+        let actual = enum_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn recursive_enum() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum A<K: Key, V> where V: Value {
+                B {
+                    x: HashMap<K, V>,
+                    y: String,
+                },
+                C(K, Vec<A>),
+            }
+        })
+        .unwrap();
+
+        let actual = enum_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }

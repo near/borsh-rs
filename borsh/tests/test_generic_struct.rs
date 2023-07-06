@@ -66,6 +66,12 @@ struct D<T: Ord, U> {
     b: BTreeMap<T, U>,
 }
 
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+enum E<T, U, G> {
+    X { f: BTreeMap<T, U> },
+    Y(G),
+}
+
 #[test]
 fn test_generic_struct() {
     let a = A::<String, u64, String> {
@@ -99,4 +105,20 @@ fn test_generic_struct_hashmap() {
     let actual_a = from_slice::<C<u32, String>>(&data).unwrap();
     assert_eq!(actual_a.b.get(&14), Some("value".to_string()).as_ref());
     assert_eq!(actual_a.b.get(&34), Some("another".to_string()).as_ref());
+}
+
+#[test]
+fn test_generic_enum() {
+    let b: B<String, u64> = B::X {
+        f: vec!["one".to_string(), "two".to_string(), "three".to_string()],
+    };
+    let c: B<String, u64> = B::Y(656556u64);
+
+    let list = vec![b, c];
+    let data = list.try_to_vec().unwrap();
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(data);
+    let actual_list = from_slice::<Vec<B<String, u64>>>(&data).unwrap();
+
+    assert_eq!(list, actual_list);
 }
