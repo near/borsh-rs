@@ -1,8 +1,11 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{Fields, Ident, ItemStruct, WhereClause};
+use syn::{Fields, Ident, ItemStruct, Path, WhereClause};
 
-use crate::attribute_helpers::{contains_initialize_with, contains_skip};
+use crate::{
+    attribute_helpers::{contains_initialize_with, contains_skip},
+    generics::compute_predicates,
+};
 
 pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
@@ -14,6 +17,12 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
         },
         Clone::clone,
     );
+
+    let trait_path: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
+    let predicates = compute_predicates(&input.generics, &trait_path);
+    predicates
+        .into_iter()
+        .for_each(|predicate| where_clause.predicates.push(predicate));
     let init_method = contains_initialize_with(&input.attrs);
     let return_value = match &input.fields {
         Fields::Named(fields) => {
@@ -25,14 +34,6 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
                         #field_name: Default::default(),
                     }
                 } else {
-                    let field_type = &field.ty;
-                    where_clause.predicates.push(
-                        syn::parse2(quote! {
-                            #field_type: #cratename::BorshDeserialize
-                        })
-                        .unwrap(),
-                    );
-
                     quote! {
                         #field_name: #cratename::BorshDeserialize::deserialize_reader(reader)?,
                     }
@@ -79,5 +80,82 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
                 }
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::test_helpers::pretty_print_syn_str;
+    use proc_macro2::Span;
+
+    use super::*;
+
+    #[test]
+    fn simple_struct() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let actual = struct_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn simple_generics() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A<K, V> {
+                x: HashMap<K, V>,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let actual = struct_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn simple_generic_tuple_struct() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct TupleA<T>(T, u32);
+        })
+        .unwrap();
+
+        let actual = struct_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn bound_generics() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A<K: Key, V> where V: Value {
+                x: HashMap<K, V>,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let actual = struct_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn recursive_struct() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct CRecC {
+                a: String,
+                b: HashMap<String, CRecC>,
+            }
+        })
+        .unwrap();
+
+        let actual = struct_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 }

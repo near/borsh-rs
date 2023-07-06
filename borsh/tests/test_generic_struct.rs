@@ -5,13 +5,17 @@ use core::marker::PhantomData;
 #[cfg(feature = "hashbrown")]
 use hashbrown::HashMap;
 
+#[cfg(hash_collections)]
+use core::{cmp::Eq, hash::Hash};
+
 #[cfg(feature = "std")]
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::{
+    collections::BTreeMap,
     string::{String, ToString},
     vec,
     vec::Vec,
@@ -37,21 +41,29 @@ enum B<F, G> {
     Y(G),
 }
 
-#[derive(BorshSerialize, Debug)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 struct TupleA<T>(T, u32);
 
-#[derive(BorshSerialize, Debug)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 struct NamedA<T> {
     a: T,
     b: u32,
 }
 
 /// `T: PartialOrd` bound is required for `BorshSerialize` derive to be successful
+/// `T: Hash + Eq` bound is required for `BorshDeserialize` derive to be successful
 #[cfg(hash_collections)]
 #[derive(BorshSerialize, BorshDeserialize)]
-struct C<T: PartialOrd, U> {
+struct C<T: PartialOrd + Hash + Eq, U> {
     a: String,
     b: HashMap<T, U>,
+}
+
+/// `T: PartialOrd` bound is required for `BorshSerialize`/`BorshDeserialize` derive to be successful
+#[derive(BorshSerialize, BorshDeserialize)]
+struct D<T: Ord, U> {
+    a: String,
+    b: BTreeMap<T, U>,
 }
 
 #[test]

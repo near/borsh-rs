@@ -2,7 +2,7 @@ use core::convert::TryFrom;
 
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{Fields, Ident, Index, ItemStruct, WhereClause};
+use syn::{Fields, Ident, Index, ItemStruct, Path, WhereClause};
 
 use crate::{attribute_helpers::contains_skip, generics::compute_predicates};
 
@@ -16,7 +16,8 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
         },
         Clone::clone,
     );
-    let predicates = compute_predicates(&input.generics, &cratename);
+    let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
+    let predicates = compute_predicates(&input.generics, &trait_path);
     predicates
         .into_iter()
         .for_each(|predicate| where_clause.predicates.push(predicate));
@@ -58,8 +59,6 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
     })
 }
 
-// Rustfmt removes comas.
-#[rustfmt::skip]
 #[cfg(test)]
 mod tests {
     use crate::test_helpers::pretty_print_syn_str;
@@ -68,12 +67,13 @@ mod tests {
 
     #[test]
     fn simple_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote!{
+        let item_struct: ItemStruct = syn::parse2(quote! {
             struct A {
                 x: u64,
                 y: String,
             }
-        }).unwrap();
+        })
+        .unwrap();
 
         let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
 
@@ -82,12 +82,13 @@ mod tests {
 
     #[test]
     fn simple_generics() {
-        let item_struct: ItemStruct = syn::parse2(quote!{
+        let item_struct: ItemStruct = syn::parse2(quote! {
             struct A<K, V> {
                 x: HashMap<K, V>,
                 y: String,
             }
-        }).unwrap();
+        })
+        .unwrap();
 
         let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -95,9 +96,10 @@ mod tests {
 
     #[test]
     fn simple_generic_tuple_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote!{
+        let item_struct: ItemStruct = syn::parse2(quote! {
             struct TupleA<T>(T, u32);
-        }).unwrap();
+        })
+        .unwrap();
 
         let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -105,12 +107,13 @@ mod tests {
 
     #[test]
     fn bound_generics() {
-        let item_struct: ItemStruct = syn::parse2(quote!{
+        let item_struct: ItemStruct = syn::parse2(quote! {
             struct A<K: Key, V> where V: Value {
                 x: HashMap<K, V>,
                 y: String,
             }
-        }).unwrap();
+        })
+        .unwrap();
 
         let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -118,12 +121,13 @@ mod tests {
 
     #[test]
     fn recursive_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote!{
+        let item_struct: ItemStruct = syn::parse2(quote! {
             struct CRecC {
                 a: String,
                 b: HashMap<String, CRecC>,
             }
-        }).unwrap();
+        })
+        .unwrap();
 
         let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
 
