@@ -59,15 +59,16 @@ struct C<T: PartialOrd + Hash + Eq, U> {
     b: HashMap<T, U>,
 }
 
-/// `T: PartialOrd` bound is required for `BorshSerialize`/`BorshDeserialize` derive to be successful
+/// `T: Ord` bound is required for `BorshDeserialize` derive to be successful
 #[derive(BorshSerialize, BorshDeserialize)]
 struct D<T: Ord, U> {
     a: String,
     b: BTreeMap<T, U>,
 }
 
+/// `T: Ord` bound is required for `BorshDeserialize` derive to be successful
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-enum E<T, U, G> {
+enum E<T: Ord, U, G> {
     X { f: BTreeMap<T, U> },
     Y(G),
 }

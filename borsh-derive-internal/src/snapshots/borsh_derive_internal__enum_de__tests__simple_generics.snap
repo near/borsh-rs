@@ -2,7 +2,12 @@
 source: borsh-derive-internal/src/enum_de.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
-impl borsh::de::BorshDeserialize for AAT {
+impl<K, V, U> borsh::de::BorshDeserialize for A<K, V, U>
+where
+    K: borsh::de::BorshDeserialize,
+    V: borsh::de::BorshDeserialize,
+    U: borsh::de::BorshDeserialize,
+{
     fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
     ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
@@ -10,20 +15,26 @@ impl borsh::de::BorshDeserialize for AAT {
         <Self as borsh::de::EnumExt>::deserialize_variant(reader, tag)
     }
 }
-impl borsh::de::EnumExt for AAT {
+impl<K, V, U> borsh::de::EnumExt for A<K, V, U>
+where
+    K: borsh::de::BorshDeserialize,
+    V: borsh::de::BorshDeserialize,
+    U: borsh::de::BorshDeserialize,
+{
     fn deserialize_variant<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
         variant_tag: u8,
     ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
         let mut return_value = if variant_tag == 0 {
-            AAT::B(
-                Default::default(),
+            A::B {
+                x: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                y: borsh::BorshDeserialize::deserialize_reader(reader)?,
+            }
+        } else if variant_tag == 0 + 1 {
+            A::C(
+                borsh::BorshDeserialize::deserialize_reader(reader)?,
                 borsh::BorshDeserialize::deserialize_reader(reader)?,
             )
-        } else if variant_tag == 0 + 1 {
-            AAT::NegatedVariant {
-                beta: borsh::BorshDeserialize::deserialize_reader(reader)?,
-            }
         } else {
             return Err(
                 borsh::__private::maybestd::io::Error::new(

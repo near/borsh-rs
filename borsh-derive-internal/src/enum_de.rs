@@ -1,10 +1,11 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{Fields, Ident, ItemEnum, WhereClause};
+use syn::{Fields, Ident, ItemEnum, Path, WhereClause};
 
 use crate::{
     attribute_helpers::{contains_initialize_with, contains_skip},
     enum_discriminant_map::discriminant_map,
+    generics::compute_predicates,
 };
 
 pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
@@ -17,6 +18,14 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         },
         Clone::clone,
     );
+
+    let trait_path: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
+    let predicates = compute_predicates(&input.generics, &trait_path);
+
+    predicates
+        .into_iter()
+        .for_each(|predicate| where_clause.predicates.push(predicate));
+
     let init_method = contains_initialize_with(&input.attrs);
     let mut variant_arms = TokenStream2::new();
     let discriminants = discriminant_map(&input.variants);
@@ -33,14 +42,6 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                             #field_name: Default::default(),
                         });
                     } else {
-                        let field_type = &field.ty;
-                        where_clause.predicates.push(
-                            syn::parse2(quote! {
-                                #field_type: #cratename::BorshDeserialize
-                            })
-                            .unwrap(),
-                        );
-
                         variant_header.extend(quote! {
                             #field_name: #cratename::BorshDeserialize::deserialize_reader(reader)?,
                         });
@@ -53,14 +54,6 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                     if contains_skip(&field.attrs) {
                         variant_header.extend(quote! { Default::default(), });
                     } else {
-                        let field_type = &field.ty;
-                        where_clause.predicates.push(
-                            syn::parse2(quote! {
-                                #field_type: #cratename::BorshDeserialize
-                            })
-                            .unwrap(),
-                        );
-
                         variant_header.extend(
                             quote! { #cratename::BorshDeserialize::deserialize_reader(reader)?, },
                         );
@@ -150,6 +143,58 @@ mod tests {
         })
         .unwrap();
         let actual = enum_de(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn simple_generics() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum A<K, V, U> {
+                B {
+                    x: HashMap<K, V>,
+                    y: String,
+                },
+                C(K, Vec<U>),
+            }
+        })
+        .unwrap();
+
+        let actual = enum_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn bound_generics() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum A<K: Key, V, U> where V: Value {
+                B {
+                    x: HashMap<K, V>,
+                    y: String,
+                },
+                C(K, Vec<U>),
+            }
+        })
+        .unwrap();
+
+        let actual = enum_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn recursive_enum() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum A<K: Key, V> where V: Value {
+                B {
+                    x: HashMap<K, V>,
+                    y: String,
+                },
+                C(K, Vec<A>),
+            }
+        })
+        .unwrap();
+
+        let actual = enum_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
