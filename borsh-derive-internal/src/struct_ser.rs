@@ -36,15 +36,17 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
             }
         }
         Fields::Unnamed(fields) => {
-            for field_idx in 0..fields.unnamed.len() {
-                let field_idx = Index {
-                    index: u32::try_from(field_idx).expect("up to 2^32 fields are supported"),
-                    span: Span::call_site(),
-                };
-                let delta = quote! {
-                    #cratename::BorshSerialize::serialize(&self.#field_idx, writer)?;
-                };
-                body.extend(delta);
+            for (field_idx, field) in fields.unnamed.iter().enumerate() {
+                if !contains_skip(&field.attrs) {
+                    let field_idx = Index {
+                        index: u32::try_from(field_idx).expect("up to 2^32 fields are supported"),
+                        span: Span::call_site(),
+                    };
+                    let delta = quote! {
+                        #cratename::BorshSerialize::serialize(&self.#field_idx, writer)?;
+                    };
+                    body.extend(delta);
+                }
             }
         }
         Fields::Unit => {}
@@ -126,6 +128,38 @@ mod tests {
                 a: String,
                 b: HashMap<String, CRecC>,
             }
+        })
+        .unwrap();
+
+        let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn generic_tuple_struct_borsh_skip1() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct G<K, V, U> (
+                #[borsh_skip]
+                HashMap<K, V>,
+                U,
+            );
+        })
+        .unwrap();
+
+        let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn generic_tuple_struct_borsh_skip2() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct G<K, V, U> (
+                HashMap<K, V>,
+                #[borsh_skip]
+                U,
+            );
         })
         .unwrap();
 

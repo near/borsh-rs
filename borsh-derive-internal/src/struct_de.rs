@@ -46,9 +46,13 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
         }
         Fields::Unnamed(fields) => {
             let mut body = TokenStream2::new();
-            for _ in 0..fields.unnamed.len() {
-                let delta = quote! {
-                    #cratename::BorshDeserialize::deserialize_reader(reader)?,
+            for (_field_idx, field) in fields.unnamed.iter().enumerate() {
+                let delta = if contains_skip(&field.attrs) {
+                    quote! { Default::default(), }
+                } else {
+                    quote! {
+                        #cratename::BorshDeserialize::deserialize_reader(reader)?,
+                    }
                 };
                 body.extend(delta);
             }
@@ -151,6 +155,38 @@ mod tests {
                 a: String,
                 b: HashMap<String, CRecC>,
             }
+        })
+        .unwrap();
+
+        let actual = struct_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn generic_tuple_struct_borsh_skip1() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct G<K, V, U> (
+                #[borsh_skip]
+                HashMap<K, V>,
+                U,
+            );
+        })
+        .unwrap();
+
+        let actual = struct_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn generic_tuple_struct_borsh_skip2() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct G<K, V, U> (
+                HashMap<K, V>,
+                #[borsh_skip]
+                U,
+            );
         })
         .unwrap();
 
