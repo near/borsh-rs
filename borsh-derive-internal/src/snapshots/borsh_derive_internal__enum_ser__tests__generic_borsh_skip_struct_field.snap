@@ -6,7 +6,6 @@ impl<K: Key, V, U> borsh::ser::BorshSerialize for A<K, V, U>
 where
     V: Value,
     K: borsh::ser::BorshSerialize,
-    V: borsh::ser::BorshSerialize,
     U: borsh::ser::BorshSerialize,
 {
     fn serialize<W: borsh::__private::maybestd::io::Write>(

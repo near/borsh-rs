@@ -76,11 +76,11 @@ struct G1<K, V, U>(#[borsh_skip] HashMap<K, V>, U);
 
 #[cfg(hash_collections)]
 #[derive(BorshDeserialize)]
-struct G2<K: PartialOrd + Hash + Eq, V, U: Default>(HashMap<K, V>, #[borsh_skip] U);
+struct G2<K: PartialOrd + Hash + Eq, V, U>(HashMap<K, V>, #[borsh_skip] U);
 
 #[cfg(hash_collections)]
 #[derive(BorshSerialize, BorshDeserialize)]
-struct H<K: Ord, V, U: Default> {
+struct H<K: Ord, V, U> {
     x: BTreeMap<K, V>,
     #[allow(unused)]
     #[borsh_skip]
@@ -108,7 +108,7 @@ enum I1<K, V, U> {
 
 #[cfg(hash_collections)]
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-enum I2<K: PartialOrd + Eq + Hash, V, U: Default> {
+enum I2<K: PartialOrd + Eq + Hash, V, U> {
     B { x: HashMap<K, V>, y: String },
     C(K, #[borsh_skip] U),
 }

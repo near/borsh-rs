@@ -7,7 +7,7 @@ where
     V: Value,
     K: borsh::de::BorshDeserialize,
     V: borsh::de::BorshDeserialize,
-    U: borsh::de::BorshDeserialize,
+    U: core::default::Default,
 {
     fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
@@ -21,7 +21,7 @@ where
     V: Value,
     K: borsh::de::BorshDeserialize,
     V: borsh::de::BorshDeserialize,
-    U: borsh::de::BorshDeserialize,
+    U: core::default::Default,
 {
     fn deserialize_variant<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
@@ -35,7 +35,7 @@ where
         } else if variant_tag == 0 + 1 {
             A::C(
                 borsh::BorshDeserialize::deserialize_reader(reader)?,
-                Default::default(),
+                core::default::Default::default(),
             )
         } else {
             return Err(

@@ -6,8 +6,9 @@ impl<K: Key, V, U> borsh::de::BorshDeserialize for A<K, V, U>
 where
     V: Value,
     K: borsh::de::BorshDeserialize,
-    V: borsh::de::BorshDeserialize,
     U: borsh::de::BorshDeserialize,
+    K: core::default::Default,
+    V: core::default::Default,
 {
     fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
@@ -20,8 +21,9 @@ impl<K: Key, V, U> borsh::de::EnumExt for A<K, V, U>
 where
     V: Value,
     K: borsh::de::BorshDeserialize,
-    V: borsh::de::BorshDeserialize,
     U: borsh::de::BorshDeserialize,
+    K: core::default::Default,
+    V: core::default::Default,
 {
     fn deserialize_variant<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
@@ -29,7 +31,7 @@ where
     ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
         let mut return_value = if variant_tag == 0 {
             A::B {
-                x: Default::default(),
+                x: core::default::Default::default(),
                 y: borsh::BorshDeserialize::deserialize_reader(reader)?,
             }
         } else if variant_tag == 0 + 1 {

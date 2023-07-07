@@ -5,8 +5,8 @@ expression: pretty_print_syn_str(&actual).unwrap()
 impl<K, V, U> borsh::de::BorshDeserialize for A<K, V, U>
 where
     K: borsh::de::BorshDeserialize,
-    V: borsh::de::BorshDeserialize,
     U: borsh::de::BorshDeserialize,
+    V: borsh::de::BorshDeserialize,
 {
     fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
@@ -18,8 +18,8 @@ where
 impl<K, V, U> borsh::de::EnumExt for A<K, V, U>
 where
     K: borsh::de::BorshDeserialize,
-    V: borsh::de::BorshDeserialize,
     U: borsh::de::BorshDeserialize,
+    V: borsh::de::BorshDeserialize,
 {
     fn deserialize_variant<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,

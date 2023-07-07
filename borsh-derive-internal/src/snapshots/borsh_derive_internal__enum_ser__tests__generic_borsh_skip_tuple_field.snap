@@ -7,7 +7,6 @@ where
     V: Value,
     K: borsh::ser::BorshSerialize,
     V: borsh::ser::BorshSerialize,
-    U: borsh::ser::BorshSerialize,
 {
     fn serialize<W: borsh::__private::maybestd::io::Write>(
         &self,

@@ -5,7 +5,7 @@ use syn::{Fields, Ident, ItemEnum, Path, WhereClause};
 use crate::{
     attribute_helpers::{contains_initialize_with, contains_skip},
     enum_discriminant_map::discriminant_map,
-    generics::compute_predicates,
+    generics::{compute_predicates, without_defaults, FindTyParams},
 };
 
 pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
@@ -19,12 +19,9 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         Clone::clone,
     );
 
-    let trait_path: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
-    let predicates = compute_predicates(&input.generics, &trait_path);
-
-    predicates
-        .into_iter()
-        .for_each(|predicate| where_clause.predicates.push(predicate));
+    let generics = without_defaults(&input.generics);
+    let mut deserialize_params_visitor = FindTyParams::new(&generics);
+    let mut default_params_visitor = FindTyParams::new(&generics);
 
     let init_method = contains_initialize_with(&input.attrs);
     let mut variant_arms = TokenStream2::new();
@@ -38,10 +35,12 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                 for field in &fields.named {
                     let field_name = field.ident.as_ref().unwrap();
                     if contains_skip(&field.attrs) {
+                        default_params_visitor.visit_field(field);
                         variant_header.extend(quote! {
-                            #field_name: Default::default(),
+                            #field_name: core::default::Default::default(),
                         });
                     } else {
+                        deserialize_params_visitor.visit_field(field);
                         variant_header.extend(quote! {
                             #field_name: #cratename::BorshDeserialize::deserialize_reader(reader)?,
                         });
@@ -52,8 +51,10 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
             Fields::Unnamed(fields) => {
                 for field in fields.unnamed.iter() {
                     if contains_skip(&field.attrs) {
-                        variant_header.extend(quote! { Default::default(), });
+                        default_params_visitor.visit_field(field);
+                        variant_header.extend(quote! { core::default::Default::default(), });
                     } else {
+                        deserialize_params_visitor.visit_field(field);
                         variant_header.extend(
                             quote! { #cratename::BorshDeserialize::deserialize_reader(reader)?, },
                         );
@@ -76,6 +77,13 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         quote! {}
     };
 
+    let de_trait_path: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
+    let default_trait_path: Path = syn::parse2(quote! { core::default::Default }).unwrap();
+    let de_predicates = compute_predicates(deserialize_params_visitor.process(), &de_trait_path);
+    let default_predicates =
+        compute_predicates(default_params_visitor.process(), &default_trait_path);
+    where_clause.predicates.extend(de_predicates);
+    where_clause.predicates.extend(default_predicates);
     Ok(quote! {
         impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
             fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::__private::maybestd::io::Error> {

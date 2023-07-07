@@ -4,7 +4,7 @@ use syn::{Fields, Ident, ItemStruct, Path, WhereClause};
 
 use crate::{
     attribute_helpers::{contains_initialize_with, contains_skip},
-    generics::compute_predicates,
+    generics::{compute_predicates, without_defaults, FindTyParams},
 };
 
 pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
@@ -18,11 +18,10 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
         Clone::clone,
     );
 
-    let trait_path: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
-    let predicates = compute_predicates(&input.generics, &trait_path);
-    predicates
-        .into_iter()
-        .for_each(|predicate| where_clause.predicates.push(predicate));
+    let generics = without_defaults(&input.generics);
+    let mut deserialize_params_visitor = FindTyParams::new(&generics);
+    let mut default_params_visitor = FindTyParams::new(&generics);
+
     let init_method = contains_initialize_with(&input.attrs);
     let return_value = match &input.fields {
         Fields::Named(fields) => {
@@ -30,10 +29,12 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
             for field in &fields.named {
                 let field_name = field.ident.as_ref().unwrap();
                 let delta = if contains_skip(&field.attrs) {
+                    default_params_visitor.visit_field(field);
                     quote! {
-                        #field_name: Default::default(),
+                        #field_name: core::default::Default::default(),
                     }
                 } else {
+                    deserialize_params_visitor.visit_field(field);
                     quote! {
                         #field_name: #cratename::BorshDeserialize::deserialize_reader(reader)?,
                     }
@@ -48,8 +49,10 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
             let mut body = TokenStream2::new();
             for (_field_idx, field) in fields.unnamed.iter().enumerate() {
                 let delta = if contains_skip(&field.attrs) {
-                    quote! { Default::default(), }
+                    default_params_visitor.visit_field(field);
+                    quote! { core::default::Default::default(), }
                 } else {
+                    deserialize_params_visitor.visit_field(field);
                     quote! {
                         #cratename::BorshDeserialize::deserialize_reader(reader)?,
                     }
@@ -66,6 +69,13 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
             }
         }
     };
+    let de_trait_path: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
+    let default_trait_path: Path = syn::parse2(quote! { core::default::Default }).unwrap();
+    let de_predicates = compute_predicates(deserialize_params_visitor.process(), &de_trait_path);
+    let default_predicates =
+        compute_predicates(default_params_visitor.process(), &default_trait_path);
+    where_clause.predicates.extend(de_predicates);
+    where_clause.predicates.extend(default_predicates);
     if let Some(method_ident) = init_method {
         Ok(quote! {
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {

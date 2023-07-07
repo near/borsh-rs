@@ -4,16 +4,16 @@ expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl<K, V, U> borsh::de::BorshDeserialize for G<K, V, U>
 where
-    K: borsh::de::BorshDeserialize,
-    V: borsh::de::BorshDeserialize,
     U: borsh::de::BorshDeserialize,
+    K: core::default::Default,
+    V: core::default::Default,
 {
     fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
     ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
         Ok(
             Self(
-                Default::default(),
+                core::default::Default::default(),
                 borsh::BorshDeserialize::deserialize_reader(reader)?,
             ),
         )

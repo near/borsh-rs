@@ -17,7 +17,7 @@ impl borsh::de::EnumExt for AAT {
     ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
         let mut return_value = if variant_tag == 0 {
             AAT::B(
-                Default::default(),
+                core::default::Default::default(),
                 borsh::BorshDeserialize::deserialize_reader(reader)?,
             )
         } else if variant_tag == 0 + 1 {

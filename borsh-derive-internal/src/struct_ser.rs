@@ -4,7 +4,10 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{Fields, Ident, Index, ItemStruct, Path, WhereClause};
 
-use crate::{attribute_helpers::contains_skip, generics::compute_predicates};
+use crate::{
+    attribute_helpers::contains_skip,
+    generics::{compute_predicates, without_defaults, FindTyParams},
+};
 
 pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
@@ -16,11 +19,8 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
         },
         Clone::clone,
     );
-    let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
-    let predicates = compute_predicates(&input.generics, &trait_path);
-    predicates
-        .into_iter()
-        .for_each(|predicate| where_clause.predicates.push(predicate));
+    let generics = without_defaults(&input.generics);
+    let mut serialize_params_visitor = FindTyParams::new(&generics);
     let mut body = TokenStream2::new();
     match &input.fields {
         Fields::Named(fields) => {
@@ -32,7 +32,9 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
                 let delta = quote! {
                     #cratename::BorshSerialize::serialize(&self.#field_name, writer)?;
                 };
+
                 body.extend(delta);
+                serialize_params_visitor.visit_field(field);
             }
         }
         Fields::Unnamed(fields) => {
@@ -46,11 +48,15 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
                         #cratename::BorshSerialize::serialize(&self.#field_idx, writer)?;
                     };
                     body.extend(delta);
+                    serialize_params_visitor.visit_field(field);
                 }
             }
         }
         Fields::Unit => {}
     }
+    let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
+    let predicates = compute_predicates(serialize_params_visitor.process(), &trait_path);
+    where_clause.predicates.extend(predicates);
     Ok(quote! {
         impl #impl_generics #cratename::ser::BorshSerialize for #name #ty_generics #where_clause {
             fn serialize<W: #cratename::__private::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::__private::maybestd::io::Error> {

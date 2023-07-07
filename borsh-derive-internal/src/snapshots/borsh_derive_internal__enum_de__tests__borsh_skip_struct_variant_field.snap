@@ -17,7 +17,7 @@ impl borsh::de::EnumExt for AA {
     ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
         let mut return_value = if variant_tag == 0 {
             AA::B {
-                c: Default::default(),
+                c: core::default::Default::default(),
                 d: borsh::BorshDeserialize::deserialize_reader(reader)?,
             }
         } else if variant_tag == 0 + 1 {

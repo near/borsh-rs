@@ -5,8 +5,9 @@ use quote::quote;
 use syn::{Fields, FieldsNamed, FieldsUnnamed, Ident, ItemEnum, Path, WhereClause};
 
 use crate::{
-    attribute_helpers::contains_skip, enum_discriminant_map::discriminant_map,
-    generics::compute_predicates,
+    attribute_helpers::contains_skip,
+    enum_discriminant_map::discriminant_map,
+    generics::{compute_predicates, without_defaults, FindTyParams},
 };
 
 pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
@@ -20,12 +21,8 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
         Clone::clone,
     );
 
-    let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
-    let predicates = compute_predicates(&input.generics, &trait_path);
-
-    predicates
-        .into_iter()
-        .for_each(|predicate| where_clause.predicates.push(predicate));
+    let generics = without_defaults(&input.generics);
+    let mut serialize_params_visitor = FindTyParams::new(&generics);
 
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
@@ -44,6 +41,7 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                 variant_ident,
                 discriminant_value,
                 fields,
+                &mut serialize_params_visitor,
             )?,
             Fields::Unnamed(fields) => unnamed_fields(
                 &cratename,
@@ -51,6 +49,7 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                 variant_ident,
                 discriminant_value,
                 fields,
+                &mut serialize_params_visitor,
             )?,
             Fields::Unit => {
                 let variant_idx_body = quote!(
@@ -70,6 +69,9 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
             }
         ))
     }
+    let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
+    let predicates = compute_predicates(serialize_params_visitor.process(), &trait_path);
+    where_clause.predicates.extend(predicates);
     Ok(quote! {
         impl #impl_generics #cratename::ser::BorshSerialize for #enum_ident #ty_generics #where_clause {
             fn serialize<W: #cratename::__private::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::__private::maybestd::io::Error> {
@@ -92,12 +94,13 @@ struct VariantParts {
     variant_body: TokenStream2,
     variant_idx_body: TokenStream2,
 }
-fn named_fields(
+fn named_fields<'ast>(
     cratename: &Ident,
     enum_ident: &Ident,
     variant_ident: &Ident,
     discriminant_value: &TokenStream2,
-    fields: &FieldsNamed,
+    fields: &'ast FieldsNamed,
+    params_visitor: &mut FindTyParams<'ast>,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
@@ -109,7 +112,8 @@ fn named_fields(
 
             variant_body.extend(quote! {
                  #cratename::BorshSerialize::serialize(#field_ident, writer)?;
-            })
+            });
+            params_visitor.visit_field(field);
         }
     }
     // `..` pattern matching works even if all fields were specified
@@ -124,12 +128,13 @@ fn named_fields(
     })
 }
 
-fn unnamed_fields(
+fn unnamed_fields<'ast>(
     cratename: &Ident,
     enum_ident: &Ident,
     variant_ident: &Ident,
     discriminant_value: &TokenStream2,
-    fields: &FieldsUnnamed,
+    fields: &'ast FieldsUnnamed,
+    params_visitor: &mut FindTyParams<'ast>,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
@@ -145,7 +150,8 @@ fn unnamed_fields(
 
             variant_body.extend(quote! {
                 #cratename::BorshSerialize::serialize(#field_ident, writer)?;
-            })
+            });
+            params_visitor.visit_field(field);
         }
     }
     variant_header = quote! { ( #variant_header )};
