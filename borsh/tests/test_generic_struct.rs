@@ -78,11 +78,39 @@ struct G1<K, V, U>(#[borsh_skip] HashMap<K, V>, U);
 #[derive(BorshDeserialize)]
 struct G2<K: PartialOrd + Hash + Eq, V, U: Default>(HashMap<K, V>, #[borsh_skip] U);
 
+#[cfg(hash_collections)]
+#[derive(BorshSerialize, BorshDeserialize)]
+struct H<K: Ord, V, U: Default> {
+    x: BTreeMap<K, V>,
+    #[allow(unused)]
+    #[borsh_skip]
+    y: U,
+}
+
 /// `T: Ord` bound is required for `BorshDeserialize` derive to be successful
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 enum E<T: Ord, U, G> {
     X { f: BTreeMap<T, U> },
     Y(G),
+}
+
+#[cfg(hash_collections)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+enum I1<K, V, U> {
+    B {
+        #[allow(unused)]
+        #[borsh_skip]
+        x: HashMap<K, V>,
+        y: String,
+    },
+    C(K, Vec<U>),
+}
+
+#[cfg(hash_collections)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+enum I2<K: PartialOrd + Eq + Hash, V, U: Default> {
+    B { x: HashMap<K, V>, y: String },
+    C(K, #[borsh_skip] U),
 }
 
 #[test]

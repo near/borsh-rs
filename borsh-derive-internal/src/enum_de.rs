@@ -198,4 +198,40 @@ mod tests {
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
+    #[test]
+    fn generic_borsh_skip_struct_field() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum A<K: Key, V, U> where V: Value {
+                B {
+                    #[borsh_skip]
+                    x: HashMap<K, V>,
+                    y: String,
+                },
+                C(K, Vec<U>),
+            }
+        })
+        .unwrap();
+
+        let actual = enum_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn generic_borsh_skip_tuple_field() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum A<K: Key, V, U> where V: Value {
+                B {
+                    x: HashMap<K, V>,
+                    y: String,
+                },
+                C(K, #[borsh_skip] Vec<U>),
+            }
+        })
+        .unwrap();
+
+        let actual = enum_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
 }
