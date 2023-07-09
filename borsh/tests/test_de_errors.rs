@@ -62,6 +62,8 @@ fn test_invalid_enum_variant() {
         "Unexpected variant tag: 123"
     );
 }
+
+#[cfg(feature = "derive")]
 #[test]
 fn test_invalid_enum_variant_old() {
     let bytes = vec![123];
