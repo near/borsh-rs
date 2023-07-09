@@ -1,3 +1,29 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg(feature = "derive")]
+
+#[cfg(feature = "std")]
+use std::{
+    borrow,
+    collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
+    ops,
+};
+
+#[cfg(not(feature = "std"))]
+use core::{ops, result::Result};
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
+use alloc::{
+    borrow,
+    boxed::Box,
+    collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
+
 use borsh::__private::maybestd::collections::{
     BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque,
 };
