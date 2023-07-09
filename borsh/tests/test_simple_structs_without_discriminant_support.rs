@@ -169,7 +169,7 @@ fn test_simple_struct() {
         i: a.i,
         u: Ok("Hello".to_string()),
         lazy: Some(50),
-        c: sborrow::Cow::Owned("Hello".to_string()),
+        c: borrow::Cow::Owned("Hello".to_string()),
         cow_arr: borrow::Cow::Owned(vec![
             borrow::Cow::Borrowed("Hello1"),
             borrow::Cow::Owned("Hello2".to_string()),
