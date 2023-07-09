@@ -18,7 +18,7 @@ extern crate alloc;
 use alloc::{
     borrow,
     boxed::Box,
-    collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque},
     string::{String, ToString},
     vec,
     vec::Vec,
@@ -50,7 +50,7 @@ struct A<'a> {
     u: Result<String, String>,
     lazy: Option<u64>,
     c: borrow::Cow<'a, str>,
-    cow_arr: borrow::Cow<'a, [std::borrow::Cow<'a, str>]>,
+    cow_arr: borrow::Cow<'a, [borrow::Cow<'a, str>]>,
     range_u32: ops::Range<u32>,
     #[borsh_skip]
     skipped: Option<u64>,
@@ -105,10 +105,10 @@ fn test_simple_struct() {
     let mut map: HashMap<String, String> = HashMap::new();
     map.insert("test".into(), "test".into());
     let mut set: HashSet<u64> = HashSet::new();
-    set.insert(std::u64::MAX);
+    set.insert(u64::MAX);
     let cow_arr = [
-        std::borrow::Cow::Borrowed("Hello1"),
-        std::borrow::Cow::Owned("Hello2".to_string()),
+        borrow::Cow::Borrowed("Hello1"),
+        borrow::Cow::Owned("Hello2".to_string()),
     ];
     let a = A {
         x: 1,
@@ -134,8 +134,8 @@ fn test_simple_struct() {
         i: [4u8; 32],
         u: Ok("Hello".to_string()),
         lazy: Some(5),
-        c: std::borrow::Cow::Borrowed("Hello"),
-        cow_arr: std::borrow::Cow::Borrowed(&cow_arr),
+        c: borrow::Cow::Borrowed("Hello"),
+        cow_arr: borrow::Cow::Borrowed(&cow_arr),
         range_u32: 12..71,
         skipped: Some(6),
     };
@@ -169,10 +169,10 @@ fn test_simple_struct() {
         i: a.i,
         u: Ok("Hello".to_string()),
         lazy: Some(50),
-        c: std::borrow::Cow::Owned("Hello".to_string()),
-        cow_arr: std::borrow::Cow::Owned(vec![
-            std::borrow::Cow::Borrowed("Hello1"),
-            std::borrow::Cow::Owned("Hello2".to_string()),
+        c: sborrow::Cow::Owned("Hello".to_string()),
+        cow_arr: borrow::Cow::Owned(vec![
+            borrow::Cow::Borrowed("Hello1"),
+            borrow::Cow::Owned("Hello2".to_string()),
         ]),
         range_u32: 12..71,
         skipped: None,
