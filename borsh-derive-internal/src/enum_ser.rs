@@ -9,7 +9,7 @@ use crate::{attribute_helpers::contains_skip, enum_discriminant_map::discriminan
 pub fn enum_ser(
     input: &ItemEnum,
     cratename: Ident,
-    _use_discriminant: bool,
+    use_discriminant: Option<bool>,
 ) -> syn::Result<TokenStream2> {
     let enum_ident = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
@@ -22,7 +22,15 @@ pub fn enum_ser(
     );
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
-    let discriminants = discriminant_map(&input.variants);
+    let (discriminants, has_discriminants) = discriminant_map(&input.variants);
+    if has_discriminants && use_discriminant.is_none() {
+        return Err(syn::Error::new(
+            Span::call_site(),
+            "You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=true)]` for all structs that have enum with discriminant",
+        ));
+    }
+
+    let _use_discriminant = use_discriminant.unwrap_or(false);
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let _variant_idx =
             u8::try_from(variant_idx).expect("up to 256 enum variants are supported");

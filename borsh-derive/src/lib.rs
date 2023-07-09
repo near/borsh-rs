@@ -27,15 +27,15 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(for_derive_input as DeriveInput);
 
     // Read the additional data
-    let mut use_discriminant = false;
+    let mut use_discriminant = None;
     for attr in &derive_input.attrs {
         if attr.path().is_ident("use_discriminant") {
             for token in attr.to_token_stream().clone() {
                 if token.to_string() == "true" {
-                    use_discriminant = true;
+                    use_discriminant = Some(true);
                 }
                 if token.to_string() == "false" {
-                    use_discriminant = false;
+                    use_discriminant = Some(false);
                 }
             }
         }
@@ -70,15 +70,15 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(for_derive_input as DeriveInput);
 
     // Read the additional data
-    let mut use_discriminant = false;
+    let mut use_discriminant = None;
     for attr in &derive_input.attrs {
         if attr.path().is_ident("use_discriminant") {
             for token in attr.to_token_stream() {
                 if token.to_string() == "true" {
-                    use_discriminant = true;
+                    use_discriminant = Some(true);
                 }
                 if token.to_string() == "false" {
-                    use_discriminant = false;
+                    use_discriminant = Some(false);
                 }
             }
         }

@@ -32,6 +32,7 @@ hashbrown = { version = ">=0.11,<0.14", optional = true }
 bytes = { version = "1", optional = true }
 bson = { version = "2", optional = true }
 
+quote = "1"
 [dev-dependencies]
 bytes = "1"
 bson = "2"

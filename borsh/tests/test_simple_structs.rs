@@ -33,7 +33,6 @@ use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 use borsh_derive::borsh;
 use bytes::{Bytes, BytesMut};
 
-#[borsh(use_discriminant = true)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 #[borsh_init(init)]
 struct A<'a> {
@@ -69,7 +68,6 @@ impl A<'_> {
     }
 }
 
-#[borsh(use_discriminant = true)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 struct B {
     x: u64,
@@ -77,7 +75,6 @@ struct B {
     c: C,
 }
 
-#[borsh(use_discriminant = true)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 enum C {
     C1,

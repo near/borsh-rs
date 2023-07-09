@@ -1,3 +1,4 @@
+use proc_macro2::Span;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use std::convert::TryFrom;
@@ -11,7 +12,7 @@ use crate::{
 pub fn enum_de(
     input: &ItemEnum,
     cratename: Ident,
-    use_discriminant: bool,
+    use_discriminant: Option<bool>,
 ) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
@@ -24,7 +25,15 @@ pub fn enum_de(
     );
     let init_method = contains_initialize_with(&input.attrs);
     let mut variant_arms = TokenStream2::new();
-    let discriminants = discriminant_map(&input.variants);
+    let (discriminants, has_discriminants) = discriminant_map(&input.variants);
+    if has_discriminants && use_discriminant.is_none() {
+        return Err(syn::Error::new(
+            Span::call_site(),
+            "You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=true)]` for all structs that have enum with discriminant",
+        ));
+    }
+    let use_discriminant = use_discriminant.unwrap_or(false);
+
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_idx = u8::try_from(variant_idx).expect("up to 256 enum variants are supported");
         let variant_ident = &variant.ident;
