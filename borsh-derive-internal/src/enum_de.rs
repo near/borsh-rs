@@ -42,10 +42,7 @@ pub fn enum_de(
         let variant_idx = u8::try_from(variant_idx).map_err(|err| {
             syn::Error::new(
                 variant.ident.span(),
-                format!(
-                    "up to 256 enum variants are supported. error{}",
-                    err
-                ),
+                format!("up to 256 enum variants are supported. error{}", err),
             )
         })?;
         let variant_ident = &variant.ident;
