@@ -7,6 +7,7 @@ use proc_macro_crate::FoundCrate;
 use quote::ToTokens;
 use syn::{Ident, ItemEnum, ItemStruct, ItemUnion};
 
+#[cfg(feature = "schema")]
 use borsh_schema_derive_internal::{process_enum, process_struct};
 use syn::{parse_macro_input, DeriveInput};
 use syn::{Meta, MetaNameValue};
@@ -107,6 +108,7 @@ fn check_use_discriminant(derive_input: DeriveInput) -> Result<Option<bool>, Tok
     Ok(None)
 }
 
+#[cfg(feature = "schema")]
 #[proc_macro_derive(BorshSchema, attributes(borsh_skip, use_discriminant))]
 pub fn borsh_schema(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
