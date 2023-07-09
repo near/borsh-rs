@@ -15,6 +15,10 @@ use alloc::{
 };
 
 #[cfg(feature = "derive")]
+use borsh::{from_slice, BorshDeserialize};
+use borsh_derive::borsh;
+
+#[borsh(use_discriminant = true)]
 #[derive(BorshDeserialize, Debug)]
 enum A {
     X,
@@ -22,6 +26,14 @@ enum A {
 }
 
 #[cfg(feature = "derive")]
+#[borsh(use_discriminant = false)]
+#[derive(BorshDeserialize, Debug)]
+enum AOld {
+    X,
+    Y,
+}
+
+#[borsh(use_discriminant = true)]
 #[derive(BorshDeserialize, Debug)]
 struct B {
     #[allow(unused)]
@@ -50,6 +62,14 @@ fn test_invalid_enum_variant() {
     assert_eq!(
         from_slice::<A>(&bytes).unwrap_err().to_string(),
         "Unexpected variant tag: 123"
+    );
+}
+#[test]
+fn test_invalid_enum_variant_old() {
+    let bytes = vec![123];
+    assert_eq!(
+        from_slice::<AOld>(&bytes).unwrap_err().to_string(),
+        "Unexpected variant index: 123"
     );
 }
 

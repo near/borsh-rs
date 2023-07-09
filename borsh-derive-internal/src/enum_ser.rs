@@ -6,7 +6,11 @@ use syn::{Fields, FieldsNamed, FieldsUnnamed, Ident, ItemEnum, WhereClause, Wher
 
 use crate::{attribute_helpers::contains_skip, enum_discriminant_map::discriminant_map};
 
-pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
+pub fn enum_ser(
+    input: &ItemEnum,
+    cratename: Ident,
+    _use_discriminant: bool,
+) -> syn::Result<TokenStream2> {
     let enum_ident = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let mut where_clause = where_clause.map_or_else(
@@ -19,7 +23,9 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
     let discriminants = discriminant_map(&input.variants);
-    for variant in input.variants.iter() {
+    for (variant_idx, variant) in input.variants.iter().enumerate() {
+        let _variant_idx =
+            u8::try_from(variant_idx).expect("up to 256 enum variants are supported");
         let variant_ident = &variant.ident;
         let discriminant_value = discriminants.get(variant_ident).unwrap();
         let VariantParts {
@@ -192,7 +198,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site()), false).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -213,7 +219,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site()), false).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -237,7 +243,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site()), false).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -262,7 +268,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site()), false).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
