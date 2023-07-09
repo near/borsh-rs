@@ -22,15 +22,18 @@ pub fn enum_ser(
     );
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
-    let (discriminants, has_explicit_discriminants) = discriminant_map(&input.variants);
+    let discriminants = discriminant_map(&input.variants);
+    let has_explicit_discriminants = input
+        .variants
+        .iter()
+        .any(|variant| variant.discriminant.is_some());
     if has_explicit_discriminants && use_discriminant.is_none() {
         return Err(syn::Error::new(
             input.ident.span(),
-            "You have to specify `#[use_discriminant=true]` or `#[use_discriminant=false]` for all structs that have enum with explicit discriminant",
+            "You have to specify `#[borsh_use_discriminant=true]` or `#[borsh_use_discriminant=false]` for all structs that have enum with explicit discriminant",
         ));
     }
 
-    let use_discriminant = use_discriminant.unwrap_or(false);
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let _variant_idx =
             u8::try_from(variant_idx).expect("up to 256 enum variants are supported");

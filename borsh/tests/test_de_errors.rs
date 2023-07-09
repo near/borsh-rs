@@ -14,23 +14,25 @@ use alloc::{
     vec::Vec,
 };
 
-#[borsh(use_discriminant = true)]
+#[cfg(feature = "derive")]
 #[derive(BorshDeserialize, Debug)]
+#[borsh_use_discriminant = true]
 enum A {
     X,
     Y,
 }
 
 #[cfg(feature = "derive")]
-#[borsh(use_discriminant = false)]
 #[derive(BorshDeserialize, Debug)]
+#[borsh_use_discriminant = false]
 enum AOld {
     X,
     Y,
 }
 
-#[borsh(use_discriminant = true)]
+#[cfg(feature = "derive")]
 #[derive(BorshDeserialize, Debug)]
+#[borsh_use_discriminant = true]
 struct B {
     #[allow(unused)]
     x: u64,

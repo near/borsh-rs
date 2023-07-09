@@ -7,15 +7,12 @@ use proc_macro_crate::FoundCrate;
 use quote::ToTokens;
 use syn::{Ident, ItemEnum, ItemStruct, ItemUnion};
 
-use borsh_derive_internal::*;
-#[cfg(feature = "schema")]
-use borsh_schema_derive_internal::*;
-use quote::quote;
-use syn::Attribute;
-use syn::{parse_macro_input, parse_quote, DeriveInput};
+// #[cfg(feature = "schema")]
+use borsh_schema_derive_internal::{process_enum, process_struct};
+use syn::{parse_macro_input, DeriveInput};
 use syn::{Meta, MetaNameValue};
 
-#[proc_macro_derive(BorshSerialize, attributes(borsh_skip, use_discriminant))]
+#[proc_macro_derive(BorshSerialize, attributes(borsh_skip, borsh_use_discriminant))]
 pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
     let name = match name {
@@ -48,7 +45,10 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     })
 }
 
-#[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh_init, use_discriminant))]
+#[proc_macro_derive(
+    BorshDeserialize,
+    attributes(borsh_skip, borsh_init, borsh_use_discriminant)
+)]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
     let name = match name {
@@ -83,29 +83,25 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
 
 fn check_use_discriminant(derive_input: DeriveInput) -> Result<Option<bool>, TokenStream> {
     for attr in &derive_input.attrs {
-        if attr.path().is_ident("use_discriminant") {
+        if attr.path().is_ident("borsh_use_discriminant") {
             if let Meta::NameValue(value) = attr.meta.clone() {
                 let MetaNameValue {
-                    path,
-                    eq_token: _,
-                    value,
+                    eq_token: _, value, ..
                 } = value;
-                if path.is_ident("use_discriminant") {
-                    let value = value.to_token_stream().to_string();
-                    return match value.as_str() {
-                        "true" => Ok(Some(true)),
-                        "false" => Ok(Some(false)),
-                        _ => {
-                            return Err(TokenStream::from(
-                                syn::Error::new(
-                                    derive_input.ident.span(),
-                                    "`use_discriminant` accept only `true` or `false`",
-                                )
-                                .to_compile_error(),
-                            ));
-                        }
-                    };
-                }
+                let value = value.to_token_stream().to_string();
+                return match value.as_str() {
+                    "true" => Ok(Some(true)),
+                    "false" => Ok(Some(false)),
+                    _ => {
+                        return Err(TokenStream::from(
+                            syn::Error::new(
+                                derive_input.ident.span(),
+                                "`use_discriminant` accept only `true` or `false`",
+                            )
+                            .to_compile_error(),
+                        ));
+                    }
+                };
             }
         }
     }
@@ -138,40 +134,4 @@ pub fn borsh_schema(input: TokenStream) -> TokenStream {
         Ok(res) => res,
         Err(err) => err.to_compile_error(),
     })
-}
-
-#[proc_macro_attribute]
-pub fn borsh(args: TokenStream, input: TokenStream) -> TokenStream {
-    let tokens = args.clone();
-    let attribute_args = syn::parse_macro_input!(tokens);
-
-    let attr = MacroAttribute::from_attribute_args(
-        "use_discriminant",
-        attribute_args,
-        syn::AttrStyle::Outer,
-    );
-
-    let mut use_discriminant = false;
-    let mut found = false;
-    let name_values_attributes = attr.into_name_values().unwrap();
-
-    for (name, value) in &name_values_attributes {
-        if name == "use_discriminant" && value.to_string() == "true" {
-            use_discriminant = true;
-            found = true;
-        }
-        // println!("{:7} => {}", name, value);
-    }
-
-    if found {
-        let attr: Attribute = parse_quote!(#[use_discriminant = #use_discriminant]);
-
-        let mut input = parse_macro_input!(input as DeriveInput);
-        input.attrs.push(attr);
-
-        let expanded = quote! { #input };
-        TokenStream::from(expanded)
-    } else {
-        input
-    }
 }

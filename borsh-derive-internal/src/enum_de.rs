@@ -25,11 +25,15 @@ pub fn enum_de(
     let init_method = contains_initialize_with(&input.attrs);
     let mut variant_arms = TokenStream2::new();
 
-    let (discriminants, has_explicit_discriminants) = discriminant_map(&input.variants);
+    let discriminants = discriminant_map(&input.variants);
+    let has_explicit_discriminants = input
+        .variants
+        .iter()
+        .any(|variant| variant.discriminant.is_some());
     if has_explicit_discriminants && use_discriminant.is_none() {
         return Err(syn::Error::new(
             input.ident.span(),
-            "You have to specify `#[use_discriminant=true]` or `#[use_discriminant=false]` for all structs that have enum with explicit discriminant",
+            "You have to specify `#[borsh_use_discriminant=true]` or `#[borsh_use_discriminant=false]` for all structs that have enum with explicit discriminant",
         ));
     }
     let use_discriminant = use_discriminant.unwrap_or(false);
@@ -114,17 +118,17 @@ pub fn enum_de(
     if use_discriminant {
         Ok(quote! {
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
-                fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
+                fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::__private::maybestd::io::Error> {
                     let tag = <u8 as #cratename::de::BorshDeserialize>::deserialize_reader(reader)?;
                     <Self as #cratename::de::EnumExt>::deserialize_variant(reader, tag)
                 }
             }
 
             impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
-                fn deserialize_variant<R: borsh__private::maybestd::io::Read>(
+                fn deserialize_variant<R: #cratename::__private::maybestd::io::Read>(
                     reader: &mut R,
                     variant_tag: u8,
-                ) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
+                ) -> ::core::result::Result<Self, #cratename::__private::maybestd::io::Error> {
                     let mut return_value =
                         #variant_arms {
                         return Err(#cratename::__private::maybestd::io::Error::new(
@@ -140,17 +144,17 @@ pub fn enum_de(
     } else {
         Ok(quote! {
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
-                fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
+                fn deserialize_reader<R: #cratename::__private::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::__private::maybestd::io::Error> {
                     let tag = <u8 as #cratename::de::BorshDeserialize>::deserialize_reader(reader)?;
                     <Self as #cratename::de::EnumExt>::deserialize_variant(reader, tag)
                 }
             }
 
             impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
-                fn deserialize_variant<R: borsh::maybestd::io::Read>(
+                fn deserialize_variant<R: borsh::__private::maybestd::io::Read>(
                     reader: &mut R,
                     variant_idx: u8,
-                ) -> ::core::result::Result<Self, #cratename::maybestd::io::Error> {
+                ) -> ::core::result::Result<Self, #cratename::__private::maybestd::io::Error> {
                     let mut return_value = match variant_idx {
                         #variant_arms
                         _ => return Err(#cratename::__private::maybestd::io::Error::new(

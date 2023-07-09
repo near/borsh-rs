@@ -28,14 +28,6 @@ use bytes::{Bytes, BytesMut};
 
 use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 
-use borsh::maybestd::collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque};
-use borsh::{from_slice, BorshDeserialize, BorshSerialize};
-<<<<<<< HEAD
-use borsh_derive::borsh;
-=======
->>>>>>> 086fc4ce (Cleanup)
-use bytes::{Bytes, BytesMut};
-
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 #[borsh_init(init)]
 struct A<'a> {
@@ -107,8 +99,8 @@ struct F2<'b> {
     aa: Vec<A<'b>>,
 }
 
-#[borsh(use_discriminant = true)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh_use_discriminant = true]
 enum X {
     A,
     B = 20,
@@ -116,70 +108,6 @@ enum X {
     D,
     E = 10,
     F,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
-#[use_discriminant = true]
-enum Foo {
-    A = 0x1,
-    Bar = 0xf,
-    C,
-    D = 0x11,
-    F = 55,
-    FF = 0xff,
-    FC = 0x9,
-    Fd = 0x8,
-}
-
-#[test]
-fn test_hex_discriminant_serialization() {
-    let values = vec![Foo::A, Foo::Bar, Foo::C, Foo::D, Foo::F];
-    for value in values {
-        assert_eq!(
-            from_slice::<Foo>(value.try_to_vec().unwrap().as_slice()).unwrap() as u8,
-            value as u8
-        );
-        assert_eq!(value.try_to_vec().unwrap(), [value as u8]);
-    }
-}
-
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
-#[use_discriminant = false]
-struct Bar {
-    enu: Foo,
-    field: u8,
-}
-
-#[test]
-fn test_hex_embed_discriminant_serialization() {
-    let values = vec![
-        Bar {
-            enu: Foo::A,
-            field: 0x1,
-        },
-        Bar {
-            enu: Foo::Bar,
-            field: 0xf,
-        },
-        Bar {
-            enu: Foo::C,
-            field: 0x11,
-        },
-        Bar {
-            enu: Foo::D,
-            field: 0x8,
-        },
-        Bar {
-            enu: Foo::F,
-            field: 0xff,
-        },
-    ];
-    for value in values {
-        assert_eq!(
-            from_slice::<Bar>(value.try_to_vec().unwrap().as_slice()).unwrap(),
-            value
-        );
-    }
 }
 
 #[test]

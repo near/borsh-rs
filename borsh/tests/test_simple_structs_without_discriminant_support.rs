@@ -1,4 +1,4 @@
-use borsh::maybestd::collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque};
+use borsh::__private::maybestd::collections::*;
 use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 use bytes::{Bytes, BytesMut};
 

@@ -45,7 +45,7 @@ features = ["derive", "schema"]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [features]
-default = ["std"]
+default = ["std", "derive", "schema"]
 derive = ["borsh-derive"]
 schema = ["borsh-derive/schema"]
 std = []

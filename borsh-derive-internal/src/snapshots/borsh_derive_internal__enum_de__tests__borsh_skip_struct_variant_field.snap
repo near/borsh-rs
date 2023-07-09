@@ -1,6 +1,6 @@
 ---
 source: borsh-derive-internal/src/enum_de.rs
-expression: pretty_print_syn_str(&actual)
+expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl borsh::de::BorshDeserialize for AA
 where
@@ -21,26 +21,30 @@ where
 {
     fn deserialize_variant<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
-        variant_tag: u8,
+        variant_idx: u8,
     ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
-        let mut return_value = if variant_tag == 0 {
-            AA::B {
-                c: Default::default(),
-                d: borsh::BorshDeserialize::deserialize_reader(reader)?,
+        let mut return_value = match variant_idx {
+            0u8 => {
+                AA::B {
+                    c: Default::default(),
+                    d: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                }
             }
-        } else if variant_tag == 0 + 1 {
-            AA::NegatedVariant {
-                beta: borsh::BorshDeserialize::deserialize_reader(reader)?,
+            1u8 => {
+                AA::NegatedVariant {
+                    beta: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                }
             }
-        } else {
-            return Err(
-                borsh::__private::maybestd::io::Error::new(
-                    borsh::__private::maybestd::io::ErrorKind::InvalidData,
-                    borsh::__private::maybestd::format!(
-                        "Unexpected variant tag: {:?}", variant_tag
+            _ => {
+                return Err(
+                    borsh::__private::maybestd::io::Error::new(
+                        borsh::__private::maybestd::io::ErrorKind::InvalidInput,
+                        borsh::__private::maybestd::format!(
+                            "Unexpected variant index: {:?}", variant_idx
+                        ),
                     ),
-                ),
-            )
+                );
+            }
         };
         Ok(return_value)
     }
