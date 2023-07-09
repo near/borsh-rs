@@ -44,7 +44,7 @@ pub fn enum_de(
                 variant.ident.span(),
                 format!(
                     "up to 256 enum variants are supported. error{}",
-                    err.to_string()
+                    err
                 ),
             )
         })?;
