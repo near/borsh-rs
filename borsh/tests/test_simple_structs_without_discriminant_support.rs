@@ -2,11 +2,7 @@
 #![cfg(feature = "derive")]
 
 #[cfg(feature = "std")]
-use std::{
-    borrow,
-    collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
-    ops,
-};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque};
 
 #[cfg(not(feature = "std"))]
 use core::{ops, result::Result};
@@ -18,7 +14,7 @@ extern crate alloc;
 use alloc::{
     borrow,
     boxed::Box,
-    collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque},
     string::{String, ToString},
     vec,
     vec::Vec,
