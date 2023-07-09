@@ -76,6 +76,32 @@ struct A {
 }
 ```
 
+### Enum with explicit discriminant
+
+`#[borsh(use_discriminant=false|true]` is required if you have an enum with explicit discriminant. This is because the discriminant is not serialized by default, and the deserializer needs to know whether to use the discriminant or not.
+
+```rust
+#[borsh(use_discriminant=false]
+#[derive(BorshDeserialize)]
+enum A {
+    X,
+    Y = 10,
+}
+```
+
+Will keep old behaviour of borsh deserialization and will not use discriminant. This option is left to have backward compatability with previous versions of borsh and to have ability to deserialise data from previous versions of borsh.
+
+```rust
+#[borsh(use_discriminant=true)]
+#[derive(BorshDeserialize)]
+enum A {
+    X,
+    Y = 10,
+}
+```
+
+This one will use proper version of serialization of enum with explicit discriminant.
+
 ## Releasing
 
 The versions of all public crates in this repository are collectively managed by a single version in the [workspace manifest](https://github.com/near/borsh-rs/blob/master/Cargo.toml).

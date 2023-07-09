@@ -118,6 +118,70 @@ enum X {
     F,
 }
 
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[use_discriminant = true]
+enum Foo {
+    A = 0x1,
+    Bar = 0xf,
+    C,
+    D = 0x11,
+    F = 55,
+    FF = 0xff,
+    FC = 0x9,
+    Fd = 0x8,
+}
+
+#[test]
+fn test_hex_discriminant_serialization() {
+    let values = vec![Foo::A, Foo::Bar, Foo::C, Foo::D, Foo::F];
+    for value in values {
+        assert_eq!(
+            from_slice::<Foo>(value.try_to_vec().unwrap().as_slice()).unwrap() as u8,
+            value as u8
+        );
+        assert_eq!(value.try_to_vec().unwrap(), [value as u8]);
+    }
+}
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[use_discriminant = false]
+struct Bar {
+    enu: Foo,
+    field: u8,
+}
+
+#[test]
+fn test_hex_embed_discriminant_serialization() {
+    let values = vec![
+        Bar {
+            enu: Foo::A,
+            field: 0x1,
+        },
+        Bar {
+            enu: Foo::Bar,
+            field: 0xf,
+        },
+        Bar {
+            enu: Foo::C,
+            field: 0x11,
+        },
+        Bar {
+            enu: Foo::D,
+            field: 0x8,
+        },
+        Bar {
+            enu: Foo::F,
+            field: 0xff,
+        },
+    ];
+    for value in values {
+        assert_eq!(
+            from_slice::<Bar>(value.try_to_vec().unwrap().as_slice()).unwrap(),
+            value
+        );
+    }
+}
+
 #[test]
 fn test_discriminant_serialization() {
     let values = vec![X::A, X::B, X::C, X::D, X::E, X::F];

@@ -35,7 +35,15 @@ pub fn enum_de(
     let use_discriminant = use_discriminant.unwrap_or(false);
 
     for (variant_idx, variant) in input.variants.iter().enumerate() {
-        let variant_idx = u8::try_from(variant_idx).expect("up to 256 enum variants are supported");
+        let variant_idx = u8::try_from(variant_idx).map_err(|err| {
+            syn::Error::new(
+                variant.ident.span(),
+                format!(
+                    "up to 256 enum variants are supported. error{}",
+                    err.to_string()
+                ),
+            )
+        })?;
         let variant_ident = &variant.ident;
         let discriminant = discriminants.get(variant_ident).unwrap();
         let mut variant_header = TokenStream2::new();

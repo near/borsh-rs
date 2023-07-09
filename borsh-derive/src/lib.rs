@@ -27,32 +27,10 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     let for_derive_input = input.clone();
     let derive_input = parse_macro_input!(for_derive_input as DeriveInput);
 
-    // Read the additional data
-    let mut use_discriminant = None;
-    for attr in &derive_input.attrs {
-        if attr.path().is_ident("use_discriminant") {
-            if let Meta::NameValue(value) = attr.meta.clone() {
-                let MetaNameValue {
-                    path,
-                    eq_token: _,
-                    value,
-                } = value;
-                if path.is_ident("use_discriminant") {
-                    let value = value.to_token_stream().to_string();
-                    use_discriminant = match value.as_str() {
-                        "true" => Some(true),
-                        "false" => Some(false),
-                        _ => {
-                            return TokenStream::from(
-                                syn::Error::new(Span::call_site(), "`use_discriminant` ")
-                                    .to_compile_error(),
-                            );
-                        }
-                    };
-                }
-            }
-        }
-    }
+    let use_discriminant = match check_use_discriminant(derive_input) {
+        Ok(value) => value,
+        Err(value) => return value,
+    };
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
         struct_ser(&input, cratename)
@@ -82,32 +60,10 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     let for_derive_input = input.clone();
     let derive_input = parse_macro_input!(for_derive_input as DeriveInput);
 
-    // Read the additional data
-    let mut use_discriminant = None;
-    for attr in &derive_input.attrs {
-        if attr.path().is_ident("use_discriminant") {
-            if let Meta::NameValue(value) = attr.meta.clone() {
-                let MetaNameValue {
-                    path,
-                    eq_token: _,
-                    value,
-                } = value;
-                if path.is_ident("use_discriminant") {
-                    let value = value.to_token_stream().to_string();
-                    use_discriminant = match value.as_str() {
-                        "true" => Some(true),
-                        "false" => Some(false),
-                        _ => {
-                            return TokenStream::from(
-                                syn::Error::new(Span::call_site(), "`use_discriminant` ")
-                                    .to_compile_error(),
-                            );
-                        }
-                    };
-                }
-            }
-        }
-    }
+    let use_discriminant = match check_use_discriminant(derive_input) {
+        Ok(value) => value,
+        Err(value) => return value,
+    };
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
         struct_de(&input, cratename)
@@ -125,7 +81,37 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     })
 }
 
-#[cfg(feature = "schema")]
+fn check_use_discriminant(derive_input: DeriveInput) -> Result<Option<bool>, TokenStream> {
+    for attr in &derive_input.attrs {
+        if attr.path().is_ident("use_discriminant") {
+            if let Meta::NameValue(value) = attr.meta.clone() {
+                let MetaNameValue {
+                    path,
+                    eq_token: _,
+                    value,
+                } = value;
+                if path.is_ident("use_discriminant") {
+                    let value = value.to_token_stream().to_string();
+                    return match value.as_str() {
+                        "true" => Ok(Some(true)),
+                        "false" => Ok(Some(false)),
+                        _ => {
+                            return Err(TokenStream::from(
+                                syn::Error::new(
+                                    derive_input.ident.span(),
+                                    "`use_discriminant` accept only `true` or `false`",
+                                )
+                                .to_compile_error(),
+                            ));
+                        }
+                    };
+                }
+            }
+        }
+    }
+    Ok(None)
+}
+
 #[proc_macro_derive(BorshSchema, attributes(borsh_skip, use_discriminant))]
 pub fn borsh_schema(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
