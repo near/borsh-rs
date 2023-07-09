@@ -18,7 +18,7 @@ extern crate alloc;
 use alloc::{
     borrow,
     boxed::Box,
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque},
+    collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
     string::{String, ToString},
     vec,
     vec::Vec,
