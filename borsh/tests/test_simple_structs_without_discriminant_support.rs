@@ -24,9 +24,6 @@ use alloc::{
     vec::Vec,
 };
 
-use borsh::__private::maybestd::collections::{
-    BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque,
-};
 use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 use bytes::{Bytes, BytesMut};
 
