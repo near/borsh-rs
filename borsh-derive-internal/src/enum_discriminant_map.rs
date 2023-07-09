@@ -10,9 +10,7 @@ pub fn discriminant_map(
     variants: &Punctuated<Variant, Comma>,
 ) -> (HashMap<Ident, TokenStream>, bool) {
     let mut map = HashMap::new();
-
     let mut next_discriminant_if_not_specified = quote! {0};
-
     let mut has_discriminant = false;
 
     for variant in variants {
@@ -20,7 +18,7 @@ pub fn discriminant_map(
             || quote! { #next_discriminant_if_not_specified },
             |(_, e)| quote! { #e },
         );
-        if !this_discriminant.to_string().starts_with("0") {
+        if !this_discriminant.to_string().starts_with('0') {
             has_discriminant = true;
         }
         next_discriminant_if_not_specified = quote! { #this_discriminant + 1 };

@@ -1,4 +1,3 @@
-use proc_macro2::Span;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use std::convert::TryFrom;
@@ -25,11 +24,12 @@ pub fn enum_de(
     );
     let init_method = contains_initialize_with(&input.attrs);
     let mut variant_arms = TokenStream2::new();
-    let (discriminants, has_discriminants) = discriminant_map(&input.variants);
-    if has_discriminants && use_discriminant.is_none() {
+
+    let (discriminants, has_explicit_discriminants) = discriminant_map(&input.variants);
+    if has_explicit_discriminants && use_discriminant.is_none() {
         return Err(syn::Error::new(
-            Span::call_site(),
-            "You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=true)]` for all structs that have enum with discriminant",
+            input.ident.span(),
+            "You have to specify `#[use_discriminant=true]` or `#[use_discriminant=false]` for all structs that have enum with explicit discriminant",
         ));
     }
     let use_discriminant = use_discriminant.unwrap_or(false);
