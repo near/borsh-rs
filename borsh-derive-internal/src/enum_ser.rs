@@ -30,7 +30,7 @@ pub fn enum_ser(
         ));
     }
 
-    let _use_discriminant = use_discriminant.unwrap_or(false);
+    let use_discriminant = use_discriminant.unwrap_or(false);
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let _variant_idx =
             u8::try_from(variant_idx).expect("up to 256 enum variants are supported");
@@ -206,7 +206,12 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site()), false).unwrap();
+        let actual = enum_ser(
+            &item_enum,
+            Ident::new("borsh", Span::call_site()),
+            Some(false),
+        )
+        .unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -227,7 +232,12 @@ mod tests {
         })
         .unwrap();
 
-        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site()), false).unwrap();
+        let actual = enum_ser(
+            &item_enum,
+            Ident::new("borsh", Span::call_site()),
+            Some(false),
+        )
+        .unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -251,7 +261,12 @@ mod tests {
         })
         .unwrap();
 
-        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site()), false).unwrap();
+        let actual = enum_ser(
+            &item_enum,
+            Ident::new("borsh", Span::call_site()),
+            Some(false),
+        )
+        .unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -276,7 +291,12 @@ mod tests {
         })
         .unwrap();
 
-        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site()), false).unwrap();
+        let actual = enum_ser(
+            &item_enum,
+            Ident::new("borsh", Span::call_site()),
+            Some(false),
+        )
+        .unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }

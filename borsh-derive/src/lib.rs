@@ -13,6 +13,7 @@ use borsh_schema_derive_internal::*;
 use quote::quote;
 use syn::Attribute;
 use syn::{parse_macro_input, parse_quote, DeriveInput};
+use syn::{Meta, MetaNameValue};
 
 #[proc_macro_derive(BorshSerialize, attributes(borsh_skip, use_discriminant))]
 pub fn borsh_serialize(input: TokenStream) -> TokenStream {
@@ -30,13 +31,29 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     let mut use_discriminant = None;
     for attr in &derive_input.attrs {
         if attr.path().is_ident("use_discriminant") {
-            for token in attr.to_token_stream().clone() {
-                if token.to_string() == "true" {
-                    use_discriminant = Some(true);
-                }
-                if token.to_string() == "false" {
-                    use_discriminant = Some(false);
-                }
+            match attr.meta.clone() {
+                Meta::NameValue(value) => match value {
+                    MetaNameValue {
+                        path,
+                        eq_token: _,
+                        value,
+                    } => {
+                        if path.is_ident("use_discriminant") {
+                            let value = value.to_token_stream().to_string();
+                            use_discriminant = match value.as_str() {
+                                "true" => Some(true),
+                                "false" => Some(false),
+                                _ => {
+                                    return TokenStream::from(
+                                        syn::Error::new(Span::call_site(), "`use_discriminant` ")
+                                            .to_compile_error(),
+                                    );
+                                }
+                            };
+                        }
+                    }
+                },
+                _ => {}
             }
         }
     }
@@ -73,13 +90,29 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     let mut use_discriminant = None;
     for attr in &derive_input.attrs {
         if attr.path().is_ident("use_discriminant") {
-            for token in attr.to_token_stream() {
-                if token.to_string() == "true" {
-                    use_discriminant = Some(true);
-                }
-                if token.to_string() == "false" {
-                    use_discriminant = Some(false);
-                }
+            match attr.meta.clone() {
+                Meta::NameValue(value) => match value {
+                    MetaNameValue {
+                        path,
+                        eq_token: _,
+                        value,
+                    } => {
+                        if path.is_ident("use_discriminant") {
+                            let value = value.to_token_stream().to_string();
+                            use_discriminant = match value.as_str() {
+                                "true" => Some(true),
+                                "false" => Some(false),
+                                _ => {
+                                    return TokenStream::from(
+                                        syn::Error::new(Span::call_site(), "`use_discriminant` ")
+                                            .to_compile_error(),
+                                    );
+                                }
+                            };
+                        }
+                    }
+                },
+                _ => {}
             }
         }
     }

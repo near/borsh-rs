@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-
 use borsh::from_slice;
+
 #[cfg(feature = "derive")]
 use borsh::BorshDeserialize;
 
@@ -13,10 +13,6 @@ use alloc::{
     vec,
     vec::Vec,
 };
-
-#[cfg(feature = "derive")]
-use borsh::{from_slice, BorshDeserialize};
-use borsh_derive::borsh;
 
 #[borsh(use_discriminant = true)]
 #[derive(BorshDeserialize, Debug)]

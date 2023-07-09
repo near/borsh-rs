@@ -180,7 +180,12 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = enum_de(&item_enum, Ident::new("borsh", Span::call_site()), false).unwrap();
+        let actual = enum_de(
+            &item_enum,
+            Ident::new("borsh", Span::call_site()),
+            Some(false),
+        )
+        .unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -197,7 +202,12 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = enum_de(&item_enum, Ident::new("borsh", Span::call_site()), false).unwrap();
+        let actual = enum_de(
+            &item_enum,
+            Ident::new("borsh", Span::call_site()),
+            Some(false),
+        )
+        .unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
