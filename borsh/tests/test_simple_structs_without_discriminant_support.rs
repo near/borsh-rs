@@ -2,7 +2,11 @@
 #![cfg(feature = "derive")]
 
 #[cfg(feature = "std")]
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque};
+use std::{
+    borrow,
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque},
+    ops,
+};
 
 #[cfg(not(feature = "std"))]
 use core::{ops, result::Result};
@@ -14,7 +18,7 @@ extern crate alloc;
 use alloc::{
     borrow,
     boxed::Box,
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque},
+    collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
     string::{String, ToString},
     vec,
     vec::Vec,
@@ -43,11 +47,11 @@ struct A<'a> {
     w: Box<[u8]>,
     box_str: Box<str>,
     i: [u8; 32],
-    u: std::result::Result<String, String>,
+    u: Result<String, String>,
     lazy: Option<u64>,
-    c: std::borrow::Cow<'a, str>,
-    cow_arr: std::borrow::Cow<'a, [std::borrow::Cow<'a, str>]>,
-    range_u32: std::ops::Range<u32>,
+    c: borrow::Cow<'a, str>,
+    cow_arr: borrow::Cow<'a, [std::borrow::Cow<'a, str>]>,
+    range_u32: ops::Range<u32>,
     #[borsh_skip]
     skipped: Option<u64>,
 }
