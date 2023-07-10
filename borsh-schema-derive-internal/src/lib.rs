@@ -1,5 +1,6 @@
 #![recursion_limit = "128"]
 
+mod generics;
 mod helpers;
 
 mod enum_schema;

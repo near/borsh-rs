@@ -11,7 +11,8 @@ use crate::{
 
 pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
-    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+    let generics = without_defaults(&input.generics);
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let mut where_clause = where_clause.map_or_else(
         || WhereClause {
             where_token: Default::default(),
@@ -19,7 +20,6 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
         },
         Clone::clone,
     );
-    let generics = without_defaults(&input.generics);
     let mut serialize_params_visitor = FindTyParams::new(&generics);
     let mut body = TokenStream2::new();
     match &input.fields {

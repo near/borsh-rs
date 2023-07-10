@@ -2,18 +2,17 @@
 source: borsh-schema-derive-internal/src/enum_schema.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
-impl<A, B> borsh::BorshSchema for Side<A, B>
+impl<K: Key, V> borsh::BorshSchema for A<K, V>
 where
-    A: Display + Debug,
-    B: Display + Debug,
-    A: borsh::BorshSchema,
-    B: borsh::BorshSchema,
+    V: Value,
+    K: borsh::BorshSchema,
+    V: borsh::BorshSchema,
 {
     fn declaration() -> borsh::schema::Declaration {
         let params = borsh::__private::maybestd::vec![
-            < A > ::declaration(), < B > ::declaration()
+            < K > ::declaration(), < V > ::declaration()
         ];
-        format!(r#"{}<{}>"#, "Side", params.join(", "))
+        format!(r#"{}<{}>"#, "A", params.join(", "))
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
@@ -23,15 +22,18 @@ where
     ) {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct SideLeft<A>(A);
+        struct AB<K, V> {
+            x: HashMap<K, V>,
+            y: String,
+        }
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct SideRight<B>(B);
-        <SideLeft<A> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <SideRight<B> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        struct AC<K>(K, Vec<A>);
+        <AB<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <AC<K> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let variants = borsh::__private::maybestd::vec![
-            ("Left".to_string(), < SideLeft < A > > ::declaration()), ("Right"
-            .to_string(), < SideRight < B > > ::declaration())
+            ("B".to_string(), < AB < K, V > > ::declaration()), ("C".to_string(), < AC <
+            K > > ::declaration())
         ];
         let definition = borsh::schema::Definition::Enum {
             variants,

@@ -4,13 +4,10 @@ expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl<C, W> borsh::BorshSchema for A<C, W>
 where
-    C: borsh::BorshSchema,
     W: borsh::BorshSchema,
 {
     fn declaration() -> borsh::schema::Declaration {
-        let params = borsh::__private::maybestd::vec![
-            < C > ::declaration(), < W > ::declaration()
-        ];
+        let params = borsh::__private::maybestd::vec![< W > ::declaration()];
         format!(r#"{}<{}>"#, "A", params.join(", "))
     }
     fn add_definitions_recursively(
@@ -27,7 +24,7 @@ where
         struct AEggs;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct ASalad<C>(Tomatoes, C, Oil);
+        struct ASalad<C>(Tomatoes, #[borsh_skip] C, Oil);
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         struct ASausage<W> {

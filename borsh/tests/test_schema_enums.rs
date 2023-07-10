@@ -2,6 +2,7 @@
 #![allow(dead_code)] // Local structures do not have their fields used.
 #![cfg(feature = "schema")]
 
+use core::fmt::{Debug, Display};
 #[cfg(feature = "std")]
 use std::collections::BTreeMap;
 
@@ -62,6 +63,37 @@ pub fn single_field_enum() {
         },
         defs
     );
+}
+
+/// test: Sausage wasn't populated with param Sausage<W>
+#[derive(borsh::BorshSchema, Debug)]
+enum AWithSkip<C, W> {
+    Bacon,
+    Eggs,
+    Salad(u32, C, u32),
+    Sausage {
+        #[borsh_skip]
+        wrapper: W,
+        filling: u32,
+    },
+}
+
+/// test: inner structs in BorshSchema derive don't need any bounds, unrelated to BorshSchema
+// #[derive(borsh::BorshSchema)]
+// struct SideLeft<A>(
+//     A,
+// )
+// where
+//     A: Display + Debug,
+//     B: Display + Debug;
+#[derive(borsh::BorshSchema)]
+enum Side<A, B>
+where
+    A: Display + Debug,
+    B: Display + Debug,
+{
+    Left(A),
+    Right(B),
 }
 
 #[test]
@@ -192,28 +224,28 @@ pub fn complex_enum_generics() {
     assert_eq!(
         map! {
         "Cucumber" => Definition::Struct {fields: Fields::Empty},
-        "ASalad<Cucumber, Wrapper>" => Definition::Struct{
+        "ASalad<Cucumber>" => Definition::Struct{
             fields: Fields::UnnamedFields(vec!["Tomatoes".to_string(), "Cucumber".to_string(), "Oil".to_string()])
         },
-        "ABacon<Cucumber, Wrapper>" => Definition::Struct {fields: Fields::Empty},
+        "ABacon" => Definition::Struct {fields: Fields::Empty},
         "Oil" => Definition::Struct {fields: Fields::Empty},
         "A<Cucumber, Wrapper>" => Definition::Enum{
             variants: vec![
-            ("Bacon".to_string(), "ABacon<Cucumber, Wrapper>".to_string()),
-            ("Eggs".to_string(), "AEggs<Cucumber, Wrapper>".to_string()),
-            ("Salad".to_string(), "ASalad<Cucumber, Wrapper>".to_string()),
-            ("Sausage".to_string(), "ASausage<Cucumber, Wrapper>".to_string())
+            ("Bacon".to_string(), "ABacon".to_string()),
+            ("Eggs".to_string(), "AEggs".to_string()),
+            ("Salad".to_string(), "ASalad<Cucumber>".to_string()),
+            ("Sausage".to_string(), "ASausage<Wrapper>".to_string())
             ]
         },
         "Wrapper" => Definition::Struct {fields: Fields::Empty},
         "Tomatoes" => Definition::Struct {fields: Fields::Empty},
-        "ASausage<Cucumber, Wrapper>" => Definition::Struct {
+        "ASausage<Wrapper>" => Definition::Struct {
             fields: Fields::NamedFields(vec![
             ("wrapper".to_string(), "Wrapper".to_string()),
             ("filling".to_string(), "Filling".to_string())
             ])
         },
-        "AEggs<Cucumber, Wrapper>" => Definition::Struct {fields: Fields::Empty},
+        "AEggs" => Definition::Struct {fields: Fields::Empty},
         "Filling" => Definition::Struct {fields: Fields::Empty}
         },
         defs

@@ -5,12 +5,9 @@ expression: pretty_print_syn_str(&actual).unwrap()
 impl<C, W> borsh::BorshSchema for A<C, W>
 where
     C: borsh::BorshSchema,
-    W: borsh::BorshSchema,
 {
     fn declaration() -> borsh::schema::Declaration {
-        let params = borsh::__private::maybestd::vec![
-            < C > ::declaration(), < W > ::declaration()
-        ];
+        let params = borsh::__private::maybestd::vec![< C > ::declaration()];
         format!(r#"{}<{}>"#, "A", params.join(", "))
     }
     fn add_definitions_recursively(
@@ -31,6 +28,7 @@ where
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         struct ASausage<W> {
+            #[borsh_skip]
             wrapper: W,
             filling: Filling,
         }

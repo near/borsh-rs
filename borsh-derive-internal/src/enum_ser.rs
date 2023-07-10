@@ -12,7 +12,8 @@ use crate::{
 
 pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let enum_ident = &input.ident;
-    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+    let generics = without_defaults(&input.generics);
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let mut where_clause = where_clause.map_or_else(
         || WhereClause {
             where_token: Default::default(),
@@ -21,7 +22,6 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
         Clone::clone,
     );
 
-    let generics = without_defaults(&input.generics);
     let mut serialize_params_visitor = FindTyParams::new(&generics);
 
     let mut all_variants_idx_body = TokenStream2::new();
