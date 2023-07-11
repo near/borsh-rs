@@ -97,17 +97,14 @@ fn check_use_discriminant(derive_input: DeriveInput) -> Result<Option<bool>, Tok
                         ));
                     }
 
-                    match derive_input.data {
-                        syn::Data::Struct(ref _data) => {
-                            return Err(TokenStream::from(
-                                syn::Error::new(
-                                    derive_input.ident.span(),
-                                    "borsh (use_discriminant=<bool>) does not support structs",
-                                )
-                                .to_compile_error(),
-                            ))
-                        }
-                        _ => {}
+                    if let syn::Data::Struct(ref _data) = derive_input.data {
+                        return Err(TokenStream::from(
+                            syn::Error::new(
+                                derive_input.ident.span(),
+                                "borsh (use_discriminant=<bool>) does not support structs",
+                            )
+                            .to_compile_error(),
+                        ));
                     }
 
                     let value = value.to_token_stream().to_string();
