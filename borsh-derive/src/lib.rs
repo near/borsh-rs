@@ -136,3 +136,59 @@ pub fn borsh_schema(input: TokenStream) -> TokenStream {
         Err(err) => err.to_compile_error(),
     })
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use quote::quote;
+    #[test]
+    fn test_check_use_discriminant() {
+        let item_enum: DeriveInput = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh_use_discriminant = false]
+            enum AWithUseDiscriminantFalse {
+                X,
+                Y,
+            }
+        })
+        .unwrap();
+        let actual = check_use_discriminant(item_enum).unwrap();
+
+        assert!(actual.is_some());
+        assert!(actual.unwrap() == false);
+    }
+
+    #[test]
+    fn test_check_use_discriminant_true() {
+        let item_enum: DeriveInput = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh_use_discriminant = true]
+            enum AWithUseDiscriminantFalse {
+                X,
+                Y,
+            }
+        })
+        .unwrap();
+        let actual = check_use_discriminant(item_enum).unwrap();
+
+        assert!(actual.is_some());
+        assert!(actual.unwrap() == true);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_check_use_discriminant_wrong_value() {
+        let item_enum: DeriveInput = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh_use_discriminant = 111]
+            enum AWithUseDiscriminantFalse {
+                X,
+                Y,
+            }
+        })
+        .unwrap();
+        let actual = check_use_discriminant(item_enum);
+        assert!(actual.is_err());
+    }
+}
