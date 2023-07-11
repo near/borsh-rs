@@ -32,7 +32,6 @@ hashbrown = { version = ">=0.11,<0.14", optional = true }
 bytes = { version = "1", optional = true }
 bson = { version = "2", optional = true }
 
-quote = "1"
 [dev-dependencies]
 bytes = "1"
 bson = "2"
@@ -45,7 +44,7 @@ features = ["derive", "schema"]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [features]
-default = ["std", "derive", "schema"]
+default = ["std"]
 derive = ["borsh-derive"]
 schema = ["borsh-derive/schema"]
 std = []

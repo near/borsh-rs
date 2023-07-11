@@ -112,9 +112,31 @@ pub fn enum_de(
     } else {
         quote! {}
     };
-    if use_discriminant {
-        Ok(quote! {
-            impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
+
+    let mut return_value_code = quote! {
+        let mut return_value = #variant_arms {
+        return Err(#cratename::__private::maybestd::io::Error::new(
+            #cratename::__private::maybestd::io::ErrorKind::InvalidInput,
+            #cratename::__private::maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
+        ))};
+    };
+
+    let mut variant_name = quote! { variant_tag };
+    if !use_discriminant {
+        variant_name = quote! { variant_idx };
+        return_value_code = quote! {
+            let mut return_value = match variant_idx {
+                #variant_arms
+                _ => return Err(#cratename::__private::maybestd::io::Error::new(
+                    #cratename::__private::maybestd::io::ErrorKind::InvalidInput,
+                    #cratename::__private::maybestd::format!("Unexpected variant index: {:?}", variant_idx),
+                ))
+            };
+        };
+    }
+
+    Ok(
+        quote! { impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
                 fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::__private::maybestd::io::Error> {
                     let tag = <u8 as #cratename::de::BorshDeserialize>::deserialize_reader(reader)?;
                     <Self as #cratename::de::EnumExt>::deserialize_variant(reader, tag)
@@ -124,47 +146,15 @@ pub fn enum_de(
             impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
                 fn deserialize_variant<R: #cratename::__private::maybestd::io::Read>(
                     reader: &mut R,
-                    variant_tag: u8,
+                    #variant_name: u8,
                 ) -> ::core::result::Result<Self, #cratename::__private::maybestd::io::Error> {
-                    let mut return_value =
-                        #variant_arms {
-                        return Err(#cratename::__private::maybestd::io::Error::new(
-                            #cratename::__private::maybestd::io::ErrorKind::InvalidInput,
-                            #cratename::__private::maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
-                        ))
-                    };
+                    #return_value_code
                     #init
                     Ok(return_value)
                 }
             }
-        })
-    } else {
-        Ok(quote! {
-            impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
-                fn deserialize_reader<R: #cratename::__private::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::__private::maybestd::io::Error> {
-                    let tag = <u8 as #cratename::de::BorshDeserialize>::deserialize_reader(reader)?;
-                    <Self as #cratename::de::EnumExt>::deserialize_variant(reader, tag)
-                }
-            }
-
-            impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
-                fn deserialize_variant<R: borsh::__private::maybestd::io::Read>(
-                    reader: &mut R,
-                    variant_idx: u8,
-                ) -> ::core::result::Result<Self, #cratename::__private::maybestd::io::Error> {
-                    let mut return_value = match variant_idx {
-                        #variant_arms
-                        _ => return Err(#cratename::__private::maybestd::io::Error::new(
-                            #cratename::__private::maybestd::io::ErrorKind::InvalidInput,
-                            #cratename::__private::maybestd::format!("Unexpected variant index: {:?}", variant_idx),
-                        ))
-                    };
-                    #init
-                    Ok(return_value)
-                }
-            }
-        })
-    }
+        },
+    )
 }
 
 #[cfg(test)]

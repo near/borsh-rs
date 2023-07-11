@@ -25,7 +25,7 @@ enum A {
 #[cfg(feature = "derive")]
 #[derive(BorshDeserialize, Debug)]
 #[borsh_use_discriminant = false]
-enum AOld {
+enum AWithUseDiscriminantFalse {
     X,
     Y,
 }
@@ -68,7 +68,9 @@ fn test_invalid_enum_variant() {
 fn test_invalid_enum_variant_old() {
     let bytes = vec![123];
     assert_eq!(
-        from_slice::<AOld>(&bytes).unwrap_err().to_string(),
+        from_slice::<AWithUseDiscriminantFalse>(&bytes)
+            .unwrap_err()
+            .to_string(),
         "Unexpected variant index: 123"
     );
 }

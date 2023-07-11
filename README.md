@@ -81,8 +81,8 @@ struct A {
 `#[borsh_use_discriminant=false|true]` is required if you have an enum with explicit discriminant. This is because the discriminant is not serialized by default, and the deserializer needs to know whether to use the discriminant or not.
 
 ```rust
-#[borsh_use_discriminant=false]
 #[derive(BorshDeserialize)]
+#[borsh_use_discriminant=false]
 enum A {
     X,
     Y = 10,
@@ -92,8 +92,8 @@ enum A {
 Will keep old behaviour of borsh deserialization and will not use discriminant. This option is left to have backward compatability with previous versions of borsh and to have ability to deserialise data from previous versions of borsh.
 
 ```rust
-#[borsh_use_discriminant=true]
 #[derive(BorshDeserialize)]
+#[borsh_use_discriminant=true]
 enum A {
     X,
     Y = 10,
