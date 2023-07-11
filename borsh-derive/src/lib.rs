@@ -1,4 +1,3 @@
-#![cfg_attr(all(test, exhaustive), feature(non_exhaustive_omitted_patterns_lint))]
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro2::Span;

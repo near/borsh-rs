@@ -123,7 +123,11 @@ impl<'ast> FindTyParams<'ast> {
                         | GenericArgument::Const(_)
                         | GenericArgument::AssocConst(_)
                         | GenericArgument::Constraint(_) => {}
-                        #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
+
+                        #[cfg_attr(
+                            feature = "force_exhaustive_checks",
+                            deny(non_exhaustive_omitted_patterns)
+                        )]
                         _ => {}
                     }
                 }
@@ -160,7 +164,10 @@ impl<'ast> FindTyParams<'ast> {
         match bound {
             TypeParamBound::Trait(bound) => self.visit_path(&bound.path),
             TypeParamBound::Lifetime(_) | TypeParamBound::Verbatim(_) => {}
-            #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
+            #[cfg_attr(
+                feature = "force_exhaustive_checks",
+                deny(non_exhaustive_omitted_patterns)
+            )]
             _ => {}
         }
     }
@@ -211,7 +218,10 @@ impl<'ast> FindTyParams<'ast> {
 
             Type::Infer(_) | Type::Never(_) | Type::Verbatim(_) => {}
 
-            #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
+            #[cfg_attr(
+                feature = "force_exhaustive_checks",
+                deny(non_exhaustive_omitted_patterns)
+            )]
             _ => {}
         }
     }

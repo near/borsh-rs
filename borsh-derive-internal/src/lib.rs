@@ -1,4 +1,8 @@
 #![recursion_limit = "128"]
+#![cfg_attr(
+    feature = "force_exhaustive_checks",
+    feature(non_exhaustive_omitted_patterns_lint)
+)]
 
 mod attribute_helpers;
 mod enum_de;
