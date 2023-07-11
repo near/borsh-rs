@@ -32,7 +32,6 @@ enum AWithUseDiscriminantFalse {
 
 #[cfg(feature = "derive")]
 #[derive(BorshDeserialize, Debug)]
-#[borsh(use_discriminant = true)]
 struct B {
     #[allow(unused)]
     x: u64,

@@ -86,9 +86,30 @@ fn check_use_discriminant(derive_input: DeriveInput) -> Result<Option<bool>, Tok
                 let meta: Meta = parse2(tokens).map_err(|err| err.to_compile_error())?;
 
                 if let Meta::NameValue(value) = meta {
-                    let MetaNameValue {
-                        eq_token: _, value, ..
-                    } = value;
+                    let MetaNameValue { path, value, .. } = value;
+                    if !path.is_ident("use_discriminant") {
+                        return Err(TokenStream::from(
+                            syn::Error::new(
+                                derive_input.ident.span(),
+                                "`use_discriminant` is the only supported attribute for `borsh`",
+                            )
+                            .to_compile_error(),
+                        ));
+                    }
+
+                    match derive_input.data {
+                        syn::Data::Struct(ref _data) => {
+                            return Err(TokenStream::from(
+                                syn::Error::new(
+                                    derive_input.ident.span(),
+                                    "borsh (use_discriminant=<bool>) does not support structs",
+                                )
+                                .to_compile_error(),
+                            ))
+                        }
+                        _ => {}
+                    }
+
                     let value = value.to_token_stream().to_string();
                     return match value.as_str() {
                         "true" => Ok(Some(true)),
@@ -157,8 +178,7 @@ mod tests {
         .unwrap();
         let actual = check_use_discriminant(item_enum).unwrap();
 
-        assert!(actual.is_some());
-        assert!(!actual.unwrap());
+        assert_eq!(actual, Some(false));
     }
 
     #[test]
@@ -174,8 +194,7 @@ mod tests {
         .unwrap();
         let actual = check_use_discriminant(item_enum).unwrap();
 
-        assert!(actual.is_some());
-        assert!(actual.unwrap());
+        assert_eq!(actual, Some(true));
     }
 
     #[test]
@@ -185,6 +204,21 @@ mod tests {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = 111)]
             enum AWithUseDiscriminantFalse {
+                X,
+                Y,
+            }
+        })
+        .unwrap();
+        let actual = check_use_discriminant(item_enum);
+        assert!(actual.is_err());
+    }
+    #[test]
+    #[should_panic]
+    fn test_check_use_discriminant_on_struct() {
+        let item_enum: DeriveInput = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh(use_discriminant = false)]
+            struct AWithUseDiscriminantFalse {
                 X,
                 Y,
             }

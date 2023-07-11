@@ -34,7 +34,10 @@ pub fn enum_ser(
         ));
     }
 
-    u8::try_from(input.variants.len()).expect("up to 256 enum variants are supported");
+    assert!(
+        input.variants.len() < 256,
+        "up to 256 enum variants are supported"
+    );
     for variant in input.variants.iter() {
         let variant_ident = &variant.ident;
         let discriminant_value = discriminants.get(variant_ident).unwrap();
