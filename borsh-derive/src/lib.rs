@@ -9,10 +9,10 @@ use syn::{Ident, ItemEnum, ItemStruct, ItemUnion};
 
 #[cfg(feature = "schema")]
 use borsh_schema_derive_internal::{process_enum, process_struct};
+use syn::{parse2, Meta, MetaNameValue};
 use syn::{parse_macro_input, DeriveInput};
-use syn::{Meta, MetaNameValue};
 
-#[proc_macro_derive(BorshSerialize, attributes(borsh_skip, borsh_use_discriminant))]
+#[proc_macro_derive(BorshSerialize, attributes(borsh_skip, borsh))]
 pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
     let name = match name {
@@ -45,10 +45,7 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     })
 }
 
-#[proc_macro_derive(
-    BorshDeserialize,
-    attributes(borsh_skip, borsh_init, borsh_use_discriminant)
-)]
+#[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh_init, borsh))]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
     let name = match name {
@@ -83,25 +80,30 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
 
 fn check_use_discriminant(derive_input: DeriveInput) -> Result<Option<bool>, TokenStream> {
     for attr in &derive_input.attrs {
-        if attr.path().is_ident("borsh_use_discriminant") {
-            if let Meta::NameValue(value) = attr.meta.clone() {
-                let MetaNameValue {
-                    eq_token: _, value, ..
-                } = value;
-                let value = value.to_token_stream().to_string();
-                return match value.as_str() {
-                    "true" => Ok(Some(true)),
-                    "false" => Ok(Some(false)),
-                    _ => {
-                        return Err(TokenStream::from(
-                            syn::Error::new(
-                                derive_input.ident.span(),
-                                "`use_discriminant` accept only `true` or `false`",
-                            )
-                            .to_compile_error(),
-                        ));
-                    }
-                };
+        if attr.path().is_ident("borsh") {
+            if let Meta::List(list) = attr.meta.clone() {
+                let tokens = list.tokens;
+                let meta: Meta = parse2(tokens).map_err(|err| err.to_compile_error())?;
+
+                if let Meta::NameValue(value) = meta {
+                    let MetaNameValue {
+                        eq_token: _, value, ..
+                    } = value;
+                    let value = value.to_token_stream().to_string();
+                    return match value.as_str() {
+                        "true" => Ok(Some(true)),
+                        "false" => Ok(Some(false)),
+                        _ => {
+                            return Err(TokenStream::from(
+                                syn::Error::new(
+                                    derive_input.ident.span(),
+                                    "`use_discriminant` accept only `true` or `false`",
+                                )
+                                .to_compile_error(),
+                            ));
+                        }
+                    };
+                }
             }
         }
     }
@@ -146,7 +148,7 @@ mod tests {
     fn test_check_use_discriminant() {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
-            #[borsh_use_discriminant = false]
+            #[borsh(use_discriminant = false)]
             enum AWithUseDiscriminantFalse {
                 X,
                 Y,
@@ -163,7 +165,7 @@ mod tests {
     fn test_check_use_discriminant_true() {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
-            #[borsh_use_discriminant = true]
+            #[borsh(use_discriminant = true)]
             enum AWithUseDiscriminantFalse {
                 X,
                 Y,
@@ -181,7 +183,7 @@ mod tests {
     fn test_check_use_discriminant_wrong_value() {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
-            #[borsh_use_discriminant = 111]
+            #[borsh(use_discriminant = 111)]
             enum AWithUseDiscriminantFalse {
                 X,
                 Y,

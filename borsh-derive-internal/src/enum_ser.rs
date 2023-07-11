@@ -30,7 +30,7 @@ pub fn enum_ser(
     if has_explicit_discriminants && use_discriminant.is_none() {
         return Err(syn::Error::new(
             input.ident.span(),
-            "You have to specify `#[borsh_use_discriminant=true]` or `#[borsh_use_discriminant=false]` for all structs that have enum with explicit discriminant",
+            "You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=false)]` for all structs that have enum with explicit discriminant",
         ));
     }
 

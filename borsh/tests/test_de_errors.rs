@@ -16,7 +16,7 @@ use alloc::{
 
 #[cfg(feature = "derive")]
 #[derive(BorshDeserialize, Debug)]
-#[borsh_use_discriminant = true]
+#[borsh(use_discriminant = true)]
 enum A {
     X,
     Y,
@@ -24,7 +24,7 @@ enum A {
 
 #[cfg(feature = "derive")]
 #[derive(BorshDeserialize, Debug)]
-#[borsh_use_discriminant = false]
+#[borsh(use_discriminant = false)]
 enum AWithUseDiscriminantFalse {
     X,
     Y,
@@ -32,7 +32,7 @@ enum AWithUseDiscriminantFalse {
 
 #[cfg(feature = "derive")]
 #[derive(BorshDeserialize, Debug)]
-#[borsh_use_discriminant = true]
+#[borsh(use_discriminant = true)]
 struct B {
     #[allow(unused)]
     x: u64,

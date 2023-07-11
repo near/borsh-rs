@@ -100,7 +100,7 @@ struct F2<'b> {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
-#[borsh_use_discriminant = true]
+#[borsh(use_discriminant = true)]
 enum X {
     A,
     B = 20,
