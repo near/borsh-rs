@@ -189,4 +189,22 @@ mod tests {
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
+
+    #[test]
+    fn generic_associated_type() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<T, V>
+            where
+                T: TraitName,
+            {
+                field: T::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
 }

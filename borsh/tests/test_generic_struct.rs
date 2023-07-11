@@ -113,6 +113,26 @@ enum I2<K: PartialOrd + Eq + Hash, V, U> {
     C(K, #[borsh_skip] U),
 }
 
+trait TraitName {
+    type Associated;
+    fn method(&self);
+}
+
+impl TraitName for u32 {
+    type Associated = String;
+    fn method(&self) {}
+}
+
+#[allow(unused)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+struct Parametrized<T, V>
+where
+    T: TraitName,
+{
+    field: T::Associated,
+    another: V,
+}
+
 #[test]
 fn test_generic_struct() {
     let a = A::<String, u64, String> {
@@ -127,6 +147,19 @@ fn test_generic_struct() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_a = from_slice::<A<String, u64, String>>(&data).unwrap();
+    assert_eq!(a, actual_a);
+}
+
+#[test]
+fn test_generic_associated_type_field() {
+    let a = Parametrized::<u32, String> {
+        field: "value".to_string(),
+        another: "field".to_string(),
+    };
+    let data = a.try_to_vec().unwrap();
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(data);
+    let actual_a = from_slice::<Parametrized<u32, String>>(&data).unwrap();
     assert_eq!(a, actual_a);
 }
 
