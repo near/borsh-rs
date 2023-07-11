@@ -156,7 +156,7 @@ mod tests {
         let actual = check_use_discriminant(item_enum).unwrap();
 
         assert!(actual.is_some());
-        assert!(actual.unwrap() == false);
+        assert!(!actual.unwrap());
     }
 
     #[test]
@@ -173,7 +173,7 @@ mod tests {
         let actual = check_use_discriminant(item_enum).unwrap();
 
         assert!(actual.is_some());
-        assert!(actual.unwrap() == true);
+        assert!(actual.unwrap());
     }
 
     #[test]
