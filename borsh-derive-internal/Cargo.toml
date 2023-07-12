@@ -17,6 +17,7 @@ Binary Object Representation Serializer for Hashing
 proc-macro2 = "1"
 syn = { version = "2", features = ["full", "fold"] }
 quote = "1"
+proc-macro-crate = "1"
 
 [dev-dependencies]
 syn = { version = "2", features = ["full", "fold", "parsing"] }

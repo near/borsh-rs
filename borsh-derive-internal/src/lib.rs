@@ -18,3 +18,4 @@ pub use union_ser::union_ser;
 
 #[cfg(test)]
 pub mod test_helpers;
+pub use attribute_helpers::check_use_discriminant;
