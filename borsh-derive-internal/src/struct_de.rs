@@ -3,7 +3,9 @@ use quote::quote;
 use syn::{Fields, Ident, ItemStruct, Path, WhereClause};
 
 use crate::{
-    attribute_helpers::{contains_initialize_with, contains_skip},
+    attribute_helpers::{
+        collect_override_bounds, contains_initialize_with, contains_skip, BoundType,
+    },
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
 
@@ -19,6 +21,7 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
         Clone::clone,
     );
 
+    let mut override_predicates = vec![];
     let mut deserialize_params_visitor = FindTyParams::new(&generics);
     let mut default_params_visitor = FindTyParams::new(&generics);
 
@@ -27,14 +30,23 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
         Fields::Named(fields) => {
             let mut body = TokenStream2::new();
             for field in &fields.named {
+                let bounds_override = collect_override_bounds(
+                    field,
+                    BoundType::Deserialize,
+                    &mut override_predicates,
+                )?;
                 let field_name = field.ident.as_ref().unwrap();
                 let delta = if contains_skip(&field.attrs) {
-                    default_params_visitor.visit_field(field);
+                    if !bounds_override {
+                        default_params_visitor.visit_field(field);
+                    }
                     quote! {
                         #field_name: core::default::Default::default(),
                     }
                 } else {
-                    deserialize_params_visitor.visit_field(field);
+                    if !bounds_override {
+                        deserialize_params_visitor.visit_field(field);
+                    }
                     quote! {
                         #field_name: #cratename::BorshDeserialize::deserialize_reader(reader)?,
                     }
@@ -48,11 +60,20 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
         Fields::Unnamed(fields) => {
             let mut body = TokenStream2::new();
             for (_field_idx, field) in fields.unnamed.iter().enumerate() {
+                let bounds_override = collect_override_bounds(
+                    field,
+                    BoundType::Deserialize,
+                    &mut override_predicates,
+                )?;
                 let delta = if contains_skip(&field.attrs) {
-                    default_params_visitor.visit_field(field);
+                    if !bounds_override {
+                        default_params_visitor.visit_field(field);
+                    }
                     quote! { core::default::Default::default(), }
                 } else {
-                    deserialize_params_visitor.visit_field(field);
+                    if !bounds_override {
+                        deserialize_params_visitor.visit_field(field);
+                    }
                     quote! {
                         #cratename::BorshDeserialize::deserialize_reader(reader)?,
                     }
@@ -76,6 +97,7 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
         compute_predicates(default_params_visitor.process(), &default_trait_path);
     where_clause.predicates.extend(de_predicates);
     where_clause.predicates.extend(default_predicates);
+    where_clause.predicates.extend(override_predicates);
     if let Some(method_ident) = init_method {
         Ok(quote! {
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
@@ -213,6 +235,42 @@ mod tests {
                 x: HashMap<K, V>,
                 y: U,
             }
+        })
+        .unwrap();
+
+        let actual = struct_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn generic_deserialize_bound() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct C<T: Debug, U> {
+                a: String,
+                #[borsh(bound(deserialize =
+                    "T: PartialOrd + Hash + Eq + borsh::de::BorshDeserialize,
+                     U: borsh::de::BorshDeserialize"
+                ))]
+                b: HashMap<T, U>,
+            }
+        })
+        .unwrap();
+
+        let actual = struct_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn test_override_automatically_added_default_trait() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+              struct G1<K, V, U>(
+                #[borsh_skip]
+                #[borsh(bound(deserialize = ""))]
+                HashMap<K, V>,
+                U
+            );
         })
         .unwrap();
 

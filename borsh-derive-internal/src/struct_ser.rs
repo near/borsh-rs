@@ -5,7 +5,7 @@ use quote::quote;
 use syn::{Fields, Ident, Index, ItemStruct, Path, WhereClause};
 
 use crate::{
-    attribute_helpers::contains_skip,
+    attribute_helpers::{collect_override_bounds, contains_skip, BoundType},
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
 
@@ -20,11 +20,14 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
         },
         Clone::clone,
     );
+    let mut override_predicates = vec![];
     let mut serialize_params_visitor = FindTyParams::new(&generics);
     let mut body = TokenStream2::new();
     match &input.fields {
         Fields::Named(fields) => {
             for field in &fields.named {
+                let bounds_override =
+                    collect_override_bounds(field, BoundType::Serialize, &mut override_predicates)?;
                 if contains_skip(&field.attrs) {
                     continue;
                 }
@@ -34,11 +37,15 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
                 };
 
                 body.extend(delta);
-                serialize_params_visitor.visit_field(field);
+                if !bounds_override {
+                    serialize_params_visitor.visit_field(field);
+                }
             }
         }
         Fields::Unnamed(fields) => {
             for (field_idx, field) in fields.unnamed.iter().enumerate() {
+                let bounds_override =
+                    collect_override_bounds(field, BoundType::Serialize, &mut override_predicates)?;
                 if !contains_skip(&field.attrs) {
                     let field_idx = Index {
                         index: u32::try_from(field_idx).expect("up to 2^32 fields are supported"),
@@ -48,7 +55,9 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
                         #cratename::BorshSerialize::serialize(&self.#field_idx, writer)?;
                     };
                     body.extend(delta);
-                    serialize_params_visitor.visit_field(field);
+                    if !bounds_override {
+                        serialize_params_visitor.visit_field(field);
+                    }
                 }
             }
         }
@@ -57,6 +66,7 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
     let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
     let predicates = compute_predicates(serialize_params_visitor.process(), &trait_path);
     where_clause.predicates.extend(predicates);
+    where_clause.predicates.extend(override_predicates);
     Ok(quote! {
         impl #impl_generics #cratename::ser::BorshSerialize for #name #ty_generics #where_clause {
             fn serialize<W: #cratename::__private::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::__private::maybestd::io::Error> {
@@ -198,6 +208,43 @@ mod tests {
                 T: TraitName,
             {
                 field: T::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn generic_serialize_bound() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct C<T: Debug, U> {
+                a: String,
+                #[borsh(bound(serialize =
+                    "T: borsh::ser::BorshSerialize + PartialOrd,
+                     U: borsh::ser::BorshSerialize"
+                ))]
+                b: HashMap<T, U>,
+            }
+        })
+        .unwrap();
+
+        let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn override_generic_associated_type_wrong_derive() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<T, V> where T: TraitName {
+                #[borsh(bound(serialize =
+                    "<T as TraitName>::Associated: borsh::ser::BorshSerialize"
+                ))]
+                field: <T as TraitName>::Associated,
                 another: V,
             }
         })

@@ -2,10 +2,10 @@ use core::convert::TryFrom;
 
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{Fields, FieldsNamed, FieldsUnnamed, Ident, ItemEnum, Path, WhereClause};
+use syn::{Fields, FieldsNamed, FieldsUnnamed, Ident, ItemEnum, Path, WhereClause, WherePredicate};
 
 use crate::{
-    attribute_helpers::contains_skip,
+    attribute_helpers::{collect_override_bounds, contains_skip, BoundType},
     enum_discriminant_map::discriminant_map,
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
@@ -23,6 +23,7 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
     );
 
     let mut serialize_params_visitor = FindTyParams::new(&generics);
+    let mut override_predicates = vec![];
 
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
@@ -42,6 +43,7 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                 discriminant_value,
                 fields,
                 &mut serialize_params_visitor,
+                &mut override_predicates,
             )?,
             Fields::Unnamed(fields) => unnamed_fields(
                 &cratename,
@@ -50,6 +52,7 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                 discriminant_value,
                 fields,
                 &mut serialize_params_visitor,
+                &mut override_predicates,
             )?,
             Fields::Unit => {
                 let variant_idx_body = quote!(
@@ -72,6 +75,7 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
     let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
     let predicates = compute_predicates(serialize_params_visitor.process(), &trait_path);
     where_clause.predicates.extend(predicates);
+    where_clause.predicates.extend(override_predicates);
     Ok(quote! {
         impl #impl_generics #cratename::ser::BorshSerialize for #enum_ident #ty_generics #where_clause {
             fn serialize<W: #cratename::__private::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::__private::maybestd::io::Error> {
@@ -101,10 +105,13 @@ fn named_fields<'ast>(
     discriminant_value: &TokenStream2,
     fields: &'ast FieldsNamed,
     params_visitor: &mut FindTyParams<'ast>,
+    override_output: &mut Vec<WherePredicate>,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
     for field in &fields.named {
+        let bounds_override =
+            collect_override_bounds(field, BoundType::Serialize, override_output)?;
         if !contains_skip(&field.attrs) {
             let field_ident = field.ident.clone().unwrap();
 
@@ -113,7 +120,9 @@ fn named_fields<'ast>(
             variant_body.extend(quote! {
                  #cratename::BorshSerialize::serialize(#field_ident, writer)?;
             });
-            params_visitor.visit_field(field);
+            if !bounds_override {
+                params_visitor.visit_field(field);
+            }
         }
     }
     // `..` pattern matching works even if all fields were specified
@@ -135,10 +144,13 @@ fn unnamed_fields<'ast>(
     discriminant_value: &TokenStream2,
     fields: &'ast FieldsUnnamed,
     params_visitor: &mut FindTyParams<'ast>,
+    override_output: &mut Vec<WherePredicate>,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
     for (field_idx, field) in fields.unnamed.iter().enumerate() {
+        let bounds_override =
+            collect_override_bounds(field, BoundType::Serialize, override_output)?;
         let field_idx = u32::try_from(field_idx).expect("up to 2^32 fields are supported");
         if contains_skip(&field.attrs) {
             let field_ident = Ident::new(format!("_id{}", field_idx).as_str(), Span::mixed_site());
@@ -151,7 +163,9 @@ fn unnamed_fields<'ast>(
             variant_body.extend(quote! {
                 #cratename::BorshSerialize::serialize(#field_ident, writer)?;
             });
-            params_visitor.visit_field(field);
+            if !bounds_override {
+                params_visitor.visit_field(field);
+            }
         }
     }
     variant_header = quote! { ( #variant_header )};
@@ -338,6 +352,28 @@ mod tests {
                     y: String,
                 },
                 C(K, #[borsh_skip] Vec<U>),
+            }
+        })
+        .unwrap();
+
+        let actual = enum_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn generic_serialize_bound() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum A<T: Debug, U> {
+                C {
+                    a: String,
+                    #[borsh(bound(serialize =
+                        "T: borsh::ser::BorshSerialize + PartialOrd,
+                         U: borsh::ser::BorshSerialize"
+                    ))]
+                    b: HashMap<T, U>,
+                },
+                D(u32, u32),
             }
         })
         .unwrap();
