@@ -39,6 +39,20 @@ jobs:
     - name: Run tests
       run: ./.github/test.sh
 
+  # remove this job when https://github.com/rust-lang/rust/issues/89554 stabilizes
+  test_exhaustive_checks:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install nightly for exhaustive check tests
+      uses: dtolnay/rust-toolchain@nightly
+    # a failure on this check means, that some of `syn` crate's enums have been extended
+    # with new variants.
+    # consult https://github.com/serde-rs/serde/blob/master/serde_derive/src/bound.rs#L100 , 
+    # the implementation of `FindTyParams` may have been updated already 
+    - name: Run exhaustive check tests
+      run: cargo check --workspace --features force_exhaustive_checks
+
   clippy:
     runs-on: ubuntu-20.04
 

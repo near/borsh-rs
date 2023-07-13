@@ -22,3 +22,7 @@ quote = "1"
 syn = { version = "2", features = ["full", "fold", "parsing"] }
 prettyplease = "0.2.9"
 insta = "1.29.0"
+
+[features]
+default = []
+force_exhaustive_checks = []

@@ -599,7 +599,7 @@ where
 
 impl<K, V> BorshDeserialize for BTreeMap<K, V>
 where
-    K: BorshDeserialize + Ord + core::hash::Hash,
+    K: BorshDeserialize + Ord,
     V: BorshDeserialize,
 {
     #[inline]

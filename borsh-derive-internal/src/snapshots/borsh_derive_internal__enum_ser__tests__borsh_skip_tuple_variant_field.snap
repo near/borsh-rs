@@ -2,10 +2,7 @@
 source: borsh-derive-internal/src/enum_ser.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
-impl borsh::ser::BorshSerialize for AATTB
-where
-    u8: borsh::ser::BorshSerialize,
-{
+impl borsh::ser::BorshSerialize for AATTB {
     fn serialize<W: borsh::__private::maybestd::io::Write>(
         &self,
         writer: &mut W,

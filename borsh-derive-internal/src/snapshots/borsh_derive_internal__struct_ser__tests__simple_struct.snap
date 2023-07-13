@@ -2,11 +2,7 @@
 source: borsh-derive-internal/src/struct_ser.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
-impl borsh::ser::BorshSerialize for A
-where
-    u64: borsh::ser::BorshSerialize,
-    String: borsh::ser::BorshSerialize,
-{
+impl borsh::ser::BorshSerialize for A {
     fn serialize<W: borsh::__private::maybestd::io::Write>(
         &self,
         writer: &mut W,

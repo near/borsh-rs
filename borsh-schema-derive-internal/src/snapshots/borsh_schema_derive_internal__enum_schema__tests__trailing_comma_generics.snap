@@ -23,32 +23,15 @@ where
     ) {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct SideLeft<A, B>(
-            A,
-            #[borsh_skip]
-            ::core::marker::PhantomData<(A, B)>,
-        )
-        where
-            A: Display + Debug,
-            B: Display + Debug;
+        struct SideLeft<A>(A);
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct SideRight<A, B>(
-            B,
-            #[borsh_skip]
-            ::core::marker::PhantomData<(A, B)>,
-        )
-        where
-            A: Display + Debug,
-            B: Display + Debug;
-        <SideLeft<A, B> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <SideRight<
-            A,
-            B,
-        > as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        struct SideRight<B>(B);
+        <SideLeft<A> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <SideRight<B> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let variants = borsh::__private::maybestd::vec![
-            ("Left".to_string(), < SideLeft < A, B > > ::declaration()), ("Right"
-            .to_string(), < SideRight < A, B > > ::declaration())
+            ("Left".to_string(), < SideLeft < A > > ::declaration()), ("Right"
+            .to_string(), < SideRight < B > > ::declaration())
         ];
         let definition = borsh::schema::Definition::Enum {
             variants,

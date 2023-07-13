@@ -1,12 +1,8 @@
 ---
 source: borsh-derive-internal/src/enum_de.rs
-expression: pretty_print_syn_str(&actual)
+expression: pretty_print_syn_str(&actual).unwrap()
 ---
-impl borsh::de::BorshDeserialize for AA
-where
-    u32: borsh::BorshDeserialize,
-    u8: borsh::BorshDeserialize,
-{
+impl borsh::de::BorshDeserialize for AA {
     fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
     ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
@@ -14,18 +10,14 @@ where
         <Self as borsh::de::EnumExt>::deserialize_variant(reader, tag)
     }
 }
-impl borsh::de::EnumExt for AA
-where
-    u32: borsh::BorshDeserialize,
-    u8: borsh::BorshDeserialize,
-{
+impl borsh::de::EnumExt for AA {
     fn deserialize_variant<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
         variant_tag: u8,
     ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
         let mut return_value = if variant_tag == 0 {
             AA::B {
-                c: Default::default(),
+                c: core::default::Default::default(),
                 d: borsh::BorshDeserialize::deserialize_reader(reader)?,
             }
         } else if variant_tag == 0 + 1 {
