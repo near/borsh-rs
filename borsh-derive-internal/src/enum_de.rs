@@ -3,7 +3,9 @@ use quote::quote;
 use syn::{Fields, Ident, ItemEnum, Path, WhereClause};
 
 use crate::{
-    attribute_helpers::{contains_initialize_with, contains_skip},
+    attribute_helpers::{
+        collect_override_bounds, contains_initialize_with, contains_skip, BoundType,
+    },
     enum_discriminant_map::discriminant_map,
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
@@ -20,6 +22,7 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         Clone::clone,
     );
 
+    let mut override_predicates = vec![];
     let mut deserialize_params_visitor = FindTyParams::new(&generics);
     let mut default_params_visitor = FindTyParams::new(&generics);
 
@@ -33,14 +36,23 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         match &variant.fields {
             Fields::Named(fields) => {
                 for field in &fields.named {
+                    let bounds_override = collect_override_bounds(
+                        field,
+                        BoundType::Deserialize,
+                        &mut override_predicates,
+                    )?;
                     let field_name = field.ident.as_ref().unwrap();
                     if contains_skip(&field.attrs) {
-                        default_params_visitor.visit_field(field);
+                        if !bounds_override {
+                            default_params_visitor.visit_field(field);
+                        }
                         variant_header.extend(quote! {
                             #field_name: core::default::Default::default(),
                         });
                     } else {
-                        deserialize_params_visitor.visit_field(field);
+                        if !bounds_override {
+                            deserialize_params_visitor.visit_field(field);
+                        }
                         variant_header.extend(quote! {
                             #field_name: #cratename::BorshDeserialize::deserialize_reader(reader)?,
                         });
@@ -50,11 +62,20 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
             }
             Fields::Unnamed(fields) => {
                 for field in fields.unnamed.iter() {
+                    let bounds_override = collect_override_bounds(
+                        field,
+                        BoundType::Deserialize,
+                        &mut override_predicates,
+                    )?;
                     if contains_skip(&field.attrs) {
-                        default_params_visitor.visit_field(field);
+                        if !bounds_override {
+                            default_params_visitor.visit_field(field);
+                        }
                         variant_header.extend(quote! { core::default::Default::default(), });
                     } else {
-                        deserialize_params_visitor.visit_field(field);
+                        if !bounds_override {
+                            deserialize_params_visitor.visit_field(field);
+                        }
                         variant_header.extend(
                             quote! { #cratename::BorshDeserialize::deserialize_reader(reader)?, },
                         );
@@ -84,6 +105,7 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         compute_predicates(default_params_visitor.process(), &default_trait_path);
     where_clause.predicates.extend(de_predicates);
     where_clause.predicates.extend(default_predicates);
+    where_clause.predicates.extend(override_predicates);
     Ok(quote! {
         impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
             fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::__private::maybestd::io::Error> {
@@ -234,6 +256,28 @@ mod tests {
                     y: String,
                 },
                 C(K, #[borsh_skip] Vec<U>),
+            }
+        })
+        .unwrap();
+
+        let actual = enum_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn generic_deserialize_bound() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum A<T: Debug, U> {
+                C {
+                    a: String,
+                    #[borsh(bound(deserialize =
+                        "T: PartialOrd + Hash + Eq + borsh::de::BorshDeserialize,
+                         U: borsh::de::BorshDeserialize"
+                    ))]
+                    b: HashMap<T, U>,
+                },
+                D(u32, u32),
             }
         })
         .unwrap();

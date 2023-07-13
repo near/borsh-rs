@@ -1,0 +1,5 @@
+---
+source: borsh-derive-internal/src/attribute_helpers.rs
+expression: debug_print_bounds(ser)
+---
+None

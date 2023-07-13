@@ -9,7 +9,7 @@ use borsh_derive_internal::*;
 #[cfg(feature = "schema")]
 use borsh_schema_derive_internal::*;
 
-#[proc_macro_derive(BorshSerialize, attributes(borsh_skip))]
+#[proc_macro_derive(BorshSerialize, attributes(borsh_skip, borsh))]
 pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
     let name = match name {
@@ -34,7 +34,7 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     })
 }
 
-#[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh_init))]
+#[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh_init, borsh))]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
     let name = match name {
