@@ -2,7 +2,7 @@
 #![allow(unused)]
 use std::collections::{HashMap, HashSet};
 
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{
     punctuated::Pair, Field, GenericArgument, Generics, Ident, Macro, Path, PathArguments,
     PathSegment, ReturnType, Type, TypeParamBound, TypePath, WherePredicate,
@@ -61,7 +61,7 @@ pub struct FindTyParams {
     relevant_type_params: HashSet<Ident>,
 
     // [Param] => [Type, containing Param] mapping
-    associated_type_params_usage: HashMap<Ident, Type>,
+    associated_type_params_usage: HashMap<Ident, Vec<Type>>,
 }
 
 fn ungroup(mut ty: &Type) -> &Type {
@@ -104,6 +104,7 @@ impl FindTyParams {
         let relevant_type_params = self.relevant_type_params;
         let associated_type_params_usage = self.associated_type_params_usage;
         let mut new_predicates: Vec<Type> = vec![];
+        let mut new_predicates_set: HashSet<String> = HashSet::new();
 
         self.all_type_params_ordered.iter().for_each(|param| {
             if relevant_type_params.contains(param) {
@@ -111,10 +112,20 @@ impl FindTyParams {
                     qself: None,
                     path: param.clone().into(),
                 });
-                new_predicates.push(ty);
+                let ty_str_repr = ty.to_token_stream().to_string();
+                if !new_predicates_set.contains(&ty_str_repr) {
+                    new_predicates.push(ty);
+                    new_predicates_set.insert(ty_str_repr);
+                }
             }
-            if let Some(type_) = associated_type_params_usage.get(param) {
-                new_predicates.push(type_.clone());
+            if let Some(vec_type) = associated_type_params_usage.get(param) {
+                for type_ in vec_type {
+                    let ty_str_repr = type_.to_token_stream().to_string();
+                    if !new_predicates_set.contains(&ty_str_repr) {
+                        new_predicates.push(type_.clone());
+                        new_predicates_set.insert(ty_str_repr);
+                    }
+                }
             }
         });
 
@@ -125,12 +136,15 @@ impl FindTyParams {
         let associated_type_params_usage = self.associated_type_params_usage;
 
         let mut params: Vec<Ident> = vec![];
+        let mut params_set: HashSet<Ident> = HashSet::new();
         self.all_type_params_ordered.iter().for_each(|param| {
-            if relevant_type_params.contains(param) {
+            if relevant_type_params.contains(param) && !params_set.contains(param) {
                 params.push(param.clone());
+                params_set.insert(param.clone());
             }
-            if associated_type_params_usage.get(param).is_some() {
+            if associated_type_params_usage.get(param).is_some() && !params_set.contains(param) {
                 params.push(param.clone());
+                params_set.insert(param.clone());
             }
         });
         params
@@ -149,16 +163,20 @@ impl FindTyParams {
         if let Type::Path(ty) = ungroup(type_) {
             if let Some(Pair::Punctuated(t, _)) = ty.path.segments.pairs().next() {
                 if self.all_type_params.contains(&t.ident) {
-                    self.associated_type_params_usage
-                        .insert(t.ident.clone(), type_.clone());
+                    self.param_associated_type_insert(t.ident.clone(), type_.clone());
                 }
             }
         }
         self.visit_type(type_);
     }
 
-    pub fn insert_type(&mut self, param: Ident, type_: Type) {
-        self.associated_type_params_usage.insert(param, type_);
+    pub fn param_associated_type_insert(&mut self, param: Ident, type_: Type) {
+        if let Some(type_vec) = self.associated_type_params_usage.get_mut(&param) {
+            type_vec.push(type_);
+        } else {
+            let type_vec = vec![type_];
+            self.associated_type_params_usage.insert(param, type_vec);
+        }
     }
 
     fn visit_return_type(&mut self, return_type: &ReturnType) {

@@ -5,18 +5,12 @@ expression: pretty_print_syn_str(&actual).unwrap()
 impl<T, K, V> borsh::BorshSchema for EnumParametrized<T, K, V>
 where
     K: TraitName,
-    K: core::cmp::Ord,
-    V: core::cmp::Ord,
-    T: Eq + Hash,
     T: borsh::BorshSchema,
-    K: borsh::BorshSchema,
-    <K as TraitName>::Associated: borsh::BorshSchema,
     V: borsh::BorshSchema,
 {
     fn declaration() -> borsh::schema::Declaration {
         let params = borsh::__private::maybestd::vec![
-            < T > ::declaration(), < K > ::declaration(), < < K as TraitName >
-            ::Associated > ::declaration(), < V > ::declaration()
+            < T > ::declaration(), < V > ::declaration()
         ];
         format!(r#"{}<{}>"#, "EnumParametrized", params.join(", "))
     }
@@ -31,22 +25,15 @@ where
         struct EnumParametrizedB<K, V>
         where
             K: TraitName,
-            K: core::cmp::Ord,
-            V: core::cmp::Ord,
         {
-            x: BTreeMap<K, V>,
-            y: String,
+            x: Vec<V>,
+            #[borsh_skip]
             #[borsh(schema(params = "K => <K as TraitName>::Associated"))]
             z: <K as TraitName>::Associated,
         }
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct EnumParametrizedC<T>(
-            T,
-            u16,
-        )
-        where
-            T: Eq + Hash;
+        struct EnumParametrizedC<T>(T, u16);
         <EnumParametrizedB<
             K,
             V,

@@ -58,7 +58,7 @@ pub fn process_enum(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStre
         let transformed_fields = transform_variant_fields(variant.fields.clone());
 
         let mut enum_variant_schema_params_visitor = FindTyParams::new(&generics);
-        visit_struct_fields(&variant.fields, &mut enum_schema_params_visitor);
+        visit_struct_fields(&variant.fields, &mut enum_schema_params_visitor)?;
         visit_struct_fields_unconditional(&variant.fields, &mut enum_variant_schema_params_visitor);
 
         let variant_not_skipped_params = enum_variant_schema_params_visitor
@@ -331,6 +331,29 @@ mod tests {
                 B {
                     x: BTreeMap<K, V>,
                     y: String,
+                    #[borsh(schema(params = "K => <K as TraitName>::Associated"))]
+                    z: <K as TraitName>::Associated,
+                },
+                C(T, u16),
+            }
+        })
+        .unwrap();
+
+        let actual = process_enum(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn generic_associated_type_param_override_ignored() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum EnumParametrized<T, K, V>
+            where
+                K: TraitName,
+            {
+                B {
+                    x: Vec<V>,
+                    #[borsh_skip]
                     #[borsh(schema(params = "K => <K as TraitName>::Associated"))]
                     z: <K as TraitName>::Associated,
                 },

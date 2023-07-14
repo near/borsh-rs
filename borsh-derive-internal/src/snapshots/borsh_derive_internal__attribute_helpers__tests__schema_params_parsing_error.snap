@@ -1,6 +1,7 @@
 ---
 source: borsh-derive-internal/src/attribute_helpers.rs
-expression: debug_print_bounds(de)
+expression: err
 ---
-K : Hash
-
+Error(
+    "expected `>`",
+)

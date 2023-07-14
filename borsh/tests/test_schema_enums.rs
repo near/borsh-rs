@@ -9,7 +9,12 @@ use std::collections::BTreeMap;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{collections::BTreeMap, format, string::ToString, vec};
+use alloc::{
+    collections::BTreeMap,
+    format,
+    string::{String, ToString},
+    vec,
+};
 
 use borsh::schema::*;
 use borsh::schema_helpers::{try_from_slice_with_schema, try_to_vec_with_schema};
@@ -252,6 +257,23 @@ pub fn complex_enum_generics() {
     );
 }
 
+fn common_map() -> BTreeMap<String, Definition> {
+    map! {
+        "EnumParametrized<string, u32, i8, u16>" => Definition::Enum{ variants: vec![
+                ("B".to_string(), "EnumParametrizedB<u32, i8, u16>".to_string()),
+                ("C".to_string(), "EnumParametrizedC<string>".to_string())
+            ]},
+        "EnumParametrizedB<u32, i8, u16>" => Definition::Struct { fields: Fields::NamedFields(vec![
+            ("x".to_string(), "BTreeMap<u32, u16>".to_string()),
+            ("y".to_string(), "string".to_string()),
+            ("z".to_string(), "i8".to_string())
+        ])},
+        "EnumParametrizedC<string>" => Definition::Struct{ fields: Fields::UnnamedFields(vec!["string".to_string(), "u16".to_string()])},
+        "BTreeMap<u32, u16>" => Definition::Sequence { elements: "Tuple<u32, u16>".to_string()},
+        "Tuple<u32, u16>" => Definition::Tuple { elements: vec!["u32".to_string(), "u16".to_string()]}
+    }
+}
+
 #[test]
 pub fn generic_associated_item1() {
     trait TraitName {
@@ -280,25 +302,14 @@ pub fn generic_associated_item1() {
         C(T, u16),
     }
 
-    // assert_eq!(
-    //     "Parametrized<string, i8>".to_string(),
-    //     <EnumParametrized<String, u32, u16>>::declaration()
-    // );
+    assert_eq!(
+        "EnumParametrized<string, u32, i8, u16>".to_string(),
+        <EnumParametrized<String, u32, u16>>::declaration()
+    );
 
-    // let mut defs = Default::default();
-    // <EnumParametrized<String, u32, u16>>::add_definitions_recursively(&mut defs);
-    // assert_eq!(
-    //     map! {
-
-    //         "Parametrized<string, i8>" => Definition::Struct {
-    //         fields: Fields::NamedFields(vec![
-    //         ("field".to_string(), "i8".to_string()),
-    //         ("another".to_string(), "string".to_string())
-    //         ])
-    //         }
-    //     },
-    //     defs
-    // );
+    let mut defs = Default::default();
+    <EnumParametrized<String, u32, u16>>::add_definitions_recursively(&mut defs);
+    assert_eq!(common_map(), defs);
 }
 
 #[test]
@@ -329,24 +340,8 @@ pub fn generic_associated_item2() {
         },
         C(T, u16),
     }
+    let mut defs = Default::default();
+    <EnumParametrized<String, u32, u16>>::add_definitions_recursively(&mut defs);
 
-    // assert_eq!(
-    //     "Parametrized<string, i8>".to_string(),
-    //     <EnumParametrized<String, u32, u16>>::declaration()
-    // );
-
-    // let mut defs = Default::default();
-    // <EnumParametrized<String, u32, u16>>::add_definitions_recursively(&mut defs);
-    // assert_eq!(
-    //     map! {
-
-    //         "Parametrized<string, i8>" => Definition::Struct {
-    //         fields: Fields::NamedFields(vec![
-    //         ("field".to_string(), "i8".to_string()),
-    //         ("another".to_string(), "string".to_string())
-    //         ])
-    //         }
-    //     },
-    //     defs
-    // );
+    assert_eq!(common_map(), defs);
 }

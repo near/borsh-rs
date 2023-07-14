@@ -4,21 +4,27 @@ use syn::{Attribute, Field, Path, WherePredicate};
 pub mod parsing_helpers;
 use parsing_helpers::get_where_predicates;
 
+use self::parsing_helpers::{get_schema_attrs, SchemaParamsOverride};
+
 #[derive(Copy, Clone)]
 pub struct Symbol(pub &'static str);
 
-/// top level prefix in nested meta attribute
+/// borsh - top level prefix in nested meta attribute
 pub const BORSH: Symbol = Symbol("borsh");
-/// field-level only attribute, `BorshSerialize` and `BorshDeserialize` contexts
+/// bound - sub-borsh nested meta, field-level only, `BorshSerialize` and `BorshDeserialize` contexts
 pub const BOUND: Symbol = Symbol("bound");
-/// sub-BOUND nested meta attribute
+/// serialize - sub-bound nested meta attribute
 pub const SERIALIZE: Symbol = Symbol("serialize");
-/// sub-BOUND nested meta attribute
+/// deserialize - sub-bound nested meta attribute
 pub const DESERIALIZE: Symbol = Symbol("deserialize");
-/// field-level only attribute, `BorshSerialize`, `BorshDeserialize`, `BorshSchema` contexts
+/// borsh_skip - field-level only attribute, `BorshSerialize`, `BorshDeserialize`, `BorshSchema` contexts
 pub const SKIP: Symbol = Symbol("borsh_skip");
-/// item-level only attribute  `BorshDeserialize` context
+/// borsh_init - item-level only attribute  `BorshDeserialize` context
 pub const INIT: Symbol = Symbol("borsh_init");
+/// schema - sub-borsh nested meta, `BorshSchema` context
+pub const SCHEMA: Symbol = Symbol("schema");
+/// params - sub-schema nested meta, field-level only attribute
+pub const PARAMS: Symbol = Symbol("params");
 
 impl PartialEq<Symbol> for Path {
     fn eq(&self, word: &Symbol) -> bool {
@@ -32,11 +38,11 @@ impl<'a> PartialEq<Symbol> for &'a Path {
     }
 }
 
-pub fn contains_skip(attrs: &[Attribute]) -> bool {
+pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|attr| attr.path() == SKIP)
 }
 
-pub fn contains_initialize_with(attrs: &[Attribute]) -> Option<Path> {
+pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Option<Path> {
     for attr in attrs.iter() {
         if attr.path() == INIT {
             let mut res = None;
@@ -51,9 +57,10 @@ pub fn contains_initialize_with(attrs: &[Attribute]) -> Option<Path> {
     None
 }
 
-type Bounds = Option<Vec<WherePredicate>>;
+pub(crate) type Bounds = Option<Vec<WherePredicate>>;
+pub(crate) type SchemaParams = Option<Vec<SchemaParamsOverride>>;
 
-pub fn parse_bounds(attrs: &[Attribute]) -> Result<(Bounds, Bounds), syn::Error> {
+fn parse_bounds(attrs: &[Attribute]) -> Result<(Bounds, Bounds), syn::Error> {
     let (mut ser, mut de): (Bounds, Bounds) = (None, None);
     for attr in attrs {
         if attr.path() != BORSH {
@@ -75,12 +82,32 @@ pub fn parse_bounds(attrs: &[Attribute]) -> Result<(Bounds, Bounds), syn::Error>
     Ok((ser, de))
 }
 
-pub enum BoundType {
+pub(crate) fn parse_schema_attrs(attrs: &[Attribute]) -> Result<SchemaParams, syn::Error> {
+    let mut params: SchemaParams = None;
+    for attr in attrs {
+        if attr.path() != BORSH {
+            continue;
+        }
+
+        attr.parse_nested_meta(|meta| {
+            if meta.path == SCHEMA {
+                // #[borsh(schema(params = "..."))]
+
+                let params_parsed = get_schema_attrs(&meta)?;
+                params = params_parsed;
+            }
+            Ok(())
+        })?;
+    }
+
+    Ok(params)
+}
+pub(crate) enum BoundType {
     Serialize,
     Deserialize,
 }
 
-pub fn get_bounds(field: &Field, ty: BoundType) -> Result<Bounds, syn::Error> {
+pub(crate) fn get_bounds(field: &Field, ty: BoundType) -> Result<Bounds, syn::Error> {
     let (ser, de) = parse_bounds(&field.attrs)?;
     match ty {
         BoundType::Serialize => Ok(ser),
@@ -88,7 +115,7 @@ pub fn get_bounds(field: &Field, ty: BoundType) -> Result<Bounds, syn::Error> {
     }
 }
 
-pub fn collect_override_bounds(
+pub(crate) fn collect_override_bounds(
     field: &Field,
     ty: BoundType,
     output: &mut Vec<WherePredicate>,
@@ -109,8 +136,10 @@ mod tests {
     use std::fmt::Write;
     use syn::ItemStruct;
 
+    use crate::attribute_helpers::parse_schema_attrs;
+
     use super::{parse_bounds, Bounds};
-    fn debug_print_bounds(bounds: Bounds) -> String {
+    fn debug_print_bounds<T: ToTokens>(bounds: Option<Vec<T>>) -> String {
         let mut s = String::new();
         if let Some(bounds) = bounds {
             for bound in bounds {
@@ -180,7 +209,7 @@ mod tests {
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let (ser, de) = parse_bounds(&first_field.attrs).unwrap();
-        insta::assert_snapshot!(debug_print_bounds(ser));
+        assert_eq!(ser.unwrap().len(), 0);
         insta::assert_snapshot!(debug_print_bounds(de));
     }
 
@@ -197,7 +226,7 @@ mod tests {
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let (ser, de) = parse_bounds(&first_field.attrs).unwrap();
-        insta::assert_snapshot!(debug_print_bounds(ser));
+        assert!(ser.is_none());
         insta::assert_snapshot!(debug_print_bounds(de));
     }
 
@@ -256,5 +285,106 @@ mod tests {
             Err(err) => err,
         };
         insta::assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn test_schema_params_parsing1() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<V, T>
+            where
+                T: TraitName,
+            {
+                #[borsh(schema(params =
+                    "T => <T as TraitName>::Associated"
+               ))]
+                field: <T as TraitName>::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let schema_params = parse_schema_attrs(&first_field.attrs).unwrap();
+        insta::assert_snapshot!(debug_print_bounds(schema_params));
+    }
+    #[test]
+    fn test_schema_params_parsing_error() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<V, T>
+            where
+                T: TraitName,
+            {
+                #[borsh(schema(params =
+                    "T => <T as TraitName, W>::Associated"
+               ))]
+                field: <T as TraitName>::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let err = match parse_schema_attrs(&first_field.attrs) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn test_schema_params_parsing2() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<V, T>
+            where
+                T: TraitName,
+            {
+                #[borsh(schema(params =
+                    "T => <T as TraitName>::Associated, V => Vec<V>"
+               ))]
+                field: <T as TraitName>::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let schema_params = parse_schema_attrs(&first_field.attrs).unwrap();
+        insta::assert_snapshot!(debug_print_bounds(schema_params));
+    }
+    #[test]
+    fn test_schema_params_parsing3() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<V, T>
+            where
+                T: TraitName,
+            {
+                #[borsh(schema(params = "" ))]
+                field: <T as TraitName>::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let schema_params = parse_schema_attrs(&first_field.attrs).unwrap();
+        assert_eq!(schema_params.unwrap().len(), 0);
+    }
+
+    #[test]
+    fn test_schema_params_parsing4() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<V, T>
+            where
+                T: TraitName,
+            {
+                field: <T as TraitName>::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let schema_params = parse_schema_attrs(&first_field.attrs).unwrap();
+        assert!(schema_params.is_none());
     }
 }

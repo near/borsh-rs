@@ -16,6 +16,7 @@ Schema Generator for Borsh
 proc-macro2 = "1"
 syn = { version = "2", features = ["full", "fold"] }
 quote = "1"
+syn_derive = "0.1.6"
 
 [dev-dependencies]
 syn = { version = "2", features = ["full", "fold", "parsing"] }

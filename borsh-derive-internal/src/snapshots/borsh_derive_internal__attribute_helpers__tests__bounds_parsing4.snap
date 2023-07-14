@@ -1,5 +1,6 @@
 ---
 source: borsh-derive-internal/src/attribute_helpers.rs
-expression: debug_print_bounds(ser)
+expression: debug_print_bounds(de)
 ---
-None
+K : Hash
+

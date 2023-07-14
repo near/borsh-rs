@@ -1,32 +1,51 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens};
-use syn::{Fields, Ident, ItemStruct, Path, WhereClause};
+use syn::{Field, Fields, Ident, ItemStruct, Path, WhereClause};
 
 use crate::{
-    attribute_helpers::contains_skip,
+    attribute_helpers::{contains_skip, parse_schema_attrs, parsing_helpers::SchemaParamsOverride},
     generics::{compute_predicates, without_defaults, FindTyParams},
     schema_helpers::declaration,
 };
 
+fn visit_field(field: &Field, visitor: &mut FindTyParams) -> syn::Result<()> {
+    if !contains_skip(&field.attrs) {
+        // there's no need to override params when field is skipped, because when field is skipped
+        // derive for it doesn't attempt to add any bounds, unlike `BorshDeserialize`, which
+        // adds `Default` bound on any type parameters in skipped field
+        let schema_attrs = parse_schema_attrs(&field.attrs)?;
+        if let Some(schema_params) = schema_attrs {
+            for SchemaParamsOverride {
+                order_param,
+                override_type,
+                ..
+            } in schema_params
+            {
+                visitor.param_associated_type_insert(order_param, override_type);
+            }
+        } else {
+            visitor.visit_field(field);
+        }
+    }
+    Ok(())
+}
+
 /// check param usage in fields with respect to `borsh_skip` attribute usage
-pub fn visit_struct_fields(fields: &Fields, visitor: &mut FindTyParams) {
+pub fn visit_struct_fields(fields: &Fields, visitor: &mut FindTyParams) -> syn::Result<()> {
     match &fields {
         Fields::Named(fields) => {
             for field in &fields.named {
-                if !contains_skip(&field.attrs) {
-                    visitor.visit_field(field);
-                }
+                visit_field(field, visitor)?;
             }
         }
         Fields::Unnamed(fields) => {
             for field in &fields.unnamed {
-                if !contains_skip(&field.attrs) {
-                    visitor.visit_field(field);
-                }
+                visit_field(field, visitor)?;
             }
         }
         Fields::Unit => {}
     }
+    Ok(())
 }
 
 /// check param usage in fields
@@ -66,7 +85,7 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
     let mut fields_vec = vec![];
     let mut struct_fields = TokenStream2::new();
     let mut add_definitions_recursively_rec = TokenStream2::new();
-    visit_struct_fields(&input.fields, &mut schema_params_visitor);
+    visit_struct_fields(&input.fields, &mut schema_params_visitor)?;
     match &input.fields {
         Fields::Named(fields) => {
             for field in &fields.named {
@@ -424,6 +443,49 @@ mod tests {
             where
                 T: TraitName,
             {
+                #[borsh(schema(params =
+                    "T => <T as TraitName>::Associated"
+               ))]
+                field: <T as TraitName>::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let actual = process_struct(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn generic_associated_type_param_override2() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<V, T>
+            where
+                T: TraitName,
+            {
+                #[borsh(schema(params =
+                    "T => T, T => <T as TraitName>::Associated"
+               ))]
+                field: (<T as TraitName>::Associated, T),
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let actual = process_struct(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn generic_associated_type_param_override_ignored() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<V, T>
+            where
+                T: TraitName,
+            {
+                #[borsh_skip]
                 #[borsh(schema(params =
                     "T => <T as TraitName>::Associated"
                ))]
