@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn trailing_comma_generics() {
         let item_struct: ItemEnum = syn::parse2(quote! {
-            enum Side<A, B>
+            enum Side<B, A>
             where
                 A: Display + Debug,
                 B: Display + Debug,
@@ -258,15 +258,15 @@ mod tests {
     #[test]
     fn complex_enum_generics_borsh_skip_named_field() {
         let item_enum: ItemEnum = syn::parse2(quote! {
-            enum A<C, W> {
+            enum A<W, U, C> {
                 Bacon,
                 Eggs,
                 Salad(Tomatoes, C, Oil),
                 Sausage{
                     #[borsh_skip]
                     wrapper: W,
-                    filling: Filling
-
+                    filling: Filling,
+                    unexpected: U,
                 },
             }
         })

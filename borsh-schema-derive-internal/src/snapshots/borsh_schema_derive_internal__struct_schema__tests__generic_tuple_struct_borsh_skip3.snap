@@ -2,14 +2,14 @@
 source: borsh-schema-derive-internal/src/struct_schema.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
-impl<K, V, U> borsh::BorshSchema for G<K, V, U>
+impl<U, K, V> borsh::BorshSchema for G<U, K, V>
 where
-    K: borsh::BorshSchema,
     U: borsh::BorshSchema,
+    K: borsh::BorshSchema,
 {
     fn declaration() -> borsh::schema::Declaration {
         let params = borsh::__private::maybestd::vec![
-            < K > ::declaration(), < U > ::declaration()
+            < U > ::declaration(), < K > ::declaration()
         ];
         format!(r#"{}<{}>"#, "G", params.join(", "))
     }

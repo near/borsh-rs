@@ -2,15 +2,15 @@
 source: borsh-schema-derive-internal/src/struct_schema.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
-impl<T, V> borsh::BorshSchema for Parametrized<T, V>
+impl<V, T: Debug> borsh::BorshSchema for Parametrized<V, T>
 where
     T: TraitName,
-    T::Associated: borsh::BorshSchema,
     V: borsh::BorshSchema,
+    T::Associated: borsh::BorshSchema,
 {
     fn declaration() -> borsh::schema::Declaration {
         let params = borsh::__private::maybestd::vec![
-            < T::Associated > ::declaration(), < V > ::declaration()
+            < V > ::declaration(), < T::Associated > ::declaration()
         ];
         format!(r#"{}<{}>"#, "Parametrized", params.join(", "))
     }

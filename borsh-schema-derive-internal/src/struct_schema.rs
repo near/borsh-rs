@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// check param usage in fields with respect to `borsh_skip` attribute usage
-pub fn visit_struct_fields<'ast>(fields: &'ast Fields, visitor: &mut FindTyParams<'ast>) {
+pub fn visit_struct_fields(fields: &Fields, visitor: &mut FindTyParams) {
     match &fields {
         Fields::Named(fields) => {
             for field in &fields.named {
@@ -29,10 +29,7 @@ pub fn visit_struct_fields<'ast>(fields: &'ast Fields, visitor: &mut FindTyParam
 }
 
 /// check param usage in fields
-pub fn visit_struct_fields_unconditional<'ast>(
-    fields: &'ast Fields,
-    visitor: &mut FindTyParams<'ast>,
-) {
+pub fn visit_struct_fields_unconditional(fields: &Fields, visitor: &mut FindTyParams) {
     match &fields {
         Fields::Named(fields) => {
             for field in &fields.named {
@@ -344,7 +341,7 @@ mod tests {
     #[test]
     fn generic_tuple_struct_borsh_skip3() {
         let item_struct: ItemStruct = syn::parse2(quote! {
-            struct G<K, V, U> (
+            struct G<U, K, V> (
                 #[borsh_skip]
                 HashMap<K, V>,
                 U,
@@ -404,7 +401,7 @@ mod tests {
     #[test]
     fn generic_associated_type() {
         let item_struct: ItemStruct = syn::parse2(quote! {
-            struct Parametrized<T, V>
+            struct Parametrized<V, T: Debug>
             where
                 T: TraitName,
             {

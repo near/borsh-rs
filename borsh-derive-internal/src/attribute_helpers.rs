@@ -52,7 +52,7 @@ pub fn parse_bounds(attrs: &[Attribute]) -> Result<(Bounds, Bounds), syn::Error>
 
         attr.parse_nested_meta(|meta| {
             if meta.path == BOUND {
-                // #[borsh(bound(serialize = "...", deserialize = "...", schema = "..."))]
+                // #[borsh(bound(serialize = "...", deserialize = "..."))]
 
                 let (ser_parsed, de_parsed) = get_where_predicates(&meta)?;
                 ser = ser_parsed;
