@@ -71,7 +71,7 @@ where
                 }
             } else {
                 return Err(meta.error(format_args!(
-                    "malformed {0} attribute, expected `{0}(serialize = ..., deserialize = ..., schema = ...)`",
+                    "malformed {0} attribute, expected `{0}(serialize = ..., deserialize = ...)`",
                     attr_name.0,
                 )));
             }
