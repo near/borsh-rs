@@ -3,9 +3,9 @@ use quote::{quote, ToTokens};
 use syn::{Fields, Ident, ItemStruct, Path, WhereClause};
 
 use crate::{
+    attribute_helpers::contains_skip,
     generics::{compute_predicates, without_defaults, FindTyParams},
     schema_helpers::declaration,
-    attribute_helpers::contains_skip,
 };
 
 /// check param usage in fields with respect to `borsh_skip` attribute usage

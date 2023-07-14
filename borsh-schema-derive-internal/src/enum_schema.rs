@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn complex_enum_generics_borsh_skip_tuple_field() {
         let item_enum: ItemEnum = syn::parse2(quote! {
-            enum A<C, W> {
+            enum A<C: Eq, W> where W: Hash {
                 Bacon,
                 Eggs,
                 Salad(Tomatoes, #[borsh_skip] C, Oil),
@@ -300,8 +300,9 @@ mod tests {
             enum EnumParametrized<T, K, V>
             where
                 K: TraitName,
-                K: core::cmp::Ord, 
+                K: core::cmp::Ord,
                 V: core::cmp::Ord,
+                T: Eq + Hash,
             {
                 B {
                     x: BTreeMap<K, V>,
@@ -323,8 +324,9 @@ mod tests {
             enum EnumParametrized<T, K, V>
             where
                 K: TraitName,
-                K: core::cmp::Ord, 
+                K: core::cmp::Ord,
                 V: core::cmp::Ord,
+                T: Eq + Hash,
             {
                 B {
                     x: BTreeMap<K, V>,

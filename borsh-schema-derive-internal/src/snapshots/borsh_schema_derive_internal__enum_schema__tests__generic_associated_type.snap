@@ -7,6 +7,7 @@ where
     K: TraitName,
     K: core::cmp::Ord,
     V: core::cmp::Ord,
+    T: Eq + Hash,
     T: borsh::BorshSchema,
     K: borsh::BorshSchema,
     K::Associated: borsh::BorshSchema,
@@ -27,14 +28,24 @@ where
     ) {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct EnumParametrizedB<K, V> {
+        struct EnumParametrizedB<K, V>
+        where
+            K: TraitName,
+            K: core::cmp::Ord,
+            V: core::cmp::Ord,
+        {
             x: BTreeMap<K, V>,
             y: String,
             z: K::Associated,
         }
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct EnumParametrizedC<T>(T, u16);
+        struct EnumParametrizedC<T>(
+            T,
+            u16,
+        )
+        where
+            T: Eq + Hash;
         <EnumParametrizedB<
             K,
             V,

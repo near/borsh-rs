@@ -2,12 +2,19 @@ use std::collections::HashSet;
 
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{punctuated::Punctuated, Attribute, GenericParam, Generics, Ident, Type, TypeParam};
+use syn::{
+    punctuated::Punctuated, token::Comma, Attribute, GenericParam, Generics, Ident, Type,
+    WherePredicate,
+};
 
-use crate::attribute_helpers::{SKIP, BORSH};
+use crate::{
+    attribute_helpers::{BORSH, SKIP},
+    generics::type_contains_some_param,
+};
 
-
-pub fn filter_field_attrs(attrs: impl Iterator<Item = Attribute>) -> impl Iterator<Item = Attribute> {
+pub fn filter_field_attrs(
+    attrs: impl Iterator<Item = Attribute>,
+) -> impl Iterator<Item = Attribute> {
     attrs.filter(|attr| attr.path() == SKIP || attr.path() == BORSH)
 }
 
@@ -47,18 +54,32 @@ pub fn filter_used_params(
             GenericParam::Lifetime(..) | GenericParam::Const(..) => true,
             GenericParam::Type(ty_param) => not_skipped_type_params.contains(&ty_param.ident),
         })
-        .map(|param| match param {
-            param @ GenericParam::Lifetime(..) | param @ GenericParam::Const(..) => param,
-            GenericParam::Type(ty_param) => GenericParam::Type(TypeParam {
-                bounds: Punctuated::default(),
-                ..ty_param
-            }),
-        })
         .collect();
 
+    let mut where_clause = generics.where_clause.clone();
+    where_clause = where_clause.map(|mut clause| {
+        let new_predicates: Punctuated<WherePredicate, Comma> = clause
+            .predicates
+            .iter()
+            .filter(|predicate| match predicate {
+                WherePredicate::Lifetime(..) => true,
+                WherePredicate::Type(predicate_type) => {
+                    type_contains_some_param(&predicate_type.bounded_ty, &not_skipped_type_params)
+                }
+                #[cfg_attr(
+                    feature = "force_exhaustive_checks",
+                    deny(non_exhaustive_omitted_patterns)
+                )]
+                _ => true,
+            })
+            .cloned()
+            .collect();
+        clause.predicates = new_predicates;
+        clause
+    });
     Generics {
         params: new_params,
-        where_clause: None,
+        where_clause,
         ..generics.clone()
     }
 }

@@ -252,13 +252,12 @@ pub fn complex_enum_generics() {
     );
 }
 
-trait TraitName {
-    type Associated;
-    fn method(&self);
-}
-
 #[test]
 pub fn generic_associated_item1() {
+    trait TraitName {
+        type Associated;
+        fn method(&self);
+    }
 
     impl TraitName for u32 {
         type Associated = i8;
@@ -267,9 +266,10 @@ pub fn generic_associated_item1() {
 
     #[allow(unused)]
     #[derive(borsh::BorshSchema)]
-    enum EnumParametrized<T, K: TraitName, V>
+    enum EnumParametrized<T, K, V>
     where
-        K: core::cmp::Ord, 
+        K: TraitName,
+        K: core::cmp::Ord,
         V: core::cmp::Ord,
     {
         B {
@@ -303,6 +303,10 @@ pub fn generic_associated_item1() {
 
 #[test]
 pub fn generic_associated_item2() {
+    trait TraitName {
+        type Associated;
+        fn method(&self);
+    }
 
     impl TraitName for u32 {
         type Associated = i8;
@@ -311,9 +315,10 @@ pub fn generic_associated_item2() {
 
     #[allow(unused)]
     #[derive(borsh::BorshSchema)]
-    enum EnumParametrized<T, K: TraitName, V>
+    enum EnumParametrized<T, K, V>
     where
-        K: core::cmp::Ord, 
+        K: TraitName,
+        K: core::cmp::Ord,
         V: core::cmp::Ord,
     {
         B {

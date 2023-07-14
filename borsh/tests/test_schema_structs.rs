@@ -234,15 +234,13 @@ pub fn generic_associated_item2() {
     where
         T: TraitName,
     {
-        #[borsh(schema(params =
-            "T => <T as TraitName>::Associated"
-        ))]
+        #[borsh(schema(params = "T => <T as TraitName>::Associated"))]
         field: <T as TraitName>::Associated,
         another: V,
     }
 
     assert_eq!(
-      "Parametrized<string, i8>".to_string(),
+        "Parametrized<string, i8>".to_string(),
         <Parametrized<String, u32>>::declaration()
     );
 
@@ -261,4 +259,3 @@ pub fn generic_associated_item2() {
         defs
     );
 }
-

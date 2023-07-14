@@ -41,6 +41,14 @@ pub fn without_defaults(generics: &Generics) -> Generics {
     }
 }
 
+pub fn type_contains_some_param(type_: &Type, params: &HashSet<Ident>) -> bool {
+    let mut find: FindTyParams = FindTyParams::from_params(params.iter());
+
+    find.visit_type_top_level(type_);
+
+    find.at_least_one_hit()
+}
+
 /// a Visitor-like struct, which helps determine, if a type parameter is found in field
 #[derive(Clone)]
 pub struct FindTyParams {
@@ -75,6 +83,16 @@ impl FindTyParams {
             .map(|param| param.ident.clone())
             .collect();
 
+        FindTyParams {
+            all_type_params,
+            all_type_params_ordered,
+            relevant_type_params: HashSet::new(),
+            associated_type_params_usage: HashMap::new(),
+        }
+    }
+    pub fn from_params<'a>(params: impl Iterator<Item = &'a Ident>) -> Self {
+        let all_type_params_ordered: Vec<Ident> = params.cloned().collect();
+        let all_type_params = all_type_params_ordered.clone().into_iter().collect();
         FindTyParams {
             all_type_params,
             all_type_params_ordered,
@@ -117,19 +135,26 @@ impl FindTyParams {
         });
         params
     }
+    pub fn at_least_one_hit(&self) -> bool {
+        !self.relevant_type_params.is_empty() || !self.associated_type_params_usage.is_empty()
+    }
 }
 
 impl FindTyParams {
     pub fn visit_field(&mut self, field: &Field) {
-        if let Type::Path(ty) = ungroup(&field.ty) {
+        self.visit_type_top_level(&field.ty);
+    }
+
+    pub fn visit_type_top_level(&mut self, type_: &Type) {
+        if let Type::Path(ty) = ungroup(type_) {
             if let Some(Pair::Punctuated(t, _)) = ty.path.segments.pairs().next() {
                 if self.all_type_params.contains(&t.ident) {
                     self.associated_type_params_usage
-                        .insert(t.ident.clone(), field.ty.clone());
+                        .insert(t.ident.clone(), type_.clone());
                 }
             }
         }
-        self.visit_type(&field.ty);
+        self.visit_type(type_);
     }
 
     pub fn insert_type(&mut self, param: Ident, type_: Type) {

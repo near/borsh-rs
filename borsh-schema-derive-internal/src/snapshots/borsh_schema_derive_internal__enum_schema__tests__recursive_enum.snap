@@ -22,13 +22,16 @@ where
     ) {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct AB<K, V> {
+        struct AB<K: Key, V>
+        where
+            V: Value,
+        {
             x: HashMap<K, V>,
             y: String,
         }
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct AC<K>(K, Vec<A>);
+        struct AC<K: Key>(K, Vec<A>);
         <AB<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <AC<K> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let variants = borsh::__private::maybestd::vec![

@@ -23,10 +23,18 @@ where
     ) {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct SideLeft<A>(A);
+        struct SideLeft<A>(
+            A,
+        )
+        where
+            A: Display + Debug;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct SideRight<B>(B);
+        struct SideRight<B>(
+            B,
+        )
+        where
+            B: Display + Debug;
         <SideLeft<A> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <SideRight<B> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let variants = borsh::__private::maybestd::vec![
