@@ -216,3 +216,49 @@ pub fn generic_associated_item() {
         defs
     );
 }
+#[test]
+pub fn generic_associated_item2() {
+    trait TraitName {
+        type Associated;
+        fn method(&self);
+    }
+
+    impl TraitName for u32 {
+        type Associated = i8;
+        fn method(&self) {}
+    }
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Parametrized<V, T>
+    where
+        T: TraitName,
+    {
+        #[borsh(schema(params =
+            "T => <T as TraitName>::Associated"
+        ))]
+        field: <T as TraitName>::Associated,
+        another: V,
+    }
+
+    assert_eq!(
+      "Parametrized<string, i8>".to_string(),
+        <Parametrized<String, u32>>::declaration()
+    );
+
+    let mut defs = Default::default();
+    <Parametrized<String, u32>>::add_definitions_recursively(&mut defs);
+    assert_eq!(
+        map! {
+
+            "Parametrized<string, i8>" => Definition::Struct {
+            fields: Fields::NamedFields(vec![
+            ("field".to_string(), "i8".to_string()),
+            ("another".to_string(), "string".to_string())
+            ])
+            }
+        },
+        defs
+    );
+}
+

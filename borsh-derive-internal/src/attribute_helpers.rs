@@ -1,3 +1,5 @@
+// TODO: remove this unused attribute, when the unsplit is done
+#![allow(unused)]
 use syn::{Attribute, Field, Path, WherePredicate};
 pub mod parsing_helpers;
 use parsing_helpers::get_where_predicates;
@@ -5,10 +7,18 @@ use parsing_helpers::get_where_predicates;
 #[derive(Copy, Clone)]
 pub struct Symbol(pub &'static str);
 
+/// top level prefix in nested meta attribute
 pub const BORSH: Symbol = Symbol("borsh");
+/// field-level only attribute, `BorshSerialize` and `BorshDeserialize` contexts
 pub const BOUND: Symbol = Symbol("bound");
+/// sub-BOUND nested meta attribute
 pub const SERIALIZE: Symbol = Symbol("serialize");
+/// sub-BOUND nested meta attribute
 pub const DESERIALIZE: Symbol = Symbol("deserialize");
+/// field-level only attribute, `BorshSerialize`, `BorshDeserialize`, `BorshSchema` contexts
+pub const SKIP: Symbol = Symbol("borsh_skip");
+/// item-level only attribute  `BorshDeserialize` context
+pub const INIT: Symbol = Symbol("borsh_init");
 
 impl PartialEq<Symbol> for Path {
     fn eq(&self, word: &Symbol) -> bool {
@@ -23,12 +33,12 @@ impl<'a> PartialEq<Symbol> for &'a Path {
 }
 
 pub fn contains_skip(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(|attr| attr.path().is_ident("borsh_skip"))
+    attrs.iter().any(|attr| attr.path() == SKIP)
 }
 
 pub fn contains_initialize_with(attrs: &[Attribute]) -> Option<Path> {
     for attr in attrs.iter() {
-        if attr.path().is_ident("borsh_init") {
+        if attr.path() == INIT {
             let mut res = None;
             let _ = attr.parse_nested_meta(|meta| {
                 res = Some(meta.path);

@@ -3,5 +3,5 @@ source: borsh-derive-internal/src/attribute_helpers.rs
 expression: err
 ---
 Error(
-    "malformed bound attribute, expected `bound(serialize = ..., deserialize = ..., schema = ...)`",
+    "malformed bound attribute, expected `bound(serialize = ..., deserialize = ...)`",
 )

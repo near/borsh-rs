@@ -60,7 +60,7 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
 }
 
 #[cfg(feature = "schema")]
-#[proc_macro_derive(BorshSchema, attributes(borsh_skip))]
+#[proc_macro_derive(BorshSchema, attributes(borsh_skip, borsh))]
 pub fn borsh_schema(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
     let name = match name {

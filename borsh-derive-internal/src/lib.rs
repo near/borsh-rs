@@ -4,7 +4,7 @@
     feature(non_exhaustive_omitted_patterns_lint)
 )]
 
-mod attribute_helpers;
+pub mod attribute_helpers;
 mod enum_de;
 mod enum_discriminant_map;
 mod enum_ser;

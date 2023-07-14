@@ -4,7 +4,8 @@ use syn::{Fields, Ident, ItemStruct, Path, WhereClause};
 
 use crate::{
     generics::{compute_predicates, without_defaults, FindTyParams},
-    helpers::{contains_skip, declaration},
+    schema_helpers::declaration,
+    attribute_helpers::contains_skip,
 };
 
 /// check param usage in fields with respect to `borsh_skip` attribute usage
@@ -406,6 +407,27 @@ mod tests {
                 T: TraitName,
             {
                 field: T::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let actual = process_struct(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn generic_associated_type_param_override() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<V, T>
+            where
+                T: TraitName,
+            {
+                #[borsh(schema(params =
+                    "T => <T as TraitName>::Associated"
+               ))]
+                field: <T as TraitName>::Associated,
                 another: V,
             }
         })

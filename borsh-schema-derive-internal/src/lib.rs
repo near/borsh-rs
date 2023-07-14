@@ -5,7 +5,8 @@
 )]
 
 mod generics;
-mod helpers;
+mod attribute_helpers;
+mod schema_helpers;
 
 mod enum_schema;
 mod struct_schema;

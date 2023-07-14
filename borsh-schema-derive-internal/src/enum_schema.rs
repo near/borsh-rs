@@ -6,7 +6,7 @@ use syn::{Fields, Ident, ItemEnum, ItemStruct, Path, Visibility, WhereClause};
 
 use crate::{
     generics::{compute_predicates, without_defaults, FindTyParams},
-    helpers::{declaration, filter_skip, filter_used_params},
+    schema_helpers::{declaration, filter_field_attrs, filter_used_params},
     struct_schema::{visit_struct_fields, visit_struct_fields_unconditional},
 };
 
@@ -14,13 +14,13 @@ fn transform_variant_fields(mut input: Fields) -> Fields {
     match input {
         Fields::Named(ref mut named) => {
             for field in &mut named.named {
-                let field_attrs = filter_skip(field.attrs.drain(..)).collect::<Vec<_>>();
+                let field_attrs = filter_field_attrs(field.attrs.drain(..)).collect::<Vec<_>>();
                 field.attrs = field_attrs;
             }
         }
         Fields::Unnamed(ref mut unnamed) => {
             for field in &mut unnamed.unnamed {
-                let field_attrs = filter_skip(field.attrs.drain(..)).collect::<Vec<_>>();
+                let field_attrs = filter_field_attrs(field.attrs.drain(..)).collect::<Vec<_>>();
                 field.attrs = field_attrs;
             }
         }
@@ -285,6 +285,54 @@ mod tests {
                     y: String,
                 },
                 C(K, Vec<A>),
+            }
+        })
+        .unwrap();
+
+        let actual = process_enum(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn generic_associated_type() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum EnumParametrized<T, K, V>
+            where
+                K: TraitName,
+                K: core::cmp::Ord, 
+                V: core::cmp::Ord,
+            {
+                B {
+                    x: BTreeMap<K, V>,
+                    y: String,
+                    z: K::Associated,
+                },
+                C(T, u16),
+            }
+        })
+        .unwrap();
+
+        let actual = process_enum(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+    #[test]
+    fn generic_associated_type_param_override() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum EnumParametrized<T, K, V>
+            where
+                K: TraitName,
+                K: core::cmp::Ord, 
+                V: core::cmp::Ord,
+            {
+                B {
+                    x: BTreeMap<K, V>,
+                    y: String,
+                    #[borsh(schema(params = "K => <K as TraitName>::Associated"))]
+                    z: <K as TraitName>::Associated,
+                },
+                C(T, u16),
             }
         })
         .unwrap();

@@ -251,3 +251,97 @@ pub fn complex_enum_generics() {
         defs
     );
 }
+
+trait TraitName {
+    type Associated;
+    fn method(&self);
+}
+
+#[test]
+pub fn generic_associated_item1() {
+
+    impl TraitName for u32 {
+        type Associated = i8;
+        fn method(&self) {}
+    }
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    enum EnumParametrized<T, K: TraitName, V>
+    where
+        K: core::cmp::Ord, 
+        V: core::cmp::Ord,
+    {
+        B {
+            x: BTreeMap<K, V>,
+            y: String,
+            z: K::Associated,
+        },
+        C(T, u16),
+    }
+
+    // assert_eq!(
+    //     "Parametrized<string, i8>".to_string(),
+    //     <EnumParametrized<String, u32, u16>>::declaration()
+    // );
+
+    // let mut defs = Default::default();
+    // <EnumParametrized<String, u32, u16>>::add_definitions_recursively(&mut defs);
+    // assert_eq!(
+    //     map! {
+
+    //         "Parametrized<string, i8>" => Definition::Struct {
+    //         fields: Fields::NamedFields(vec![
+    //         ("field".to_string(), "i8".to_string()),
+    //         ("another".to_string(), "string".to_string())
+    //         ])
+    //         }
+    //     },
+    //     defs
+    // );
+}
+
+#[test]
+pub fn generic_associated_item2() {
+
+    impl TraitName for u32 {
+        type Associated = i8;
+        fn method(&self) {}
+    }
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    enum EnumParametrized<T, K: TraitName, V>
+    where
+        K: core::cmp::Ord, 
+        V: core::cmp::Ord,
+    {
+        B {
+            x: BTreeMap<K, V>,
+            y: String,
+            #[borsh(schema(params = "K => <K as TraitName>::Associated"))]
+            z: <K as TraitName>::Associated,
+        },
+        C(T, u16),
+    }
+
+    // assert_eq!(
+    //     "Parametrized<string, i8>".to_string(),
+    //     <EnumParametrized<String, u32, u16>>::declaration()
+    // );
+
+    // let mut defs = Default::default();
+    // <EnumParametrized<String, u32, u16>>::add_definitions_recursively(&mut defs);
+    // assert_eq!(
+    //     map! {
+
+    //         "Parametrized<string, i8>" => Definition::Struct {
+    //         fields: Fields::NamedFields(vec![
+    //         ("field".to_string(), "i8".to_string()),
+    //         ("another".to_string(), "string".to_string())
+    //         ])
+    //         }
+    //     },
+    //     defs
+    // );
+}

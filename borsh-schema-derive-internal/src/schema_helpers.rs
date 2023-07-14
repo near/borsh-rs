@@ -4,12 +4,11 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{punctuated::Punctuated, Attribute, GenericParam, Generics, Ident, Type, TypeParam};
 
-pub fn contains_skip(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(|attr| attr.path().is_ident("borsh_skip"))
-}
+use crate::attribute_helpers::{SKIP, BORSH};
 
-pub fn filter_skip(attrs: impl Iterator<Item = Attribute>) -> impl Iterator<Item = Attribute> {
-    attrs.filter(|attr| attr.path().is_ident("borsh_skip"))
+
+pub fn filter_field_attrs(attrs: impl Iterator<Item = Attribute>) -> impl Iterator<Item = Attribute> {
+    attrs.filter(|attr| attr.path() == SKIP || attr.path() == BORSH)
 }
 
 pub fn declaration(
