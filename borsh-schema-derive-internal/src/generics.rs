@@ -1,3 +1,5 @@
+// TODO: remove this unused attribute, when the unsplit is done
+#![allow(unused)]
 use std::collections::{HashMap, HashSet};
 
 use quote::quote;
@@ -130,7 +132,6 @@ impl FindTyParams {
         self.visit_type(&field.ty);
     }
 
-    #[allow(unused)]
     pub fn insert_type(&mut self, param: Ident, type_: Type) {
         self.associated_type_params_usage.insert(param, type_);
     }

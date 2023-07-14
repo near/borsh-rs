@@ -73,7 +73,7 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
         ))
     }
     let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
-    let predicates = compute_predicates(serialize_params_visitor.process(), &trait_path);
+    let predicates = compute_predicates(serialize_params_visitor.process_for_bounds(), &trait_path);
     where_clause.predicates.extend(predicates);
     where_clause.predicates.extend(override_predicates);
     Ok(quote! {
@@ -98,13 +98,13 @@ struct VariantParts {
     variant_body: TokenStream2,
     variant_idx_body: TokenStream2,
 }
-fn named_fields<'ast>(
+fn named_fields(
     cratename: &Ident,
     enum_ident: &Ident,
     variant_ident: &Ident,
     discriminant_value: &TokenStream2,
-    fields: &'ast FieldsNamed,
-    params_visitor: &mut FindTyParams<'ast>,
+    fields: &FieldsNamed,
+    params_visitor: &mut FindTyParams,
     override_output: &mut Vec<WherePredicate>,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
@@ -137,13 +137,13 @@ fn named_fields<'ast>(
     })
 }
 
-fn unnamed_fields<'ast>(
+fn unnamed_fields(
     cratename: &Ident,
     enum_ident: &Ident,
     variant_ident: &Ident,
     discriminant_value: &TokenStream2,
-    fields: &'ast FieldsUnnamed,
-    params_visitor: &mut FindTyParams<'ast>,
+    fields: &FieldsUnnamed,
+    params_visitor: &mut FindTyParams,
     override_output: &mut Vec<WherePredicate>,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();

@@ -100,9 +100,14 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
 
     let de_trait_path: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
     let default_trait_path: Path = syn::parse2(quote! { core::default::Default }).unwrap();
-    let de_predicates = compute_predicates(deserialize_params_visitor.process(), &de_trait_path);
-    let default_predicates =
-        compute_predicates(default_params_visitor.process(), &default_trait_path);
+    let de_predicates = compute_predicates(
+        deserialize_params_visitor.process_for_bounds(),
+        &de_trait_path,
+    );
+    let default_predicates = compute_predicates(
+        default_params_visitor.process_for_bounds(),
+        &default_trait_path,
+    );
     where_clause.predicates.extend(de_predicates);
     where_clause.predicates.extend(default_predicates);
     where_clause.predicates.extend(override_predicates);

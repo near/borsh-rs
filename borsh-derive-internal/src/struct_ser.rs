@@ -64,7 +64,7 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
         Fields::Unit => {}
     }
     let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
-    let predicates = compute_predicates(serialize_params_visitor.process(), &trait_path);
+    let predicates = compute_predicates(serialize_params_visitor.process_for_bounds(), &trait_path);
     where_clause.predicates.extend(predicates);
     where_clause.predicates.extend(override_predicates);
     Ok(quote! {

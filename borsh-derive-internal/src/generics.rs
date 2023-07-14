@@ -1,12 +1,14 @@
-use std::collections::HashSet;
+// TODO: remove this unused attribute, when the unsplit is done
+#![allow(unused)]
+use std::collections::{HashMap, HashSet};
 
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::{
     punctuated::Pair, Field, GenericArgument, Generics, Ident, Macro, Path, PathArguments,
     PathSegment, ReturnType, Type, TypeParamBound, TypePath, WherePredicate,
 };
 
-pub fn compute_predicates(params: Vec<TypePath>, traitname: &Path) -> Vec<WherePredicate> {
+pub fn compute_predicates(params: Vec<Type>, traitname: &Path) -> Vec<WherePredicate> {
     params
         .into_iter()
         .map(|param| {
@@ -40,17 +42,18 @@ pub fn without_defaults(generics: &Generics) -> Generics {
 }
 
 /// a Visitor-like struct, which helps determine, if a type parameter is found in field
-pub struct FindTyParams<'ast> {
+#[derive(Clone)]
+pub struct FindTyParams {
     // Set of all generic type parameters on the current struct . Initialized up front.
     all_type_params: HashSet<Ident>,
+    all_type_params_ordered: Vec<Ident>,
 
     // Set of generic type parameters used in fields for which filter
     // returns true . Filled in as the visitor sees them.
     relevant_type_params: HashSet<Ident>,
 
-    // Fields whose type is an associated type of one of the generic type
-    // parameters.
-    associated_type_usage: Vec<&'ast TypePath>,
+    // [Param] => [Type, containing Param] mapping
+    associated_type_params_usage: HashMap<Ident, Type>,
 }
 
 fn ungroup(mut ty: &Type) -> &Type {
@@ -60,58 +63,91 @@ fn ungroup(mut ty: &Type) -> &Type {
     ty
 }
 
-impl<'ast> FindTyParams<'ast> {
+impl FindTyParams {
     pub fn new(generics: &Generics) -> Self {
         let all_type_params = generics
             .type_params()
             .map(|param| param.ident.clone())
             .collect();
 
+        let all_type_params_ordered = generics
+            .type_params()
+            .map(|param| param.ident.clone())
+            .collect();
+
         FindTyParams {
             all_type_params,
+            all_type_params_ordered,
             relevant_type_params: HashSet::new(),
-            associated_type_usage: Vec::new(),
+            associated_type_params_usage: HashMap::new(),
         }
     }
-    pub fn process(self) -> Vec<TypePath> {
+    pub fn process_for_bounds(self) -> Vec<Type> {
         let relevant_type_params = self.relevant_type_params;
-        let associated_type_usage = self.associated_type_usage;
-        let mut new_predicates: Vec<TypePath> = relevant_type_params
-            .into_iter()
-            .map(|id| TypePath {
-                qself: None,
-                path: id.into(),
-            })
-            .chain(associated_type_usage.into_iter().cloned())
-            .collect();
-        new_predicates.sort_by_key(|type_path| type_path.to_token_stream().to_string());
+        let associated_type_params_usage = self.associated_type_params_usage;
+        let mut new_predicates: Vec<Type> = vec![];
+
+        self.all_type_params_ordered.iter().for_each(|param| {
+            if relevant_type_params.contains(param) {
+                let ty = Type::Path(TypePath {
+                    qself: None,
+                    path: param.clone().into(),
+                });
+                new_predicates.push(ty);
+            }
+            if let Some(type_) = associated_type_params_usage.get(param) {
+                new_predicates.push(type_.clone());
+            }
+        });
+
         new_predicates
     }
+    pub fn process_for_params(self) -> Vec<Ident> {
+        let relevant_type_params = self.relevant_type_params;
+        let associated_type_params_usage = self.associated_type_params_usage;
+
+        let mut params: Vec<Ident> = vec![];
+        self.all_type_params_ordered.iter().for_each(|param| {
+            if relevant_type_params.contains(param) {
+                params.push(param.clone());
+            }
+            if associated_type_params_usage.get(param).is_some() {
+                params.push(param.clone());
+            }
+        });
+        params
+    }
 }
-impl<'ast> FindTyParams<'ast> {
-    pub fn visit_field(&mut self, field: &'ast Field) {
+
+impl FindTyParams {
+    pub fn visit_field(&mut self, field: &Field) {
         if let Type::Path(ty) = ungroup(&field.ty) {
             if let Some(Pair::Punctuated(t, _)) = ty.path.segments.pairs().next() {
                 if self.all_type_params.contains(&t.ident) {
-                    self.associated_type_usage.push(ty);
+                    self.associated_type_params_usage
+                        .insert(t.ident.clone(), field.ty.clone());
                 }
             }
         }
         self.visit_type(&field.ty);
     }
 
-    fn visit_return_type(&mut self, return_type: &'ast ReturnType) {
+    pub fn insert_type(&mut self, param: Ident, type_: Type) {
+        self.associated_type_params_usage.insert(param, type_);
+    }
+
+    fn visit_return_type(&mut self, return_type: &ReturnType) {
         match return_type {
             ReturnType::Default => {}
             ReturnType::Type(_, output) => self.visit_type(output),
         }
     }
 
-    fn visit_path_segment(&mut self, segment: &'ast PathSegment) {
+    fn visit_path_segment(&mut self, segment: &PathSegment) {
         self.visit_path_arguments(&segment.arguments);
     }
 
-    fn visit_path_arguments(&mut self, arguments: &'ast PathArguments) {
+    fn visit_path_arguments(&mut self, arguments: &PathArguments) {
         match arguments {
             PathArguments::None => {}
             PathArguments::AngleBracketed(arguments) => {
@@ -123,7 +159,6 @@ impl<'ast> FindTyParams<'ast> {
                         | GenericArgument::Const(_)
                         | GenericArgument::AssocConst(_)
                         | GenericArgument::Constraint(_) => {}
-
                         #[cfg_attr(
                             feature = "force_exhaustive_checks",
                             deny(non_exhaustive_omitted_patterns)
@@ -141,7 +176,7 @@ impl<'ast> FindTyParams<'ast> {
         }
     }
 
-    fn visit_path(&mut self, path: &'ast Path) {
+    fn visit_path(&mut self, path: &Path) {
         if let Some(seg) = path.segments.last() {
             if seg.ident == "PhantomData" {
                 // Hardcoded exception, because PhantomData<T> implements
@@ -160,7 +195,7 @@ impl<'ast> FindTyParams<'ast> {
         }
     }
 
-    fn visit_type_param_bound(&mut self, bound: &'ast TypeParamBound) {
+    fn visit_type_param_bound(&mut self, bound: &TypeParamBound) {
         match bound {
             TypeParamBound::Trait(bound) => self.visit_path(&bound.path),
             TypeParamBound::Lifetime(_) | TypeParamBound::Verbatim(_) => {}
@@ -177,9 +212,9 @@ impl<'ast> FindTyParams<'ast> {
     //         mac: T!(),
     //         marker: PhantomData<T>,
     //     }
-    fn visit_macro(&mut self, _mac: &'ast Macro) {}
+    fn visit_macro(&mut self, _mac: &Macro) {}
 
-    fn visit_type(&mut self, ty: &'ast Type) {
+    fn visit_type(&mut self, ty: &Type) {
         match ty {
             Type::Array(ty) => self.visit_type(&ty.elem),
             Type::BareFn(ty) => {
