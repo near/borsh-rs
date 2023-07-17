@@ -50,9 +50,11 @@ fn parse_lit_into<T: syn::parse::Parse>(
     }
 }
 
-/// struct describes entries like `K => <K as TraitName>::Associated`
+/**
+Struct describes an entry like `order_param => override_type`,  e.g. `K => <K as TraitName>::Associated`
+*/
 #[derive(Clone, syn_derive::Parse, syn_derive::ToTokens)]
-pub(crate) struct SchemaParamsOverride {
+pub struct SchemaParamsOverride {
     pub order_param: Ident,
     arrow_token: Token![=>],
     pub override_type: Type,
