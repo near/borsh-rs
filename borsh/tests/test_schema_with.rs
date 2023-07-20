@@ -5,6 +5,8 @@
 use std::collections::BTreeMap;
 
 #[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
 use alloc::{
     borrow,
     boxed::Box,
@@ -30,6 +32,7 @@ mod third_party_impl {
         string::{String, ToString},
         vec,
         vec::Vec,
+        format,
     };
     use borsh::BorshSchema;
 

@@ -3,9 +3,7 @@ use quote::quote;
 use syn::{Fields, Ident, ItemStruct, Path, WhereClause};
 
 use crate::{
-    attribute_helpers::{
-        collect_override_bounds, contains_initialize_with, contains_skip, BoundType,
-    },
+    attribute_helpers::{contains_initialize_with, contains_skip, field, BoundType},
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
 
@@ -30,11 +28,9 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
         Fields::Named(fields) => {
             let mut body = TokenStream2::new();
             for field in &fields.named {
-                let bounds_override = collect_override_bounds(
-                    field,
-                    BoundType::Deserialize,
-                    &mut override_predicates,
-                )?;
+                let parsed = field::Attributes::parse(&field.attrs)?;
+                let bounds_override = parsed
+                    .collect_override_bounds(BoundType::Deserialize, &mut override_predicates)?;
                 let field_name = field.ident.as_ref().unwrap();
                 let delta = if contains_skip(&field.attrs) {
                     if !bounds_override {
@@ -60,11 +56,9 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
         Fields::Unnamed(fields) => {
             let mut body = TokenStream2::new();
             for (_field_idx, field) in fields.unnamed.iter().enumerate() {
-                let bounds_override = collect_override_bounds(
-                    field,
-                    BoundType::Deserialize,
-                    &mut override_predicates,
-                )?;
+                let parsed = field::Attributes::parse(&field.attrs)?;
+                let bounds_override = parsed
+                    .collect_override_bounds(BoundType::Deserialize, &mut override_predicates)?;
                 let delta = if contains_skip(&field.attrs) {
                     if !bounds_override {
                         default_params_visitor.visit_field(field);

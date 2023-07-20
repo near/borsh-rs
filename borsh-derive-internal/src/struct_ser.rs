@@ -5,7 +5,7 @@ use quote::quote;
 use syn::{Fields, Ident, Index, ItemStruct, Path, WhereClause};
 
 use crate::{
-    attribute_helpers::{collect_override_bounds, contains_skip, BoundType},
+    attribute_helpers::{contains_skip, field, BoundType},
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
 
@@ -26,8 +26,9 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
     match &input.fields {
         Fields::Named(fields) => {
             for field in &fields.named {
-                let bounds_override =
-                    collect_override_bounds(field, BoundType::Serialize, &mut override_predicates)?;
+                let parsed = field::Attributes::parse(&field.attrs)?;
+                let bounds_override = parsed
+                    .collect_override_bounds(BoundType::Serialize, &mut override_predicates)?;
                 if contains_skip(&field.attrs) {
                     continue;
                 }
@@ -44,8 +45,9 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
         }
         Fields::Unnamed(fields) => {
             for (field_idx, field) in fields.unnamed.iter().enumerate() {
-                let bounds_override =
-                    collect_override_bounds(field, BoundType::Serialize, &mut override_predicates)?;
+                let parsed = field::Attributes::parse(&field.attrs)?;
+                let bounds_override = parsed
+                    .collect_override_bounds(BoundType::Serialize, &mut override_predicates)?;
                 if !contains_skip(&field.attrs) {
                     let field_idx = Index {
                         index: u32::try_from(field_idx).expect("up to 2^32 fields are supported"),

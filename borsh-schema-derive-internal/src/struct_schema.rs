@@ -3,7 +3,10 @@ use quote::{quote, ToTokens};
 use syn::{Field, Fields, Ident, ItemStruct, Path, WhereClause};
 
 use crate::{
-    attribute_helpers::{contains_skip, parse_schema_attrs, parsing_helpers::SchemaParamsOverride},
+    attribute_helpers::{
+        contains_skip,
+        field::{self, schema},
+    },
     generics::{compute_predicates, without_defaults, FindTyParams},
     schema_helpers::declaration,
 };
@@ -13,15 +16,18 @@ fn visit_field(field: &Field, visitor: &mut FindTyParams) -> syn::Result<()> {
         // there's no need to override params when field is skipped, because when field is skipped
         // derive for it doesn't attempt to add any bounds, unlike `BorshDeserialize`, which
         // adds `Default` bound on any type parameters in skipped field
-        let schema_attrs = parse_schema_attrs(&field.attrs)?;
-        if let Some(schema_params) = schema_attrs {
-            for SchemaParamsOverride {
-                order_param,
-                override_type,
-                ..
-            } in schema_params
-            {
-                visitor.param_associated_type_insert(order_param, override_type);
+        let schema_attrs = field::Attributes::parse(&field.attrs)?.schema;
+
+        if let Some(schema_attrs) = schema_attrs {
+            if let Some(schema_params) = schema_attrs.params {
+                for schema::ParamsOverride {
+                    order_param,
+                    override_type,
+                    ..
+                } in schema_params
+                {
+                    visitor.param_associated_type_insert(order_param, override_type);
+                }
             }
         } else {
             visitor.visit_field(field);

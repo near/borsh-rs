@@ -354,13 +354,13 @@ struct A {
 
 #### syntax
 
-Attribute takes literal string value, which is a comma-separated list of [SchemaParamsOverride]-s, which may be empty.
+Attribute takes literal string value, which is a comma-separated list of [ParamsOverride]-s, which may be empty.
 
 #### usage
 It may be used to fix complex cases, when derive hasn't figured out the right bounds on type parameters and declaration
 parameters automatically.
 
-[SchemaParamsOverride] describes an entry like `order_param => override_type`,
+[ParamsOverride] describes an entry like `order_param => override_type`,
 
 e.g. `K => <K as TraitName>::Associated`.
 

@@ -5,7 +5,7 @@ use quote::quote;
 use syn::{Fields, FieldsNamed, FieldsUnnamed, Ident, ItemEnum, Path, WhereClause, WherePredicate};
 
 use crate::{
-    attribute_helpers::{collect_override_bounds, contains_skip, BoundType},
+    attribute_helpers::{contains_skip, field, BoundType},
     enum_discriminant_map::discriminant_map,
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
@@ -110,8 +110,9 @@ fn named_fields(
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
     for field in &fields.named {
+        let parsed = field::Attributes::parse(&field.attrs)?;
         let bounds_override =
-            collect_override_bounds(field, BoundType::Serialize, override_output)?;
+            parsed.collect_override_bounds(BoundType::Serialize, override_output)?;
         if !contains_skip(&field.attrs) {
             let field_ident = field.ident.clone().unwrap();
 
@@ -149,8 +150,9 @@ fn unnamed_fields(
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
     for (field_idx, field) in fields.unnamed.iter().enumerate() {
+        let parsed = field::Attributes::parse(&field.attrs)?;
         let bounds_override =
-            collect_override_bounds(field, BoundType::Serialize, override_output)?;
+            parsed.collect_override_bounds(BoundType::Serialize, override_output)?;
         let field_idx = u32::try_from(field_idx).expect("up to 2^32 fields are supported");
         if contains_skip(&field.attrs) {
             let field_ident = Ident::new(format!("_id{}", field_idx).as_str(), Span::mixed_site());

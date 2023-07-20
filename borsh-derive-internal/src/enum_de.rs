@@ -3,9 +3,7 @@ use quote::quote;
 use syn::{Fields, Ident, ItemEnum, Path, WhereClause};
 
 use crate::{
-    attribute_helpers::{
-        collect_override_bounds, contains_initialize_with, contains_skip, BoundType,
-    },
+    attribute_helpers::{contains_initialize_with, contains_skip, field, BoundType},
     enum_discriminant_map::discriminant_map,
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
@@ -36,8 +34,8 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         match &variant.fields {
             Fields::Named(fields) => {
                 for field in &fields.named {
-                    let bounds_override = collect_override_bounds(
-                        field,
+                    let parsed = field::Attributes::parse(&field.attrs)?;
+                    let bounds_override = parsed.collect_override_bounds(
                         BoundType::Deserialize,
                         &mut override_predicates,
                     )?;
@@ -62,8 +60,8 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
             }
             Fields::Unnamed(fields) => {
                 for field in fields.unnamed.iter() {
-                    let bounds_override = collect_override_bounds(
-                        field,
+                    let parsed = field::Attributes::parse(&field.attrs)?;
+                    let bounds_override = parsed.collect_override_bounds(
                         BoundType::Deserialize,
                         &mut override_predicates,
                     )?;

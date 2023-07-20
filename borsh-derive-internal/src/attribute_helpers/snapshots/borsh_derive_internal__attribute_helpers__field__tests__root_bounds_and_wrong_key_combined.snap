@@ -1,0 +1,7 @@
+---
+source: borsh-derive-internal/src/attribute_helpers/field.rs
+expression: err
+---
+Error(
+    "malformed borsh attribute, expected `borsh(bound(...), schema(...))`",
+)
