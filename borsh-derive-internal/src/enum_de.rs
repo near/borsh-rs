@@ -97,15 +97,10 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
             }
             Fields::Unit => {}
         }
-        if use_discriminant {
-            variant_arms.extend(quote! {
-                if variant_tag == #discriminant { #name::#variant_ident #variant_header } else
-            });
-        } else {
-            variant_arms.extend(quote! {
-                #variant_idx => #name::#variant_ident #variant_header ,
-            });
-        }
+
+        variant_arms.extend(quote! {
+            #variant_idx => #name::#variant_ident #variant_header ,
+        });
     }
 
     let init = if let Some(method_ident) = init_method {
@@ -116,27 +111,16 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         quote! {}
     };
 
-    let mut return_value_code = quote! {
-        let mut return_value = #variant_arms {
-        return Err(#cratename::__private::maybestd::io::Error::new(
-            #cratename::__private::maybestd::io::ErrorKind::InvalidData,
-            #cratename::__private::maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
-        ))};
-    };
-
-    let mut variant_name = quote! { variant_tag };
-    if !use_discriminant {
-        variant_name = quote! { variant_idx };
-        return_value_code = quote! {
-            let mut return_value = match variant_idx {
-                #variant_arms
-                _ => return Err(#cratename::__private::maybestd::io::Error::new(
-                    #cratename::__private::maybestd::io::ErrorKind::InvalidData,
-                    #cratename::__private::maybestd::format!("Unexpected variant index: {:?}", variant_idx),
-                ))
-            };
+    let variant_name = quote! { variant_idx };
+    let return_value_code = quote! {
+        let mut return_value = match variant_idx {
+            #variant_arms
+            _ => return Err(#cratename::__private::maybestd::io::Error::new(
+                #cratename::__private::maybestd::io::ErrorKind::InvalidData,
+                #cratename::__private::maybestd::format!("Unexpected variant index: {:?}", variant_idx),
+            ))
         };
-    }
+    };
 
     Ok(
         quote! { impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {

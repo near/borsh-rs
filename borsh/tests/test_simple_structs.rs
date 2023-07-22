@@ -248,7 +248,6 @@ fn test_discriminant_serde_no_use_discriminant() {
     }
 }
 
-struct D(u32, u32);
 // sequence, no unit enums
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
 #[borsh(use_discriminant = true)]
@@ -322,7 +321,6 @@ enum MyDiscriminantEnumFalse {
 enum MyEnumNoDiscriminant {
     A,
 }
-
 #[test]
 fn test_discriminant_minimal_true() {
     assert_eq!(MyDiscriminantEnum::A as u8, 20);
