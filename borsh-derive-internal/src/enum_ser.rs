@@ -6,11 +6,9 @@ use syn::{Fields, FieldsNamed, FieldsUnnamed, Ident, ItemEnum, WhereClause, Wher
 
 use crate::{attribute_helpers::contains_skip, enum_discriminant_map::discriminant_map};
 
-pub fn enum_ser(
-    input: &ItemEnum,
-    cratename: Ident,
-    use_discriminant: Option<bool>,
-) -> syn::Result<TokenStream2> {
+use crate::attribute_helpers::contains_use_discriminant;
+
+pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let enum_ident = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let mut where_clause = where_clause.map_or_else(
@@ -20,8 +18,16 @@ pub fn enum_ser(
         },
         Clone::clone,
     );
+
+    let use_discriminant = contains_use_discriminant(&input.attrs).map_err(|err| {
+        syn::Error::new(
+            input.ident.span(),
+            format!("error parsing `#[borsh(use_discriminant = ...)]`: {}", err),
+        )
+    })?;
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
+
     let discriminants = discriminant_map(&input.variants);
     let has_explicit_discriminants = input
         .variants
@@ -34,11 +40,13 @@ pub fn enum_ser(
         ));
     }
 
+    let use_discriminant = use_discriminant.unwrap_or(false);
     assert!(
         input.variants.len() < 256,
         "up to 256 enum variants are supported"
     );
-    for variant in input.variants.iter() {
+    for (variant_idx, variant) in input.variants.iter().enumerate() {
+        let variant_idx = u8::try_from(variant_idx).expect("up to 256 enum variants are supported");
         let variant_ident = &variant.ident;
         let discriminant_value = discriminants.get(variant_ident).unwrap();
         let VariantParts {
@@ -53,6 +61,8 @@ pub fn enum_ser(
                 variant_ident,
                 discriminant_value,
                 fields,
+                use_discriminant,
+                variant_idx,
             )?,
             Fields::Unnamed(fields) => unnamed_fields(
                 &cratename,
@@ -60,11 +70,21 @@ pub fn enum_ser(
                 variant_ident,
                 discriminant_value,
                 fields,
+                use_discriminant,
+                variant_idx,
             )?,
             Fields::Unit => {
-                let variant_idx_body = quote!(
-                    #enum_ident::#variant_ident => #discriminant_value,
-                );
+                let mut variant_idx_body = TokenStream2::new();
+                if use_discriminant == true {
+                    variant_idx_body = quote!(
+                        #enum_ident::#variant_ident => #discriminant_value,
+                    );
+                } else {
+                    variant_idx_body = quote!(
+                        #enum_ident::#variant_ident => #variant_idx,
+                    );
+                }
+
                 VariantParts {
                     where_predicates: vec![],
                     variant_header: TokenStream2::new(),
@@ -112,6 +132,8 @@ fn named_fields(
     variant_ident: &Ident,
     discriminant_value: &TokenStream2,
     fields: &FieldsNamed,
+    use_discriminant: bool,
+    variant_idx: u8,
 ) -> syn::Result<VariantParts> {
     let mut where_predicates: Vec<WherePredicate> = vec![];
     let mut variant_header = TokenStream2::new();
@@ -137,9 +159,16 @@ fn named_fields(
     }
     // `..` pattern matching works even if all fields were specified
     variant_header = quote! { { #variant_header .. }};
-    let variant_idx_body = quote!(
-        #enum_ident::#variant_ident { .. } => #discriminant_value,
-    );
+    let mut variant_idx_body = TokenStream2::new();
+    if use_discriminant == true {
+        variant_idx_body = quote!(
+            #enum_ident::#variant_ident => #discriminant_value,
+        );
+    } else {
+        variant_idx_body = quote!(
+            #enum_ident::#variant_ident(..) => #variant_idx,
+        );
+    }
     Ok(VariantParts {
         where_predicates,
         variant_header,
@@ -154,6 +183,8 @@ fn unnamed_fields(
     variant_ident: &Ident,
     discriminant_value: &TokenStream2,
     fields: &FieldsUnnamed,
+    use_discriminant: bool,
+    variant_idx: u8,
 ) -> syn::Result<VariantParts> {
     let mut where_predicates: Vec<WherePredicate> = vec![];
     let mut variant_header = TokenStream2::new();
@@ -182,9 +213,16 @@ fn unnamed_fields(
         }
     }
     variant_header = quote! { ( #variant_header )};
-    let variant_idx_body = quote!(
-        #enum_ident::#variant_ident(..) => #discriminant_value,
-    );
+    let mut variant_idx_body = TokenStream2::new();
+    if use_discriminant == true {
+        variant_idx_body = quote!(
+            #enum_ident::#variant_ident => #discriminant_value,
+        );
+    } else {
+        variant_idx_body = quote!(
+            #enum_ident::#variant_ident(..) => #variant_idx,
+        );
+    }
     Ok(VariantParts {
         where_predicates,
         variant_header,
@@ -211,12 +249,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = enum_ser(
-            &item_enum,
-            Ident::new("borsh", Span::call_site()),
-            Some(false),
-        )
-        .unwrap();
+        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -237,12 +270,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = enum_ser(
-            &item_enum,
-            Ident::new("borsh", Span::call_site()),
-            Some(false),
-        )
-        .unwrap();
+        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -266,12 +294,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = enum_ser(
-            &item_enum,
-            Ident::new("borsh", Span::call_site()),
-            Some(false),
-        )
-        .unwrap();
+        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -296,12 +319,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = enum_ser(
-            &item_enum,
-            Ident::new("borsh", Span::call_site()),
-            Some(false),
-        )
-        .unwrap();
+        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }

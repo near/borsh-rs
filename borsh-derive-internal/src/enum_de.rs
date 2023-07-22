@@ -4,15 +4,11 @@ use std::convert::TryFrom;
 use syn::{Fields, Ident, ItemEnum, WhereClause};
 
 use crate::{
-    attribute_helpers::{contains_initialize_with, contains_skip},
+    attribute_helpers::{contains_initialize_with, contains_skip, contains_use_discriminant},
     enum_discriminant_map::discriminant_map,
 };
 
-pub fn enum_de(
-    input: &ItemEnum,
-    cratename: Ident,
-    use_discriminant: Option<bool>,
-) -> syn::Result<TokenStream2> {
+pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let mut where_clause = where_clause.map_or_else(
@@ -24,6 +20,13 @@ pub fn enum_de(
     );
     let init_method = contains_initialize_with(&input.attrs);
     let mut variant_arms = TokenStream2::new();
+
+    let use_discriminant = contains_use_discriminant(&input.attrs).map_err(|err| {
+        syn::Error::new(
+            input.ident.span(),
+            format!("error parsing `#[borsh(use_discriminant = ...)]`: {}", err),
+        )
+    })?;
 
     let discriminants = discriminant_map(&input.variants);
     let has_explicit_discriminants = input
@@ -116,7 +119,7 @@ pub fn enum_de(
     let mut return_value_code = quote! {
         let mut return_value = #variant_arms {
         return Err(#cratename::__private::maybestd::io::Error::new(
-            #cratename::__private::maybestd::io::ErrorKind::InvalidInput,
+            #cratename::__private::maybestd::io::ErrorKind::InvalidData,
             #cratename::__private::maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
         ))};
     };
@@ -128,7 +131,7 @@ pub fn enum_de(
             let mut return_value = match variant_idx {
                 #variant_arms
                 _ => return Err(#cratename::__private::maybestd::io::Error::new(
-                    #cratename::__private::maybestd::io::ErrorKind::InvalidInput,
+                    #cratename::__private::maybestd::io::ErrorKind::InvalidData,
                     #cratename::__private::maybestd::format!("Unexpected variant index: {:?}", variant_idx),
                 ))
             };
@@ -179,12 +182,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = enum_de(
-            &item_enum,
-            Ident::new("borsh", Span::call_site()),
-            Some(false),
-        )
-        .unwrap();
+        let actual = enum_de(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -201,12 +199,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = enum_de(
-            &item_enum,
-            Ident::new("borsh", Span::call_site()),
-            Some(false),
-        )
-        .unwrap();
+        let actual = enum_de(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }

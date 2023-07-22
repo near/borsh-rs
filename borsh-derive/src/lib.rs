@@ -6,7 +6,7 @@ use proc_macro_crate::crate_name;
 use proc_macro_crate::FoundCrate;
 use syn::{Ident, ItemEnum, ItemStruct, ItemUnion};
 
-use borsh_derive_internal::check_use_discriminant;
+use borsh_derive_internal::check_item_attributes;
 #[cfg(feature = "schema")]
 use borsh_schema_derive_internal::{process_enum, process_struct};
 use syn::{parse_macro_input, DeriveInput};
@@ -23,15 +23,15 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     let for_derive_input = input.clone();
     let derive_input = parse_macro_input!(for_derive_input as DeriveInput);
 
-    let use_discriminant = match check_use_discriminant(derive_input) {
-        Ok(value) => value,
-        Err(value) => return value,
+    match check_item_attributes(&derive_input) {
+        Ok(..) => {}
+        Err(value) => return value.into(),
     };
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
         struct_ser(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        enum_ser(&input, cratename, use_discriminant)
+        enum_ser(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
         union_ser(&input, cratename)
     } else {
@@ -56,15 +56,15 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     let for_derive_input = input.clone();
     let derive_input = parse_macro_input!(for_derive_input as DeriveInput);
 
-    let use_discriminant = match check_use_discriminant(derive_input) {
+    match check_item_attributes(&derive_input) {
         Ok(value) => value,
-        Err(value) => return value,
+        Err(value) => return value.into(),
     };
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
         struct_de(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        enum_de(&input, cratename, use_discriminant)
+        enum_de(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
         union_de(&input, cratename)
     } else {
@@ -78,7 +78,7 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
 }
 
 #[cfg(feature = "schema")]
-#[proc_macro_derive(BorshSchema, attributes(borsh_skip, use_discriminant))]
+#[proc_macro_derive(BorshSchema, attributes(borsh_skip))]
 pub fn borsh_schema(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
     let name = match name {
