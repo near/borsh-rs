@@ -6,8 +6,8 @@ impl<K: Key, V, U> borsh::de::BorshDeserialize for A<K, V, U>
 where
     V: Value,
     K: borsh::de::BorshDeserialize,
-    U: borsh::de::BorshDeserialize,
     V: borsh::de::BorshDeserialize,
+    U: borsh::de::BorshDeserialize,
 {
     fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
@@ -20,8 +20,8 @@ impl<K: Key, V, U> borsh::de::EnumExt for A<K, V, U>
 where
     V: Value,
     K: borsh::de::BorshDeserialize,
-    U: borsh::de::BorshDeserialize,
     V: borsh::de::BorshDeserialize,
+    U: borsh::de::BorshDeserialize,
 {
     fn deserialize_variant<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,

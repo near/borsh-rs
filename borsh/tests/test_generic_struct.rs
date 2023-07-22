@@ -59,6 +59,31 @@ struct C<T: PartialOrd + Hash + Eq, U> {
     b: HashMap<T, U>,
 }
 
+/// `T: PartialOrd` is injected here via field bound to avoid having this restriction on
+/// the struct itself
+#[cfg(hash_collections)]
+#[derive(BorshSerialize)]
+struct C1<T, U> {
+    a: String,
+    #[borsh(bound(serialize = "T: borsh::ser::BorshSerialize + PartialOrd,
+         U: borsh::ser::BorshSerialize"))]
+    b: HashMap<T, U>,
+}
+
+/// `T: PartialOrd + Hash + Eq` is injected here via field bound to avoid having this restriction on
+/// the struct itself
+#[allow(unused)]
+#[cfg(hash_collections)]
+#[derive(BorshDeserialize)]
+struct C2<T, U> {
+    a: String,
+    #[borsh(bound(
+        deserialize = "T: PartialOrd + Hash + Eq + borsh::de::BorshDeserialize,
+         U: borsh::de::BorshDeserialize"
+    ))]
+    b: HashMap<T, U>,
+}
+
 /// `T: Ord` bound is required for `BorshDeserialize` derive to be successful
 #[derive(BorshSerialize, BorshDeserialize)]
 struct D<T: Ord, U> {
@@ -77,6 +102,17 @@ struct G1<K, V, U>(#[borsh_skip] HashMap<K, V>, U);
 #[cfg(hash_collections)]
 #[derive(BorshDeserialize)]
 struct G2<K: PartialOrd + Hash + Eq, V, U>(HashMap<K, V>, #[borsh_skip] U);
+
+/// implicit derived `core::default::Default` bounds on `K` and `V` are dropped by empty bound
+/// specified, as `HashMap` hash its own `Default` implementation
+#[cfg(hash_collections)]
+#[derive(BorshDeserialize)]
+struct G3<K, V, U>(
+    #[borsh_skip]
+    #[borsh(bound(deserialize = ""))]
+    HashMap<K, V>,
+    U,
+);
 
 #[cfg(hash_collections)]
 #[derive(BorshSerialize, BorshDeserialize)]
@@ -130,6 +166,17 @@ where
     T: TraitName,
 {
     field: T::Associated,
+    another: V,
+}
+
+#[allow(unused)]
+#[derive(BorshSerialize)]
+struct ParametrizedWronDerive<T, V>
+where
+    T: TraitName,
+{
+    #[borsh(bound(serialize = "<T as TraitName>::Associated: borsh::ser::BorshSerialize"))]
+    field: <T as TraitName>::Associated,
     another: V,
 }
 

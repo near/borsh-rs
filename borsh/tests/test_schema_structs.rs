@@ -174,6 +174,18 @@ pub fn simple_generics() {
     );
 }
 
+fn common_map() -> BTreeMap<String, Definition> {
+    map! {
+
+        "Parametrized<string, i8>" => Definition::Struct {
+            fields: Fields::NamedFields(vec![
+                ("field".to_string(), "i8".to_string()),
+                ("another".to_string(), "string".to_string())
+            ])
+        }
+    }
+}
+
 #[test]
 pub fn generic_associated_item() {
     trait TraitName {
@@ -182,13 +194,13 @@ pub fn generic_associated_item() {
     }
 
     impl TraitName for u32 {
-        type Associated = String;
+        type Associated = i8;
         fn method(&self) {}
     }
 
     #[allow(unused)]
     #[derive(borsh::BorshSchema)]
-    struct Parametrized<T, V>
+    struct Parametrized<V, T>
     where
         T: TraitName,
     {
@@ -197,20 +209,88 @@ pub fn generic_associated_item() {
     }
 
     assert_eq!(
-        "Parametrized<string, string>".to_string(),
-        <Parametrized<u32, String>>::declaration()
+        "Parametrized<string, i8>".to_string(),
+        <Parametrized<String, u32>>::declaration()
     );
 
     let mut defs = Default::default();
-    <Parametrized<u32, String>>::add_definitions_recursively(&mut defs);
+    <Parametrized<String, u32>>::add_definitions_recursively(&mut defs);
+    assert_eq!(common_map(), defs);
+}
+
+#[test]
+pub fn generic_associated_item2() {
+    trait TraitName {
+        type Associated;
+        fn method(&self);
+    }
+
+    impl TraitName for u32 {
+        type Associated = i8;
+        fn method(&self) {}
+    }
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Parametrized<V, T>
+    where
+        T: TraitName,
+    {
+        #[borsh(schema(params = "T => <T as TraitName>::Associated"))]
+        field: <T as TraitName>::Associated,
+        another: V,
+    }
+
+    assert_eq!(
+        "Parametrized<string, i8>".to_string(),
+        <Parametrized<String, u32>>::declaration()
+    );
+
+    let mut defs = Default::default();
+    <Parametrized<String, u32>>::add_definitions_recursively(&mut defs);
+    assert_eq!(common_map(), defs);
+}
+
+#[test]
+pub fn generic_associated_item3() {
+    trait TraitName {
+        type Associated;
+        fn method(&self);
+    }
+
+    impl TraitName for u32 {
+        type Associated = i8;
+        fn method(&self) {}
+    }
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Parametrized<V, T>
+    where
+        T: TraitName,
+    {
+        #[borsh(schema(params = "T => T, T => <T as TraitName>::Associated"))]
+        field: (<T as TraitName>::Associated, T),
+        another: V,
+    }
+
+    assert_eq!(
+        "Parametrized<string, u32, i8>".to_string(),
+        <Parametrized<String, u32>>::declaration()
+    );
+
+    let mut defs = Default::default();
+    <Parametrized<String, u32>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-
-            "Parametrized<string, string>" => Definition::Struct {
-            fields: Fields::NamedFields(vec![
-            ("field".to_string(), "string".to_string()),
-            ("another".to_string(), "string".to_string())
-            ])
+            "Parametrized<string, u32, i8>" => Definition::Struct {
+                fields: Fields::NamedFields(vec![
+                    ("field".to_string(), "Tuple<i8, u32>".to_string()),
+                    ("another".to_string(), "string".to_string())
+                ])
+            },
+            "Tuple<i8, u32>" => Definition::Tuple {
+                elements: vec!["i8".to_string(), "u32".to_string()]
             }
         },
         defs

@@ -2,16 +2,16 @@
 source: borsh-schema-derive-internal/src/enum_schema.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
-impl<A, B> borsh::BorshSchema for Side<A, B>
+impl<B, A> borsh::BorshSchema for Side<B, A>
 where
     A: Display + Debug,
     B: Display + Debug,
-    A: borsh::BorshSchema,
     B: borsh::BorshSchema,
+    A: borsh::BorshSchema,
 {
     fn declaration() -> borsh::schema::Declaration {
         let params = borsh::__private::maybestd::vec![
-            < A > ::declaration(), < B > ::declaration()
+            < B > ::declaration(), < A > ::declaration()
         ];
         format!(r#"{}<{}>"#, "Side", params.join(", "))
     }
@@ -23,10 +23,18 @@ where
     ) {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct SideLeft<A>(A);
+        struct SideLeft<A>(
+            A,
+        )
+        where
+            A: Display + Debug;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct SideRight<B>(B);
+        struct SideRight<B>(
+            B,
+        )
+        where
+            B: Display + Debug;
         <SideLeft<A> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <SideRight<B> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let variants = borsh::__private::maybestd::vec![

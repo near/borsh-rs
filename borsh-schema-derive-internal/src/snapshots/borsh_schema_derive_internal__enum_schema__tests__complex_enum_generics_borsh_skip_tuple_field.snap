@@ -2,8 +2,9 @@
 source: borsh-schema-derive-internal/src/enum_schema.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
-impl<C, W> borsh::BorshSchema for A<C, W>
+impl<C: Eq, W> borsh::BorshSchema for A<C, W>
 where
+    W: Hash,
     W: borsh::BorshSchema,
 {
     fn declaration() -> borsh::schema::Declaration {
@@ -24,10 +25,13 @@ where
         struct AEggs;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct ASalad<C>(Tomatoes, #[borsh_skip] C, Oil);
+        struct ASalad<C: Eq>(Tomatoes, #[borsh_skip] C, Oil);
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct ASausage<W> {
+        struct ASausage<W>
+        where
+            W: Hash,
+        {
             wrapper: W,
             filling: Filling,
         }

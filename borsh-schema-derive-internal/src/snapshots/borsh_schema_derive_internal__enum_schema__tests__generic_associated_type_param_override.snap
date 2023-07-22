@@ -1,0 +1,67 @@
+---
+source: borsh-schema-derive-internal/src/enum_schema.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+impl<T, K, V> borsh::BorshSchema for EnumParametrized<T, K, V>
+where
+    K: TraitName,
+    K: core::cmp::Ord,
+    V: core::cmp::Ord,
+    T: Eq + Hash,
+    T: borsh::BorshSchema,
+    K: borsh::BorshSchema,
+    <K as TraitName>::Associated: borsh::BorshSchema,
+    V: borsh::BorshSchema,
+{
+    fn declaration() -> borsh::schema::Declaration {
+        let params = borsh::__private::maybestd::vec![
+            < T > ::declaration(), < K > ::declaration(), < < K as TraitName >
+            ::Associated > ::declaration(), < V > ::declaration()
+        ];
+        format!(r#"{}<{}>"#, "EnumParametrized", params.join(", "))
+    }
+    fn add_definitions_recursively(
+        definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
+            borsh::schema::Declaration,
+            borsh::schema::Definition,
+        >,
+    ) {
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        struct EnumParametrizedB<K, V>
+        where
+            K: TraitName,
+            K: core::cmp::Ord,
+            V: core::cmp::Ord,
+        {
+            x: BTreeMap<K, V>,
+            y: String,
+            #[borsh(schema(params = "K => <K as TraitName>::Associated"))]
+            z: <K as TraitName>::Associated,
+        }
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        struct EnumParametrizedC<T>(
+            T,
+            u16,
+        )
+        where
+            T: Eq + Hash;
+        <EnumParametrizedB<
+            K,
+            V,
+        > as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <EnumParametrizedC<
+            T,
+        > as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        let variants = borsh::__private::maybestd::vec![
+            ("B".to_string(), < EnumParametrizedB < K, V > > ::declaration()), ("C"
+            .to_string(), < EnumParametrizedC < T > > ::declaration())
+        ];
+        let definition = borsh::schema::Definition::Enum {
+            variants,
+        };
+        Self::add_definition(Self::declaration(), definition, definitions);
+    }
+}
+

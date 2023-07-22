@@ -4,8 +4,9 @@
     feature(non_exhaustive_omitted_patterns_lint)
 )]
 
+mod attribute_helpers;
 mod generics;
-mod helpers;
+mod schema_helpers;
 
 mod enum_schema;
 mod struct_schema;
