@@ -7,7 +7,7 @@ use self::{bounds::BOUNDS_FIELD_PARSE_MAP, schema::SCHEMA_FIELD_PARSE_MAP};
 
 use super::{
     parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys, parse_lit_into},
-    BoundType, Symbol, BORSH, BOUND, SCHEMA, SERIALIZE_WITH,
+    BoundType, Symbol, BORSH, BOUND, SCHEMA, SERIALIZE_WITH, DESERIALIZE_WITH,
 };
 
 pub mod bounds;
@@ -17,6 +17,7 @@ enum Variants {
     Schema(schema::Attributes),
     Bounds(bounds::Attributes),
     SerializeWith(syn::ExprPath),
+    DeserializeWith(syn::ExprPath),
 }
 
 type ParseFn = dyn Fn(Symbol, Symbol, &ParseNestedMeta) -> syn::Result<Variants> + Send + Sync;
@@ -40,9 +41,14 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
         parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta).map(Variants::SerializeWith)
     });
 
+    let f4: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
+        parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta).map(Variants::DeserializeWith)
+    });
+
     m.insert(BOUND, f1);
     m.insert(SCHEMA, f2);
     m.insert(SERIALIZE_WITH, f3);
+    m.insert(DESERIALIZE_WITH, f4);
     m
 });
 
@@ -51,6 +57,7 @@ pub(crate) struct Attributes {
     pub bounds: Option<bounds::Attributes>,
     pub schema: Option<schema::Attributes>,
     pub serialize_with: Option<syn::ExprPath>,
+    pub deserialize_with: Option<syn::ExprPath>,
 }
 
 impl From<BTreeMap<Symbol, Variants>> for Attributes {
@@ -58,6 +65,7 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
         let bounds = map.remove(&BOUND);
         let schema = map.remove(&SCHEMA);
         let serialize_with = map.remove(&SERIALIZE_WITH);
+        let deserialize_with = map.remove(&DESERIALIZE_WITH);
         let bounds = bounds.and_then(|variant| match variant {
             Variants::Bounds(bounds) => Some(bounds),
             _ => None,
@@ -71,7 +79,12 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
             Variants::SerializeWith(serialize_with) => Some(serialize_with),
             _ => None,
         });
-        Self { bounds, schema, serialize_with }
+
+        let deserialize_with = deserialize_with.and_then(|variant| match variant {
+            Variants::DeserializeWith(deserialize_with) => Some(deserialize_with),
+            _ => None,
+        });
+        Self { bounds, schema, serialize_with, deserialize_with }
     }
 }
 impl Attributes {
@@ -441,7 +454,10 @@ mod tests {
     fn test_ser_de_with_parsing1() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct A {
-                #[borsh(serialize_with = "third_party_impl::serialize_third_party")]
+                #[borsh(
+                    serialize_with = "third_party_impl::serialize_third_party",
+                    deserialize_with = "third_party_impl::deserialize_third_party",
+                )]
                 x: u64,
                 y: String,
             }
@@ -451,14 +467,17 @@ mod tests {
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let attrs = Attributes::parse(&first_field.attrs).unwrap();
         insta::assert_snapshot!(debug_print_tokenizable(attrs.serialize_with));
+        insta::assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
     }
 
     #[test]
     fn test_root_bounds_and_params_combined() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct A {
-                #[borsh(bound(deserialize = "K: Hash"),
-                        schema(params = "T => <T as TraitName>::Associated, V => Vec<V>")
+                #[borsh(
+                    serialize_with = "third_party_impl::serialize_third_party",
+                    bound(deserialize = "K: Hash"),
+                    schema(params = "T => <T as TraitName>::Associated, V => Vec<V>")
                 )]
                 x: u64,
                 y: String,
@@ -474,6 +493,8 @@ mod tests {
         insta::assert_snapshot!(debug_print_vec_of_tokenizable(bounds.deserialize));
         let schema = attrs.schema.unwrap();
         insta::assert_snapshot!(debug_print_vec_of_tokenizable(schema.params));
+        insta::assert_snapshot!(debug_print_tokenizable(attrs.serialize_with));
+        assert!(attrs.deserialize_with.is_none());
     }
 
     #[test]

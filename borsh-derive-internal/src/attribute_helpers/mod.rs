@@ -33,6 +33,8 @@ pub const SCHEMA: Symbol = Symbol("schema", "schema(...)");
 pub const PARAMS: Symbol = Symbol("params", "params = ...");
 /// serialize_with - sub-borsh nested meta, field-level only, `BorshSerialize` context
 pub const SERIALIZE_WITH: Symbol = Symbol("serialize_with", "serialize_with = ...");
+/// deserialize_with - sub-borsh nested meta, field-level only, `BorshDeserialize` context
+pub const DESERIALIZE_WITH: Symbol = Symbol("deserialize_with", "deserialize_with = ...");
 
 pub(crate) enum BoundType {
     Serialize,

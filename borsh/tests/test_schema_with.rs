@@ -59,7 +59,7 @@ mod third_party_impl {
 
 #[derive(BorshSchema)]
 struct A<K, V> {
-    #[borsh(schema(with(
+    #[borsh(schema(with_funcs(
         declaration = "third_party_impl::declaration::<K, V>",
         definitions = "third_party_impl::add_definitions_recursively::<K, V>"
     )))]
