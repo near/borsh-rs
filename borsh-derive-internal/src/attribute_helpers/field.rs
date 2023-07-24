@@ -6,8 +6,8 @@ use syn::{meta::ParseNestedMeta, Attribute, Field, WherePredicate};
 use self::{bounds::BOUNDS_FIELD_PARSE_MAP, schema::SCHEMA_FIELD_PARSE_MAP};
 
 use super::{
-    parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys},
-    BoundType, Symbol, BORSH, BOUND, SCHEMA,
+    parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys, parse_lit_into},
+    BoundType, Symbol, BORSH, BOUND, SCHEMA, SERIALIZE_WITH,
 };
 
 pub mod bounds;
@@ -16,6 +16,7 @@ pub mod schema;
 enum Variants {
     Schema(schema::Attributes),
     Bounds(bounds::Attributes),
+    SerializeWith(syn::ExprPath),
 }
 
 type ParseFn = dyn Fn(Symbol, Symbol, &ParseNestedMeta) -> syn::Result<Variants> + Send + Sync;
@@ -34,8 +35,14 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
         let schema_attributes: schema::Attributes = map_result.into();
         Ok(Variants::Schema(schema_attributes))
     });
+
+    let f3: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
+        parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta).map(Variants::SerializeWith)
+    });
+
     m.insert(BOUND, f1);
     m.insert(SCHEMA, f2);
+    m.insert(SERIALIZE_WITH, f3);
     m
 });
 
@@ -43,12 +50,14 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
 pub(crate) struct Attributes {
     pub bounds: Option<bounds::Attributes>,
     pub schema: Option<schema::Attributes>,
+    pub serialize_with: Option<syn::ExprPath>,
 }
 
 impl From<BTreeMap<Symbol, Variants>> for Attributes {
     fn from(mut map: BTreeMap<Symbol, Variants>) -> Self {
         let bounds = map.remove(&BOUND);
         let schema = map.remove(&SCHEMA);
+        let serialize_with = map.remove(&SERIALIZE_WITH);
         let bounds = bounds.and_then(|variant| match variant {
             Variants::Bounds(bounds) => Some(bounds),
             _ => None,
@@ -57,7 +66,12 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
             Variants::Schema(schema) => Some(schema),
             _ => None,
         });
-        Self { bounds, schema }
+
+        let serialize_with = serialize_with.and_then(|variant| match variant {
+            Variants::SerializeWith(serialize_with) => Some(serialize_with),
+            _ => None,
+        });
+        Self { bounds, schema, serialize_with }
     }
 }
 impl Attributes {
@@ -120,12 +134,22 @@ mod tests {
     }
 
     use super::{bounds, schema, Attributes, Bounds};
-    fn debug_print_vec_of_tokenizable<T: ToTokens>(bounds: Option<Vec<T>>) -> String {
+    fn debug_print_vec_of_tokenizable<T: ToTokens>(optional: Option<Vec<T>>) -> String {
         let mut s = String::new();
-        if let Some(bounds) = bounds {
-            for bound in bounds {
+        if let Some(vec) = optional {
+            for bound in vec {
                 writeln!(&mut s, "{}", bound.to_token_stream()).unwrap();
             }
+        } else {
+            write!(&mut s, "None").unwrap();
+        }
+        s
+    }
+
+    fn debug_print_tokenizable<T: ToTokens>(optional: Option<T>) -> String {
+        let mut s = String::new();
+        if let Some(type_) = optional {
+            writeln!(&mut s, "{}", type_.to_token_stream()).unwrap();
         } else {
             write!(&mut s, "None").unwrap();
         }
@@ -411,6 +435,22 @@ mod tests {
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
         assert!(schema_attrs.is_none());
+    }
+
+    #[test]
+    fn test_ser_de_with_parsing1() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(serialize_with = "third_party_impl::serialize_third_party")]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = Attributes::parse(&first_field.attrs).unwrap();
+        insta::assert_snapshot!(debug_print_tokenizable(attrs.serialize_with));
     }
 
     #[test]
