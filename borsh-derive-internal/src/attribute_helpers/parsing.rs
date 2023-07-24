@@ -1,13 +1,8 @@
-// TODO: remove this unused attribute, when the unsplit is done
-#![allow(unused)]
-use std::{
-    collections::{BTreeMap, HashMap},
-    iter::FromIterator,
-};
+use std::{collections::BTreeMap, iter::FromIterator};
 
 use syn::{
-    meta::ParseNestedMeta, punctuated::Punctuated, token::Paren, Attribute, Expr, Ident, Lit,
-    LitStr, Token, Type, WherePredicate,
+    meta::ParseNestedMeta, punctuated::Punctuated, token::Paren, Attribute, Expr, Lit, LitStr,
+    Token,
 };
 
 use super::Symbol;

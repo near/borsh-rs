@@ -7,18 +7,13 @@ use std::collections::BTreeMap;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{
-    borrow,
-    boxed::Box,
-    collections::BTreeMap,
-    string::{String, ToString},
-    vec,
-    vec::Vec,
-};
+use alloc::collections::BTreeMap;
 
-use borsh::BorshSchema;
+// use borsh::BorshSchema;
 
+#[allow(unused)]
 struct ThirdParty<K, V>(BTreeMap<K, V>);
+#[allow(unused)]
 mod third_party_impl {
 
     #[cfg(feature = "std")]
@@ -29,10 +24,10 @@ mod third_party_impl {
         borrow,
         boxed::Box,
         collections::BTreeMap,
+        format,
         string::{String, ToString},
         vec,
         vec::Vec,
-        format,
     };
     use borsh::BorshSchema;
 

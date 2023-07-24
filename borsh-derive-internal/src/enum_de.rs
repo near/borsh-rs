@@ -6,6 +6,7 @@ use crate::{
     attribute_helpers::{contains_initialize_with, contains_skip, field, BoundType},
     enum_discriminant_map::discriminant_map,
     generics::{compute_predicates, without_defaults, FindTyParams},
+    struct_de::field_de_delta,
 };
 
 pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
@@ -36,9 +37,7 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                 for field in &fields.named {
                     let skipped = contains_skip(&field.attrs);
                     let parsed = field::Attributes::parse(&field.attrs, skipped)?;
-                    override_predicates.extend(parsed.collect_bounds(
-                        BoundType::Deserialize,
-                    ));
+                    override_predicates.extend(parsed.collect_bounds(BoundType::Deserialize));
                     let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
                     let field_name = field.ident.as_ref().unwrap();
                     if contains_skip(&field.attrs) {
@@ -52,9 +51,12 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                         if needs_bounds_derive {
                             deserialize_params_visitor.visit_field(field);
                         }
-                        variant_header.extend(quote! {
-                            #field_name: #cratename::BorshDeserialize::deserialize_reader(reader)?,
-                        });
+
+                        variant_header.extend(field_de_delta(
+                            Some(field_name),
+                            &cratename,
+                            parsed.deserialize_with,
+                        ));
                     }
                 }
                 variant_header = quote! { { #variant_header }};
@@ -64,9 +66,7 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                     let skipped = contains_skip(&field.attrs);
                     let parsed = field::Attributes::parse(&field.attrs, skipped)?;
 
-                    override_predicates.extend(parsed.collect_bounds(
-                        BoundType::Deserialize,
-                    ));
+                    override_predicates.extend(parsed.collect_bounds(BoundType::Deserialize));
                     let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
                     if contains_skip(&field.attrs) {
                         if needs_bounds_derive {
@@ -77,9 +77,11 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                         if needs_bounds_derive {
                             deserialize_params_visitor.visit_field(field);
                         }
-                        variant_header.extend(
-                            quote! { #cratename::BorshDeserialize::deserialize_reader(reader)?, },
-                        );
+                        variant_header.extend(field_de_delta(
+                            None,
+                            &cratename,
+                            parsed.deserialize_with,
+                        ));
                     }
                 }
                 variant_header = quote! { ( #variant_header )};
@@ -284,6 +286,25 @@ mod tests {
                     b: HashMap<T, U>,
                 },
                 D(u32, u32),
+            }
+        })
+        .unwrap();
+
+        let actual = enum_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn check_deserialize_with_attr() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum C<K: Ord, V> {
+                C3(u64, u64),
+                C4 {
+                    x: u64,
+                    #[borsh(deserialize_with = "third_party_impl::deserialize_third_party")]
+                    y: ThirdParty<K, V>
+                },
             }
         })
         .unwrap();

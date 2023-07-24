@@ -2,12 +2,15 @@ use core::convert::TryFrom;
 
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{Fields, FieldsNamed, FieldsUnnamed, Ident, ItemEnum, Path, WhereClause, WherePredicate, Expr};
+use syn::{
+    Expr, Fields, FieldsNamed, FieldsUnnamed, Ident, ItemEnum, Path, WhereClause, WherePredicate,
+};
 
 use crate::{
     attribute_helpers::{contains_skip, field, BoundType},
     enum_discriminant_map::discriminant_map,
-    generics::{compute_predicates, without_defaults, FindTyParams}, struct_ser::field_ser_delta,
+    generics::{compute_predicates, without_defaults, FindTyParams},
+    struct_ser::field_ser_delta,
 };
 
 pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
@@ -114,16 +117,14 @@ fn named_fields(
         let parsed = field::Attributes::parse(&field.attrs, skipped)?;
 
         let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
-        override_output.extend(parsed.collect_bounds(
-            BoundType::Serialize,
-        ));
+        override_output.extend(parsed.collect_bounds(BoundType::Serialize));
         if !contains_skip(&field.attrs) {
             let field_ident = field.ident.clone().unwrap();
 
             variant_header.extend(quote! { #field_ident, });
 
             let arg: Expr = syn::parse2(quote! { #field_ident }).unwrap();
-            let delta = field_ser_delta(&arg, &cratename, parsed.serialize_with);
+            let delta = field_ser_delta(&arg, cratename, parsed.serialize_with);
             variant_body.extend(delta);
             if needs_bounds_derive {
                 params_visitor.visit_field(field);
@@ -157,9 +158,7 @@ fn unnamed_fields(
         let skipped = contains_skip(&field.attrs);
         let parsed = field::Attributes::parse(&field.attrs, skipped)?;
         let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
-        override_output.extend(parsed.collect_bounds(
-            BoundType::Serialize,
-        ));
+        override_output.extend(parsed.collect_bounds(BoundType::Serialize));
         let field_idx = u32::try_from(field_idx).expect("up to 2^32 fields are supported");
         if contains_skip(&field.attrs) {
             let field_ident = Ident::new(format!("_id{}", field_idx).as_str(), Span::mixed_site());
@@ -170,7 +169,7 @@ fn unnamed_fields(
             variant_header.extend(quote! { #field_ident, });
 
             let arg: Expr = syn::parse2(quote! { #field_ident }).unwrap();
-            let delta = field_ser_delta(&arg, &cratename, parsed.serialize_with);
+            let delta = field_ser_delta(&arg, cratename, parsed.serialize_with);
             variant_body.extend(delta);
             if needs_bounds_derive {
                 params_visitor.visit_field(field);
@@ -397,10 +396,10 @@ mod tests {
         let item_struct: ItemEnum = syn::parse2(quote! {
             enum C<K: Ord, V> {
                 C3(u64, u64),
-                C4 { 
-                    x: u64, 
+                C4 {
+                    x: u64,
                     #[borsh(serialize_with = "third_party_impl::serialize_third_party")]
-                    y: ThirdParty<K, V> 
+                    y: ThirdParty<K, V>
                 },
             }
         })
@@ -410,5 +409,4 @@ mod tests {
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
-
 }

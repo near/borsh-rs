@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::attribute_helpers::{parsing::parse_lit_into_vec, Symbol, PARAMS, SCHEMA};
+use crate::attribute_helpers::{parsing::parse_lit_into_vec, Symbol, PARAMS};
 use once_cell::sync::Lazy;
 use syn::{meta::ParseNestedMeta, Ident, Token, Type};
 
@@ -32,12 +32,14 @@ pub struct ParamsOverride {
 
 #[derive(Default)]
 pub(crate) struct Attributes {
+    #[allow(unused)]
     pub params: Option<Vec<ParamsOverride>>,
 }
 
 impl From<BTreeMap<Symbol, Variants>> for Attributes {
     fn from(mut map: BTreeMap<Symbol, Variants>) -> Self {
         let params = map.remove(&PARAMS);
+        #[allow(clippy::bind_instead_of_map)]
         let params = params.and_then(|variant| match variant {
             Variants::Params(params) => Some(params),
         });

@@ -1,11 +1,4 @@
-// TODO: remove this unused attribute, when the unsplit is done
-#![allow(unused)]
-use std::collections::BTreeMap;
-
-use once_cell::sync::Lazy;
-use syn::{meta::ParseNestedMeta, Attribute, Field, Path, WherePredicate};
-
-use self::parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys};
+use syn::{Attribute, Path};
 
 pub mod field;
 pub mod parsing;

@@ -8,16 +8,13 @@ use std::collections::BTreeMap;
 extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::{
-    borrow,
-    boxed::Box,
     collections::BTreeMap,
     string::{String, ToString},
-    vec,
-    vec::Vec,
 };
 use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 
-struct ThirdParty<K: Ord, V>(pub BTreeMap<K, V>);
+#[derive(Debug, PartialEq, Eq)]
+struct ThirdParty<K, V>(pub BTreeMap<K, V>);
 
 mod third_party_impl {
     use super::ThirdParty;
@@ -28,7 +25,7 @@ mod third_party_impl {
     #[cfg(not(feature = "std"))]
     use borsh::nostd_io as io;
     pub(super) fn serialize_third_party<
-        K: borsh::ser::BorshSerialize + Ord,
+        K: borsh::ser::BorshSerialize,
         V: borsh::ser::BorshSerialize,
         W: io::Write,
     >(
@@ -52,36 +49,37 @@ mod third_party_impl {
     }
 }
 
-#[derive(BorshSerialize)]
-struct A<K: Ord, V> {
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Debug)]
+struct A<K, V> {
     #[borsh(
+        deserialize_with = "third_party_impl::deserialize_third_party",
         serialize_with = "third_party_impl::serialize_third_party",
-        bound(serialize = "K: borsh::ser::BorshSerialize, V: borsh::ser::BorshSerialize")
+        bound(
+            serialize = "K: borsh::ser::BorshSerialize, V: borsh::ser::BorshSerialize",
+            deserialize = "K: borsh::de::BorshDeserialize + Ord, V: borsh::de::BorshDeserialize",
+        )
     )]
     x: ThirdParty<K, V>,
     y: u64,
 }
 
 #[allow(unused)]
-#[derive(BorshSerialize)]
-enum C<K: Ord, V> {
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Debug)]
+enum C<K, V> {
     C3(u64, u64),
-    C4 { 
-        x: u64, 
+    C4(
+        u64,
         #[borsh(
+            deserialize_with = "third_party_impl::deserialize_third_party",
             serialize_with = "third_party_impl::serialize_third_party",
-            bound(serialize = "K: borsh::ser::BorshSerialize, V: borsh::ser::BorshSerialize")
+            bound(
+                serialize = "K: borsh::ser::BorshSerialize, V: borsh::ser::BorshSerialize",
+                deserialize = "K: borsh::de::BorshDeserialize + Ord, V: borsh::de::BorshDeserialize",
+            )
         )]
-        y: ThirdParty<K, V> 
-    },
+        ThirdParty<K, V>,
+    ),
 }
-
-// #[derive(BorshDeserialize)]
-// struct B<K: Ord, V> {
-//     #[borsh(deserialize_with = "third_party_impl::deserialize_third_party")]
-//     x: ThirdParty<K, V>,
-//     y: u64,
-// }
 
 #[test]
 fn test_overriden_struct() {
@@ -89,16 +87,28 @@ fn test_overriden_struct() {
     m.insert(0, "0th element".to_string());
     m.insert(1, "1st element".to_string());
     let th_p = ThirdParty(m);
-    let a = A {
-        x: th_p,
-        y: 42,
-    };
+    let a = A { x: th_p, y: 42 };
 
     let data = a.try_to_vec().unwrap();
 
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
-    // let actual_a = from_slice::<A<u64, String>>(&data).unwrap();
-    // assert_eq!(a, actual_a);
+    let actual_a = from_slice::<A<u64, String>>(&data).unwrap();
+    assert_eq!(a, actual_a);
 }
 
+#[test]
+fn test_overriden_enum() {
+    let mut m = BTreeMap::<u64, String>::new();
+    m.insert(0, "0th element".to_string());
+    m.insert(1, "1st element".to_string());
+    let th_p = ThirdParty(m);
+    let c = C::C4(42, th_p);
+
+    let data = c.try_to_vec().unwrap();
+
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(data);
+    let actual_c = from_slice::<C<u64, String>>(&data).unwrap();
+    assert_eq!(c, actual_c);
+}

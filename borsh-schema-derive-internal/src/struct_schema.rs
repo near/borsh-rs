@@ -12,11 +12,12 @@ use crate::{
 };
 
 fn visit_field(field: &Field, visitor: &mut FindTyParams) -> syn::Result<()> {
+    let skipped = contains_skip(&field.attrs);
     if !contains_skip(&field.attrs) {
         // there's no need to override params when field is skipped, because when field is skipped
         // derive for it doesn't attempt to add any bounds, unlike `BorshDeserialize`, which
         // adds `Default` bound on any type parameters in skipped field
-        let schema_attrs = field::Attributes::parse(&field.attrs)?.schema;
+        let schema_attrs = field::Attributes::parse(&field.attrs, skipped)?.schema;
 
         if let Some(schema_attrs) = schema_attrs {
             if let Some(schema_params) = schema_attrs.params {

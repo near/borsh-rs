@@ -2,7 +2,7 @@ use core::convert::TryFrom;
 
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{quote, ToTokens};
-use syn::{Expr, Fields, Ident, Index, ItemStruct, Path, WhereClause};
+use syn::{Expr, ExprPath, Fields, Ident, Index, ItemStruct, Path, WhereClause};
 
 use crate::{
     attribute_helpers::{contains_skip, field, BoundType},
@@ -12,7 +12,7 @@ use crate::{
 pub(crate) fn field_ser_delta<T: ToTokens>(
     arg: &T,
     cratename: &Ident,
-    serialize_with: Option<syn::ExprPath>,
+    serialize_with: Option<ExprPath>,
 ) -> TokenStream2 {
     if let Some(func) = serialize_with {
         quote! {
@@ -45,9 +45,7 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
                 let skipped = contains_skip(&field.attrs);
                 let parsed = field::Attributes::parse(&field.attrs, skipped)?;
                 let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
-                override_predicates.extend(parsed.collect_bounds(
-                    BoundType::Serialize,
-                ));
+                override_predicates.extend(parsed.collect_bounds(BoundType::Serialize));
                 if contains_skip(&field.attrs) {
                     continue;
                 }
@@ -67,9 +65,7 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
                 let skipped = contains_skip(&field.attrs);
                 let parsed = field::Attributes::parse(&field.attrs, skipped)?;
                 let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
-                override_predicates.extend(parsed.collect_bounds(
-                    BoundType::Serialize,
-                ));
+                override_predicates.extend(parsed.collect_bounds(BoundType::Serialize));
                 if !contains_skip(&field.attrs) {
                     let field_idx = Index {
                         index: u32::try_from(field_idx).expect("up to 2^32 fields are supported"),

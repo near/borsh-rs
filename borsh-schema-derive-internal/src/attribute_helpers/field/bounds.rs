@@ -2,9 +2,7 @@ use std::collections::BTreeMap;
 
 use syn::{meta::ParseNestedMeta, WherePredicate};
 
-use crate::attribute_helpers::{
-    parsing::parse_lit_into_vec, Symbol, BOUND, DESERIALIZE, SERIALIZE,
-};
+use crate::attribute_helpers::{parsing::parse_lit_into_vec, Symbol, DESERIALIZE, SERIALIZE};
 use once_cell::sync::Lazy;
 
 pub(crate) enum Variants {

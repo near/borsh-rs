@@ -1,11 +1,6 @@
-// TODO: remove this unused attribute, when the unsplit is done
 #![allow(unused)]
-use std::collections::BTreeMap;
-
-use once_cell::sync::Lazy;
-use syn::{meta::ParseNestedMeta, Attribute, Field, Path, WherePredicate};
-
-use self::parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys};
+// TODO: remove unused when unsplit is done
+use syn::{Attribute, Path};
 
 pub mod field;
 pub mod parsing;
@@ -31,7 +26,12 @@ pub const INIT: Symbol = Symbol("borsh_init", "borsh_init(...)");
 pub const SCHEMA: Symbol = Symbol("schema", "schema(...)");
 /// params - sub-schema nested meta, field-level only attribute
 pub const PARAMS: Symbol = Symbol("params", "params = ...");
+/// serialize_with - sub-borsh nested meta, field-level only, `BorshSerialize` context
+pub const SERIALIZE_WITH: Symbol = Symbol("serialize_with", "serialize_with = ...");
+/// deserialize_with - sub-borsh nested meta, field-level only, `BorshDeserialize` context
+pub const DESERIALIZE_WITH: Symbol = Symbol("deserialize_with", "deserialize_with = ...");
 
+#[derive(Clone, Copy)]
 pub(crate) enum BoundType {
     Serialize,
     Deserialize,

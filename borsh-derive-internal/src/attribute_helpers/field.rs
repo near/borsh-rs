@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use once_cell::sync::Lazy;
-use syn::{meta::ParseNestedMeta, Attribute, Field, WherePredicate};
+use syn::{meta::ParseNestedMeta, Attribute, WherePredicate};
 
 use self::{bounds::BOUNDS_FIELD_PARSE_MAP, schema::SCHEMA_FIELD_PARSE_MAP};
 
@@ -25,14 +25,14 @@ type ParseFn = dyn Fn(Symbol, Symbol, &ParseNestedMeta) -> syn::Result<Variants>
 static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|| {
     let mut m = BTreeMap::new();
     // has to be inlined; assigning closure separately doesn't work
-    let f1: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
-        let mut map_result = meta_get_by_symbol_keys(BOUND, meta, &BOUNDS_FIELD_PARSE_MAP)?;
+    let f1: Box<ParseFn> = Box::new(|_attr_name, _meta_item_name, meta| {
+        let map_result = meta_get_by_symbol_keys(BOUND, meta, &BOUNDS_FIELD_PARSE_MAP)?;
         let bounds_attributes: bounds::Attributes = map_result.into();
         Ok(Variants::Bounds(bounds_attributes))
     });
 
-    let f2: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
-        let mut map_result = meta_get_by_symbol_keys(SCHEMA, meta, &SCHEMA_FIELD_PARSE_MAP)?;
+    let f2: Box<ParseFn> = Box::new(|_attr_name, _meta_item_name, meta| {
+        let map_result = meta_get_by_symbol_keys(SCHEMA, meta, &SCHEMA_FIELD_PARSE_MAP)?;
         let schema_attributes: schema::Attributes = map_result.into();
         Ok(Variants::Schema(schema_attributes))
     });
@@ -57,6 +57,7 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
 #[derive(Default)]
 pub(crate) struct Attributes {
     pub bounds: Option<bounds::Attributes>,
+    #[allow(unused)]
     pub schema: Option<schema::Attributes>,
     pub serialize_with: Option<syn::ExprPath>,
     pub deserialize_with: Option<syn::ExprPath>,
@@ -129,16 +130,14 @@ impl Attributes {
                 if self.serialize_with.is_some() {
                     return false;
                 }
-            },
+            }
             BoundType::Deserialize => {
                 if self.deserialize_with.is_some() {
                     return false;
                 }
-                
-            },
+            }
         }
-        return true;
-        
+        true
     }
 
     fn get_bounds(&self, ty: BoundType) -> Bounds {
@@ -149,12 +148,9 @@ impl Attributes {
         })
     }
     pub(crate) fn collect_bounds(&self, ty: BoundType) -> Vec<WherePredicate> {
-
         let predicates = self.get_bounds(ty);
         predicates.unwrap_or(vec![])
-        
     }
-
 }
 
 pub(crate) type Bounds = Option<Vec<WherePredicate>>;
@@ -177,7 +173,7 @@ mod tests {
         Ok(borsh_attrs.schema)
     }
 
-    use super::{bounds, schema, Attributes, Bounds};
+    use super::{bounds, schema, Attributes};
     fn debug_print_vec_of_tokenizable<T: ToTokens>(optional: Option<Vec<T>>) -> String {
         let mut s = String::new();
         if let Some(vec) = optional {
