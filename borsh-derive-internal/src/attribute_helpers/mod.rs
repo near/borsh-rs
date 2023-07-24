@@ -36,6 +36,7 @@ pub const SERIALIZE_WITH: Symbol = Symbol("serialize_with", "serialize_with = ..
 /// deserialize_with - sub-borsh nested meta, field-level only, `BorshDeserialize` context
 pub const DESERIALIZE_WITH: Symbol = Symbol("deserialize_with", "deserialize_with = ...");
 
+#[derive(Clone, Copy)]
 pub(crate) enum BoundType {
     Serialize,
     Deserialize,

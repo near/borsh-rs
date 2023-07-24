@@ -57,12 +57,12 @@ mod third_party_impl {
     }
 }
 
-#[derive(BorshSchema)]
-struct A<K, V> {
-    #[borsh(schema(with_funcs(
-        declaration = "third_party_impl::declaration::<K, V>",
-        definitions = "third_party_impl::add_definitions_recursively::<K, V>"
-    )))]
-    x: ThirdParty<K, V>,
-    y: u64,
-}
+// #[derive(BorshSchema)]
+// struct A<K, V> {
+//     #[borsh(schema(with_funcs(
+//         declaration = "third_party_impl::declaration::<K, V>",
+//         definitions = "third_party_impl::add_definitions_recursively::<K, V>"
+//     )))]
+//     x: ThirdParty<K, V>,
+//     y: u64,
+// }

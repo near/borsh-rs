@@ -1,0 +1,15 @@
+---
+source: borsh-derive-internal/src/struct_ser.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+impl<K: Ord, V> borsh::ser::BorshSerialize for A<K, V> {
+    fn serialize<W: borsh::__private::maybestd::io::Write>(
+        &self,
+        writer: &mut W,
+    ) -> ::core::result::Result<(), borsh::__private::maybestd::io::Error> {
+        third_party_impl::serialize_third_party(&self.x, writer)?;
+        borsh::BorshSerialize::serialize(&self.y, writer)?;
+        Ok(())
+    }
+}
+

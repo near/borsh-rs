@@ -7,7 +7,7 @@ use self::{bounds::BOUNDS_FIELD_PARSE_MAP, schema::SCHEMA_FIELD_PARSE_MAP};
 
 use super::{
     parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys, parse_lit_into},
-    BoundType, Symbol, BORSH, BOUND, SCHEMA, SERIALIZE_WITH, DESERIALIZE_WITH,
+    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SCHEMA, SERIALIZE_WITH, SKIP,
 };
 
 pub mod bounds;
@@ -38,11 +38,13 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
     });
 
     let f3: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
-        parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta).map(Variants::SerializeWith)
+        parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta)
+            .map(Variants::SerializeWith)
     });
 
     let f4: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
-        parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta).map(Variants::DeserializeWith)
+        parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta)
+            .map(Variants::DeserializeWith)
     });
 
     m.insert(BOUND, f1);
@@ -84,46 +86,75 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
             Variants::DeserializeWith(deserialize_with) => Some(deserialize_with),
             _ => None,
         });
-        Self { bounds, schema, serialize_with, deserialize_with }
+        Self {
+            bounds,
+            schema,
+            serialize_with,
+            deserialize_with,
+        }
     }
 }
 impl Attributes {
-    pub(crate) fn parse(attrs: &[Attribute]) -> Result<Self, syn::Error> {
+    pub(crate) fn parse(attrs: &[Attribute], skipped: bool) -> Result<Self, syn::Error> {
+        let mut ref_attr: Option<&Attribute> = None;
         let mut map_result = BTreeMap::new();
         for attr in attrs {
             if attr.path() != BORSH {
                 continue;
             }
+            ref_attr = Some(attr);
 
             map_result = attr_get_by_symbol_keys(BORSH, attr, &BORSH_FIELD_PARSE_MAP)?;
         }
 
-        Ok(map_result.into())
+        let result: Self = map_result.into();
+        if skipped && (result.serialize_with.is_some() || result.deserialize_with.is_some()) {
+            return Err(syn::Error::new_spanned(
+                ref_attr.unwrap(),
+                format!(
+                    "`{}` cannot be used at the same time as `{}` or `{}`",
+                    SKIP.0, SERIALIZE_WITH.0, DESERIALIZE_WITH.0
+                ),
+            ));
+        }
+        Ok(result)
+    }
+    pub(crate) fn needs_bounds_derive(&self, ty: BoundType) -> bool {
+        let predicates = self.get_bounds(ty);
+        if predicates.is_some() {
+            return false;
+        }
+        match ty {
+            BoundType::Serialize => {
+                if self.serialize_with.is_some() {
+                    return false;
+                }
+            },
+            BoundType::Deserialize => {
+                if self.deserialize_with.is_some() {
+                    return false;
+                }
+                
+            },
+        }
+        return true;
+        
     }
 
-    fn get_bounds(&self, ty: BoundType) -> Result<Bounds, syn::Error> {
+    fn get_bounds(&self, ty: BoundType) -> Bounds {
         let attributes = self.bounds.as_ref();
-        let r = attributes.and_then(|attributes| match ty {
+        attributes.and_then(|attributes| match ty {
             BoundType::Serialize => attributes.serialize.clone(),
             BoundType::Deserialize => attributes.deserialize.clone(),
-        });
-        Ok(r)
+        })
+    }
+    pub(crate) fn collect_bounds(&self, ty: BoundType) -> Vec<WherePredicate> {
+
+        let predicates = self.get_bounds(ty);
+        predicates.unwrap_or(vec![])
+        
     }
 
-    pub(crate) fn collect_override_bounds(
-        &self,
-        ty: BoundType,
-        output: &mut Vec<WherePredicate>,
-    ) -> Result<bool, syn::Error> {
-        let predicates = self.get_bounds(ty)?;
-        match predicates {
-            Some(predicates) => {
-                output.extend(predicates);
-                Ok(true)
-            }
-            None => Ok(false),
-        }
-    }
 }
 
 pub(crate) type Bounds = Option<Vec<WherePredicate>>;
@@ -136,13 +167,13 @@ mod tests {
 
     fn parse_bounds(attrs: &[Attribute]) -> Result<Option<bounds::Attributes>, syn::Error> {
         // #[borsh(bound(serialize = "...", deserialize = "..."))]
-        let borsh_attrs = Attributes::parse(attrs)?;
+        let borsh_attrs = Attributes::parse(attrs, false)?;
         Ok(borsh_attrs.bounds)
     }
 
     fn parse_schema_attrs(attrs: &[Attribute]) -> Result<Option<schema::Attributes>, syn::Error> {
         // #[borsh(schema(params = "..."))]
-        let borsh_attrs = Attributes::parse(attrs)?;
+        let borsh_attrs = Attributes::parse(attrs, false)?;
         Ok(borsh_attrs.schema)
     }
 
@@ -181,13 +212,12 @@ mod tests {
         .unwrap();
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let err = match Attributes::parse(&first_field.attrs) {
+        let err = match Attributes::parse(&first_field.attrs, false) {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
         };
         insta::assert_debug_snapshot!(err);
     }
-
 
     #[test]
     fn test_bounds_parsing1() {
@@ -465,7 +495,7 @@ mod tests {
         .unwrap();
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let attrs = Attributes::parse(&first_field.attrs).unwrap();
+        let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
         insta::assert_snapshot!(debug_print_tokenizable(attrs.serialize_with));
         insta::assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
     }
@@ -487,7 +517,7 @@ mod tests {
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
 
-        let attrs = Attributes::parse(&first_field.attrs).unwrap();
+        let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
         let bounds = attrs.bounds.unwrap();
         assert!(bounds.serialize.is_none());
         insta::assert_snapshot!(debug_print_vec_of_tokenizable(bounds.deserialize));
@@ -512,7 +542,7 @@ mod tests {
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
 
-        let err = match Attributes::parse(&first_field.attrs) {
+        let err = match Attributes::parse(&first_field.attrs, false) {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
         };

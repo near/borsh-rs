@@ -28,19 +28,24 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
         Fields::Named(fields) => {
             let mut body = TokenStream2::new();
             for field in &fields.named {
-                let parsed = field::Attributes::parse(&field.attrs)?;
-                let bounds_override = parsed
-                    .collect_override_bounds(BoundType::Deserialize, &mut override_predicates)?;
+                let skipped = contains_skip(&field.attrs);
+                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+
+                override_predicates.extend(parsed.collect_bounds(
+                    BoundType::Deserialize,
+                ));
+                let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
+
                 let field_name = field.ident.as_ref().unwrap();
                 let delta = if contains_skip(&field.attrs) {
-                    if !bounds_override {
+                    if needs_bounds_derive {
                         default_params_visitor.visit_field(field);
                     }
                     quote! {
                         #field_name: core::default::Default::default(),
                     }
                 } else {
-                    if !bounds_override {
+                    if needs_bounds_derive {
                         deserialize_params_visitor.visit_field(field);
                     }
                     quote! {
@@ -56,16 +61,20 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
         Fields::Unnamed(fields) => {
             let mut body = TokenStream2::new();
             for (_field_idx, field) in fields.unnamed.iter().enumerate() {
-                let parsed = field::Attributes::parse(&field.attrs)?;
-                let bounds_override = parsed
-                    .collect_override_bounds(BoundType::Deserialize, &mut override_predicates)?;
+                let skipped = contains_skip(&field.attrs);
+                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+                override_predicates.extend(parsed.collect_bounds(
+                    BoundType::Deserialize,
+                ));
+                let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
+
                 let delta = if contains_skip(&field.attrs) {
-                    if !bounds_override {
+                    if needs_bounds_derive {
                         default_params_visitor.visit_field(field);
                     }
                     quote! { core::default::Default::default(), }
                 } else {
-                    if !bounds_override {
+                    if needs_bounds_derive {
                         deserialize_params_visitor.visit_field(field);
                     }
                     quote! {
