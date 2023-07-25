@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::attribute_helpers::{
     parsing::{meta_get_by_symbol_keys, parse_lit_into_vec},
-    Symbol, PARAMS, WITH_FUNCS, DECLARATION, DEFINITIONS,
+    Symbol, DECLARATION, DEFINITIONS, PARAMS, WITH_FUNCS,
 };
 use once_cell::sync::Lazy;
 use syn::{meta::ParseNestedMeta, Ident, Token, Type};
@@ -38,7 +38,6 @@ pub(crate) static SCHEMA_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> =
                     DECLARATION.1, DEFINITIONS.1,
                 ),
             ));
-            
         }
         Ok(Variants::WithFuncs(with_funcs))
     });

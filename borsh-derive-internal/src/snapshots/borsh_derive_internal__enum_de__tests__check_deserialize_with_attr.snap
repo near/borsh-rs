@@ -2,7 +2,11 @@
 source: borsh-derive-internal/src/enum_de.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
-impl<K: Ord, V> borsh::de::BorshDeserialize for C<K, V> {
+impl<K: Ord, V> borsh::de::BorshDeserialize for C<K, V>
+where
+    K: borsh::de::BorshDeserialize,
+    V: borsh::de::BorshDeserialize,
+{
     fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
     ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
@@ -10,7 +14,11 @@ impl<K: Ord, V> borsh::de::BorshDeserialize for C<K, V> {
         <Self as borsh::de::EnumExt>::deserialize_variant(reader, tag)
     }
 }
-impl<K: Ord, V> borsh::de::EnumExt for C<K, V> {
+impl<K: Ord, V> borsh::de::EnumExt for C<K, V>
+where
+    K: borsh::de::BorshDeserialize,
+    V: borsh::de::BorshDeserialize,
+{
     fn deserialize_variant<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
         variant_tag: u8,

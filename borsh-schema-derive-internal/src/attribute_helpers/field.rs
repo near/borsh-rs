@@ -1,13 +1,16 @@
+#![allow(unused)]
+// TODO: remove unused when unsplit is done
 use std::collections::BTreeMap;
 
 use once_cell::sync::Lazy;
-use syn::{meta::ParseNestedMeta, Attribute, WherePredicate};
+use syn::{meta::ParseNestedMeta, Attribute, ExprPath, WherePredicate};
 
 use self::{bounds::BOUNDS_FIELD_PARSE_MAP, schema::SCHEMA_FIELD_PARSE_MAP};
 
 use super::{
     parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys, parse_lit_into},
-    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SCHEMA, SERIALIZE_WITH, SKIP, PARAMS, WITH_FUNCS,
+    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, PARAMS, SCHEMA, SERIALIZE_WITH, SKIP,
+    WITH_FUNCS,
 };
 
 pub mod bounds;
@@ -127,7 +130,6 @@ impl Attributes {
                         SKIP.0, SCHEMA.0, PARAMS.1
                     ),
                 ));
-                
             }
 
             if skipped && schema.with_funcs.is_some() {
@@ -138,9 +140,7 @@ impl Attributes {
                         SKIP.0, SCHEMA.0, WITH_FUNCS.1
                     ),
                 ));
-                
             }
-            
         }
         Ok(result)
     }
@@ -149,19 +149,33 @@ impl Attributes {
         if predicates.is_some() {
             return false;
         }
-        match ty {
-            BoundType::Serialize => {
-                if self.serialize_with.is_some() {
-                    return false;
-                }
-            }
-            BoundType::Deserialize => {
-                if self.deserialize_with.is_some() {
-                    return false;
-                }
+        true
+    }
+
+    pub(crate) fn needs_schema_params_derive(&self) -> bool {
+        if let Some(ref schema) = self.schema {
+            if schema.params.is_some() {
+                return false;
             }
         }
         true
+    }
+    pub(crate) fn schema_declaration(&self) -> Option<ExprPath> {
+        self.schema.as_ref().and_then(|schema| {
+            schema
+                .with_funcs
+                .as_ref()
+                .and_then(|with_funcs| with_funcs.declaration.clone())
+        })
+    }
+
+    pub(crate) fn schema_definitions(&self) -> Option<ExprPath> {
+        self.schema.as_ref().and_then(|schema| {
+            schema
+                .with_funcs
+                .as_ref()
+                .and_then(|with_funcs| with_funcs.definitions.clone())
+        })
     }
 
     fn get_bounds(&self, ty: BoundType) -> Bounds {

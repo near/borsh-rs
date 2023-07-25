@@ -118,7 +118,7 @@ fn named_fields(
 
         let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
         override_output.extend(parsed.collect_bounds(BoundType::Serialize));
-        if !contains_skip(&field.attrs) {
+        if !skipped {
             let field_ident = field.ident.clone().unwrap();
 
             variant_header.extend(quote! { #field_ident, });
@@ -160,7 +160,7 @@ fn unnamed_fields(
         let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
         override_output.extend(parsed.collect_bounds(BoundType::Serialize));
         let field_idx = u32::try_from(field_idx).expect("up to 2^32 fields are supported");
-        if contains_skip(&field.attrs) {
+        if skipped {
             let field_ident = Ident::new(format!("_id{}", field_idx).as_str(), Span::mixed_site());
             variant_header.extend(quote! { #field_ident, });
         } else {

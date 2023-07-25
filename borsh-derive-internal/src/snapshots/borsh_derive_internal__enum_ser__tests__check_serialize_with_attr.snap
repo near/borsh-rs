@@ -2,7 +2,11 @@
 source: borsh-derive-internal/src/enum_ser.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
-impl<K: Ord, V> borsh::ser::BorshSerialize for C<K, V> {
+impl<K: Ord, V> borsh::ser::BorshSerialize for C<K, V>
+where
+    K: borsh::ser::BorshSerialize,
+    V: borsh::ser::BorshSerialize,
+{
     fn serialize<W: borsh::__private::maybestd::io::Write>(
         &self,
         writer: &mut W,

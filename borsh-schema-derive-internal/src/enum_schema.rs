@@ -397,4 +397,26 @@ mod tests {
         };
         insta::assert_debug_snapshot!(err);
     }
+
+    #[test]
+    fn with_funcs_attr() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum C<K, V> {
+                C3(u64, u64),
+                C4(
+                    u64,
+                    #[borsh(schema(with_funcs(
+                        declaration = "third_party_impl::declaration::<K, V>",
+                        definitions = "third_party_impl::add_definitions_recursively::<K, V>"
+                    )))]
+                    ThirdParty<K, V>,
+                ),
+            }
+        })
+        .unwrap();
+
+        let actual = process_enum(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
 }

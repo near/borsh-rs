@@ -55,7 +55,6 @@ struct A<K, V> {
         deserialize_with = "third_party_impl::deserialize_third_party",
         serialize_with = "third_party_impl::serialize_third_party",
         bound(
-            serialize = "K: borsh::ser::BorshSerialize, V: borsh::ser::BorshSerialize",
             deserialize = "K: borsh::de::BorshDeserialize + Ord, V: borsh::de::BorshDeserialize",
         )
     )]
@@ -73,7 +72,6 @@ enum C<K, V> {
             deserialize_with = "third_party_impl::deserialize_third_party",
             serialize_with = "third_party_impl::serialize_third_party",
             bound(
-                serialize = "K: borsh::ser::BorshSerialize, V: borsh::ser::BorshSerialize",
                 deserialize = "K: borsh::de::BorshDeserialize + Ord, V: borsh::de::BorshDeserialize",
             )
         )]

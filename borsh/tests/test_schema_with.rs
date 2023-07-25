@@ -7,9 +7,28 @@ use std::collections::BTreeMap;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::collections::BTreeMap;
+use alloc::{
+    collections::BTreeMap,
+    format,
+    string::{String, ToString},
+    vec,
+};
 
-// use borsh::BorshSchema;
+use borsh::schema::*;
+use borsh::BorshSchema;
+
+macro_rules! map(
+    () => { BTreeMap::new() };
+    { $($key:expr => $value:expr),+ } => {
+        {
+            let mut m = BTreeMap::new();
+            $(
+                m.insert($key.to_string(), $value);
+            )+
+            m
+        }
+     };
+);
 
 #[allow(unused)]
 struct ThirdParty<K, V>(BTreeMap<K, V>);
@@ -52,12 +71,79 @@ mod third_party_impl {
     }
 }
 
-// #[derive(BorshSchema)]
-// struct A<K, V> {
-//     #[borsh(schema(with_funcs(
-//         declaration = "third_party_impl::declaration::<K, V>",
-//         definitions = "third_party_impl::add_definitions_recursively::<K, V>"
-//     )))]
-//     x: ThirdParty<K, V>,
-//     y: u64,
-// }
+#[allow(unused)]
+#[derive(BorshSchema)]
+struct A<K, V> {
+    #[borsh(schema(with_funcs(
+        declaration = "third_party_impl::declaration::<K, V>",
+        definitions = "third_party_impl::add_definitions_recursively::<K, V>"
+    )))]
+    x: ThirdParty<K, V>,
+    y: u64,
+}
+
+#[allow(unused)]
+#[derive(BorshSchema)]
+enum C<K, V> {
+    C3(u64, u64),
+    C4(
+        u64,
+        #[borsh(schema(with_funcs(
+            declaration = "third_party_impl::declaration::<K, V>",
+            definitions = "third_party_impl::add_definitions_recursively::<K, V>"
+        )))]
+        ThirdParty<K, V>,
+    ),
+}
+
+#[test]
+pub fn struct_overriden() {
+    assert_eq!(
+        "A<u64, string>".to_string(),
+        <A<u64, String>>::declaration()
+    );
+    let mut defs = Default::default();
+    <A<u64, String>>::add_definitions_recursively(&mut defs);
+    assert_eq!(
+        map! {
+            "A<u64, string>" => Definition::Struct { fields: Fields::NamedFields(vec![
+                ("x".to_string(), "ThirdParty<u64, string>".to_string()),
+                ("y".to_string(), "u64".to_string())]
+            )},
+            "ThirdParty<u64, string>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
+                "BTreeMap<u64, string>".to_string(),
+            ]) },
+            "BTreeMap<u64, string>"=> Definition::Sequence { elements: "Tuple<u64, string>".to_string() },
+            "Tuple<u64, string>" => Definition::Tuple { elements: vec!["u64".to_string(), "string".to_string()]}
+        },
+        defs
+    );
+}
+
+#[test]
+pub fn enum_overriden() {
+    assert_eq!(
+        "C<u64, string>".to_string(),
+        <C<u64, String>>::declaration()
+    );
+    let mut defs = Default::default();
+    <C<u64, String>>::add_definitions_recursively(&mut defs);
+    assert_eq!(
+        map! {
+            "C<u64, string>" => Definition::Enum { variants: vec![
+                ("C3".to_string(), "CC3".to_string()),
+                ("C4".to_string(), "CC4<u64, string>".to_string())
+            ] },
+            "CC3" => Definition::Struct { fields: Fields::UnnamedFields(vec!["u64".to_string(), "u64".to_string()]) },
+            "CC4<u64, string>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
+                "u64".to_string(), "ThirdParty<u64, string>".to_string()
+            ]) },
+            "ThirdParty<u64, string>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
+                "BTreeMap<u64, string>".to_string(),
+            ]) },
+            "BTreeMap<u64, string>"=> Definition::Sequence { elements: "Tuple<u64, string>".to_string() },
+            "Tuple<u64, string>" => Definition::Tuple { elements: vec!["u64".to_string(), "string".to_string()]}
+        },
+        defs
+    );
+}

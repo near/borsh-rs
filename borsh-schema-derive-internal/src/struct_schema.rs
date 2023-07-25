@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens};
-use syn::{Field, Fields, Ident, ItemStruct, Path, WhereClause};
+use syn::{ExprPath, Field, Fields, Ident, ItemStruct, Path, Type, WhereClause};
 
 use crate::{
     attribute_helpers::{
@@ -11,11 +11,53 @@ use crate::{
     schema_helpers::declaration,
 };
 
+pub(crate) fn field_declaration_delta(
+    field_name: Option<&String>,
+    field_type: &Type,
+    cratename: &Ident,
+    declaration_override: Option<ExprPath>,
+) -> TokenStream2 {
+    let default_path: ExprPath =
+        syn::parse2(quote! { <#field_type as #cratename::BorshSchema>::declaration }).unwrap();
+
+    let path = declaration_override.unwrap_or(default_path);
+
+    if let Some(field_name) = field_name {
+        quote! {
+            (#field_name.to_string(), #path())
+        }
+    } else {
+        quote! {
+            #path()
+        }
+    }
+}
+
+pub(crate) fn field_definitions_delta(
+    field_type: &Type,
+    cratename: &Ident,
+    definitions_override: Option<ExprPath>,
+) -> TokenStream2 {
+    let default_path: ExprPath = syn::parse2(
+        quote! { <#field_type as #cratename::BorshSchema>::add_definitions_recursively },
+    )
+    .unwrap();
+    let path = definitions_override.unwrap_or(default_path);
+
+    quote! {
+        #path(definitions);
+    }
+}
+
 fn visit_field(field: &Field, visitor: &mut FindTyParams) -> syn::Result<()> {
     let skipped = contains_skip(&field.attrs);
     let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+    let needs_schema_params_derive = parsed.needs_schema_params_derive();
     let schema_attrs = parsed.schema;
     if !skipped {
+        if needs_schema_params_derive {
+            visitor.visit_field(field);
+        }
         // there's no need to override params when field is skipped, because when field is skipped
         // derive for it doesn't attempt to add any bounds, unlike `BorshDeserialize`, which
         // adds `Default` bound on any type parameters in skipped field
@@ -31,8 +73,6 @@ fn visit_field(field: &Field, visitor: &mut FindTyParams) -> syn::Result<()> {
                     visitor.param_associated_type_insert(order_param, override_type);
                 }
             }
-        } else {
-            visitor.visit_field(field);
         }
     }
     Ok(())
@@ -97,17 +137,24 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
     match &input.fields {
         Fields::Named(fields) => {
             for field in &fields.named {
-                if contains_skip(&field.attrs) {
+                let skipped = contains_skip(&field.attrs);
+                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+                if skipped {
                     continue;
                 }
                 let field_name = field.ident.as_ref().unwrap().to_token_stream().to_string();
                 let field_type = &field.ty;
-                fields_vec.push(quote! {
-                    (#field_name.to_string(), <#field_type as #cratename::BorshSchema>::declaration())
-                });
-                add_definitions_recursively_rec.extend(quote! {
-                    <#field_type as #cratename::BorshSchema>::add_definitions_recursively(definitions);
-                });
+                fields_vec.push(field_declaration_delta(
+                    Some(&field_name),
+                    field_type,
+                    &cratename,
+                    parsed.schema_declaration(),
+                ));
+                add_definitions_recursively_rec.extend(field_definitions_delta(
+                    field_type,
+                    &cratename,
+                    parsed.schema_definitions(),
+                ));
             }
             if !fields_vec.is_empty() {
                 struct_fields = quote! {
@@ -117,16 +164,23 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
         }
         Fields::Unnamed(fields) => {
             for field in &fields.unnamed {
-                if contains_skip(&field.attrs) {
+                let skipped = contains_skip(&field.attrs);
+                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+                if skipped {
                     continue;
                 }
                 let field_type = &field.ty;
-                fields_vec.push(quote! {
-                    <#field_type as #cratename::BorshSchema>::declaration()
-                });
-                add_definitions_recursively_rec.extend(quote! {
-                    <#field_type as #cratename::BorshSchema>::add_definitions_recursively(definitions);
-                });
+                fields_vec.push(field_declaration_delta(
+                    None,
+                    field_type,
+                    &cratename,
+                    parsed.schema_declaration(),
+                ));
+                add_definitions_recursively_rec.extend(field_definitions_delta(
+                    field_type,
+                    &cratename,
+                    parsed.schema_definitions(),
+                ));
             }
             if !fields_vec.is_empty() {
                 struct_fields = quote! {
@@ -534,5 +588,24 @@ mod tests {
             Err(err) => err,
         };
         insta::assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn with_funcs_attr() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A<K, V> {
+                #[borsh(schema(with_funcs(
+                    declaration = "third_party_impl::declaration::<K, V>",
+                    definitions = "third_party_impl::add_definitions_recursively::<K, V>"
+                )))]
+                x: ThirdParty<K, V>,
+                y: u64,
+            }
+        })
+        .unwrap();
+
+        let actual = process_struct(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 }

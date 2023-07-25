@@ -54,7 +54,7 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
                 let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
 
                 let field_name = field.ident.as_ref().unwrap();
-                let delta = if contains_skip(&field.attrs) {
+                let delta = if skipped {
                     if needs_bounds_derive {
                         default_params_visitor.visit_field(field);
                     }
@@ -81,7 +81,7 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
                 override_predicates.extend(parsed.collect_bounds(BoundType::Deserialize));
                 let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
 
-                let delta = if contains_skip(&field.attrs) {
+                let delta = if skipped {
                     if needs_bounds_derive {
                         default_params_visitor.visit_field(field);
                     }

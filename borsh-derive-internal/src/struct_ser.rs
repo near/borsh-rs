@@ -46,7 +46,7 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
                 let parsed = field::Attributes::parse(&field.attrs, skipped)?;
                 let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
                 override_predicates.extend(parsed.collect_bounds(BoundType::Serialize));
-                if contains_skip(&field.attrs) {
+                if skipped {
                     continue;
                 }
                 let field_name = field.ident.as_ref().unwrap();
@@ -66,7 +66,7 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
                 let parsed = field::Attributes::parse(&field.attrs, skipped)?;
                 let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
                 override_predicates.extend(parsed.collect_bounds(BoundType::Serialize));
-                if !contains_skip(&field.attrs) {
+                if !skipped {
                     let field_idx = Index {
                         index: u32::try_from(field_idx).expect("up to 2^32 fields are supported"),
                         span: Span::call_site(),
