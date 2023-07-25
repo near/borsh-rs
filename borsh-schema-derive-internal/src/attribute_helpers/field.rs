@@ -7,7 +7,7 @@ use self::{bounds::BOUNDS_FIELD_PARSE_MAP, schema::SCHEMA_FIELD_PARSE_MAP};
 
 use super::{
     parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys, parse_lit_into},
-    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SCHEMA, SERIALIZE_WITH, SKIP,
+    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SCHEMA, SERIALIZE_WITH, SKIP, PARAMS, WITH_FUNCS,
 };
 
 pub mod bounds;
@@ -117,6 +117,30 @@ impl Attributes {
                     SKIP.0, SERIALIZE_WITH.0, DESERIALIZE_WITH.0
                 ),
             ));
+        }
+        if let Some(ref schema) = result.schema {
+            if skipped && schema.params.is_some() {
+                return Err(syn::Error::new_spanned(
+                    ref_attr.unwrap(),
+                    format!(
+                        "`{}` cannot be used at the same time as `{}({})`",
+                        SKIP.0, SCHEMA.0, PARAMS.1
+                    ),
+                ));
+                
+            }
+
+            if skipped && schema.with_funcs.is_some() {
+                return Err(syn::Error::new_spanned(
+                    ref_attr.unwrap(),
+                    format!(
+                        "`{}` cannot be used at the same time as `{}({})`",
+                        SKIP.0, SCHEMA.0, WITH_FUNCS.1
+                    ),
+                ));
+                
+            }
+            
         }
         Ok(result)
     }

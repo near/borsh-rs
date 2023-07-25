@@ -345,7 +345,7 @@ mod tests {
     }
 
     #[test]
-    fn generic_associated_type_param_override_ignored() {
+    fn generic_associated_type_param_override_conflict() {
         let item_struct: ItemEnum = syn::parse2(quote! {
             enum EnumParametrized<T, K, V>
             where
@@ -362,8 +362,39 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process_enum(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process_enum(&item_struct, Ident::new("borsh", Span::call_site()));
 
-        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let err = match actual {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn check_with_funcs_skip_conflict() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum C<K, V> {
+                C3(u64, u64),
+                C4(
+                    u64,
+                    #[borsh_skip]
+                    #[borsh(schema(with_funcs(
+                        declaration = "third_party_impl::declaration::<K, V>",
+                        definitions = "third_party_impl::add_definitions_recursively::<K, V>"
+                    )))]
+                    ThirdParty<K, V>,
+                ),
+            }
+        })
+        .unwrap();
+
+        let actual = process_enum(&item_struct, Ident::new("borsh", Span::call_site()));
+
+        let err = match actual {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
     }
 }

@@ -7,7 +7,7 @@ use self::{bounds::BOUNDS_FIELD_PARSE_MAP, schema::SCHEMA_FIELD_PARSE_MAP};
 
 use super::{
     parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys, parse_lit_into},
-    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SCHEMA, SERIALIZE_WITH, SKIP,
+    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SCHEMA, SERIALIZE_WITH, SKIP, PARAMS, WITH_FUNCS,
 };
 
 pub mod bounds;
@@ -117,6 +117,30 @@ impl Attributes {
                     SKIP.0, SERIALIZE_WITH.0, DESERIALIZE_WITH.0
                 ),
             ));
+        }
+        if let Some(ref schema) = result.schema {
+            if skipped && schema.params.is_some() {
+                return Err(syn::Error::new_spanned(
+                    ref_attr.unwrap(),
+                    format!(
+                        "`{}` cannot be used at the same time as `{}({})`",
+                        SKIP.0, SCHEMA.0, PARAMS.1
+                    ),
+                ));
+                
+            }
+
+            if skipped && schema.with_funcs.is_some() {
+                return Err(syn::Error::new_spanned(
+                    ref_attr.unwrap(),
+                    format!(
+                        "`{}` cannot be used at the same time as `{}({})`",
+                        SKIP.0, SCHEMA.0, WITH_FUNCS.1
+                    ),
+                ));
+                
+            }
+            
         }
         Ok(result)
     }
@@ -494,6 +518,54 @@ mod tests {
         let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
         insta::assert_snapshot!(debug_print_tokenizable(attrs.serialize_with));
         insta::assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
+    }
+
+    #[test]
+    fn test_schema_with_funcs_parsing() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(schema(with_funcs(
+                    declaration = "third_party_impl::declaration::<K, V>",
+                    definitions = "third_party_impl::add_definitions_recursively::<K, V>"
+                )))]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
+        let schema = attrs.schema.unwrap();
+        let with_funcs = schema.with_funcs.unwrap();
+
+        insta::assert_snapshot!(debug_print_tokenizable(with_funcs.declaration));
+        insta::assert_snapshot!(debug_print_tokenizable(with_funcs.definitions));
+
+    }
+
+    // both `declaration` and `definitions` have to be specified
+    #[test]
+    fn test_schema_with_funcs_parsing_error() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(schema(with_funcs(
+                    declaration = "third_party_impl::declaration::<K, V>"
+                )))]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = Attributes::parse(&first_field.attrs, false);
+
+        let err = match attrs {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
     }
 
     #[test]

@@ -13,11 +13,12 @@ use crate::{
 
 fn visit_field(field: &Field, visitor: &mut FindTyParams) -> syn::Result<()> {
     let skipped = contains_skip(&field.attrs);
-    if !contains_skip(&field.attrs) {
+    let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+    let schema_attrs = parsed.schema;
+    if !skipped {
         // there's no need to override params when field is skipped, because when field is skipped
         // derive for it doesn't attempt to add any bounds, unlike `BorshDeserialize`, which
         // adds `Default` bound on any type parameters in skipped field
-        let schema_attrs = field::Attributes::parse(&field.attrs, skipped)?.schema;
 
         if let Some(schema_attrs) = schema_attrs {
             if let Some(schema_params) = schema_attrs.params {
@@ -486,7 +487,7 @@ mod tests {
     }
 
     #[test]
-    fn generic_associated_type_param_override_ignored() {
+    fn generic_associated_type_param_override_conflict() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct Parametrized<V, T>
             where
@@ -502,8 +503,36 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process_struct(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process_struct(&item_struct, Ident::new("borsh", Span::call_site()));
 
-        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let err = match actual {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn check_with_funcs_skip_conflict() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A<K, V> {
+                #[borsh_skip]
+                #[borsh(schema(with_funcs(
+                    declaration = "third_party_impl::declaration::<K, V>",
+                    definitions = "third_party_impl::add_definitions_recursively::<K, V>"
+                )))]
+                x: ThirdParty<K, V>,
+                y: u64,
+            }
+        })
+        .unwrap();
+
+        let actual = process_struct(&item_struct, Ident::new("borsh", Span::call_site()));
+
+        let err = match actual {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
     }
 }

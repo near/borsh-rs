@@ -28,6 +28,12 @@ pub const PARAMS: Symbol = Symbol("params", "params = ...");
 pub const SERIALIZE_WITH: Symbol = Symbol("serialize_with", "serialize_with = ...");
 /// deserialize_with - sub-borsh nested meta, field-level only, `BorshDeserialize` context
 pub const DESERIALIZE_WITH: Symbol = Symbol("deserialize_with", "deserialize_with = ...");
+/// with_funcs - sub-schema nested meta, field-level only attribute
+pub const WITH_FUNCS: Symbol = Symbol("with_funcs", "with_funcs(...)");
+/// declaration - sub-with_funcs nested meta, field-level only attribute
+pub const DECLARATION: Symbol = Symbol("declaration", "declaration = ...");
+/// definitions - sub-with_funcs nested meta, field-level only attribute
+pub const DEFINITIONS: Symbol = Symbol("definitions", "definitions = ...");
 
 #[derive(Clone, Copy)]
 pub(crate) enum BoundType {
