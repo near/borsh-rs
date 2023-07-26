@@ -608,4 +608,24 @@ mod tests {
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
+
+    #[test]
+    fn schema_param_override3() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A<K: EntityRef, V> {
+                #[borsh(
+                    schema(
+                        params = "V => V"
+                    )
+                )]
+                x: PrimaryMap<K, V>,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let actual = process_struct(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
 }
