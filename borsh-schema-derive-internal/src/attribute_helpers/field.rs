@@ -18,7 +18,7 @@ pub mod schema;
 
 enum Variants {
     Schema(schema::Attributes),
-    Bounds(bounds::Attributes),
+    Bounds(bounds::Bounds),
     SerializeWith(syn::ExprPath),
     DeserializeWith(syn::ExprPath),
 }
@@ -30,7 +30,7 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
     // has to be inlined; assigning closure separately doesn't work
     let f1: Box<ParseFn> = Box::new(|_attr_name, _meta_item_name, meta| {
         let map_result = meta_get_by_symbol_keys(BOUND, meta, &BOUNDS_FIELD_PARSE_MAP)?;
-        let bounds_attributes: bounds::Attributes = map_result.into();
+        let bounds_attributes: bounds::Bounds = map_result.into();
         Ok(Variants::Bounds(bounds_attributes))
     });
 
@@ -59,8 +59,7 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
 
 #[derive(Default)]
 pub(crate) struct Attributes {
-    pub bounds: Option<bounds::Attributes>,
-    #[allow(unused)]
+    pub bounds: Option<bounds::Bounds>,
     pub schema: Option<schema::Attributes>,
     pub serialize_with: Option<syn::ExprPath>,
     pub deserialize_with: Option<syn::ExprPath>,
@@ -72,23 +71,23 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
         let schema = map.remove(&SCHEMA);
         let serialize_with = map.remove(&SERIALIZE_WITH);
         let deserialize_with = map.remove(&DESERIALIZE_WITH);
-        let bounds = bounds.and_then(|variant| match variant {
-            Variants::Bounds(bounds) => Some(bounds),
-            _ => None,
+        let bounds = bounds.map(|variant| match variant {
+            Variants::Bounds(bounds) => bounds,
+            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
-        let schema = schema.and_then(|variant| match variant {
-            Variants::Schema(schema) => Some(schema),
-            _ => None,
-        });
-
-        let serialize_with = serialize_with.and_then(|variant| match variant {
-            Variants::SerializeWith(serialize_with) => Some(serialize_with),
-            _ => None,
+        let schema = schema.map(|variant| match variant {
+            Variants::Schema(schema) => schema,
+            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
 
-        let deserialize_with = deserialize_with.and_then(|variant| match variant {
-            Variants::DeserializeWith(deserialize_with) => Some(deserialize_with),
-            _ => None,
+        let serialize_with = serialize_with.map(|variant| match variant {
+            Variants::SerializeWith(serialize_with) => serialize_with,
+            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
+        });
+
+        let deserialize_with = deserialize_with.map(|variant| match variant {
+            Variants::DeserializeWith(deserialize_with) => deserialize_with,
+            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
         Self {
             bounds,
@@ -178,11 +177,11 @@ impl Attributes {
         })
     }
 
-    fn get_bounds(&self, ty: BoundType) -> Bounds {
-        let attributes = self.bounds.as_ref();
-        attributes.and_then(|attributes| match ty {
-            BoundType::Serialize => attributes.serialize.clone(),
-            BoundType::Deserialize => attributes.deserialize.clone(),
+    fn get_bounds(&self, ty: BoundType) -> Option<Vec<WherePredicate>> {
+        let bounds = self.bounds.as_ref();
+        bounds.and_then(|bounds| match ty {
+            BoundType::Serialize => bounds.serialize.clone(),
+            BoundType::Deserialize => bounds.deserialize.clone(),
         })
     }
     pub(crate) fn collect_bounds(&self, ty: BoundType) -> Vec<WherePredicate> {
@@ -190,5 +189,3 @@ impl Attributes {
         predicates.unwrap_or(vec![])
     }
 }
-
-pub(crate) type Bounds = Option<Vec<WherePredicate>>;

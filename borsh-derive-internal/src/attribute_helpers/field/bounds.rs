@@ -14,7 +14,7 @@ type ParseFn = dyn Fn(Symbol, Symbol, &ParseNestedMeta) -> syn::Result<Variants>
 
 pub(crate) static BOUNDS_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|| {
     let mut m = BTreeMap::new();
-    // this coercion is required due to some completely mysterious reason
+    // has to be inlined; assigning closure separately doesn't work
     let f1: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
         parse_lit_into_vec::<WherePredicate>(attr_name, meta_item_name, meta)
             .map(Variants::Serialize)
@@ -29,22 +29,22 @@ pub(crate) static BOUNDS_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> =
 });
 
 #[derive(Default)]
-pub(crate) struct Attributes {
+pub(crate) struct Bounds {
     pub serialize: Option<Vec<WherePredicate>>,
     pub deserialize: Option<Vec<WherePredicate>>,
 }
 
-impl From<BTreeMap<Symbol, Variants>> for Attributes {
+impl From<BTreeMap<Symbol, Variants>> for Bounds {
     fn from(mut map: BTreeMap<Symbol, Variants>) -> Self {
         let serialize = map.remove(&SERIALIZE);
         let deserialize = map.remove(&DESERIALIZE);
-        let serialize = serialize.and_then(|variant| match variant {
-            Variants::Serialize(ser) => Some(ser),
-            _ => None,
+        let serialize = serialize.map(|variant| match variant {
+            Variants::Serialize(ser) => ser,
+            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
-        let deserialize = deserialize.and_then(|variant| match variant {
-            Variants::Deserialize(de) => Some(de),
-            _ => None,
+        let deserialize = deserialize.map(|variant| match variant {
+            Variants::Deserialize(de) => de,
+            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
         Self {
             serialize,

@@ -6,6 +6,7 @@ use borsh::schema::*;
 #[cfg(feature = "hashbrown")]
 use hashbrown::HashMap;
 
+use core::marker::PhantomData;
 #[cfg(feature = "std")]
 use std::collections::{BTreeMap, HashMap};
 
@@ -291,6 +292,35 @@ pub fn generic_associated_item3() {
             },
             "Tuple<i8, u32>" => Definition::Tuple {
                 elements: vec!["i8".to_string(), "u32".to_string()]
+            }
+        },
+        defs
+    );
+}
+
+#[test]
+pub fn with_phantom_data() {
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Parametrized<K, V> {
+        field: K,
+        another: PhantomData<V>,
+    }
+
+    assert_eq!(
+        "Parametrized<string>".to_string(),
+        <Parametrized<String, u32>>::declaration()
+    );
+
+    let mut defs = Default::default();
+    <Parametrized<String, u32>>::add_definitions_recursively(&mut defs);
+    assert_eq!(
+        map! {
+            "Parametrized<string>" => Definition::Struct {
+                fields: Fields::NamedFields(vec![
+                    ("field".to_string(), "string".to_string()),
+                    ("another".to_string(), "nil".to_string())
+                ])
             }
         },
         defs

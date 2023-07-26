@@ -43,11 +43,11 @@ struct A<U, V> {
 
 ## Attributes
 
-### `borsh_skip` (field level attribute)
+### 1. `#[borsh_skip]` (field level attribute)
 
-`borsh_skip` makes derive skip serializing annotated field.
+`#[borsh_skip]` makes derive skip serializing annotated field.
 
-`borsh_skip` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::ser::BorshSerialize`.
+`#[borsh_skip]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::ser::BorshSerialize`.
 
 ```ignore
 #[derive(BorshSerialize)]
@@ -58,17 +58,18 @@ struct A {
 }
 ```
 
-### `#[borsh(bound(serialize = ...))]` (field level attribute)
+### 2. `#[borsh(bound(serialize = ...))]` (field level attribute)
 
-#### syntax
+###### syntax
 
 Attribute takes literal string value, which is a comma-separated list of syn's [WherePredicate](syn::WherePredicate)-s, which may be empty.
 
-#### usage
+###### usage
 
-Attribute adds possibility to override bounds for `BorshSerialize` in order to enable removal
-of bounds on type parameters from struct/enum definition itself and fixing complex cases,
-when derive hasn't figured out the right bounds on type parameters automatically.
+Attribute adds possibility to override bounds for `BorshSerialize` in order to enable:
+
+1. removal of bounds on type parameters from struct/enum definition itself and moving them to the trait's implementation block.
+2. fixing complex cases, when derive hasn't figured out the right bounds on type parameters automatically.
 
 ```ignore
 /// additional bound `T: PartialOrd` (required by `HashMap`) is injected into
@@ -97,14 +98,61 @@ where
 }
 ```
 
-#### interaction with `#[borsh_skip]`
+###### interaction with `#[borsh_skip]`
 
 `#[borsh(bound(serialize = ...))]` replaces bounds, which are derived automatically,
 irrelevant of whether `#[borsh_skip]` attribute is present.
 
-#### interaction with `#[borsh(bound(deserialize = ...))]`
+### 3. `#[borsh(serialize_with = ...)]` (field level attribute)
 
-Both attributes may be used simultaneously, separated by a comma: `#[borsh(bound(serialize = ..., deserialize = ...))]`
+###### syntax
+
+Attribute takes literal string value, which is a syn's [ExprPath](syn::ExprPath).
+
+###### usage
+
+Attribute adds possibility to specify full path of function, optionally qualified with generics,
+with which to serialize the annotated field.
+
+It may be used when `BorshSerialize` cannot be implemented for field's type, if it's from foreign crate.
+
+It may be used to override the implementation of serialization for some other reason.
+
+```ignore
+use indexmap::IndexMap;
+
+mod index_map_impl {
+    use super::IndexMap;
+    use core::hash::Hash;
+    use std::io;
+
+    pub fn serialize_index_map<
+        K: borsh::ser::BorshSerialize,
+        V: borsh::ser::BorshSerialize,
+        W: io::Write,
+    >(
+        obj: &IndexMap<K, V>,
+        writer: &mut W,
+    ) -> ::core::result::Result<(), io::Error> {
+        let key_value_tuples = obj.iter().collect::<Vec<_>>();
+        borsh::BorshSerialize::serialize(&key_value_tuples, writer)?;
+        Ok(())
+    }
+}
+
+#[derive(BorshSerialize)]
+struct B<K, V> {
+    #[borsh(
+        serialize_with = "index_map_impl::serialize_index_map",
+    )]
+    x: IndexMap<K, V>,
+    y: String,
+}
+```
+
+###### interaction with `#[borsh_skip]`
+
+`#[borsh(serialize_with = ...)]` is not allowed to be used simultaneously with `#[borsh_skip]`.
 
 */
 #[proc_macro_derive(BorshSerialize, attributes(borsh_skip, borsh))]
@@ -169,9 +217,15 @@ struct A<U, V> {
 
 ## Attributes
 
-### `borsh_init` (item level attribute)
+### 1. `#[borsh_init(...)]` (item level attribute)
 
-`borsh_init` allows to automatically run an initialization function right after deserialization.
+###### syntax
+
+Attribute's value is syn's [Path](syn::Path)-s, enclosed in parentheses.
+
+###### usage
+
+`#[borsh_init(...)]` allows to automatically run an initialization function right after deserialization.
 This adds a lot of convenience for objects that are architectured to be used as strictly immutable.
 
 ```ignore
@@ -193,11 +247,11 @@ impl Message {
 }
 ```
 
-### `borsh_skip` (field level attribute)
+### 2. `#[borsh_skip]` (field level attribute)
 
-`borsh_skip` makes derive skip deserializing annotated field.
+`#[borsh_skip]` makes derive skip deserializing annotated field.
 
-`borsh_skip` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::de::BorshDeserialize`.
+`#[borsh_skip]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::de::BorshDeserialize`.
 
 It adds `core::default::Default` bound to any
 parameters encountered in annotated field.
@@ -213,18 +267,19 @@ struct A {
 ```
 
 
-### `#[borsh(bound(deserialize = ...))]` (field level attribute)
+### 3. `#[borsh(bound(deserialize = ...))]` (field level attribute)
 
-#### syntax
+###### syntax
 
 Attribute takes literal string value, which is a comma-separated list of syn's [WherePredicate](syn::WherePredicate)-s, which may be empty.
 
 
-#### usage
+###### usage
 
-Attribute adds possibility to override bounds for `BorshDeserialize` in order to enable removal
-of bounds on type parameters from struct/enum definition itself and fixing complex cases,
-when derive hasn't figured out the right bounds on type parameters automatically.
+Attribute adds possibility to override bounds for `BorshDeserialize` in order to enable:
+
+1. removal of bounds on type parameters from struct/enum definition itself and moving them to the trait's implementation block.
+2. fixing complex cases, when derive hasn't figured out the right bounds on type parameters automatically.
 
 ```ignore
 /// additional bounds `T: PartialOrd + Hash + Eq` (required by `HashMap`) are injected into
@@ -255,7 +310,7 @@ where
 }
 ```
 
-#### interaction with `#[borsh_skip]`
+###### interaction with `#[borsh_skip]`
 
 `#[borsh(bound(deserialize = ...))]` replaces bounds, which are derived automatically,
 irrelevant of whether `#[borsh_skip]` attribute is present.
@@ -272,9 +327,57 @@ struct A<K, V, U>(
 );
 ```
 
-#### interaction with `#[borsh(bound(serialize = ...))]`
+### 4. `#[borsh(deserialize_with = ...)]` (field level attribute)
 
-Both attributes may be used simultaneously, separated by a comma: `#[borsh(bound(serialize = ..., deserialize = ...))]`
+###### syntax
+
+Attribute takes literal string value, which is a syn's [ExprPath](syn::ExprPath).
+
+###### usage
+
+Attribute adds possibility to specify full path of function, optionally qualified with generics,
+with which to deserialize the annotated field.
+
+It may be used when `BorshDeserialize` cannot be implemented for field's type, if it's from foreign crate.
+
+It may be used to override the implementation of deserialization for some other reason.
+
+```ignore
+use indexmap::IndexMap;
+
+mod index_map_impl {
+    use super::IndexMap;
+    use core::hash::Hash;
+    use std::io;
+
+    pub fn deserialize_index_map<
+        R: io::Read,
+        K: borsh::de::BorshDeserialize + Hash + Eq,
+        V: borsh::de::BorshDeserialize,
+    >(
+        reader: &mut R,
+    ) -> ::core::result::Result<IndexMap<K, V>, io::Error> {
+        let vec: Vec<(K, V)> = borsh::BorshDeserialize::deserialize_reader(reader)?;
+        let result: IndexMap<K, V> = vec.into_iter().collect();
+        Ok(result)
+    }
+}
+
+#[derive(BorshDeserialize)]
+struct B<K: Hash + Eq, V> {
+    #[borsh(
+        deserialize_with = "index_map_impl::deserialize_index_map",
+    )]
+    x: IndexMap<K, V>,
+    y: String,
+}
+```
+
+###### interaction with `#[borsh_skip]`
+
+`#[borsh(deserialize_with = ...)]` is not allowed to be used simultaneously with `#[borsh_skip]`.
+
+
 */
 #[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh_init, borsh))]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
@@ -335,11 +438,11 @@ struct A<U, V> {
 
 ## Attributes
 
-### `borsh_skip` (field level attribute)
+### 1. `#[borsh_skip]` (field level attribute)
 
-`borsh_skip` makes derive skip including schema from annotated field into schema's implementation.
+`#[borsh_skip]` makes derive skip including schema from annotated field into schema's implementation.
 
-`borsh_skip` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::BorshSchema`.
+`#[borsh_skip]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::BorshSchema`.
 
 ```ignore
 #[derive(BorshSchema)]
@@ -350,17 +453,20 @@ struct A {
 }
 ```
 
-### `#[borsh(schema(params = ...))]` (field level attribute)
+### 2. `#[borsh(schema(params = ...))]` (field level attribute)
 
-#### syntax
+###### syntax
 
-Attribute takes literal string value, which is a comma-separated list of [ParamsOverride]-s, which may be empty.
+Attribute takes literal string value, which is a comma-separated list of [ParameterOverride](borsh_derive_internal::attribute_helpers::field::schema::ParameterOverride)-s, which may be empty.
 
-#### usage
-It may be used to fix complex cases, when derive hasn't figured out the right bounds on type parameters and declaration
-parameters automatically.
+###### usage
+It may be used in order to:
 
-[ParamsOverride] describes an entry like `order_param => override_type`,
+1. fix complex cases, when derive hasn't figured out the right bounds on type parameters and
+declaration parameters automatically.
+2. remove parameters, which do not take part in serialization/deserialization, from bounded ones and from declaration parameters.
+
+[ParameterOverride](borsh_derive_internal::attribute_helpers::field::schema::ParameterOverride) describes an entry like `order_param => override_type`,
 
 e.g. `K => <K as TraitName>::Associated`.
 
@@ -386,9 +492,105 @@ where
 }
 ```
 
-#### interaction with `#[borsh_skip]`
+```ignore
+// K in PrimaryMap isn't stored during serialization / read during deserialization.
+// thus, it's not a parameter, relevant for `BorshSchema`
+// ...
+// impl<K: EntityRef, V> borsh::BorshSchema for A<K, V>
+// where
+//     V: borsh::BorshSchema,
+#[derive(BorshSchema)]
+struct A<K: EntityRef, V> {
+    #[borsh(
+        schema(
+            params = "V => V"
+        )
+    )]
+    x: PrimaryMap<K, V>,
+    y: String,
+}
 
-`#[borsh(schema(params = ...))]` is ignored if field is also annotated with `#[borsh_skip]`.
+#[derive(BorshSchema)]
+pub struct PrimaryMap<K, V>
+where
+    K: EntityRef,
+{
+    elems: Vec<V>,
+    unused: PhantomData<K>,
+}
+```
+
+###### interaction with `#[borsh_skip]`
+
+`#[borsh(schema(params = ...))]` is not allowed to be used simultaneously with `#[borsh_skip]`.
+
+### 3. `#[borsh(schema(with_funcs(declaration = ..., definitions = ...)))]` (field level attribute)
+
+###### syntax
+
+Each of `declaration` and `definitions` nested sub-attributes takes literal string value, which is a syn's [ExprPath](syn::ExprPath).
+
+Currently both `declaration` and `definitions` are required to be specifed at the same time.
+
+###### usage
+
+Attribute adds possibility to specify full path of 2 functions, optionally qualified with generics,
+with which to generate borsh schema for annotated field.
+
+It may be used when `BorshSchema` cannot be implemented for field's type, if it's from foreign crate.
+
+It may be used to override the implementation of schema for some other reason.
+
+```ignore
+use indexmap::IndexMap;
+
+mod index_map_impl {
+    pub mod schema {
+        use std::collections::BTreeMap;
+
+        use borsh::{
+            schema::{Declaration, Definition},
+            BorshSchema,
+        };
+
+        pub fn declaration<K: borsh::BorshSchema, V: borsh::BorshSchema>() -> Declaration {
+            let params = vec![<K>::declaration(), <V>::declaration()];
+            format!(r#"{}<{}>"#, "IndexMap", params.join(", "))
+        }
+
+        pub fn add_definitions_recursively<K: borsh::BorshSchema, V: borsh::BorshSchema>(
+            definitions: &mut BTreeMap<Declaration, Definition>,
+        ) {
+            let definition = Definition::Sequence {
+                elements: <(K, V)>::declaration(),
+            };
+            let no_recursion_flag = definitions.get(&declaration::<K, V>()).is_none();
+            <() as BorshSchema>::add_definition(declaration::<K, V>(), definition, definitions);
+            if no_recursion_flag {
+                <(K, V)>::add_definitions_recursively(definitions);
+            }
+        }
+    }
+}
+
+#[derive(BorshSchema)]
+struct B<K, V> {
+    #[borsh(
+        schema(
+            with_funcs(
+                declaration = "index_map_impl::schema::declaration::<K, V>",
+                definitions = "index_map_impl::schema::add_definitions_recursively::<K, V>"
+            ),
+        )
+    )]
+    x: IndexMap<K, V>,
+    y: String,
+}
+```
+
+###### interaction with `#[borsh_skip]`
+
+`#[borsh(schema(with_funcs(declaration = ..., definitions = ...)))]` is not allowed to be used simultaneously with `#[borsh_skip]`.
 
 */
 #[cfg(feature = "schema")]

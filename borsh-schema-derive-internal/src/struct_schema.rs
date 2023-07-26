@@ -64,7 +64,7 @@ fn visit_field(field: &Field, visitor: &mut FindTyParams) -> syn::Result<()> {
 
         if let Some(schema_attrs) = schema_attrs {
             if let Some(schema_params) = schema_attrs.params {
-                for schema::ParamsOverride {
+                for schema::ParameterOverride {
                     order_param,
                     override_type,
                     ..

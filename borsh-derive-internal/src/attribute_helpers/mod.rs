@@ -3,8 +3,8 @@ use syn::{Attribute, Path};
 pub mod field;
 pub mod parsing;
 
-/// firsh fields is attr name
-/// seconds field is its expected value format representation for error printing
+/// first field is attr name
+/// second field is its expected value format representation for error printing
 #[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Symbol(pub &'static str, pub &'static str);
 
@@ -17,7 +17,7 @@ pub const SERIALIZE: Symbol = Symbol("serialize", "serialize = ...");
 /// deserialize - sub-bound nested meta attribute
 pub const DESERIALIZE: Symbol = Symbol("deserialize", "deserialize = ...");
 /// borsh_skip - field-level only attribute, `BorshSerialize`, `BorshDeserialize`, `BorshSchema` contexts
-pub const SKIP: Symbol = Symbol("borsh_skip", "");
+pub const SKIP: Symbol = Symbol("borsh_skip", "borsh_skip");
 /// borsh_init - item-level only attribute  `BorshDeserialize` context
 pub const INIT: Symbol = Symbol("borsh_init", "borsh_init(...)");
 /// schema - sub-borsh nested meta, `BorshSchema` context

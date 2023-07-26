@@ -40,13 +40,13 @@ impl From<BTreeMap<Symbol, Variants>> for WithFuncs {
     fn from(mut map: BTreeMap<Symbol, Variants>) -> Self {
         let declaration = map.remove(&DECLARATION);
         let definitions = map.remove(&DEFINITIONS);
-        let declaration = declaration.and_then(|variant| match variant {
-            Variants::Declaration(declaration) => Some(declaration),
-            _ => None,
+        let declaration = declaration.map(|variant| match variant {
+            Variants::Declaration(declaration) => declaration,
+            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
-        let definitions = definitions.and_then(|variant| match variant {
-            Variants::Definitions(definitions) => Some(definitions),
-            _ => None,
+        let definitions = definitions.map(|variant| match variant {
+            Variants::Definitions(definitions) => definitions,
+            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
         Self {
             declaration,
