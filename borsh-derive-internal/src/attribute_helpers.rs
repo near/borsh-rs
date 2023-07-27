@@ -68,7 +68,7 @@ pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStre
 
                 Ok(())
             })
-            .map_err(|err| TokenStream::from(err.to_compile_error()))?;
+            .map_err(|err| err.to_compile_error())?;
         }
     }
     Ok(())
