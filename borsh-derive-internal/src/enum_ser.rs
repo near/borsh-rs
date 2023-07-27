@@ -55,7 +55,6 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
         input.variants.len() < 256,
         "up to 256 enum variants are supported"
     );
-    dbg!("test");
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_idx = u8::try_from(variant_idx).expect("up to 256 enum variants are supported");
         let variant_ident = &variant.ident;
@@ -112,7 +111,6 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                         #enum_ident::#variant_ident => #variant_idx,
                     )
                 };
-                dbg!(&variant_idx_body.to_string());
 
                 VariantParts {
                     variant_header: TokenStream2::new(),
