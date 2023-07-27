@@ -75,10 +75,12 @@ pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStre
 }
 
 pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
-    assert!(
-        input.variants.len() < 256,
-        "up to 256 enum variants are supported"
-    );
+    if input.variants.len() >= 256 {
+        return Err(syn::Error::new(
+            input.span(),
+            "up to 256 enum variants are supported",
+        ));
+    }
 
     let attrs = &input.attrs;
     let mut use_discriminant = None;
