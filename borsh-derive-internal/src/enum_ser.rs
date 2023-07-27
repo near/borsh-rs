@@ -26,7 +26,7 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
 
     let mut serialize_params_visitor = FindTyParams::new(&generics);
     let mut override_predicates = vec![];
-    let use_discriminant = contains_use_discriminant(&input.attrs).map_err(|err| {
+    let use_discriminant = contains_use_discriminant(&input.attrs)?;
         syn::Error::new(
             input.ident.span(),
             format!("error parsing `#[borsh(use_discriminant = ...)]`: {}", err),
@@ -59,22 +59,20 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
         let variant_idx = u8::try_from(variant_idx).expect("up to 256 enum variants are supported");
         let variant_ident = &variant.ident;
         let discriminant_value = discriminants.get(variant_ident).unwrap();
-
+        let discriminant_value = if use_discriminant {
+            quote! { #discriminant_value }
+        } else {
+            quote! { #variant_idx }
+        };
         let VariantParts {
             variant_header,
             variant_body,
             variant_idx_body,
         } = match &variant.fields {
             Fields::Named(fields) => {
-                let variant_idx_body = if use_discriminant {
-                    quote!(
+                let variant_idx_body = quote!(
                         #enum_ident::#variant_ident {..} => #discriminant_value,
-                    )
-                } else {
-                    quote!(
-                        #enum_ident::#variant_ident {..} => #variant_idx,
-                    )
-                };
+                    );
                 named_fields(
                     &cratename,
                     fields,
@@ -84,15 +82,9 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                 )?
             }
             Fields::Unnamed(fields) => {
-                let variant_idx_body = if use_discriminant {
-                    quote!(
+                let variant_idx_body = quote!(
                         #enum_ident::#variant_ident(..) => #discriminant_value,
-                    )
-                } else {
-                    quote!(
-                        #enum_ident::#variant_ident(..) => #variant_idx,
-                    )
-                };
+                    );
                 unnamed_fields(
                     &cratename,
                     fields,
@@ -102,15 +94,9 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                 )?
             }
             Fields::Unit => {
-                let variant_idx_body = if use_discriminant {
-                    quote!(
+                let variant_idx_body = quote!(
                         #enum_ident::#variant_ident => #discriminant_value,
-                    )
-                } else {
-                    quote!(
-                        #enum_ident::#variant_ident => #variant_idx,
-                    )
-                };
+                    );
 
                 VariantParts {
                     variant_header: TokenStream2::new(),

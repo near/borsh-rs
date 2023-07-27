@@ -61,7 +61,7 @@ pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), proc_macr
     Ok(())
 }
 
-pub(crate) fn contains_use_discriminant(attrs: &[Attribute]) -> Result<Option<bool>, TokenStream> {
+pub(crate) fn contains_use_discriminant(attrs: &[Attribute]) -> Result<Option<bool>, syn::Error> {
     let mut result = None;
     for attr in attrs {
         if attr.path().is_ident("borsh") {
@@ -451,7 +451,7 @@ mod tests {
         })
         .unwrap();
         let actual = contains_use_discriminant(&item_enum.attrs);
-        assert!(actual.is_ok());
+      asssert_eq!(actual.unwrap(), Some(false));
     }
 
     #[test]
@@ -466,7 +466,7 @@ mod tests {
         })
         .unwrap();
         let actual = contains_use_discriminant(&item_enum.attrs);
-        assert!(actual.is_ok());
+      asssert_eq!(actual.unwrap(), Some(true));
     }
 
     #[test]
@@ -481,10 +481,14 @@ mod tests {
         })
         .unwrap();
         let actual = contains_use_discriminant(&item_enum.attrs);
-        assert!(actual.is_err());
+        let err = match actual {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
+
     }
     #[test]
-    #[should_panic]
     fn test_check_use_discriminant_on_struct() {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
@@ -495,27 +499,25 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = contains_use_discriminant(&item_enum.attrs);
+        let actual =  check_item_attributes(&item_enum);
         insta::assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
     #[test]
-    #[should_panic]
     fn test_check_use_borsh_skip_on_whole_struct() {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = false)]
-            #[borsh_skip=x]
+            #[borsh_skip]
             struct AWithUseDiscriminantFalse {
                 x: X,
                 y: Y,
             }
         })
         .unwrap();
-        let actual = contains_use_discriminant(&item_enum.attrs);
+     let actual =  check_item_attributes(&item_enum);
         insta::assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
     #[test]
-    #[should_panic]
     fn test_check_use_borsh_invalid_on_whole_struct() {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
@@ -526,7 +528,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = contains_use_discriminant(&item_enum.attrs);
+     let actual =  check_item_attributes(&item_enum);
         insta::assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
 }
