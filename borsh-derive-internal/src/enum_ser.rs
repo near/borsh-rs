@@ -66,28 +66,48 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
             variant_body,
             variant_idx_body,
         } = match &variant.fields {
-            Fields::Named(fields) => named_fields(
-                &cratename,
-                enum_ident,
-                variant_ident,
-                discriminant_value,
-                fields,
-                &mut serialize_params_visitor,
-                &mut override_predicates,
-                use_discriminant,
-                variant_idx,
-            )?,
-            Fields::Unnamed(fields) => unnamed_fields(
-                &cratename,
-                enum_ident,
-                variant_ident,
-                discriminant_value,
-                fields,
-                &mut serialize_params_visitor,
-                &mut override_predicates,
-                use_discriminant,
-                variant_idx,
-            )?,
+            Fields::Named(fields) => {
+                let variant_idx_body = if use_discriminant {
+                    quote!(
+                        #enum_ident::#variant_ident {..} => #discriminant_value,
+                    )
+                } else {
+                    quote!(
+                        #enum_ident::#variant_ident {..} => #variant_idx,
+                    )
+                };
+                named_fields(
+                    &cratename,
+                    enum_ident,
+                    variant_ident,
+                    discriminant_value,
+                    fields,
+                    &mut serialize_params_visitor,
+                    &mut override_predicates,
+                    variant_idx_body,
+                )?
+            }
+            Fields::Unnamed(fields) => {
+                let variant_idx_body = if use_discriminant {
+                    quote!(
+                        #enum_ident::#variant_ident(..) => #discriminant_value,
+                    )
+                } else {
+                    quote!(
+                        #enum_ident::#variant_ident(..) => #variant_idx,
+                    )
+                };
+                unnamed_fields(
+                    &cratename,
+                    enum_ident,
+                    variant_ident,
+                    discriminant_value,
+                    fields,
+                    &mut serialize_params_visitor,
+                    &mut override_predicates,
+                    variant_idx_body,
+                )?
+            }
             Fields::Unit => {
                 let variant_idx_body = if use_discriminant {
                     quote!(
@@ -148,8 +168,7 @@ fn named_fields(
     fields: &FieldsNamed,
     params_visitor: &mut FindTyParams,
     override_output: &mut Vec<WherePredicate>,
-    use_discriminant: bool,
-    variant_idx: u8,
+    variant_idx_body: TokenStream2,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
@@ -171,15 +190,6 @@ fn named_fields(
     }
     // `..` pattern matching works even if all fields were specified
     variant_header = quote! { { #variant_header .. }};
-    let variant_idx_body = if use_discriminant == true {
-        quote!(
-            #enum_ident::#variant_ident {..} => #discriminant_value,
-        )
-    } else {
-        quote!(
-            #enum_ident::#variant_ident {..} => #variant_idx,
-        )
-    };
     Ok(VariantParts {
         variant_header,
         variant_body,
@@ -195,8 +205,7 @@ fn unnamed_fields(
     fields: &FieldsUnnamed,
     params_visitor: &mut FindTyParams,
     override_output: &mut Vec<WherePredicate>,
-    use_discriminant: bool,
-    variant_idx: u8,
+    variant_idx_body: TokenStream2,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
@@ -221,15 +230,6 @@ fn unnamed_fields(
         }
     }
     variant_header = quote! { ( #variant_header )};
-    let variant_idx_body = if use_discriminant == true {
-        quote!(
-            #enum_ident::#variant_ident(..) => #discriminant_value,
-        )
-    } else {
-        quote!(
-            #enum_ident::#variant_ident(..) => #variant_idx,
-        )
-    };
     Ok(VariantParts {
         variant_header,
         variant_body,

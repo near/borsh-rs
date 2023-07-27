@@ -50,13 +50,11 @@ pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), proc_macr
     for attr in derive_input.attrs.clone() {
         if attr.path().is_ident(BORSH.0) {
             if let syn::Data::Struct(ref _data) = derive_input.data {
-                return Err(TokenStream::from(
-                    syn::Error::new(
-                        derive_input.ident.span(),
-                        "borsh (use_discriminant=<bool>) does not support structs",
-                    )
-                    .to_compile_error(),
-                ));
+                return Err(syn::Error::new(
+                    derive_input.ident.span(),
+                    "borsh (use_discriminant=<bool>) does not support structs",
+                )
+                .to_compile_error());
             }
         }
     }
