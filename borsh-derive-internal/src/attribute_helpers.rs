@@ -1,6 +1,8 @@
 // TODO: remove this unused attribute, when the unsplit is done
 #![allow(unused)]
-use syn::{Attribute, Field, Path, WherePredicate};
+use proc_macro2::TokenStream;
+use quote::ToTokens;
+use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, Field, Path, WherePredicate};
 pub mod parsing_helpers;
 use parsing_helpers::get_where_predicates;
 
@@ -13,6 +15,8 @@ pub struct Symbol(pub &'static str);
 pub const BORSH: Symbol = Symbol("borsh");
 /// bound - sub-borsh nested meta, field-level only, `BorshSerialize` and `BorshDeserialize` contexts
 pub const BOUND: Symbol = Symbol("bound");
+// item level attribute for enums
+pub const USE_DISCRIMINANT: &str = "use_discriminant";
 /// serialize - sub-bound nested meta attribute
 pub const SERIALIZE: Symbol = Symbol("serialize");
 /// deserialize - sub-bound nested meta attribute
@@ -40,6 +44,54 @@ impl<'a> PartialEq<Symbol> for &'a Path {
 
 pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|attr| attr.path() == SKIP)
+}
+
+pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), proc_macro2::TokenStream> {
+    for attr in derive_input.attrs.clone() {
+        if attr.path().is_ident(BORSH.0) {
+            if let syn::Data::Struct(ref _data) = derive_input.data {
+                return Err(TokenStream::from(
+                    syn::Error::new(
+                        derive_input.ident.span(),
+                        "borsh (use_discriminant=<bool>) does not support structs",
+                    )
+                    .to_compile_error(),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn contains_use_discriminant(attrs: &[Attribute]) -> Result<Option<bool>, TokenStream> {
+    let mut result = None;
+    for attr in attrs {
+        if attr.path().is_ident("borsh") {
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident(USE_DISCRIMINANT) {
+                    let value_expr: Expr = meta.value()?.parse()?;
+                    let value = value_expr.to_token_stream().to_string();
+                    // this goes to contains_use_discriminant
+                    match value.as_str() {
+                        "true" => {
+                            result = Some(true);
+                        }
+                        "false" => result = Some(false),
+                        _ => {
+                            return Err(syn::Error::new(
+                                value_expr.span(),
+                                "`use_discriminant` accept only `true` or `false`",
+                            ));
+                        }
+                    };
+                }
+
+                Ok(())
+            })
+            .map_err(|err| TokenStream::from(err.to_compile_error()))?;
+        }
+    }
+    Ok(result)
 }
 
 pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Option<Path> {
@@ -386,5 +438,97 @@ mod tests {
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let schema_params = parse_schema_attrs(&first_field.attrs).unwrap();
         assert!(schema_params.is_none());
+    }
+
+    use super::*;
+    #[test]
+    fn test_check_use_discriminant() {
+        let item_enum: DeriveInput = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh(use_discriminant = false)]
+            enum AWithUseDiscriminantFalse {
+                X,
+                Y,
+            }
+        })
+        .unwrap();
+        let actual = contains_use_discriminant(&item_enum.attrs);
+        assert!(actual.is_ok());
+    }
+
+    #[test]
+    fn test_check_use_discriminant_true() {
+        let item_enum: DeriveInput = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh(use_discriminant = true)]
+            enum AWithUseDiscriminantTrue {
+                X,
+                Y,
+            }
+        })
+        .unwrap();
+        let actual = contains_use_discriminant(&item_enum.attrs);
+        assert!(actual.is_ok());
+    }
+
+    #[test]
+    fn test_check_use_discriminant_wrong_value() {
+        let item_enum: DeriveInput = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh(use_discriminant = 111)]
+            enum AWithUseDiscriminantFalse {
+                X,
+                Y,
+            }
+        })
+        .unwrap();
+        let actual = contains_use_discriminant(&item_enum.attrs);
+        assert!(actual.is_err());
+    }
+    #[test]
+    #[should_panic]
+    fn test_check_use_discriminant_on_struct() {
+        let item_enum: DeriveInput = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh(use_discriminant = false)]
+            struct AWithUseDiscriminantFalse {
+                x: X,
+                y: Y,
+            }
+        })
+        .unwrap();
+        let actual = contains_use_discriminant(&item_enum.attrs);
+        insta::assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
+    }
+    #[test]
+    #[should_panic]
+    fn test_check_use_borsh_skip_on_whole_struct() {
+        let item_enum: DeriveInput = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh(use_discriminant = false)]
+            #[borsh_skip=x]
+            struct AWithUseDiscriminantFalse {
+                x: X,
+                y: Y,
+            }
+        })
+        .unwrap();
+        let actual = contains_use_discriminant(&item_enum.attrs);
+        insta::assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
+    }
+    #[test]
+    #[should_panic]
+    fn test_check_use_borsh_invalid_on_whole_struct() {
+        let item_enum: DeriveInput = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh(invalid)]
+            struct AWithUseDiscriminantFalse {
+                x: X,
+                y: Y,
+            }
+        })
+        .unwrap();
+        let actual = contains_use_discriminant(&item_enum.attrs);
+        insta::assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
 }

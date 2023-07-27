@@ -5,7 +5,9 @@ use quote::quote;
 use syn::{Fields, FieldsNamed, FieldsUnnamed, Ident, ItemEnum, Path, WhereClause, WherePredicate};
 
 use crate::{
-    attribute_helpers::{collect_override_bounds, contains_skip, BoundType},
+    attribute_helpers::{
+        collect_override_bounds, contains_skip, contains_use_discriminant, BoundType,
+    },
     enum_discriminant_map::discriminant_map,
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
@@ -24,13 +26,41 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
 
     let mut serialize_params_visitor = FindTyParams::new(&generics);
     let mut override_predicates = vec![];
+    let use_discriminant = contains_use_discriminant(&input.attrs).map_err(|err| {
+        syn::Error::new(
+            input.ident.span(),
+            format!("error parsing `#[borsh(use_discriminant = ...)]`: {}", err),
+        )
+    })?;
 
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
     let discriminants = discriminant_map(&input.variants);
-    for variant in input.variants.iter() {
+
+    let has_explicit_discriminants = input
+        .variants
+        .iter()
+        .any(|variant| variant.discriminant.is_some());
+
+    if has_explicit_discriminants && use_discriminant.is_none() {
+        return Err(syn::Error::new(
+                input.ident.span(),
+                "You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=false)]` for all structs that have enum with explicit discriminant",
+            ));
+    }
+
+    let use_discriminant = use_discriminant.unwrap_or(false);
+
+    assert!(
+        input.variants.len() < 256,
+        "up to 256 enum variants are supported"
+    );
+    dbg!("test");
+    for (variant_idx, variant) in input.variants.iter().enumerate() {
+        let variant_idx = u8::try_from(variant_idx).expect("up to 256 enum variants are supported");
         let variant_ident = &variant.ident;
         let discriminant_value = discriminants.get(variant_ident).unwrap();
+
         let VariantParts {
             variant_header,
             variant_body,
@@ -44,6 +74,8 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                 fields,
                 &mut serialize_params_visitor,
                 &mut override_predicates,
+                use_discriminant,
+                variant_idx,
             )?,
             Fields::Unnamed(fields) => unnamed_fields(
                 &cratename,
@@ -53,11 +85,21 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                 fields,
                 &mut serialize_params_visitor,
                 &mut override_predicates,
+                use_discriminant,
+                variant_idx,
             )?,
             Fields::Unit => {
-                let variant_idx_body = quote!(
-                    #enum_ident::#variant_ident => #discriminant_value,
-                );
+                let variant_idx_body = if use_discriminant {
+                    quote!(
+                        #enum_ident::#variant_ident => #discriminant_value,
+                    )
+                } else {
+                    quote!(
+                        #enum_ident::#variant_ident => #variant_idx,
+                    )
+                };
+                dbg!(&variant_idx_body.to_string());
+
                 VariantParts {
                     variant_header: TokenStream2::new(),
                     variant_body: TokenStream2::new(),
@@ -106,6 +148,8 @@ fn named_fields(
     fields: &FieldsNamed,
     params_visitor: &mut FindTyParams,
     override_output: &mut Vec<WherePredicate>,
+    use_discriminant: bool,
+    variant_idx: u8,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
@@ -127,9 +171,15 @@ fn named_fields(
     }
     // `..` pattern matching works even if all fields were specified
     variant_header = quote! { { #variant_header .. }};
-    let variant_idx_body = quote!(
-        #enum_ident::#variant_ident { .. } => #discriminant_value,
-    );
+    let variant_idx_body = if use_discriminant == true {
+        quote!(
+            #enum_ident::#variant_ident {..} => #discriminant_value,
+        )
+    } else {
+        quote!(
+            #enum_ident::#variant_ident {..} => #variant_idx,
+        )
+    };
     Ok(VariantParts {
         variant_header,
         variant_body,
@@ -145,6 +195,8 @@ fn unnamed_fields(
     fields: &FieldsUnnamed,
     params_visitor: &mut FindTyParams,
     override_output: &mut Vec<WherePredicate>,
+    use_discriminant: bool,
+    variant_idx: u8,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
@@ -169,9 +221,15 @@ fn unnamed_fields(
         }
     }
     variant_header = quote! { ( #variant_header )};
-    let variant_idx_body = quote!(
-        #enum_ident::#variant_ident(..) => #discriminant_value,
-    );
+    let variant_idx_body = if use_discriminant == true {
+        quote!(
+            #enum_ident::#variant_ident(..) => #discriminant_value,
+        )
+    } else {
+        quote!(
+            #enum_ident::#variant_ident(..) => #variant_idx,
+        )
+    };
     Ok(VariantParts {
         variant_header,
         variant_body,

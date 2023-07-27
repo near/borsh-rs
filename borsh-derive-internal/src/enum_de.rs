@@ -1,14 +1,15 @@
-use proc_macro2::TokenStream as TokenStream2;
-use quote::quote;
-use syn::{Fields, Ident, ItemEnum, Path, WhereClause};
-
 use crate::{
     attribute_helpers::{
-        collect_override_bounds, contains_initialize_with, contains_skip, BoundType,
+        collect_override_bounds, contains_initialize_with, contains_skip,
+        contains_use_discriminant, BoundType,
     },
     enum_discriminant_map::discriminant_map,
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
+use proc_macro2::TokenStream as TokenStream2;
+use quote::quote;
+use std::convert::TryFrom;
+use syn::{Fields, Ident, ItemEnum, Path, WhereClause};
 
 pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
@@ -27,9 +28,36 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
     let mut default_params_visitor = FindTyParams::new(&generics);
 
     let init_method = contains_initialize_with(&input.attrs);
+
+    let use_discriminant = contains_use_discriminant(&input.attrs).map_err(|err| {
+        syn::Error::new(
+            input.ident.span(),
+            format!("error parsing `#[borsh(use_discriminant = ...)]`: {}", err),
+        )
+    })?;
+
+    let has_explicit_discriminants = input
+        .variants
+        .iter()
+        .any(|variant| variant.discriminant.is_some());
+    if has_explicit_discriminants && use_discriminant.is_none() {
+        return Err(syn::Error::new(
+        input.ident.span(),
+        "You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=false)]` for all structs that have enum with explicit discriminant",
+    ));
+    }
+    let use_discriminant = use_discriminant.unwrap_or(false);
+
     let mut variant_arms = TokenStream2::new();
     let discriminants = discriminant_map(&input.variants);
-    for variant in input.variants.iter() {
+
+    for (variant_idx, variant) in input.variants.iter().enumerate() {
+        let variant_idx = u8::try_from(variant_idx).map_err(|err| {
+            syn::Error::new(
+                variant.ident.span(),
+                format!("up to 256 enum variants are supported. error{}", err),
+            )
+        })?;
         let variant_ident = &variant.ident;
         let discriminant = discriminants.get(variant_ident).unwrap();
         let mut variant_header = TokenStream2::new();
@@ -85,6 +113,11 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
             }
             Fields::Unit => {}
         }
+        let discriminant = if use_discriminant {
+            quote! { #discriminant }
+        } else {
+            quote! { #variant_idx }
+        };
         variant_arms.extend(quote! {
             if variant_tag == #discriminant { #name::#variant_ident #variant_header } else
         });
