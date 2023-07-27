@@ -27,11 +27,6 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
     let mut serialize_params_visitor = FindTyParams::new(&generics);
     let mut override_predicates = vec![];
     let use_discriminant = contains_use_discriminant(&input.attrs)?;
-        syn::Error::new(
-            input.ident.span(),
-            format!("error parsing `#[borsh(use_discriminant = ...)]`: {}", err),
-        )
-    })?;
 
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
@@ -71,8 +66,8 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
         } = match &variant.fields {
             Fields::Named(fields) => {
                 let variant_idx_body = quote!(
-                        #enum_ident::#variant_ident {..} => #discriminant_value,
-                    );
+                    #enum_ident::#variant_ident {..} => #discriminant_value,
+                );
                 named_fields(
                     &cratename,
                     fields,
@@ -83,8 +78,8 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
             }
             Fields::Unnamed(fields) => {
                 let variant_idx_body = quote!(
-                        #enum_ident::#variant_ident(..) => #discriminant_value,
-                    );
+                    #enum_ident::#variant_ident(..) => #discriminant_value,
+                );
                 unnamed_fields(
                     &cratename,
                     fields,
@@ -95,8 +90,8 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
             }
             Fields::Unit => {
                 let variant_idx_body = quote!(
-                        #enum_ident::#variant_ident => #discriminant_value,
-                    );
+                    #enum_ident::#variant_ident => #discriminant_value,
+                );
 
                 VariantParts {
                     variant_header: TokenStream2::new(),

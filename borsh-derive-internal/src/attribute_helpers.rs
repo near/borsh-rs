@@ -85,8 +85,7 @@ pub(crate) fn contains_use_discriminant(attrs: &[Attribute]) -> Result<Option<bo
                 }
 
                 Ok(())
-            })
-            .map_err(|err| err.to_compile_error())?;
+            })?;
         }
     }
     Ok(result)
@@ -451,7 +450,7 @@ mod tests {
         })
         .unwrap();
         let actual = contains_use_discriminant(&item_enum.attrs);
-      asssert_eq!(actual.unwrap(), Some(false));
+        assert_eq!(actual.unwrap(), Some(false));
     }
 
     #[test]
@@ -466,7 +465,7 @@ mod tests {
         })
         .unwrap();
         let actual = contains_use_discriminant(&item_enum.attrs);
-      asssert_eq!(actual.unwrap(), Some(true));
+        assert_eq!(actual.unwrap(), Some(true));
     }
 
     #[test]
@@ -486,7 +485,6 @@ mod tests {
             Err(err) => err,
         };
         insta::assert_debug_snapshot!(err);
-
     }
     #[test]
     fn test_check_use_discriminant_on_struct() {
@@ -499,7 +497,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual =  check_item_attributes(&item_enum);
+        let actual = check_item_attributes(&item_enum);
         insta::assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
     #[test]
@@ -514,7 +512,7 @@ mod tests {
             }
         })
         .unwrap();
-     let actual =  check_item_attributes(&item_enum);
+        let actual = check_item_attributes(&item_enum);
         insta::assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
     #[test]
@@ -528,7 +526,7 @@ mod tests {
             }
         })
         .unwrap();
-     let actual =  check_item_attributes(&item_enum);
+        let actual = check_item_attributes(&item_enum);
         insta::assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
 }

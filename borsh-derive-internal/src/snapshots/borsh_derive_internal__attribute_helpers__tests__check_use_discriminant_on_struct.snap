@@ -1,0 +1,5 @@
+---
+source: borsh-derive-internal/src/attribute_helpers.rs
+expression: actual.unwrap_err().to_token_stream().to_string()
+---
+:: core :: compile_error ! { "borsh (use_discriminant=<bool>) does not support structs" }

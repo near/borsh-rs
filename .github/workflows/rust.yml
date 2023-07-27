@@ -20,7 +20,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        rust_version: [1.65.0, stable]
+        rust_version: [1.66.0, stable]
     runs-on: ubuntu-20.04
 
     steps:

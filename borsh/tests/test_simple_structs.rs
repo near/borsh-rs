@@ -337,3 +337,29 @@ fn test_discriminant_serde_no_use_discriminant() {
         assert_eq!(from_slice::<XNoDiscriminant>(&data).unwrap(), values[index]);
     }
 }
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+enum XNoDiscrim {
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+}
+#[test]
+fn test_no_discriminant() {
+    let values = vec![
+        XNoDiscrim::A,
+        XNoDiscrim::B,
+        XNoDiscrim::C,
+        XNoDiscrim::D,
+        XNoDiscrim::E,
+        XNoDiscrim::F,
+    ];
+    let expected_discriminants = [0u8, 1, 2, 3, 4, 5];
+    for (index, value) in values.iter().enumerate() {
+        let data = value.try_to_vec().unwrap();
+        assert_eq!(data[0], expected_discriminants[index]);
+        assert_eq!(from_slice::<XNoDiscrim>(&data).unwrap(), values[index]);
+    }
+}
