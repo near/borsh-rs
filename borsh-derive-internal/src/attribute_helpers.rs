@@ -535,9 +535,9 @@ mod tests {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = false)]
             #[borsh_skip]
-            struct AWithUseDiscriminantFalse {
-                x: X,
-                y: Y,
+            enum AWithUseDiscriminantFalse {
+                X,
+                Y,
             }
         })
         .unwrap();
@@ -549,9 +549,9 @@ mod tests {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(invalid)]
-            struct AWithUseDiscriminantFalse {
-                x: X,
-                y: Y,
+            enum AWithUseDiscriminantFalse {
+                X,
+                Y,
             }
         })
         .unwrap();
