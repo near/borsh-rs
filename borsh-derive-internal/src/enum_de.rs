@@ -29,24 +29,7 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
 
     let init_method = contains_initialize_with(&input.attrs);
 
-    let use_discriminant = contains_use_discriminant(&input.attrs).map_err(|err| {
-        syn::Error::new(
-            input.ident.span(),
-            format!("error parsing `#[borsh(use_discriminant = ...)]`: {}", err),
-        )
-    })?;
-
-    let has_explicit_discriminants = input
-        .variants
-        .iter()
-        .any(|variant| variant.discriminant.is_some());
-    if has_explicit_discriminants && use_discriminant.is_none() {
-        return Err(syn::Error::new(
-        input.ident.span(),
-        "You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=false)]` for all structs that have enum with explicit discriminant",
-    ));
-    }
-    let use_discriminant = use_discriminant.unwrap_or(false);
+    let use_discriminant = contains_use_discriminant(input)?;
 
     let mut variant_arms = TokenStream2::new();
     let discriminants = discriminant_map(&input.variants);

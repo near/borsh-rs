@@ -2,7 +2,7 @@
 #![allow(unused)]
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, Field, Path, WherePredicate};
+use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, Field, ItemEnum, Path, WherePredicate};
 pub mod parsing_helpers;
 use parsing_helpers::get_where_predicates;
 
@@ -61,8 +61,14 @@ pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), proc_macr
     Ok(())
 }
 
-pub(crate) fn contains_use_discriminant(attrs: &[Attribute]) -> Result<Option<bool>, syn::Error> {
-    let mut result = None;
+pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
+    assert!(
+        input.variants.len() < 256,
+        "up to 256 enum variants are supported"
+    );
+
+    let attrs = &input.attrs;
+    let mut use_discriminant = None;
     for attr in attrs {
         if attr.path().is_ident("borsh") {
             attr.parse_nested_meta(|meta| {
@@ -72,9 +78,9 @@ pub(crate) fn contains_use_discriminant(attrs: &[Attribute]) -> Result<Option<bo
                     // this goes to contains_use_discriminant
                     match value.as_str() {
                         "true" => {
-                            result = Some(true);
+                            use_discriminant = Some(true);
                         }
-                        "false" => result = Some(false),
+                        "false" => use_discriminant = Some(false),
                         _ => {
                             return Err(syn::Error::new(
                                 value_expr.span(),
@@ -88,7 +94,17 @@ pub(crate) fn contains_use_discriminant(attrs: &[Attribute]) -> Result<Option<bo
             })?;
         }
     }
-    Ok(result)
+    let has_explicit_discriminants = input
+        .variants
+        .iter()
+        .any(|variant| variant.discriminant.is_some());
+    if has_explicit_discriminants && use_discriminant.is_none() {
+        return Err(syn::Error::new(
+                input.ident.span(),
+                "You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=false)]` for all structs that have enum with explicit discriminant",
+            ));
+    }
+    Ok(use_discriminant.unwrap_or(false))
 }
 
 pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Option<Path> {
@@ -183,7 +199,7 @@ pub(crate) fn collect_override_bounds(
 mod tests {
     use quote::{quote, ToTokens};
     use std::fmt::Write;
-    use syn::ItemStruct;
+    use syn::{Item, ItemStruct};
 
     use crate::attribute_helpers::parse_schema_attrs;
 
@@ -440,7 +456,7 @@ mod tests {
     use super::*;
     #[test]
     fn test_check_use_discriminant() {
-        let item_enum: DeriveInput = syn::parse2(quote! {
+        let item_enum: ItemEnum = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = false)]
             enum AWithUseDiscriminantFalse {
@@ -449,13 +465,13 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = contains_use_discriminant(&item_enum.attrs);
-        assert_eq!(actual.unwrap(), Some(false));
+        let actual = contains_use_discriminant(&item_enum);
+        assert_eq!(actual.unwrap(), false);
     }
 
     #[test]
     fn test_check_use_discriminant_true() {
-        let item_enum: DeriveInput = syn::parse2(quote! {
+        let item_enum: ItemEnum = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = true)]
             enum AWithUseDiscriminantTrue {
@@ -464,13 +480,13 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = contains_use_discriminant(&item_enum.attrs);
-        assert_eq!(actual.unwrap(), Some(true));
+        let actual = contains_use_discriminant(&item_enum);
+        assert_eq!(actual.unwrap(), true);
     }
 
     #[test]
     fn test_check_use_discriminant_wrong_value() {
-        let item_enum: DeriveInput = syn::parse2(quote! {
+        let item_enum: ItemEnum = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = 111)]
             enum AWithUseDiscriminantFalse {
@@ -479,7 +495,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = contains_use_discriminant(&item_enum.attrs);
+        let actual = contains_use_discriminant(&item_enum);
         let err = match actual {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,

@@ -26,30 +26,12 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
 
     let mut serialize_params_visitor = FindTyParams::new(&generics);
     let mut override_predicates = vec![];
-    let use_discriminant = contains_use_discriminant(&input.attrs)?;
+    let use_discriminant = contains_use_discriminant(input)?;
 
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
     let discriminants = discriminant_map(&input.variants);
 
-    let has_explicit_discriminants = input
-        .variants
-        .iter()
-        .any(|variant| variant.discriminant.is_some());
-
-    if has_explicit_discriminants && use_discriminant.is_none() {
-        return Err(syn::Error::new(
-                input.ident.span(),
-                "You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=false)]` for all structs that have enum with explicit discriminant",
-            ));
-    }
-
-    let use_discriminant = use_discriminant.unwrap_or(false);
-
-    assert!(
-        input.variants.len() < 256,
-        "up to 256 enum variants are supported"
-    );
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_idx = u8::try_from(variant_idx).expect("up to 256 enum variants are supported");
         let variant_ident = &variant.ident;
