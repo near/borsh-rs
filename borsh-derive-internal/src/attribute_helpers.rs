@@ -46,16 +46,29 @@ pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|attr| attr.path() == SKIP)
 }
 
-pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), proc_macro2::TokenStream> {
-    for attr in derive_input.attrs.clone() {
-        if attr.path().is_ident(BORSH.0) {
-            if let syn::Data::Struct(ref _data) = derive_input.data {
-                return Err(syn::Error::new(
-                    derive_input.ident.span(),
-                    "borsh (use_discriminant=<bool>) does not support structs",
-                )
-                .to_compile_error());
-            }
+pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
+    for attr in &derive_input.attrs {
+        if attr.path().is_ident("borsh") {
+            attr.parse_nested_meta(|meta| {
+                if !meta.path.is_ident(USE_DISCRIMINANT) {
+                    return Err(syn::Error::new(
+                        derive_input.ident.span(),
+                        "`use_discriminant` is the only supported attribute for `borsh`",
+                    ));
+                }
+                if meta.path.is_ident(USE_DISCRIMINANT) {
+                    let _expr: Expr = meta.value()?.parse()?;
+                    if let syn::Data::Struct(ref _data) = derive_input.data {
+                        return Err(syn::Error::new(
+                            derive_input.ident.span(),
+                            "borsh(use_discriminant=<bool>) does not support structs",
+                        ));
+                    }
+                }
+
+                Ok(())
+            })
+            .map_err(|err| TokenStream::from(err.to_compile_error()))?;
         }
     }
     Ok(())
