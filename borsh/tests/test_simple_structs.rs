@@ -114,7 +114,6 @@ enum X {
 fn test_discriminant_serialization() {
     let values = vec![X::A, X::B, X::C, X::D, X::E, X::F];
     for value in values {
-        dbg!(value.try_to_vec().unwrap(), value);
         assert_eq!(value.try_to_vec().unwrap(), [value as u8]);
     }
 }
