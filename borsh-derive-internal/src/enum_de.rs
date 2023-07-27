@@ -307,4 +307,41 @@ mod tests {
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
+
+    #[test]
+    fn borsh_discriminant_false() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+           #[borsh(use_discriminant = false)]
+            enum X {
+                A,
+                B = 20,
+                C,
+                D,
+                E = 10,
+                F,
+            }
+        })
+        .unwrap();
+        let actual = enum_de(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+    #[test]
+    fn borsh_discriminant_true() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            #[borsh(use_discriminant = true)]
+            enum X {
+                A,
+                B = 20,
+                C,
+                D,
+                E = 10,
+                F,
+            }
+        })
+        .unwrap();
+        let actual = enum_de(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
 }

@@ -83,7 +83,7 @@ struct A {
 If you don't specify `use_discriminant` option for enum with explicit discriminant, you will get an error:
 
 ````bash
-error: You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=false)]` for all structs that have enum with explicit discriminant
+error: You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=false)]` for all enums with explicit discriminant
 ```
 ```rust
 #[derive(BorshDeserialize, BorshSerialize)]

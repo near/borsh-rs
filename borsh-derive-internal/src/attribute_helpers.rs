@@ -15,7 +15,7 @@ pub struct Symbol(pub &'static str);
 pub const BORSH: Symbol = Symbol("borsh");
 /// bound - sub-borsh nested meta, field-level only, `BorshSerialize` and `BorshDeserialize` contexts
 pub const BOUND: Symbol = Symbol("bound");
-// item level attribute for enums
+//  use_discriminant - sub-borsh nested meta, item-level only, enums only, `BorshSerialize` and `BorshDeserialize` contexts
 pub const USE_DISCRIMINANT: &str = "use_discriminant";
 /// serialize - sub-bound nested meta attribute
 pub const SERIALIZE: Symbol = Symbol("serialize");
@@ -48,7 +48,7 @@ pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
 
 pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
     for attr in &derive_input.attrs {
-        if attr.path().is_ident("borsh") {
+        if attr.path().is_ident(BORSH.0) {
             attr.parse_nested_meta(|meta| {
                 if !meta.path.is_ident(USE_DISCRIMINANT) {
                     return Err(syn::Error::new(
@@ -85,12 +85,11 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
     let attrs = &input.attrs;
     let mut use_discriminant = None;
     for attr in attrs {
-        if attr.path().is_ident("borsh") {
+        if attr.path().is_ident(BORSH.0) {
             attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident(USE_DISCRIMINANT) {
                     let value_expr: Expr = meta.value()?.parse()?;
                     let value = value_expr.to_token_stream().to_string();
-                    // this goes to contains_use_discriminant
                     match value.as_str() {
                         "true" => {
                             use_discriminant = Some(true);
