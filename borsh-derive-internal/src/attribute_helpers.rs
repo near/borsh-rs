@@ -479,7 +479,7 @@ mod tests {
         })
         .unwrap();
         let actual = contains_use_discriminant(&item_enum);
-        assert_eq!(actual.unwrap(), false);
+        assert!(!actual.unwrap());
     }
 
     #[test]
@@ -494,7 +494,7 @@ mod tests {
         })
         .unwrap();
         let actual = contains_use_discriminant(&item_enum);
-        assert_eq!(actual.unwrap(), true);
+        assert!(actual.unwrap());
     }
 
     #[test]
