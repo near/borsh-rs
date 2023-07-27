@@ -106,6 +106,31 @@ irrelevant of whether `#[borsh_skip]` attribute is present.
 
 Both attributes may be used simultaneously, separated by a comma: `#[borsh(bound(serialize = ..., deserialize = ...))]`
 
+### `borsh(use_discriminant=<bool>)` (item level attribute)
+This attribute is only applicable to enums.
+`use_discriminant` allows to override the default behavior of serialization of enums with explicit discriminant.
+`use_discriminant` is `false` behaves like version of borsh of 0.9.0.
+You must to specify `use_discriminant` for all enums in your project.
+
+This is equivalent of borsh version 0.9.0 (explicit discriminant is ignored and this enum is equavielent to `A` without explicit discriminant):
+```ignore
+#[derive(BorshSerialize)]
+#[borsh(use_discriminant = false)]
+enum A {
+    A
+    B = 10,
+}
+```
+
+To have explicit discriminant value serialized as is, you must specify `borsh(use_discriminant=true)` for enum.
+```ignore
+#[derive(BorsSerialize)]
+#[borsh(use_discriminant = true)]
+enum B {
+    A
+    B = 10,
+}
+```
 */
 #[proc_macro_derive(BorshSerialize, attributes(borsh_skip, borsh))]
 pub fn borsh_serialize(input: TokenStream) -> TokenStream {
@@ -284,6 +309,33 @@ struct A<K, V, U>(
 Both attributes may be used simultaneously, separated by a comma: `#[borsh(bound(serialize = ..., deserialize = ...))]`
 
 This one will use proper version of serialization of enum with explicit discriminant.
+
+### `borsh(use_discriminant=<bool>)` (item level attribute)
+This attribute is only applicable to enums.
+`use_discriminant` allows to override the default behavior of serialization of enums with explicit discriminant.
+`use_discriminant` is `false` behaves like version of borsh of 0.9.0.
+It's useful for backward compatibility and you can set this value to `false` to deserialise data serialised by older version of `borsh`.
+You must to specify `use_discriminant` for all enums in your project.
+
+This is equivalent of borsh version 0.9.0 (explicit discriminant is ignored and this enum is equavielent to `A` without explicit discriminant):
+```ignore
+#[derive(BorshDeserialize)]
+#[borsh(use_discriminant = false)]
+enum A {
+    A
+    B = 10,
+}
+```
+
+To have explicit discriminant value serialized as is, you must specify `borsh(use_discriminant=true)` for enum.
+```ignore
+#[derive(BorshDeserialize)]
+#[borsh(use_discriminant = true)]
+enum B {
+    A
+    B = 10,
+}
+```
 
 */
 #[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh_init, borsh))]
