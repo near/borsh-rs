@@ -535,16 +535,15 @@ mod tests {
     fn test_check_use_borsh_skip_on_whole_struct() {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
-            #[borsh(use_discriminant = false)]
             #[borsh_skip]
-            enum AWithUseDiscriminantFalse {
-                X,
-                Y,
+            struct AWithUseDiscriminantFalse {
+                 x: X,
+                 y: Y,
             }
         })
         .unwrap();
         let actual = check_item_attributes(&item_enum);
-        insta::assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
+        assert!(actual.is_ok());
     }
     #[test]
     fn test_check_use_borsh_invalid_on_whole_struct() {
