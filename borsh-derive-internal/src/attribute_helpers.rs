@@ -86,7 +86,7 @@ pub(crate) fn contains_use_discriminant(attrs: &[Attribute]) -> Result<Option<bo
 
                 Ok(())
             })
-            .map_err(|err| TokenStream::from(err.to_compile_error()))?;
+            .map_err(|err| err.to_compile_error())?;
         }
     }
     Ok(result)

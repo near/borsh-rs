@@ -78,9 +78,6 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                 };
                 named_fields(
                     &cratename,
-                    enum_ident,
-                    variant_ident,
-                    discriminant_value,
                     fields,
                     &mut serialize_params_visitor,
                     &mut override_predicates,
@@ -99,9 +96,6 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                 };
                 unnamed_fields(
                     &cratename,
-                    enum_ident,
-                    variant_ident,
-                    discriminant_value,
                     fields,
                     &mut serialize_params_visitor,
                     &mut override_predicates,
@@ -162,9 +156,6 @@ struct VariantParts {
 }
 fn named_fields(
     cratename: &Ident,
-    enum_ident: &Ident,
-    variant_ident: &Ident,
-    discriminant_value: &TokenStream2,
     fields: &FieldsNamed,
     params_visitor: &mut FindTyParams,
     override_output: &mut Vec<WherePredicate>,
@@ -199,9 +190,6 @@ fn named_fields(
 
 fn unnamed_fields(
     cratename: &Ident,
-    enum_ident: &Ident,
-    variant_ident: &Ident,
-    discriminant_value: &TokenStream2,
     fields: &FieldsUnnamed,
     params_visitor: &mut FindTyParams,
     override_output: &mut Vec<WherePredicate>,
