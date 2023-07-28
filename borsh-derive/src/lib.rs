@@ -131,6 +131,87 @@ enum B {
     B = 10,
 }
 ```
+
+### borsh constant value as discriminant
+This case is not supported:
+```ignore
+const fn discrim() -> isize {
+    0x14
+}
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+enum X {
+    A,
+    B = discrim(), // expressions, evaluating to `isize`, which are allowed outside of `borsh` context
+    C,
+    D,
+    E = 10,
+    F,
+}
+```
+
+This is possible without `BorshSerialize`:
+```ignore
+enum X1 {
+    A,
+    B = discrim(),
+    C,
+    D,
+    E = 10,
+    F,
+}
+```
+If you need to support this weird case for some strange reason, you can take the expansion of derive as template
+and write the impl manually:
+```ignore
+impl borsh::ser::BorshSerialize for X {
+    fn serialize<W: borsh::__private::maybestd::io::Write>(
+        &self,
+        writer: &mut W,
+    ) -> ::core::result::Result<(), borsh::__private::maybestd::io::Error> {
+        let variant_idx: u8 = match self {
+            X::A => 0,
+            X::B => discrim()
+                .try_into()
+                .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "err"))?,
+            X::C => (discrim() + 1)
+                .try_into()
+                .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "err"))?,
+            X::D => (discrim() + 2)
+                .try_into()
+                .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "err"))?,
+            X::E => 10,
+            X::F => 10 + 1,
+        };
+        writer.write_all(&variant_idx.to_le_bytes())?;
+        match self {
+            X::A => {}
+            X::B => {}
+            X::C => {}
+            X::D => {}
+            X::E => {}
+            X::F => {}
+        }
+        Ok(())
+    }
+}
+```
+### borsh explicit discriminant does not support values greater than 256
+This is not supported:
+```ignore
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+enum X {
+    A,
+    B = 0x100, // literal values outside of `u8` range
+    C,
+    D,
+    E = 10,
+    F,
+}
+```
+
 */
 #[proc_macro_derive(BorshSerialize, attributes(borsh_skip, borsh))]
 pub fn borsh_serialize(input: TokenStream) -> TokenStream {
@@ -334,6 +415,88 @@ To have explicit discriminant value serialized as is, you must specify `borsh(us
 enum B {
     A
     B = 10,
+}
+```
+
+
+### borsh constant value as discriminant
+This case is not supported:
+```ignore
+const fn discrim() -> isize {
+    0x14
+}
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+enum X {
+    A,
+    B = discrim(), // expressions, evaluating to `isize`, which are allowed outside of `borsh` context
+    C,
+    D,
+    E = 10,
+    F,
+}
+```
+
+This is possible without `BorshSerialize`:
+```ignore
+enum X1 {
+    A,
+    B = discrim(),
+    C,
+    D,
+    E = 10,
+    F,
+}
+```
+If you need to support this weird case for some strange reason, you can take the expansion of derive as template
+and write the impl manually:
+```ignore
+impl borsh::ser::BorshSerialize for X {
+    fn serialize<W: borsh::__private::maybestd::io::Write>(
+        &self,
+        writer: &mut W,
+    ) -> ::core::result::Result<(), borsh::__private::maybestd::io::Error> {
+        let variant_idx: u8 = match self {
+            X::A => 0,
+            X::B => discrim()
+                .try_into()
+                .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "err"))?,
+            X::C => (discrim() + 1)
+                .try_into()
+                .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "err"))?,
+            X::D => (discrim() + 2)
+                .try_into()
+                .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "err"))?,
+            X::E => 10,
+            X::F => 10 + 1,
+        };
+        writer.write_all(&variant_idx.to_le_bytes())?;
+        match self {
+            X::A => {}
+            X::B => {}
+            X::C => {}
+            X::D => {}
+            X::E => {}
+            X::F => {}
+        }
+        Ok(())
+    }
+}
+```
+
+### borsh explicit discriminant does not support values greater than 256
+This is not supported:
+```ignore
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+enum X {
+    A,
+    B = 0x100, // literal values outside of `u8` range
+    C,
+    D,
+    E = 10,
+    F,
 }
 ```
 
