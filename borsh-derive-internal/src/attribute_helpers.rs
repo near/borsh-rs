@@ -48,11 +48,20 @@ pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
 
 pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
     for attr in &derive_input.attrs {
+        if attr.path().is_ident(SKIP.3) {
+            return Err(TokenStream::from(
+                syn::Error::new(
+                    derive_input.ident.span(),
+                    "`borsh_skip` is not allowed as derive input attribute",
+                )
+                .to_compile_error(),
+            ));
+        }
         if attr.path().is_ident(BORSH.0) {
             attr.parse_nested_meta(|meta| {
                 if !meta.path.is_ident(USE_DISCRIMINANT) {
                     return Err(syn::Error::new(
-                        derive_input.ident.span(),
+                        meta.path.span(),
                         "`use_discriminant` is the only supported attribute for `borsh`",
                     ));
                 }
@@ -75,7 +84,7 @@ pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStre
 }
 
 pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
-    if input.variants.len() >= 256 {
+    if input.variants.len() > 256 {
         return Err(syn::Error::new(
             input.span(),
             "up to 256 enum variants are supported",
@@ -98,7 +107,7 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
                         _ => {
                             return Err(syn::Error::new(
                                 value_expr.span(),
-                                "`use_discriminant` accept only `true` or `false`",
+                                "`use_discriminant` accepts only `true` or `false`",
                             ));
                         }
                     };
@@ -115,7 +124,7 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
     if has_explicit_discriminants && use_discriminant.is_none() {
         return Err(syn::Error::new(
                 input.ident.span(),
-                "You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=false)]` for all structs that have enum with explicit discriminant",
+                "You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=false)]` for all enums with explicit discriminant",
             ));
     }
     Ok(use_discriminant.unwrap_or(false))
