@@ -1,3 +1,12 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg(feature = "derive")]
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
+use alloc::vec;
+
 use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 // sequence, no unit enums
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]

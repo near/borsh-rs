@@ -49,13 +49,11 @@ pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
 pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
     for attr in &derive_input.attrs {
         if attr.path().is_ident(SKIP.0) {
-            return Err(TokenStream::from(
-                syn::Error::new(
-                    derive_input.ident.span(),
-                    "`borsh_skip` is not allowed as derive input attribute",
-                )
-                .to_compile_error(),
-            ));
+            return Err(syn::Error::new(
+                derive_input.ident.span(),
+                "`borsh_skip` is not allowed as derive input attribute",
+            )
+            .to_compile_error());
         }
         if attr.path().is_ident(BORSH.0) {
             attr.parse_nested_meta(|meta| {
