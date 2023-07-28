@@ -48,7 +48,7 @@ pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
 
 pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
     for attr in &derive_input.attrs {
-        if attr.path().is_ident(SKIP.3) {
+        if attr.path().is_ident(SKIP.0) {
             return Err(TokenStream::from(
                 syn::Error::new(
                     derive_input.ident.span(),
@@ -551,7 +551,7 @@ mod tests {
         })
         .unwrap();
         let actual = check_item_attributes(&item_enum);
-        assert!(actual.is_ok());
+        insta::assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
     #[test]
     fn test_check_use_borsh_invalid_on_whole_struct() {

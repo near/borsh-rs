@@ -3,5 +3,5 @@ source: borsh-derive-internal/src/attribute_helpers.rs
 expression: err
 ---
 Error(
-    "`use_discriminant` accept only `true` or `false`",
+    "`use_discriminant` accepts only `true` or `false`",
 )
