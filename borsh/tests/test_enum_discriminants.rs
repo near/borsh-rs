@@ -126,3 +126,60 @@ fn test_discriminant_serde_no_use_discriminant() {
         assert_eq!(from_slice::<XNoDiscriminant>(&data).unwrap(), values[index]);
     }
 }
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+struct D {
+    x: u64,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+enum C {
+    C1,
+    C2(u64),
+    C3(u64, u64),
+    C4 { x: u64, y: u64 },
+    C5(D),
+}
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+enum X {
+    A,
+    B = 20,
+    C,
+    D,
+    E = 10,
+    F,
+}
+
+#[test]
+fn test_discriminant_serialization() {
+    let values = vec![X::A, X::B, X::C, X::D, X::E, X::F];
+    for value in values {
+        assert_eq!(value.try_to_vec().unwrap(), [value as u8]);
+    }
+}
+
+#[test]
+fn test_discriminant_deserialization() {
+    let values = vec![X::A, X::B, X::C, X::D, X::E, X::F];
+    for value in values {
+        assert_eq!(from_slice::<X>(&[value as u8]).unwrap(), value,);
+    }
+}
+
+#[test]
+#[should_panic = "Unexpected variant tag: 2"]
+fn test_deserialize_invalid_discriminant() {
+    from_slice::<X>(&[2]).unwrap();
+}
+
+#[test]
+fn test_discriminant_serde() {
+    let values = vec![X::A, X::B, X::C, X::D, X::E, X::F];
+    let expected_discriminants = [0u8, 20, 21, 22, 10, 11];
+    for (index, value) in values.iter().enumerate() {
+        let data = value.try_to_vec().unwrap();
+        assert_eq!(data[0], expected_discriminants[index]);
+        assert_eq!(from_slice::<X>(&data).unwrap(), values[index]);
+    }
+}

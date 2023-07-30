@@ -99,39 +99,6 @@ struct F2<'b> {
     aa: Vec<A<'b>>,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
-#[borsh(use_discriminant = true)]
-enum X {
-    A,
-    B = 20,
-    C,
-    D,
-    E = 10,
-    F,
-}
-
-#[test]
-fn test_discriminant_serialization() {
-    let values = vec![X::A, X::B, X::C, X::D, X::E, X::F];
-    for value in values {
-        assert_eq!(value.try_to_vec().unwrap(), [value as u8]);
-    }
-}
-
-#[test]
-fn test_discriminant_deserialization() {
-    let values = vec![X::A, X::B, X::C, X::D, X::E, X::F];
-    for value in values {
-        assert_eq!(from_slice::<X>(&[value as u8]).unwrap(), value,);
-    }
-}
-
-#[test]
-#[should_panic = "Unexpected variant tag: 2"]
-fn test_deserialize_invalid_discriminant() {
-    from_slice::<X>(&[2]).unwrap();
-}
-
 #[test]
 fn test_simple_struct() {
     let mut map: BTreeMap<String, String> = BTreeMap::new();
@@ -217,15 +184,4 @@ fn test_simple_struct() {
     let decoded_f2 = from_slice::<F2>(&encoded_f1).unwrap();
     assert_eq!(decoded_f2.aa.len(), 2);
     assert!(decoded_f2.aa.iter().all(|f2_a| f2_a == &expected_a));
-}
-
-#[test]
-fn test_discriminant_serde() {
-    let values = vec![X::A, X::B, X::C, X::D, X::E, X::F];
-    let expected_discriminants = [0u8, 20, 21, 22, 10, 11];
-    for (index, value) in values.iter().enumerate() {
-        let data = value.try_to_vec().unwrap();
-        assert_eq!(data[0], expected_discriminants[index]);
-        assert_eq!(from_slice::<X>(&data).unwrap(), values[index]);
-    }
 }
