@@ -132,7 +132,7 @@ enum B {
 }
 ```
 
-### borsh constant value as discriminant
+### borsh, expressions, evaluating to `isize`, as discriminant
 This case is not supported:
 ```ignore
 const fn discrim() -> isize {
@@ -153,51 +153,10 @@ enum X {
 
 This is possible without `BorshSerialize`:
 ```ignore
-enum X1 {
-    A,
-    B = discrim(),
-    C,
-    D,
-    E = 10,
-    F,
-}
-```
 If you need to support this weird case for some strange reason, you can take the expansion of derive as template
 and write the impl manually:
 ```ignore
-impl borsh::ser::BorshSerialize for X {
-    fn serialize<W: borsh::__private::maybestd::io::Write>(
-        &self,
-        writer: &mut W,
-    ) -> ::core::result::Result<(), borsh::__private::maybestd::io::Error> {
-        let variant_idx: u8 = match self {
-            X::A => 0,
-            X::B => discrim()
-                .try_into()
-                .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "err"))?,
-            X::C => (discrim() + 1)
-                .try_into()
-                .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "err"))?,
-            X::D => (discrim() + 2)
-                .try_into()
-                .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "err"))?,
-            X::E => 10,
-            X::F => 10 + 1,
-        };
-        writer.write_all(&variant_idx.to_le_bytes())?;
-        match self {
-            X::A => {}
-            X::B => {}
-            X::C => {}
-            X::D => {}
-            X::E => {}
-            X::F => {}
-        }
-        Ok(())
-    }
-}
-```
-### borsh explicit discriminant does not support values greater than 256
+### borsh explicit discriminant does not support literal values outside of u8 range
 This is not supported:
 ```ignore
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
@@ -419,7 +378,7 @@ enum B {
 ```
 
 
-### borsh constant value as discriminant
+### borsh, expressions, evaluating to `isize`, as discriminant
 This case is not supported:
 ```ignore
 const fn discrim() -> isize {
@@ -438,54 +397,8 @@ enum X {
 }
 ```
 
-This is possible without `BorshSerialize`:
-```ignore
-enum X1 {
-    A,
-    B = discrim(),
-    C,
-    D,
-    E = 10,
-    F,
-}
-```
-If you need to support this weird case for some strange reason, you can take the expansion of derive as template
-and write the impl manually:
-```ignore
-impl borsh::ser::BorshSerialize for X {
-    fn serialize<W: borsh::__private::maybestd::io::Write>(
-        &self,
-        writer: &mut W,
-    ) -> ::core::result::Result<(), borsh::__private::maybestd::io::Error> {
-        let variant_idx: u8 = match self {
-            X::A => 0,
-            X::B => discrim()
-                .try_into()
-                .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "err"))?,
-            X::C => (discrim() + 1)
-                .try_into()
-                .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "err"))?,
-            X::D => (discrim() + 2)
-                .try_into()
-                .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "err"))?,
-            X::E => 10,
-            X::F => 10 + 1,
-        };
-        writer.write_all(&variant_idx.to_le_bytes())?;
-        match self {
-            X::A => {}
-            X::B => {}
-            X::C => {}
-            X::D => {}
-            X::E => {}
-            X::F => {}
-        }
-        Ok(())
-    }
-}
-```
 
-### borsh explicit discriminant does not support values greater than 256
+### borsh explicit discriminant does not support literal values outside of u8 range.
 This is not supported:
 ```ignore
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
