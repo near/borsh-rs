@@ -151,11 +151,6 @@ enum X {
 }
 ```
 
-This is possible without `BorshSerialize`:
-```ignore
-If you need to support this weird case for some strange reason, you can take the expansion of derive as template
-and write the impl manually:
-```ignore
 ### borsh explicit discriminant does not support literal values outside of u8 range
 This is not supported:
 ```ignore
