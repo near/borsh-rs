@@ -187,7 +187,7 @@ const fn discrim() -> isize {
     0x14
 }
 
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(BorshSerialize)]
 #[borsh(use_discriminant = true)]
 enum X {
     A,
@@ -202,7 +202,7 @@ enum X {
 ###### borsh explicit discriminant does not support literal values outside of u8 range
 This is not supported:
 ```ignore
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(BorshSerialize)]
 #[borsh(use_discriminant = true)]
 enum X {
     A,
@@ -480,7 +480,7 @@ const fn discrim() -> isize {
     0x14
 }
 
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(BorshDeserialize)]
 #[borsh(use_discriminant = true)]
 enum X {
     A,
@@ -496,7 +496,7 @@ enum X {
 ###### borsh explicit discriminant does not support literal values outside of u8 range.
 This is not supported:
 ```ignore
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(BorshDeserialize)]
 #[borsh(use_discriminant = true)]
 enum X {
     A,

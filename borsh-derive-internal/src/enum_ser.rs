@@ -47,45 +47,53 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
         } else {
             quote! { #variant_idx }
         };
-        let VariantParts {
-            variant_header,
-            variant_body,
+        let (
+            VariantParts {
+                variant_header,
+                variant_body,
+            },
             variant_idx_body,
-        } = match &variant.fields {
+        ) = match &variant.fields {
             Fields::Named(fields) => {
                 let variant_idx_body = quote!(
                     #enum_ident::#variant_ident {..} => #discriminant_value,
                 );
-                named_fields(
-                    &cratename,
-                    fields,
-                    &mut serialize_params_visitor,
-                    &mut override_predicates,
+                (
+                    named_fields(
+                        &cratename,
+                        fields,
+                        &mut serialize_params_visitor,
+                        &mut override_predicates,
+                    )?,
                     variant_idx_body,
-                )?
+                )
             }
             Fields::Unnamed(fields) => {
                 let variant_idx_body = quote!(
                     #enum_ident::#variant_ident(..) => #discriminant_value,
                 );
-                unnamed_fields(
-                    &cratename,
-                    fields,
-                    &mut serialize_params_visitor,
-                    &mut override_predicates,
+                (
+                    unnamed_fields(
+                        &cratename,
+                        fields,
+                        &mut serialize_params_visitor,
+                        &mut override_predicates,
+                    )?,
                     variant_idx_body,
-                )?
+                )
             }
             Fields::Unit => {
                 let variant_idx_body = quote!(
                     #enum_ident::#variant_ident => #discriminant_value,
                 );
 
-                VariantParts {
-                    variant_header: TokenStream2::new(),
-                    variant_body: TokenStream2::new(),
+                (
+                    VariantParts {
+                        variant_header: TokenStream2::new(),
+                        variant_body: TokenStream2::new(),
+                    },
                     variant_idx_body,
-                }
+                )
             }
         };
         all_variants_idx_body.extend(variant_idx_body);
@@ -119,14 +127,12 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
 struct VariantParts {
     variant_header: TokenStream2,
     variant_body: TokenStream2,
-    variant_idx_body: TokenStream2,
 }
 fn named_fields(
     cratename: &Ident,
     fields: &FieldsNamed,
     params_visitor: &mut FindTyParams,
     override_output: &mut Vec<WherePredicate>,
-    variant_idx_body: TokenStream2,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
@@ -154,7 +160,6 @@ fn named_fields(
     Ok(VariantParts {
         variant_header,
         variant_body,
-        variant_idx_body,
     })
 }
 
@@ -163,7 +168,6 @@ fn unnamed_fields(
     fields: &FieldsUnnamed,
     params_visitor: &mut FindTyParams,
     override_output: &mut Vec<WherePredicate>,
-    variant_idx_body: TokenStream2,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
@@ -193,7 +197,6 @@ fn unnamed_fields(
     Ok(VariantParts {
         variant_header,
         variant_body,
-        variant_idx_body,
     })
 }
 
