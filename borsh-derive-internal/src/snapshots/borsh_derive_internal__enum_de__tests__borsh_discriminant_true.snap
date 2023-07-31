@@ -2,7 +2,7 @@
 source: borsh-derive-internal/src/enum_de.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
-impl borsh::de::BorshDeserialize for AA {
+impl borsh::de::BorshDeserialize for X {
     fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
     ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
@@ -10,20 +10,23 @@ impl borsh::de::BorshDeserialize for AA {
         <Self as borsh::de::EnumExt>::deserialize_variant(reader, tag)
     }
 }
-impl borsh::de::EnumExt for AA {
+impl borsh::de::EnumExt for X {
     fn deserialize_variant<R: borsh::__private::maybestd::io::Read>(
         reader: &mut R,
         variant_tag: u8,
     ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
-        let mut return_value = if variant_tag == 0u8 {
-            AA::B {
-                c: core::default::Default::default(),
-                d: borsh::BorshDeserialize::deserialize_reader(reader)?,
-            }
-        } else if variant_tag == 1u8 {
-            AA::NegatedVariant {
-                beta: borsh::BorshDeserialize::deserialize_reader(reader)?,
-            }
+        let mut return_value = if variant_tag == 0 {
+            X::A
+        } else if variant_tag == 20 {
+            X::B
+        } else if variant_tag == 20 + 1 {
+            X::C
+        } else if variant_tag == 20 + 1 + 1 {
+            X::D
+        } else if variant_tag == 10 {
+            X::E
+        } else if variant_tag == 10 + 1 {
+            X::F
         } else {
             return Err(
                 borsh::__private::maybestd::io::Error::new(

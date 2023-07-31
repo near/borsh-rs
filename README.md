@@ -1,10 +1,10 @@
-# Borsh in Rust &emsp; [![Latest Version]][crates.io] [![borsh: rustc 1.65+]][Rust 1.65] [![License Apache-2.0 badge]][License Apache-2.0] [![License MIT badge]][License MIT]
+# Borsh in Rust &emsp; [![Latest Version]][crates.io] [![borsh: rustc 1.66+]][Rust 1.66] [![License Apache-2.0 badge]][License Apache-2.0] [![License MIT badge]][License MIT]
 
 [Borsh]: https://borsh.io
 [Latest Version]: https://img.shields.io/crates/v/borsh.svg
 [crates.io]: https://crates.io/crates/borsh
-[borsh: rustc 1.65+]: https://img.shields.io/badge/rustc-1.65+-lightgray.svg
-[Rust 1.65]: https://blog.rust-lang.org/2022/11/03/Rust-1.65.0.html
+[borsh: rustc 1.66+]: https://img.shields.io/badge/rustc-1.66+-lightgray.svg
+[Rust 1.66]: https://blog.rust-lang.org/2022/12/15/Rust-1.66.0.html
 [License Apache-2.0 badge]: https://img.shields.io/badge/license-Apache2.0-blue.svg
 [License Apache-2.0]: https://opensource.org/licenses/Apache-2.0
 [License MIT badge]: https://img.shields.io/badge/license-MIT-blue.svg
@@ -73,6 +73,29 @@ struct A {
     x: u64,
     #[borsh_skip]
     y: f32,
+}
+```
+
+### Enum with explicit discriminant
+
+`#[borsh(use_discriminant=false|true])` is required if you have an enum with explicit discriminant. This setting affects `BorshSerialize` and `BorshDeserialize` behaviour at the same time.
+
+In the future, borsh will drop the requirement to explicitly use `#[borsh(use_discriminant=false|true)]`, and will default to `true`, but to make sure that the transition from the older versions of borsh (before 0.11 release) does not cause silent breaking changes in de-/serialization, borsh 1.0 will require to specify if the explicit enum discriminant should be used as a de-/serialization tag value.
+
+If you don't specify `use_discriminant` option for enum with explicit discriminant, you will get an error:
+
+```bash
+error: You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=false)]` for all enums with explicit discriminant
+```
+
+In order to preserve the behaviour of borsh versions before 0.11, which did not respect explicit enum discriminants for de-/serialization, use `#[borsh(use_discriminant=false)]`, otherwise, use `true`:
+
+```rust
+#[derive(BorshDeserialize, BorshSerialize)]
+#[borsh(use_discriminant=false)]
+enum A {
+    X,
+    Y = 10,
 }
 ```
 

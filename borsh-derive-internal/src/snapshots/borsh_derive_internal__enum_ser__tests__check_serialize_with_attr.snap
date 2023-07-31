@@ -12,8 +12,8 @@ where
         writer: &mut W,
     ) -> ::core::result::Result<(), borsh::__private::maybestd::io::Error> {
         let variant_idx: u8 = match self {
-            C::C3(..) => 0,
-            C::C4 { .. } => 0 + 1,
+            C::C3(..) => 0u8,
+            C::C4 { .. } => 1u8,
         };
         writer.write_all(&variant_idx.to_le_bytes())?;
         match self {

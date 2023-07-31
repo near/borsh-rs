@@ -21,5 +21,6 @@ pub use struct_ser::struct_ser;
 pub use union_de::union_de;
 pub use union_ser::union_ser;
 
+pub use attribute_helpers::check_item_attributes;
 #[cfg(test)]
 pub mod test_helpers;
