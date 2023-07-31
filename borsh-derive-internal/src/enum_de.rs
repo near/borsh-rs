@@ -1,3 +1,7 @@
+use proc_macro2::TokenStream as TokenStream2;
+use quote::quote;
+use syn::{Fields, Ident, ItemEnum, Path, WhereClause};
+
 use crate::{
     attribute_helpers::{
         collect_override_bounds, contains_initialize_with, contains_skip,
@@ -6,10 +10,7 @@ use crate::{
     enum_discriminant_map::discriminant_map,
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
-use proc_macro2::TokenStream as TokenStream2;
-use quote::quote;
 use std::convert::TryFrom;
-use syn::{Fields, Ident, ItemEnum, Path, WhereClause};
 
 pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
