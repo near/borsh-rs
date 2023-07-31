@@ -110,9 +110,9 @@ Both attributes may be used simultaneously, separated by a comma: `#[borsh(bound
 This attribute is only applicable to enums.
 `use_discriminant` allows to override the default behavior of serialization of enums with explicit discriminant.
 `use_discriminant` is `false` behaves like version of borsh of 0.10.3.
-You must to specify `use_discriminant` for all enums explicit discriminants in your project.
+You must specify `use_discriminant` for all enums with explicit discriminants in your project.
 
-This is equivalent of borsh version 0.10.3 (explicit discriminant is ignored and this enum is equavielent to `A` without explicit discriminant):
+This is equivalent of borsh version 0.10.3 (explicit discriminant is ignored and this enum is equivalent to `A` without explicit discriminant):
 ```ignore
 #[derive(BorshSerialize)]
 #[borsh(use_discriminant = false)]
@@ -350,9 +350,9 @@ This attribute is only applicable to enums.
 `use_discriminant` allows to override the default behavior of serialization of enums with explicit discriminant.
 `use_discriminant` is `false` behaves like version of borsh of 0.10.3.
 It's useful for backward compatibility and you can set this value to `false` to deserialise data serialised by older version of `borsh`.
-You must to specify `use_discriminant` for all enums with explicit discriminants in your project.
+You must specify `use_discriminant` for all enums with explicit discriminants in your project.
 
-This is equivalent of borsh version 0.10.3 (explicit discriminant is ignored and this enum is equavielent to `A` without explicit discriminant):
+This is equivalent of borsh version 0.10.3 (explicit discriminant is ignored and this enum is equivalent to `A` without explicit discriminant):
 ```ignore
 #[derive(BorshDeserialize)]
 #[borsh(use_discriminant = false)]
