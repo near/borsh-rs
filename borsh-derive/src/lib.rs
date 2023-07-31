@@ -421,10 +421,9 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     let for_derive_input = input.clone();
     let derive_input = parse_macro_input!(for_derive_input as DeriveInput);
 
-    match check_item_attributes(&derive_input) {
-        Ok(..) => {}
-        Err(value) => return value.into(),
-    };
+    if let Err(err) = check_item_attributes(&derive_input) {
+        return err.into();
+    }
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
         struct_de(&input, cratename)
