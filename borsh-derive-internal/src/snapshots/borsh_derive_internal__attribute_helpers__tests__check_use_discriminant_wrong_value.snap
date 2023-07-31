@@ -1,0 +1,7 @@
+---
+source: borsh-derive-internal/src/attribute_helpers.rs
+expression: err
+---
+Error(
+    "`use_discriminant` accepts only `true` or `false`",
+)

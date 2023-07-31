@@ -29,12 +29,12 @@ where
         reader: &mut R,
         variant_tag: u8,
     ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
-        let mut return_value = if variant_tag == 0 {
+        let mut return_value = if variant_tag == 0u8 {
             A::B {
                 x: core::default::Default::default(),
                 y: borsh::BorshDeserialize::deserialize_reader(reader)?,
             }
-        } else if variant_tag == 0 + 1 {
+        } else if variant_tag == 1u8 {
             A::C(
                 borsh::BorshDeserialize::deserialize_reader(reader)?,
                 borsh::BorshDeserialize::deserialize_reader(reader)?,

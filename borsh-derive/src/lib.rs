@@ -3,7 +3,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use proc_macro_crate::crate_name;
 use proc_macro_crate::FoundCrate;
-use syn::{Ident, ItemEnum, ItemStruct, ItemUnion};
+use syn::{parse_macro_input, DeriveInput, Ident, ItemEnum, ItemStruct, ItemUnion};
 
 use borsh_derive_internal::*;
 #[cfg(feature = "schema")]
@@ -106,6 +106,66 @@ irrelevant of whether `#[borsh_skip]` attribute is present.
 
 Both attributes may be used simultaneously, separated by a comma: `#[borsh(bound(serialize = ..., deserialize = ...))]`
 
+### `borsh(use_discriminant=<bool>)` (item level attribute)
+This attribute is only applicable to enums.
+`use_discriminant` allows to override the default behavior of serialization of enums with explicit discriminant.
+`use_discriminant` is `false` behaves like version of borsh of 0.10.3.
+You must specify `use_discriminant` for all enums with explicit discriminants in your project.
+
+This is equivalent of borsh version 0.10.3 (explicit discriminant is ignored and this enum is equivalent to `A` without explicit discriminant):
+```ignore
+#[derive(BorshSerialize)]
+#[borsh(use_discriminant = false)]
+enum A {
+    A
+    B = 10,
+}
+```
+
+To have explicit discriminant value serialized as is, you must specify `borsh(use_discriminant=true)` for enum.
+```ignore
+#[derive(BorsSerialize)]
+#[borsh(use_discriminant = true)]
+enum B {
+    A
+    B = 10,
+}
+```
+
+### borsh, expressions, evaluating to `isize`, as discriminant
+This case is not supported:
+```ignore
+const fn discrim() -> isize {
+    0x14
+}
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+enum X {
+    A,
+    B = discrim(), // expressions, evaluating to `isize`, which are allowed outside of `borsh` context
+    C,
+    D,
+    E = 10,
+    F,
+}
+```
+
+### borsh explicit discriminant does not support literal values outside of u8 range
+This is not supported:
+```ignore
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+enum X {
+    A,
+    B = 0x100, // literal values outside of `u8` range
+    C,
+    D,
+    E = 10,
+    F,
+}
+```
+
 */
 #[proc_macro_derive(BorshSerialize, attributes(borsh_skip, borsh))]
 pub fn borsh_serialize(input: TokenStream) -> TokenStream {
@@ -115,6 +175,13 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
         FoundCrate::Name(name) => name.as_str(),
     };
     let cratename = Ident::new(name, Span::call_site());
+
+    let for_derive_input = input.clone();
+    let derive_input = parse_macro_input!(for_derive_input as DeriveInput);
+
+    if let Err(err) = check_item_attributes(&derive_input) {
+        return err.into();
+    }
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
         struct_ser(&input, cratename)
@@ -275,6 +342,72 @@ struct A<K, V, U>(
 #### interaction with `#[borsh(bound(serialize = ...))]`
 
 Both attributes may be used simultaneously, separated by a comma: `#[borsh(bound(serialize = ..., deserialize = ...))]`
+
+This one will use proper version of serialization of enum with explicit discriminant.
+
+### `borsh(use_discriminant=<bool>)` (item level attribute)
+This attribute is only applicable to enums.
+`use_discriminant` allows to override the default behavior of serialization of enums with explicit discriminant.
+`use_discriminant` is `false` behaves like version of borsh of 0.10.3.
+It's useful for backward compatibility and you can set this value to `false` to deserialise data serialised by older version of `borsh`.
+You must specify `use_discriminant` for all enums with explicit discriminants in your project.
+
+This is equivalent of borsh version 0.10.3 (explicit discriminant is ignored and this enum is equivalent to `A` without explicit discriminant):
+```ignore
+#[derive(BorshDeserialize)]
+#[borsh(use_discriminant = false)]
+enum A {
+    A
+    B = 10,
+}
+```
+
+To have explicit discriminant value serialized as is, you must specify `borsh(use_discriminant=true)` for enum.
+```ignore
+#[derive(BorshDeserialize)]
+#[borsh(use_discriminant = true)]
+enum B {
+    A
+    B = 10,
+}
+```
+
+
+### borsh, expressions, evaluating to `isize`, as discriminant
+This case is not supported:
+```ignore
+const fn discrim() -> isize {
+    0x14
+}
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+enum X {
+    A,
+    B = discrim(), // expressions, evaluating to `isize`, which are allowed outside of `borsh` context
+    C,
+    D,
+    E = 10,
+    F,
+}
+```
+
+
+### borsh explicit discriminant does not support literal values outside of u8 range.
+This is not supported:
+```ignore
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+enum X {
+    A,
+    B = 0x100, // literal values outside of `u8` range
+    C,
+    D,
+    E = 10,
+    F,
+}
+```
+
 */
 #[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh_init, borsh))]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
@@ -284,6 +417,13 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
         FoundCrate::Name(name) => name.as_str(),
     };
     let cratename = Ident::new(name, Span::call_site());
+
+    let for_derive_input = input.clone();
+    let derive_input = parse_macro_input!(for_derive_input as DeriveInput);
+
+    if let Err(err) = check_item_attributes(&derive_input) {
+        return err.into();
+    }
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
         struct_de(&input, cratename)

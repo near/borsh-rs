@@ -8,8 +8,8 @@ impl borsh::ser::BorshSerialize for AB {
         writer: &mut W,
     ) -> ::core::result::Result<(), borsh::__private::maybestd::io::Error> {
         let variant_idx: u8 = match self {
-            AB::B { .. } => 0,
-            AB::NegatedVariant { .. } => 0 + 1,
+            AB::B { .. } => 0u8,
+            AB::NegatedVariant { .. } => 1u8,
         };
         writer.write_all(&variant_idx.to_le_bytes())?;
         match self {

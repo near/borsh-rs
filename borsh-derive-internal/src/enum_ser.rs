@@ -5,7 +5,9 @@ use quote::quote;
 use syn::{Fields, FieldsNamed, FieldsUnnamed, Ident, ItemEnum, Path, WhereClause, WherePredicate};
 
 use crate::{
-    attribute_helpers::{collect_override_bounds, contains_skip, BoundType},
+    attribute_helpers::{
+        collect_override_bounds, contains_skip, contains_use_discriminant, BoundType,
+    },
     enum_discriminant_map::discriminant_map,
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
@@ -24,40 +26,60 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
 
     let mut serialize_params_visitor = FindTyParams::new(&generics);
     let mut override_predicates = vec![];
+    let use_discriminant = contains_use_discriminant(input)?;
 
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
     let discriminants = discriminant_map(&input.variants);
-    for variant in input.variants.iter() {
+
+    for (variant_idx, variant) in input.variants.iter().enumerate() {
+        let variant_idx = u8::try_from(variant_idx).map_err(|err| {
+            syn::Error::new(
+                variant.ident.span(),
+                format!("up to 256 enum variants are supported. error{}", err),
+            )
+        })?;
         let variant_ident = &variant.ident;
         let discriminant_value = discriminants.get(variant_ident).unwrap();
+        let discriminant_value = if use_discriminant {
+            quote! { #discriminant_value }
+        } else {
+            quote! { #variant_idx }
+        };
         let VariantParts {
             variant_header,
             variant_body,
             variant_idx_body,
         } = match &variant.fields {
-            Fields::Named(fields) => named_fields(
-                &cratename,
-                enum_ident,
-                variant_ident,
-                discriminant_value,
-                fields,
-                &mut serialize_params_visitor,
-                &mut override_predicates,
-            )?,
-            Fields::Unnamed(fields) => unnamed_fields(
-                &cratename,
-                enum_ident,
-                variant_ident,
-                discriminant_value,
-                fields,
-                &mut serialize_params_visitor,
-                &mut override_predicates,
-            )?,
+            Fields::Named(fields) => {
+                let variant_idx_body = quote!(
+                    #enum_ident::#variant_ident {..} => #discriminant_value,
+                );
+                named_fields(
+                    &cratename,
+                    fields,
+                    &mut serialize_params_visitor,
+                    &mut override_predicates,
+                    variant_idx_body,
+                )?
+            }
+            Fields::Unnamed(fields) => {
+                let variant_idx_body = quote!(
+                    #enum_ident::#variant_ident(..) => #discriminant_value,
+                );
+                unnamed_fields(
+                    &cratename,
+                    fields,
+                    &mut serialize_params_visitor,
+                    &mut override_predicates,
+                    variant_idx_body,
+                )?
+            }
             Fields::Unit => {
                 let variant_idx_body = quote!(
                     #enum_ident::#variant_ident => #discriminant_value,
                 );
+
                 VariantParts {
                     variant_header: TokenStream2::new(),
                     variant_body: TokenStream2::new(),
@@ -100,12 +122,10 @@ struct VariantParts {
 }
 fn named_fields(
     cratename: &Ident,
-    enum_ident: &Ident,
-    variant_ident: &Ident,
-    discriminant_value: &TokenStream2,
     fields: &FieldsNamed,
     params_visitor: &mut FindTyParams,
     override_output: &mut Vec<WherePredicate>,
+    variant_idx_body: TokenStream2,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
@@ -127,9 +147,6 @@ fn named_fields(
     }
     // `..` pattern matching works even if all fields were specified
     variant_header = quote! { { #variant_header .. }};
-    let variant_idx_body = quote!(
-        #enum_ident::#variant_ident { .. } => #discriminant_value,
-    );
     Ok(VariantParts {
         variant_header,
         variant_body,
@@ -139,12 +156,10 @@ fn named_fields(
 
 fn unnamed_fields(
     cratename: &Ident,
-    enum_ident: &Ident,
-    variant_ident: &Ident,
-    discriminant_value: &TokenStream2,
     fields: &FieldsUnnamed,
     params_visitor: &mut FindTyParams,
     override_output: &mut Vec<WherePredicate>,
+    variant_idx_body: TokenStream2,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
@@ -169,9 +184,6 @@ fn unnamed_fields(
         }
     }
     variant_header = quote! { ( #variant_header )};
-    let variant_idx_body = quote!(
-        #enum_ident::#variant_ident(..) => #discriminant_value,
-    );
     Ok(VariantParts {
         variant_header,
         variant_body,
@@ -379,6 +391,42 @@ mod tests {
         .unwrap();
 
         let actual = enum_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+    #[test]
+    fn borsh_discriminant_false() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+           #[borsh(use_discriminant = false)]
+            enum X {
+                A,
+                B = 20,
+                C,
+                D,
+                E = 10,
+                F,
+            }
+        })
+        .unwrap();
+        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+    #[test]
+    fn borsh_discriminant_true() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            #[borsh(use_discriminant = true)]
+            enum X {
+                A,
+                B = 20,
+                C,
+                D,
+                E = 10,
+                F,
+            }
+        })
+        .unwrap();
+        let actual = enum_ser(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }

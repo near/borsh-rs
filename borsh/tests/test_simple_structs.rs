@@ -99,38 +99,6 @@ struct F2<'b> {
     aa: Vec<A<'b>>,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
-enum X {
-    A,
-    B = 20,
-    C,
-    D,
-    E = 10,
-    F,
-}
-
-#[test]
-fn test_discriminant_serialization() {
-    let values = vec![X::A, X::B, X::C, X::D, X::E, X::F];
-    for value in values {
-        assert_eq!(value.try_to_vec().unwrap(), [value as u8]);
-    }
-}
-
-#[test]
-fn test_discriminant_deserialization() {
-    let values = vec![X::A, X::B, X::C, X::D, X::E, X::F];
-    for value in values {
-        assert_eq!(from_slice::<X>(&[value as u8]).unwrap(), value,);
-    }
-}
-
-#[test]
-#[should_panic = "Unexpected variant tag: 2"]
-fn test_deserialize_invalid_discriminant() {
-    from_slice::<X>(&[2]).unwrap();
-}
-
 #[test]
 fn test_simple_struct() {
     let mut map: BTreeMap<String, String> = BTreeMap::new();

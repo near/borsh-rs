@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-
 use borsh::from_slice;
+
 #[cfg(feature = "derive")]
 use borsh::BorshDeserialize;
 
@@ -16,7 +16,16 @@ use alloc::{
 
 #[cfg(feature = "derive")]
 #[derive(BorshDeserialize, Debug)]
+#[borsh(use_discriminant = true)]
 enum A {
+    X,
+    Y,
+}
+
+#[cfg(feature = "derive")]
+#[derive(BorshDeserialize, Debug)]
+#[borsh(use_discriminant = false)]
+enum AWithUseDiscriminantFalse {
     X,
     Y,
 }
@@ -49,6 +58,18 @@ fn test_invalid_enum_variant() {
     let bytes = vec![123];
     assert_eq!(
         from_slice::<A>(&bytes).unwrap_err().to_string(),
+        "Unexpected variant tag: 123"
+    );
+}
+
+#[cfg(feature = "derive")]
+#[test]
+fn test_invalid_enum_variant_old() {
+    let bytes = vec![123];
+    assert_eq!(
+        from_slice::<AWithUseDiscriminantFalse>(&bytes)
+            .unwrap_err()
+            .to_string(),
         "Unexpected variant tag: 123"
     );
 }
