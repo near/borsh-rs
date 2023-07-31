@@ -1,13 +1,32 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{Fields, Ident, ItemStruct, Path, WhereClause};
+use syn::{ExprPath, Fields, Ident, ItemStruct, Path, WhereClause};
 
 use crate::{
-    attribute_helpers::{
-        collect_override_bounds, contains_initialize_with, contains_skip, BoundType,
-    },
+    attribute_helpers::{contains_initialize_with, contains_skip, field, BoundType},
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
+
+/// function which computes derive output [proc_macro2::TokenStream]
+/// of code, which deserializes single field
+pub(crate) fn field_deserialization_output(
+    field_name: Option<&Ident>,
+    cratename: &Ident,
+    deserialize_with: Option<ExprPath>,
+) -> TokenStream2 {
+    let default_path: ExprPath =
+        syn::parse2(quote! { #cratename::BorshDeserialize::deserialize_reader }).unwrap();
+    let path: ExprPath = deserialize_with.unwrap_or(default_path);
+    if let Some(field_name) = field_name {
+        quote! {
+            #field_name: #path(reader)?,
+        }
+    } else {
+        quote! {
+            #path(reader)?,
+        }
+    }
+}
 
 pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
@@ -30,26 +49,29 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
         Fields::Named(fields) => {
             let mut body = TokenStream2::new();
             for field in &fields.named {
-                let bounds_override = collect_override_bounds(
-                    field,
-                    BoundType::Deserialize,
-                    &mut override_predicates,
-                )?;
+                let skipped = contains_skip(&field.attrs);
+                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+
+                override_predicates.extend(parsed.collect_bounds(BoundType::Deserialize));
+                let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
+
                 let field_name = field.ident.as_ref().unwrap();
-                let delta = if contains_skip(&field.attrs) {
-                    if !bounds_override {
+                let delta = if skipped {
+                    if needs_bounds_derive {
                         default_params_visitor.visit_field(field);
                     }
                     quote! {
                         #field_name: core::default::Default::default(),
                     }
                 } else {
-                    if !bounds_override {
+                    if needs_bounds_derive {
                         deserialize_params_visitor.visit_field(field);
                     }
-                    quote! {
-                        #field_name: #cratename::BorshDeserialize::deserialize_reader(reader)?,
-                    }
+                    field_deserialization_output(
+                        Some(field_name),
+                        &cratename,
+                        parsed.deserialize_with,
+                    )
                 };
                 body.extend(delta);
             }
@@ -60,23 +82,21 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
         Fields::Unnamed(fields) => {
             let mut body = TokenStream2::new();
             for (_field_idx, field) in fields.unnamed.iter().enumerate() {
-                let bounds_override = collect_override_bounds(
-                    field,
-                    BoundType::Deserialize,
-                    &mut override_predicates,
-                )?;
-                let delta = if contains_skip(&field.attrs) {
-                    if !bounds_override {
+                let skipped = contains_skip(&field.attrs);
+                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+                override_predicates.extend(parsed.collect_bounds(BoundType::Deserialize));
+                let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
+
+                let delta = if skipped {
+                    if needs_bounds_derive {
                         default_params_visitor.visit_field(field);
                     }
                     quote! { core::default::Default::default(), }
                 } else {
-                    if !bounds_override {
+                    if needs_bounds_derive {
                         deserialize_params_visitor.visit_field(field);
                     }
-                    quote! {
-                        #cratename::BorshDeserialize::deserialize_reader(reader)?,
-                    }
+                    field_deserialization_output(None, &cratename, parsed.deserialize_with)
                 };
                 body.extend(delta);
             }
@@ -276,6 +296,22 @@ mod tests {
                 HashMap<K, V>,
                 U
             );
+        })
+        .unwrap();
+
+        let actual = struct_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn check_deserialize_with_attr() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A<K: Ord, V> {
+                #[borsh(deserialize_with = "third_party_impl::deserialize_third_party")]
+                x: ThirdParty<K, V>,
+                y: u64,
+            }
         })
         .unwrap();
 

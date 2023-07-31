@@ -1,30 +1,83 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens};
-use syn::{Field, Fields, Ident, ItemStruct, Path, WhereClause};
+use syn::{ExprPath, Field, Fields, Ident, ItemStruct, Path, Type, WhereClause};
 
 use crate::{
-    attribute_helpers::{contains_skip, parse_schema_attrs, parsing_helpers::SchemaParamsOverride},
+    attribute_helpers::{
+        contains_skip,
+        field::{self, schema},
+    },
     generics::{compute_predicates, without_defaults, FindTyParams},
     schema_helpers::declaration,
 };
 
+/// function which computes derive output [proc_macro2::TokenStream]
+/// of code, which computes declaration of a single field, which is later added to
+/// the struct's definition as a whole  
+pub(crate) fn field_declaration_output(
+    field_name: Option<&String>,
+    field_type: &Type,
+    cratename: &Ident,
+    declaration_override: Option<ExprPath>,
+) -> TokenStream2 {
+    let default_path: ExprPath =
+        syn::parse2(quote! { <#field_type as #cratename::BorshSchema>::declaration }).unwrap();
+
+    let path = declaration_override.unwrap_or(default_path);
+
+    if let Some(field_name) = field_name {
+        quote! {
+            (#field_name.to_string(), #path())
+        }
+    } else {
+        quote! {
+            #path()
+        }
+    }
+}
+
+/// function which computes derive output [proc_macro2::TokenStream]
+/// of code, which adds definitions of a field to the output `definitions: &mut BTreeMap`
+pub(crate) fn field_definitions_output(
+    field_type: &Type,
+    cratename: &Ident,
+    definitions_override: Option<ExprPath>,
+) -> TokenStream2 {
+    let default_path: ExprPath = syn::parse2(
+        quote! { <#field_type as #cratename::BorshSchema>::add_definitions_recursively },
+    )
+    .unwrap();
+    let path = definitions_override.unwrap_or(default_path);
+
+    quote! {
+        #path(definitions);
+    }
+}
+
 fn visit_field(field: &Field, visitor: &mut FindTyParams) -> syn::Result<()> {
-    if !contains_skip(&field.attrs) {
+    let skipped = contains_skip(&field.attrs);
+    let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+    let needs_schema_params_derive = parsed.needs_schema_params_derive();
+    let schema_attrs = parsed.schema;
+    if !skipped {
+        if needs_schema_params_derive {
+            visitor.visit_field(field);
+        }
         // there's no need to override params when field is skipped, because when field is skipped
         // derive for it doesn't attempt to add any bounds, unlike `BorshDeserialize`, which
         // adds `Default` bound on any type parameters in skipped field
-        let schema_attrs = parse_schema_attrs(&field.attrs)?;
-        if let Some(schema_params) = schema_attrs {
-            for SchemaParamsOverride {
-                order_param,
-                override_type,
-                ..
-            } in schema_params
-            {
-                visitor.param_associated_type_insert(order_param, override_type);
+
+        if let Some(schema_attrs) = schema_attrs {
+            if let Some(schema_params) = schema_attrs.params {
+                for schema::ParameterOverride {
+                    order_param,
+                    override_type,
+                    ..
+                } in schema_params
+                {
+                    visitor.param_associated_type_insert(order_param, override_type);
+                }
             }
-        } else {
-            visitor.visit_field(field);
         }
     }
     Ok(())
@@ -89,17 +142,24 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
     match &input.fields {
         Fields::Named(fields) => {
             for field in &fields.named {
-                if contains_skip(&field.attrs) {
+                let skipped = contains_skip(&field.attrs);
+                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+                if skipped {
                     continue;
                 }
                 let field_name = field.ident.as_ref().unwrap().to_token_stream().to_string();
                 let field_type = &field.ty;
-                fields_vec.push(quote! {
-                    (#field_name.to_string(), <#field_type as #cratename::BorshSchema>::declaration())
-                });
-                add_definitions_recursively_rec.extend(quote! {
-                    <#field_type as #cratename::BorshSchema>::add_definitions_recursively(definitions);
-                });
+                fields_vec.push(field_declaration_output(
+                    Some(&field_name),
+                    field_type,
+                    &cratename,
+                    parsed.schema_declaration(),
+                ));
+                add_definitions_recursively_rec.extend(field_definitions_output(
+                    field_type,
+                    &cratename,
+                    parsed.schema_definitions(),
+                ));
             }
             if !fields_vec.is_empty() {
                 struct_fields = quote! {
@@ -109,16 +169,23 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
         }
         Fields::Unnamed(fields) => {
             for field in &fields.unnamed {
-                if contains_skip(&field.attrs) {
+                let skipped = contains_skip(&field.attrs);
+                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+                if skipped {
                     continue;
                 }
                 let field_type = &field.ty;
-                fields_vec.push(quote! {
-                    <#field_type as #cratename::BorshSchema>::declaration()
-                });
-                add_definitions_recursively_rec.extend(quote! {
-                    <#field_type as #cratename::BorshSchema>::add_definitions_recursively(definitions);
-                });
+                fields_vec.push(field_declaration_output(
+                    None,
+                    field_type,
+                    &cratename,
+                    parsed.schema_declaration(),
+                ));
+                add_definitions_recursively_rec.extend(field_definitions_output(
+                    field_type,
+                    &cratename,
+                    parsed.schema_definitions(),
+                ));
             }
             if !fields_vec.is_empty() {
                 struct_fields = quote! {
@@ -479,7 +546,7 @@ mod tests {
     }
 
     #[test]
-    fn generic_associated_type_param_override_ignored() {
+    fn generic_associated_type_param_override_conflict() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct Parametrized<V, T>
             where
@@ -491,6 +558,65 @@ mod tests {
                ))]
                 field: <T as TraitName>::Associated,
                 another: V,
+            }
+        })
+        .unwrap();
+
+        let actual = process_struct(&item_struct, Ident::new("borsh", Span::call_site()));
+
+        insta::assert_debug_snapshot!(actual.unwrap_err());
+    }
+
+    #[test]
+    fn check_with_funcs_skip_conflict() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A<K, V> {
+                #[borsh_skip]
+                #[borsh(schema(with_funcs(
+                    declaration = "third_party_impl::declaration::<K, V>",
+                    definitions = "third_party_impl::add_definitions_recursively::<K, V>"
+                )))]
+                x: ThirdParty<K, V>,
+                y: u64,
+            }
+        })
+        .unwrap();
+
+        let actual = process_struct(&item_struct, Ident::new("borsh", Span::call_site()));
+
+        insta::assert_debug_snapshot!(actual.unwrap_err());
+    }
+
+    #[test]
+    fn with_funcs_attr() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A<K, V> {
+                #[borsh(schema(with_funcs(
+                    declaration = "third_party_impl::declaration::<K, V>",
+                    definitions = "third_party_impl::add_definitions_recursively::<K, V>"
+                )))]
+                x: ThirdParty<K, V>,
+                y: u64,
+            }
+        })
+        .unwrap();
+
+        let actual = process_struct(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn schema_param_override3() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A<K: EntityRef, V> {
+                #[borsh(
+                    schema(
+                        params = "V => V"
+                    )
+                )]
+                x: PrimaryMap<K, V>,
+                y: String,
             }
         })
         .unwrap();

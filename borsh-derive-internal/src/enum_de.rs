@@ -4,11 +4,11 @@ use syn::{Fields, Ident, ItemEnum, Path, WhereClause};
 
 use crate::{
     attribute_helpers::{
-        collect_override_bounds, contains_initialize_with, contains_skip,
-        contains_use_discriminant, BoundType,
+        contains_initialize_with, contains_skip, contains_use_discriminant, field, BoundType,
     },
     enum_discriminant_map::discriminant_map,
     generics::{compute_predicates, without_defaults, FindTyParams},
+    struct_de::field_deserialization_output,
 };
 use std::convert::TryFrom;
 
@@ -48,49 +48,53 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         match &variant.fields {
             Fields::Named(fields) => {
                 for field in &fields.named {
-                    let bounds_override = collect_override_bounds(
-                        field,
-                        BoundType::Deserialize,
-                        &mut override_predicates,
-                    )?;
+                    let skipped = contains_skip(&field.attrs);
+                    let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+                    override_predicates.extend(parsed.collect_bounds(BoundType::Deserialize));
+                    let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
                     let field_name = field.ident.as_ref().unwrap();
-                    if contains_skip(&field.attrs) {
-                        if !bounds_override {
+                    if skipped {
+                        if needs_bounds_derive {
                             default_params_visitor.visit_field(field);
                         }
                         variant_header.extend(quote! {
                             #field_name: core::default::Default::default(),
                         });
                     } else {
-                        if !bounds_override {
+                        if needs_bounds_derive {
                             deserialize_params_visitor.visit_field(field);
                         }
-                        variant_header.extend(quote! {
-                            #field_name: #cratename::BorshDeserialize::deserialize_reader(reader)?,
-                        });
+
+                        variant_header.extend(field_deserialization_output(
+                            Some(field_name),
+                            &cratename,
+                            parsed.deserialize_with,
+                        ));
                     }
                 }
                 variant_header = quote! { { #variant_header }};
             }
             Fields::Unnamed(fields) => {
                 for field in fields.unnamed.iter() {
-                    let bounds_override = collect_override_bounds(
-                        field,
-                        BoundType::Deserialize,
-                        &mut override_predicates,
-                    )?;
-                    if contains_skip(&field.attrs) {
-                        if !bounds_override {
+                    let skipped = contains_skip(&field.attrs);
+                    let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+
+                    override_predicates.extend(parsed.collect_bounds(BoundType::Deserialize));
+                    let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
+                    if skipped {
+                        if needs_bounds_derive {
                             default_params_visitor.visit_field(field);
                         }
                         variant_header.extend(quote! { core::default::Default::default(), });
                     } else {
-                        if !bounds_override {
+                        if needs_bounds_derive {
                             deserialize_params_visitor.visit_field(field);
                         }
-                        variant_header.extend(
-                            quote! { #cratename::BorshDeserialize::deserialize_reader(reader)?, },
-                        );
+                        variant_header.extend(field_deserialization_output(
+                            None,
+                            &cratename,
+                            parsed.deserialize_with,
+                        ));
                     }
                 }
                 variant_header = quote! { ( #variant_header )};
@@ -300,6 +304,25 @@ mod tests {
                     b: HashMap<T, U>,
                 },
                 D(u32, u32),
+            }
+        })
+        .unwrap();
+
+        let actual = enum_de(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn check_deserialize_with_attr() {
+        let item_struct: ItemEnum = syn::parse2(quote! {
+            enum C<K: Ord, V> {
+                C3(u64, u64),
+                C4 {
+                    x: u64,
+                    #[borsh(deserialize_with = "third_party_impl::deserialize_third_party")]
+                    y: ThirdParty<K, V>
+                },
             }
         })
         .unwrap();

@@ -1,13 +1,31 @@
 use core::convert::TryFrom;
 
 use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::quote;
-use syn::{Fields, Ident, Index, ItemStruct, Path, WhereClause};
+use quote::{quote, ToTokens};
+use syn::{Expr, ExprPath, Fields, Ident, Index, ItemStruct, Path, WhereClause};
 
 use crate::{
-    attribute_helpers::{collect_override_bounds, contains_skip, BoundType},
+    attribute_helpers::{contains_skip, field, BoundType},
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
+
+/// function which computes derive output [proc_macro2::TokenStream]
+/// of code, which serializes single field
+pub(crate) fn field_serialization_output<T: ToTokens>(
+    arg: &T,
+    cratename: &Ident,
+    serialize_with: Option<ExprPath>,
+) -> TokenStream2 {
+    if let Some(func) = serialize_with {
+        quote! {
+            #func(#arg, writer)?;
+        }
+    } else {
+        quote! {
+            #cratename::BorshSerialize::serialize(#arg, writer)?;
+        }
+    }
+}
 
 pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
@@ -26,36 +44,39 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
     match &input.fields {
         Fields::Named(fields) => {
             for field in &fields.named {
-                let bounds_override =
-                    collect_override_bounds(field, BoundType::Serialize, &mut override_predicates)?;
-                if contains_skip(&field.attrs) {
+                let skipped = contains_skip(&field.attrs);
+                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+                let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
+                override_predicates.extend(parsed.collect_bounds(BoundType::Serialize));
+                if skipped {
                     continue;
                 }
                 let field_name = field.ident.as_ref().unwrap();
-                let delta = quote! {
-                    #cratename::BorshSerialize::serialize(&self.#field_name, writer)?;
-                };
+
+                let arg: Expr = syn::parse2(quote! { &self.#field_name }).unwrap();
+                let delta = field_serialization_output(&arg, &cratename, parsed.serialize_with);
 
                 body.extend(delta);
-                if !bounds_override {
+                if needs_bounds_derive {
                     serialize_params_visitor.visit_field(field);
                 }
             }
         }
         Fields::Unnamed(fields) => {
             for (field_idx, field) in fields.unnamed.iter().enumerate() {
-                let bounds_override =
-                    collect_override_bounds(field, BoundType::Serialize, &mut override_predicates)?;
-                if !contains_skip(&field.attrs) {
+                let skipped = contains_skip(&field.attrs);
+                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+                let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
+                override_predicates.extend(parsed.collect_bounds(BoundType::Serialize));
+                if !skipped {
                     let field_idx = Index {
                         index: u32::try_from(field_idx).expect("up to 2^32 fields are supported"),
                         span: Span::call_site(),
                     };
-                    let delta = quote! {
-                        #cratename::BorshSerialize::serialize(&self.#field_idx, writer)?;
-                    };
+                    let arg: Expr = syn::parse2(quote! { &self.#field_idx }).unwrap();
+                    let delta = field_serialization_output(&arg, &cratename, parsed.serialize_with);
                     body.extend(delta);
-                    if !bounds_override {
+                    if needs_bounds_derive {
                         serialize_params_visitor.visit_field(field);
                     }
                 }
@@ -253,5 +274,42 @@ mod tests {
         let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
 
         insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn check_serialize_with_attr() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A<K: Ord, V> {
+                #[borsh(serialize_with = "third_party_impl::serialize_third_party")]
+                x: ThirdParty<K, V>,
+                y: u64,
+            }
+        })
+        .unwrap();
+
+        let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+
+        insta::assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn check_serialize_with_skip_conflict() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A<K: Ord, V> {
+                #[borsh_skip]
+                #[borsh(serialize_with = "third_party_impl::serialize_third_party")]
+                x: ThirdParty<K, V>,
+                y: u64,
+            }
+        })
+        .unwrap();
+
+        let actual = struct_ser(&item_struct, Ident::new("borsh", Span::call_site()));
+
+        let err = match actual {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
     }
 }

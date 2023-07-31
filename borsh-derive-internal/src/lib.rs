@@ -21,9 +21,6 @@ pub use struct_ser::struct_ser;
 pub use union_de::union_de;
 pub use union_ser::union_ser;
 
-// TODO: similarly reexport this struct for documentation in `borsh-derive` when unsplit is done
 pub use attribute_helpers::check_item_attributes;
-pub use attribute_helpers::parsing_helpers::SchemaParamsOverride;
-
 #[cfg(test)]
 pub mod test_helpers;

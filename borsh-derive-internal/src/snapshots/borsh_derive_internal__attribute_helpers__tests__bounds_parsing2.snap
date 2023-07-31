@@ -1,7 +1,0 @@
----
-source: borsh-derive-internal/src/attribute_helpers.rs
-expression: debug_print_bounds(ser)
----
-K : Hash + Eq + borsh :: ser :: BorshSerialize
-V : borsh :: ser :: BorshSerialize
-
