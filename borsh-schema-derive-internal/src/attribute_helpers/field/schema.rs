@@ -20,13 +20,14 @@ type ParseFn = dyn Fn(Symbol, Symbol, &ParseNestedMeta) -> syn::Result<Variants>
 
 pub(crate) static SCHEMA_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|| {
     let mut m = BTreeMap::new();
-    // has to be inlined; assigning closure separately doesn't work
-    let f1: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
+    // assigning closure `let f = |args| {...};` and boxing closure `let f: Box<ParseFn> = Box::new(f);`
+    // on 2 separate lines doesn't work
+    let f_params: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
         parse_lit_into_vec::<ParameterOverride>(attr_name, meta_item_name, meta)
             .map(Variants::Params)
     });
 
-    let f2: Box<ParseFn> = Box::new(|_attr_name, _meta_item_name, meta| {
+    let f_with_funcs: Box<ParseFn> = Box::new(|_attr_name, _meta_item_name, meta| {
         let map_result = meta_get_by_symbol_keys(WITH_FUNCS, meta, &WITH_FUNCS_FIELD_PARSE_MAP)?;
         let with_funcs: WithFuncs = map_result.into();
         if (with_funcs.declaration.is_some() && with_funcs.definitions.is_none())
@@ -42,8 +43,8 @@ pub(crate) static SCHEMA_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> =
         }
         Ok(Variants::WithFuncs(with_funcs))
     });
-    m.insert(PARAMS, f1);
-    m.insert(WITH_FUNCS, f2);
+    m.insert(PARAMS, f_params);
+    m.insert(WITH_FUNCS, f_with_funcs);
     m
 });
 

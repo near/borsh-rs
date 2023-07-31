@@ -11,7 +11,10 @@ use crate::{
     schema_helpers::declaration,
 };
 
-pub(crate) fn field_declaration_delta(
+/// function which computes derive output [proc_macro2::TokenStream]
+/// of code, which computes declaration of a single field, which is later added to
+/// the struct's definition as a whole  
+pub(crate) fn field_declaration_output(
     field_name: Option<&String>,
     field_type: &Type,
     cratename: &Ident,
@@ -33,7 +36,9 @@ pub(crate) fn field_declaration_delta(
     }
 }
 
-pub(crate) fn field_definitions_delta(
+/// function which computes derive output [proc_macro2::TokenStream]
+/// of code, which adds definitions of a field to the output `definitions: &mut BTreeMap`
+pub(crate) fn field_definitions_output(
     field_type: &Type,
     cratename: &Ident,
     definitions_override: Option<ExprPath>,
@@ -144,13 +149,13 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
                 }
                 let field_name = field.ident.as_ref().unwrap().to_token_stream().to_string();
                 let field_type = &field.ty;
-                fields_vec.push(field_declaration_delta(
+                fields_vec.push(field_declaration_output(
                     Some(&field_name),
                     field_type,
                     &cratename,
                     parsed.schema_declaration(),
                 ));
-                add_definitions_recursively_rec.extend(field_definitions_delta(
+                add_definitions_recursively_rec.extend(field_definitions_output(
                     field_type,
                     &cratename,
                     parsed.schema_definitions(),
@@ -170,13 +175,13 @@ pub fn process_struct(input: &ItemStruct, cratename: Ident) -> syn::Result<Token
                     continue;
                 }
                 let field_type = &field.ty;
-                fields_vec.push(field_declaration_delta(
+                fields_vec.push(field_declaration_output(
                     None,
                     field_type,
                     &cratename,
                     parsed.schema_declaration(),
                 ));
-                add_definitions_recursively_rec.extend(field_definitions_delta(
+                add_definitions_recursively_rec.extend(field_definitions_output(
                     field_type,
                     &cratename,
                     parsed.schema_definitions(),
@@ -559,11 +564,7 @@ mod tests {
 
         let actual = process_struct(&item_struct, Ident::new("borsh", Span::call_site()));
 
-        let err = match actual {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
-        };
-        insta::assert_debug_snapshot!(err);
+        insta::assert_debug_snapshot!(actual.unwrap_err());
     }
 
     #[test]
@@ -583,11 +584,7 @@ mod tests {
 
         let actual = process_struct(&item_struct, Ident::new("borsh", Span::call_site()));
 
-        let err = match actual {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
-        };
-        insta::assert_debug_snapshot!(err);
+        insta::assert_debug_snapshot!(actual.unwrap_err());
     }
 
     #[test]

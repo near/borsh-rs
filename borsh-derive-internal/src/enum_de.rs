@@ -6,7 +6,7 @@ use crate::{
     attribute_helpers::{contains_initialize_with, contains_skip, field, BoundType},
     enum_discriminant_map::discriminant_map,
     generics::{compute_predicates, without_defaults, FindTyParams},
-    struct_de::field_de_delta,
+    struct_de::field_deserialization_output,
 };
 
 pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
@@ -52,7 +52,7 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                             deserialize_params_visitor.visit_field(field);
                         }
 
-                        variant_header.extend(field_de_delta(
+                        variant_header.extend(field_deserialization_output(
                             Some(field_name),
                             &cratename,
                             parsed.deserialize_with,
@@ -77,7 +77,7 @@ pub fn enum_de(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                         if needs_bounds_derive {
                             deserialize_params_visitor.visit_field(field);
                         }
-                        variant_header.extend(field_de_delta(
+                        variant_header.extend(field_deserialization_output(
                             None,
                             &cratename,
                             parsed.deserialize_with,

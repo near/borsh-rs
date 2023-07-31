@@ -15,19 +15,20 @@ type ParseFn = dyn Fn(Symbol, Symbol, &ParseNestedMeta) -> syn::Result<Variants>
 pub(crate) static WITH_FUNCS_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> =
     Lazy::new(|| {
         let mut m = BTreeMap::new();
-        // has to be inlined; assigning closure separately doesn't work
-        let f1: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
+        // assigning closure `let f = |args| {...};` and boxing closure `let f: Box<ParseFn> = Box::new(f);`
+        // on 2 separate lines doesn't work
+        let f_declaration: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
             parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta)
                 .map(Variants::Declaration)
         });
 
-        let f2: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
+        let f_definitions: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
             parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta)
                 .map(Variants::Definitions)
         });
 
-        m.insert(DECLARATION, f1);
-        m.insert(DEFINITIONS, f2);
+        m.insert(DECLARATION, f_declaration);
+        m.insert(DEFINITIONS, f_definitions);
         m
     });
 

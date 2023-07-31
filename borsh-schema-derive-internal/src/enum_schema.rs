@@ -364,11 +364,7 @@ mod tests {
 
         let actual = process_enum(&item_struct, Ident::new("borsh", Span::call_site()));
 
-        let err = match actual {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
-        };
-        insta::assert_debug_snapshot!(err);
+        insta::assert_debug_snapshot!(actual.unwrap_err());
     }
 
     #[test]
@@ -391,11 +387,7 @@ mod tests {
 
         let actual = process_enum(&item_struct, Ident::new("borsh", Span::call_site()));
 
-        let err = match actual {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
-        };
-        insta::assert_debug_snapshot!(err);
+        insta::assert_debug_snapshot!(actual.unwrap_err());
     }
 
     #[test]

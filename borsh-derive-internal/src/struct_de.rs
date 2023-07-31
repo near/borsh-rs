@@ -7,7 +7,9 @@ use crate::{
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
 
-pub(crate) fn field_de_delta(
+/// function which computes derive output [proc_macro2::TokenStream]
+/// of code, which deserializes single field
+pub(crate) fn field_deserialization_output(
     field_name: Option<&Ident>,
     cratename: &Ident,
     deserialize_with: Option<ExprPath>,
@@ -65,7 +67,11 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
                     if needs_bounds_derive {
                         deserialize_params_visitor.visit_field(field);
                     }
-                    field_de_delta(Some(field_name), &cratename, parsed.deserialize_with)
+                    field_deserialization_output(
+                        Some(field_name),
+                        &cratename,
+                        parsed.deserialize_with,
+                    )
                 };
                 body.extend(delta);
             }
@@ -90,7 +96,7 @@ pub fn struct_de(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStrea
                     if needs_bounds_derive {
                         deserialize_params_visitor.visit_field(field);
                     }
-                    field_de_delta(None, &cratename, parsed.deserialize_with)
+                    field_deserialization_output(None, &cratename, parsed.deserialize_with)
                 };
                 body.extend(delta);
             }

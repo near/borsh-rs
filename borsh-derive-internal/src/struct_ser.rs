@@ -9,7 +9,9 @@ use crate::{
     generics::{compute_predicates, without_defaults, FindTyParams},
 };
 
-pub(crate) fn field_ser_delta<T: ToTokens>(
+/// function which computes derive output [proc_macro2::TokenStream]
+/// of code, which serializes single field
+pub(crate) fn field_serialization_output<T: ToTokens>(
     arg: &T,
     cratename: &Ident,
     serialize_with: Option<ExprPath>,
@@ -52,7 +54,7 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
                 let field_name = field.ident.as_ref().unwrap();
 
                 let arg: Expr = syn::parse2(quote! { &self.#field_name }).unwrap();
-                let delta = field_ser_delta(&arg, &cratename, parsed.serialize_with);
+                let delta = field_serialization_output(&arg, &cratename, parsed.serialize_with);
 
                 body.extend(delta);
                 if needs_bounds_derive {
@@ -72,7 +74,7 @@ pub fn struct_ser(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStre
                         span: Span::call_site(),
                     };
                     let arg: Expr = syn::parse2(quote! { &self.#field_idx }).unwrap();
-                    let delta = field_ser_delta(&arg, &cratename, parsed.serialize_with);
+                    let delta = field_serialization_output(&arg, &cratename, parsed.serialize_with);
                     body.extend(delta);
                     if needs_bounds_derive {
                         serialize_params_visitor.visit_field(field);

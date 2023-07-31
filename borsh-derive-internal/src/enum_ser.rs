@@ -10,7 +10,7 @@ use crate::{
     attribute_helpers::{contains_skip, field, BoundType},
     enum_discriminant_map::discriminant_map,
     generics::{compute_predicates, without_defaults, FindTyParams},
-    struct_ser::field_ser_delta,
+    struct_ser::field_serialization_output,
 };
 
 pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
@@ -124,7 +124,7 @@ fn named_fields(
             variant_header.extend(quote! { #field_ident, });
 
             let arg: Expr = syn::parse2(quote! { #field_ident }).unwrap();
-            let delta = field_ser_delta(&arg, cratename, parsed.serialize_with);
+            let delta = field_serialization_output(&arg, cratename, parsed.serialize_with);
             variant_body.extend(delta);
             if needs_bounds_derive {
                 params_visitor.visit_field(field);
@@ -169,7 +169,7 @@ fn unnamed_fields(
             variant_header.extend(quote! { #field_ident, });
 
             let arg: Expr = syn::parse2(quote! { #field_ident }).unwrap();
-            let delta = field_ser_delta(&arg, cratename, parsed.serialize_with);
+            let delta = field_serialization_output(&arg, cratename, parsed.serialize_with);
             variant_body.extend(delta);
             if needs_bounds_derive {
                 params_visitor.visit_field(field);

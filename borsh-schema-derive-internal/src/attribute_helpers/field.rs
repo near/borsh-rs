@@ -27,33 +27,34 @@ type ParseFn = dyn Fn(Symbol, Symbol, &ParseNestedMeta) -> syn::Result<Variants>
 
 static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|| {
     let mut m = BTreeMap::new();
-    // has to be inlined; assigning closure separately doesn't work
-    let f1: Box<ParseFn> = Box::new(|_attr_name, _meta_item_name, meta| {
+    // assigning closure `let f = |args| {...};` and boxing closure `let f: Box<ParseFn> = Box::new(f);`
+    // on 2 separate lines doesn't work
+    let f_bounds: Box<ParseFn> = Box::new(|_attr_name, _meta_item_name, meta| {
         let map_result = meta_get_by_symbol_keys(BOUND, meta, &BOUNDS_FIELD_PARSE_MAP)?;
         let bounds_attributes: bounds::Bounds = map_result.into();
         Ok(Variants::Bounds(bounds_attributes))
     });
 
-    let f2: Box<ParseFn> = Box::new(|_attr_name, _meta_item_name, meta| {
+    let f_schema: Box<ParseFn> = Box::new(|_attr_name, _meta_item_name, meta| {
         let map_result = meta_get_by_symbol_keys(SCHEMA, meta, &SCHEMA_FIELD_PARSE_MAP)?;
         let schema_attributes: schema::Attributes = map_result.into();
         Ok(Variants::Schema(schema_attributes))
     });
 
-    let f3: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
+    let f_serialize_with: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
         parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta)
             .map(Variants::SerializeWith)
     });
 
-    let f4: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
+    let f_deserialize_with: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
         parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta)
             .map(Variants::DeserializeWith)
     });
 
-    m.insert(BOUND, f1);
-    m.insert(SCHEMA, f2);
-    m.insert(SERIALIZE_WITH, f3);
-    m.insert(DESERIALIZE_WITH, f4);
+    m.insert(BOUND, f_bounds);
+    m.insert(SCHEMA, f_schema);
+    m.insert(SERIALIZE_WITH, f_serialize_with);
+    m.insert(DESERIALIZE_WITH, f_deserialize_with);
     m
 });
 
@@ -98,32 +99,20 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
     }
 }
 impl Attributes {
-    pub(crate) fn parse(attrs: &[Attribute], skipped: bool) -> Result<Self, syn::Error> {
-        let mut ref_attr: Option<&Attribute> = None;
-        let mut map_result = BTreeMap::new();
-        for attr in attrs {
-            if attr.path() != BORSH {
-                continue;
-            }
-            ref_attr = Some(attr);
-
-            map_result = attr_get_by_symbol_keys(BORSH, attr, &BORSH_FIELD_PARSE_MAP)?;
-        }
-
-        let result: Self = map_result.into();
-        if skipped && (result.serialize_with.is_some() || result.deserialize_with.is_some()) {
+    fn check(&self, skipped: bool, attr: &Attribute) -> Result<(), syn::Error> {
+        if skipped && (self.serialize_with.is_some() || self.deserialize_with.is_some()) {
             return Err(syn::Error::new_spanned(
-                ref_attr.unwrap(),
+                attr,
                 format!(
                     "`{}` cannot be used at the same time as `{}` or `{}`",
                     SKIP.0, SERIALIZE_WITH.0, DESERIALIZE_WITH.0
                 ),
             ));
         }
-        if let Some(ref schema) = result.schema {
+        if let Some(ref schema) = self.schema {
             if skipped && schema.params.is_some() {
                 return Err(syn::Error::new_spanned(
-                    ref_attr.unwrap(),
+                    attr,
                     format!(
                         "`{}` cannot be used at the same time as `{}({})`",
                         SKIP.0, SCHEMA.0, PARAMS.1
@@ -133,7 +122,7 @@ impl Attributes {
 
             if skipped && schema.with_funcs.is_some() {
                 return Err(syn::Error::new_spanned(
-                    ref_attr.unwrap(),
+                    attr,
                     format!(
                         "`{}` cannot be used at the same time as `{}({})`",
                         SKIP.0, SCHEMA.0, WITH_FUNCS.1
@@ -141,14 +130,24 @@ impl Attributes {
                 ));
             }
         }
+        Ok(())
+    }
+    pub(crate) fn parse(attrs: &[Attribute], skipped: bool) -> Result<Self, syn::Error> {
+        let attr = attrs.iter().find(|attr| attr.path() == BORSH);
+
+        let result: Self = if let Some(attr) = attr {
+            let result: Self = attr_get_by_symbol_keys(BORSH, attr, &BORSH_FIELD_PARSE_MAP)?.into();
+            result.check(skipped, attr)?;
+            result
+        } else {
+            BTreeMap::new().into()
+        };
+
         Ok(result)
     }
     pub(crate) fn needs_bounds_derive(&self, ty: BoundType) -> bool {
         let predicates = self.get_bounds(ty);
-        if predicates.is_some() {
-            return false;
-        }
-        true
+        predicates.is_none()
     }
 
     pub(crate) fn needs_schema_params_derive(&self) -> bool {
