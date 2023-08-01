@@ -158,3 +158,100 @@ pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Option<Path> {
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use quote::{quote, ToTokens};
+
+    use super::*;
+    #[test]
+    fn test_check_use_discriminant() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh(use_discriminant = false)]
+            enum AWithUseDiscriminantFalse {
+                X,
+                Y,
+            }
+        })
+        .unwrap();
+        let actual = contains_use_discriminant(&item_enum);
+        assert!(!actual.unwrap());
+    }
+
+    #[test]
+    fn test_check_use_discriminant_true() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh(use_discriminant = true)]
+            enum AWithUseDiscriminantTrue {
+                X,
+                Y,
+            }
+        })
+        .unwrap();
+        let actual = contains_use_discriminant(&item_enum);
+        assert!(actual.unwrap());
+    }
+
+    #[test]
+    fn test_check_use_discriminant_wrong_value() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh(use_discriminant = 111)]
+            enum AWithUseDiscriminantFalse {
+                X,
+                Y,
+            }
+        })
+        .unwrap();
+        let actual = contains_use_discriminant(&item_enum);
+        let err = match actual {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
+    }
+    #[test]
+    fn test_check_use_discriminant_on_struct() {
+        let item_enum: DeriveInput = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh(use_discriminant = false)]
+            struct AWithUseDiscriminantFalse {
+                x: X,
+                y: Y,
+            }
+        })
+        .unwrap();
+        let actual = check_item_attributes(&item_enum);
+        insta::assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
+    }
+    #[test]
+    fn test_check_use_borsh_skip_on_whole_struct() {
+        let item_enum: DeriveInput = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh_skip]
+            struct AWithUseDiscriminantFalse {
+                 x: X,
+                 y: Y,
+            }
+        })
+        .unwrap();
+        let actual = check_item_attributes(&item_enum);
+        insta::assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
+    }
+    #[test]
+    fn test_check_use_borsh_invalid_on_whole_struct() {
+        let item_enum: DeriveInput = syn::parse2(quote! {
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh(invalid)]
+            enum AWithUseDiscriminantFalse {
+                X,
+                Y,
+            }
+        })
+        .unwrap();
+        let actual = check_item_attributes(&item_enum);
+        insta::assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
+    }
+}
