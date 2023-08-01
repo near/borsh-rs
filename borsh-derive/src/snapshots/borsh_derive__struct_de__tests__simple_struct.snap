@@ -1,0 +1,15 @@
+---
+source: borsh-derive/src/struct_de.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+impl borsh::de::BorshDeserialize for A {
+    fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
+        reader: &mut R,
+    ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
+        Ok(Self {
+            x: borsh::BorshDeserialize::deserialize_reader(reader)?,
+            y: borsh::BorshDeserialize::deserialize_reader(reader)?,
+        })
+    }
+}
+

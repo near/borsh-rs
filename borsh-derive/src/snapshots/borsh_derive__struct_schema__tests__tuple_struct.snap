@@ -1,0 +1,32 @@
+---
+source: borsh-derive/src/struct_schema.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+impl borsh::BorshSchema for A {
+    fn declaration() -> borsh::schema::Declaration {
+        "A".to_string()
+    }
+    fn add_definitions_recursively(
+        definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
+            borsh::schema::Declaration,
+            borsh::schema::Definition,
+        >,
+    ) {
+        let fields = borsh::schema::Fields::UnnamedFields(
+            borsh::__private::maybestd::vec![
+                < u64 as borsh::BorshSchema > ::declaration(), < String as
+                borsh::BorshSchema > ::declaration()
+            ],
+        );
+        let definition = borsh::schema::Definition::Struct {
+            fields,
+        };
+        let no_recursion_flag = definitions.get(&Self::declaration()).is_none();
+        Self::add_definition(Self::declaration(), definition, definitions);
+        if no_recursion_flag {
+            <u64 as borsh::BorshSchema>::add_definitions_recursively(definitions);
+            <String as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        }
+    }
+}
+

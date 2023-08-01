@@ -1,3 +1,9 @@
+#![recursion_limit = "128"]
+#![cfg_attr(
+    feature = "force_exhaustive_checks",
+    feature(non_exhaustive_omitted_patterns_lint)
+)]
+
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -5,9 +11,38 @@ use proc_macro_crate::crate_name;
 use proc_macro_crate::FoundCrate;
 use syn::{parse_macro_input, DeriveInput, Ident, ItemEnum, ItemStruct, ItemUnion};
 
-use borsh_derive_internal::*;
+mod attribute_helpers;
+mod enum_de;
+mod enum_discriminant_map;
 #[cfg(feature = "schema")]
-use borsh_schema_derive_internal::*;
+mod enum_schema;
+mod enum_ser;
+mod generics;
+#[cfg(feature = "schema")]
+mod schema_helpers;
+mod struct_de;
+#[cfg(feature = "schema")]
+mod struct_schema;
+mod struct_ser;
+mod union_de;
+mod union_ser;
+use attribute_helpers::check_item_attributes;
+
+use enum_de::enum_de;
+
+#[cfg(feature = "schema")]
+use enum_schema::process_enum;
+
+use enum_ser::enum_ser;
+use struct_de::struct_de;
+#[cfg(feature = "schema")]
+use struct_schema::process_struct;
+use struct_ser::struct_ser;
+use union_de::union_de;
+use union_ser::union_ser;
+
+#[cfg(test)]
+mod test_helpers;
 
 /**
 # derive proc-macro for `borsh::ser::BorshSerialize` trait
