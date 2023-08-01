@@ -629,7 +629,7 @@ struct A {
 
 ###### syntax
 
-Attribute takes literal string value, which is a comma-separated list of [ParameterOverride](borsh_derive_internal::attribute_helpers::field::schema::ParameterOverride)-s, which may be empty.
+Attribute takes literal string value, which is a comma-separated list of [ParameterOverride](borsh-derive::attribute_helpers::field::schema::ParameterOverride)-s, which may be empty.
 
 ###### usage
 It may be used in order to:
@@ -638,7 +638,7 @@ It may be used in order to:
 declaration parameters automatically.
 2. remove parameters, which do not take part in serialization/deserialization, from bounded ones and from declaration parameters.
 
-[ParameterOverride](borsh_derive_internal::attribute_helpers::field::schema::ParameterOverride) describes an entry like `order_param => override_type`,
+[ParameterOverride](borsh-derive::attribute_helpers::field::schema::ParameterOverride) describes an entry like `order_param => override_type`,
 
 e.g. `K => <K as TraitName>::Associated`.
 

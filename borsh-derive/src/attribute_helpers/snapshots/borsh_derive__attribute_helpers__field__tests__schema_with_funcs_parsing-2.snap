@@ -1,0 +1,6 @@
+---
+source: borsh-derive/src/attribute_helpers/field.rs
+expression: debug_print_tokenizable(with_funcs.definitions)
+---
+third_party_impl :: add_definitions_recursively :: < K , V >
+
