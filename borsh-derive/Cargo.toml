@@ -33,3 +33,4 @@ insta = "1.29.0"
 [features]
 default = []
 schema = []
+force_exhaustive_checks = []
