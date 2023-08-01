@@ -1,5 +1,3 @@
-#![allow(unused)]
-// TODO: remove unused when unsplit is done
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum, Path};

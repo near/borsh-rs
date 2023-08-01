@@ -1,0 +1,6 @@
+---
+source: borsh-derive/src/attribute_helpers/field.rs
+expression: debug_print_tokenizable(attrs.serialize_with)
+---
+third_party_impl :: serialize_third_party
+

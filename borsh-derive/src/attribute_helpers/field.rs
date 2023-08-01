@@ -188,3 +188,441 @@ impl Attributes {
         predicates.unwrap_or(vec![])
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use quote::{quote, ToTokens};
+    use std::fmt::Write;
+    use syn::{Attribute, ItemStruct};
+
+    fn parse_bounds(attrs: &[Attribute]) -> Result<Option<bounds::Bounds>, syn::Error> {
+        // #[borsh(bound(serialize = "...", deserialize = "..."))]
+        let borsh_attrs = Attributes::parse(attrs, false)?;
+        Ok(borsh_attrs.bounds)
+    }
+
+    fn parse_schema_attrs(attrs: &[Attribute]) -> Result<Option<schema::Attributes>, syn::Error> {
+        // #[borsh(schema(params = "..."))]
+        let borsh_attrs = Attributes::parse(attrs, false)?;
+        Ok(borsh_attrs.schema)
+    }
+
+    use super::{bounds, schema, Attributes};
+    fn debug_print_vec_of_tokenizable<T: ToTokens>(optional: Option<Vec<T>>) -> String {
+        let mut s = String::new();
+        if let Some(vec) = optional {
+            for element in vec {
+                writeln!(&mut s, "{}", element.to_token_stream()).unwrap();
+            }
+        } else {
+            write!(&mut s, "None").unwrap();
+        }
+        s
+    }
+
+    fn debug_print_tokenizable<T: ToTokens>(optional: Option<T>) -> String {
+        let mut s = String::new();
+        if let Some(type_) = optional {
+            writeln!(&mut s, "{}", type_.to_token_stream()).unwrap();
+        } else {
+            write!(&mut s, "None").unwrap();
+        }
+        s
+    }
+
+    #[test]
+    fn test_root_error() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(boons)]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let err = match Attributes::parse(&first_field.attrs, false) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn test_bounds_parsing1() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(bound(deserialize = "K: Hash + Ord,
+                     V: Eq + Ord",
+                    serialize = "K: Hash + Eq + Ord,
+                     V: Ord"
+                ))]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
+        insta::assert_snapshot!(debug_print_vec_of_tokenizable(attrs.serialize));
+        insta::assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
+    }
+
+    #[test]
+    fn test_bounds_parsing2() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(bound(deserialize = "K: Hash + Eq + borsh::de::BorshDeserialize,
+                     V: borsh::de::BorshDeserialize",
+                    serialize = "K: Hash + Eq + borsh::ser::BorshSerialize,
+                     V: borsh::ser::BorshSerialize"
+                ))]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
+        insta::assert_snapshot!(debug_print_vec_of_tokenizable(attrs.serialize));
+        insta::assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
+    }
+
+    #[test]
+    fn test_bounds_parsing3() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(bound(deserialize = "K: Hash + Eq + borsh::de::BorshDeserialize,
+                     V: borsh::de::BorshDeserialize",
+                    serialize = ""
+                ))]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
+        assert_eq!(attrs.serialize.unwrap().len(), 0);
+        insta::assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
+    }
+
+    #[test]
+    fn test_bounds_parsing4() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(bound(deserialize = "K: Hash"))]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
+        assert!(attrs.serialize.is_none());
+        insta::assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
+    }
+
+    #[test]
+    fn test_bounds_parsing_error() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(bound(deser = "K: Hash"))]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let err = match parse_bounds(&first_field.attrs) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn test_bounds_parsing_error2() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(bound(deserialize = "K Hash"))]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let err = match parse_bounds(&first_field.attrs) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn test_bounds_parsing_error3() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(bound(deserialize = 42))]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let err = match parse_bounds(&first_field.attrs) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn test_schema_params_parsing1() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<V, T>
+            where
+                T: TraitName,
+            {
+                #[borsh(schema(params =
+                    "T => <T as TraitName>::Associated"
+               ))]
+                field: <T as TraitName>::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
+        insta::assert_snapshot!(debug_print_vec_of_tokenizable(schema_attrs.unwrap().params));
+    }
+    #[test]
+    fn test_schema_params_parsing_error() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<V, T>
+            where
+                T: TraitName,
+            {
+                #[borsh(schema(params =
+                    "T => <T as TraitName, W>::Associated"
+               ))]
+                field: <T as TraitName>::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let err = match parse_schema_attrs(&first_field.attrs) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn test_schema_params_parsing_error2() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<V, T>
+            where
+                T: TraitName,
+            {
+                #[borsh(schema(paramsbum =
+                    "T => <T as TraitName>::Associated"
+               ))]
+                field: <T as TraitName>::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let err = match parse_schema_attrs(&first_field.attrs) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn test_schema_params_parsing2() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<V, T>
+            where
+                T: TraitName,
+            {
+                #[borsh(schema(params =
+                    "T => <T as TraitName>::Associated, V => Vec<V>"
+               ))]
+                field: <T as TraitName>::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
+        insta::assert_snapshot!(debug_print_vec_of_tokenizable(schema_attrs.unwrap().params));
+    }
+    #[test]
+    fn test_schema_params_parsing3() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<V, T>
+            where
+                T: TraitName,
+            {
+                #[borsh(schema(params = "" ))]
+                field: <T as TraitName>::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
+        assert_eq!(schema_attrs.unwrap().params.unwrap().len(), 0);
+    }
+
+    #[test]
+    fn test_schema_params_parsing4() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct Parametrized<V, T>
+            where
+                T: TraitName,
+            {
+                field: <T as TraitName>::Associated,
+                another: V,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
+        assert!(schema_attrs.is_none());
+    }
+
+    #[test]
+    fn test_ser_de_with_parsing1() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(
+                    serialize_with = "third_party_impl::serialize_third_party",
+                    deserialize_with = "third_party_impl::deserialize_third_party",
+                )]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
+        insta::assert_snapshot!(debug_print_tokenizable(attrs.serialize_with));
+        insta::assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
+    }
+
+    #[test]
+    fn test_schema_with_funcs_parsing() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(schema(with_funcs(
+                    declaration = "third_party_impl::declaration::<K, V>",
+                    definitions = "third_party_impl::add_definitions_recursively::<K, V>"
+                )))]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
+        let schema = attrs.schema.unwrap();
+        let with_funcs = schema.with_funcs.unwrap();
+
+        insta::assert_snapshot!(debug_print_tokenizable(with_funcs.declaration));
+        insta::assert_snapshot!(debug_print_tokenizable(with_funcs.definitions));
+    }
+
+    // both `declaration` and `definitions` have to be specified
+    #[test]
+    fn test_schema_with_funcs_parsing_error() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(schema(with_funcs(
+                    declaration = "third_party_impl::declaration::<K, V>"
+                )))]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = Attributes::parse(&first_field.attrs, false);
+
+        let err = match attrs {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn test_root_bounds_and_params_combined() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(
+                    serialize_with = "third_party_impl::serialize_third_party",
+                    bound(deserialize = "K: Hash"),
+                    schema(params = "T => <T as TraitName>::Associated, V => Vec<V>")
+                )]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+
+        let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
+        let bounds = attrs.bounds.unwrap();
+        assert!(bounds.serialize.is_none());
+        insta::assert_snapshot!(debug_print_vec_of_tokenizable(bounds.deserialize));
+        let schema = attrs.schema.unwrap();
+        insta::assert_snapshot!(debug_print_vec_of_tokenizable(schema.params));
+        insta::assert_snapshot!(debug_print_tokenizable(attrs.serialize_with));
+        assert!(attrs.deserialize_with.is_none());
+    }
+
+    #[test]
+    fn test_root_bounds_and_wrong_key_combined() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(bound(deserialize = "K: Hash"),
+                        schhema(params = "T => <T as TraitName>::Associated, V => Vec<V>")
+                )]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+
+        let err = match Attributes::parse(&first_field.attrs, false) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
+    }
+}
