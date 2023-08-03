@@ -11,39 +11,14 @@ use proc_macro_crate::crate_name;
 use proc_macro_crate::FoundCrate;
 use syn::{parse_macro_input, DeriveInput, Ident, ItemEnum, ItemStruct, ItemUnion};
 
-mod attribute_helpers;
-mod enum_de;
-mod enum_discriminant_map;
-#[cfg(feature = "schema")]
-mod enum_schema;
-mod enum_ser;
-mod generics;
-#[cfg(feature = "schema")]
-mod schema_helpers;
-mod struct_de;
-#[cfg(feature = "schema")]
-mod struct_schema;
-mod struct_ser;
-mod union_de;
-mod union_ser;
-use attribute_helpers::check_item_attributes;
+mod internals;
 
-use enum_de::enum_de;
+use crate::internals::attributes::check_item_attributes;
 
+use internals::deserialize::{enum_de, struct_de, union_de};
 #[cfg(feature = "schema")]
-use enum_schema::process_enum;
-
-use enum_ser::enum_ser;
-use struct_de::struct_de;
-#[cfg(feature = "schema")]
-use struct_schema::process_struct;
-use struct_ser::struct_ser;
-use union_de::union_de;
-use union_ser::union_ser;
-
-#[cfg(test)]
-mod test_helpers;
-
+use internals::schema::{process_enum, process_struct};
+use internals::serialize::{enum_ser, struct_ser, union_ser};
 /**
 # derive proc-macro for `borsh::ser::BorshSerialize` trait
 

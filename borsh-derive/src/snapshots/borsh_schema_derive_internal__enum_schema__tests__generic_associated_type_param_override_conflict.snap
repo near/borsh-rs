@@ -1,7 +1,0 @@
----
-source: borsh-schema-derive-internal/src/enum_schema.rs
-expression: err
----
-Error(
-    "`borsh_skip` cannot be used at the same time as `schema(params = ...)`",
-)

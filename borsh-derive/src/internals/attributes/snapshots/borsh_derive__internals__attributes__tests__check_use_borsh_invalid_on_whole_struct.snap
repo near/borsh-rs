@@ -1,0 +1,5 @@
+---
+source: borsh-derive/src/internals/attributes/mod.rs
+expression: actual.unwrap_err().to_token_stream().to_string()
+---
+:: core :: compile_error ! { "`use_discriminant` is the only supported attribute for `borsh`" }
