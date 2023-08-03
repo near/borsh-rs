@@ -1,0 +1,40 @@
+---
+source: borsh-derive/src/internals/schema/enum/mod.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+impl borsh::BorshSchema for A {
+    fn declaration() -> borsh::schema::Declaration {
+        "A".to_string()
+    }
+    fn add_definitions_recursively(
+        definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
+            borsh::schema::Declaration,
+            borsh::schema::Definition,
+        >,
+    ) {
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        struct AB {
+            c: i32,
+            #[borsh_skip]
+            d: u32,
+            l: u64,
+        }
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        struct ANegative {
+            beta: String,
+        }
+        <AB as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <ANegative as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        let variants = borsh::__private::maybestd::vec![
+            ("B".to_string(), < AB > ::declaration()), ("Negative".to_string(), <
+            ANegative > ::declaration())
+        ];
+        let definition = borsh::schema::Definition::Enum {
+            variants,
+        };
+        Self::add_definition(Self::declaration(), definition, definitions);
+    }
+}
+
