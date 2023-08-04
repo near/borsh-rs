@@ -29,7 +29,7 @@ pub(crate) static BOUNDS_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> =
     m
 });
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct Bounds {
     pub serialize: Option<Vec<WherePredicate>>,
     pub deserialize: Option<Vec<WherePredicate>>,

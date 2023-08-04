@@ -30,3 +30,23 @@ pub fn debug_print_tokenizable<T: ToTokens>(optional: Option<T>) -> String {
     }
     s
 }
+
+macro_rules! local_insta_assert_debug_snapshot {
+    ($value:expr) => {{
+
+        insta::with_settings!({prepend_module_to_snapshot => false}, {
+            insta::assert_debug_snapshot!($value);
+        });
+    }};
+}
+
+macro_rules! local_insta_assert_snapshot {
+    ($value:expr) => {{
+
+        insta::with_settings!({prepend_module_to_snapshot => false}, {
+            insta::assert_snapshot!($value);
+        });
+    }};
+}
+
+pub(crate) use {local_insta_assert_debug_snapshot, local_insta_assert_snapshot};

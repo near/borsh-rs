@@ -1,5 +1,3 @@
-// TODO: remove this unused attribute, when the unsplit is done
-#![allow(unused)]
 use std::collections::{HashMap, HashSet};
 
 use quote::{quote, ToTokens};
@@ -41,6 +39,7 @@ pub fn without_defaults(generics: &Generics) -> Generics {
     }
 }
 
+#[cfg(feature = "schema")]
 pub fn type_contains_some_param(type_: &Type, params: &HashSet<Ident>) -> bool {
     let mut find: FindTyParams = FindTyParams::from_params(params.iter());
 
@@ -90,16 +89,6 @@ impl FindTyParams {
             associated_type_params_usage: HashMap::new(),
         }
     }
-    pub fn from_params<'a>(params: impl Iterator<Item = &'a Ident>) -> Self {
-        let all_type_params_ordered: Vec<Ident> = params.cloned().collect();
-        let all_type_params = all_type_params_ordered.clone().into_iter().collect();
-        FindTyParams {
-            all_type_params,
-            all_type_params_ordered,
-            relevant_type_params: HashSet::new(),
-            associated_type_params_usage: HashMap::new(),
-        }
-    }
     pub fn process_for_bounds(self) -> Vec<Type> {
         let relevant_type_params = self.relevant_type_params;
         let associated_type_params_usage = self.associated_type_params_usage;
@@ -131,6 +120,21 @@ impl FindTyParams {
 
         new_predicates
     }
+}
+
+#[cfg(feature = "schema")]
+impl FindTyParams {
+    pub fn from_params<'a>(params: impl Iterator<Item = &'a Ident>) -> Self {
+        let all_type_params_ordered: Vec<Ident> = params.cloned().collect();
+        let all_type_params = all_type_params_ordered.clone().into_iter().collect();
+        FindTyParams {
+            all_type_params,
+            all_type_params_ordered,
+            relevant_type_params: HashSet::new(),
+            associated_type_params_usage: HashMap::new(),
+        }
+    }
+
     pub fn process_for_params(self) -> Vec<Ident> {
         let relevant_type_params = self.relevant_type_params;
         let associated_type_params_usage = self.associated_type_params_usage;

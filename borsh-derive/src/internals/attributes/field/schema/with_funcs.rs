@@ -36,6 +36,7 @@ pub(crate) static WITH_FUNCS_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>
         m
     });
 
+#[derive(Clone)]
 pub(crate) struct WithFuncs {
     pub declaration: Option<syn::ExprPath>,
     pub definitions: Option<syn::ExprPath>,

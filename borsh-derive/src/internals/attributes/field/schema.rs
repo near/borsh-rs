@@ -60,7 +60,7 @@ pub struct ParameterOverride {
 }
 
 #[allow(unused)]
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct Attributes {
     pub params: Option<Vec<ParameterOverride>>,
     pub with_funcs: Option<WithFuncs>,

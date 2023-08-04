@@ -1,9 +1,7 @@
-#![allow(unused)]
-// TODO: remove unused when unsplit is done
 use std::collections::BTreeMap;
 
 use once_cell::sync::Lazy;
-use syn::{meta::ParseNestedMeta, Attribute, ExprPath, WherePredicate};
+use syn::{meta::ParseNestedMeta, Attribute, WherePredicate};
 
 use self::bounds::BOUNDS_FIELD_PARSE_MAP;
 
@@ -67,7 +65,7 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
     m
 });
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct Attributes {
     pub bounds: Option<bounds::Bounds>,
     pub serialize_with: Option<syn::ExprPath>,
@@ -199,7 +197,7 @@ impl Attributes {
         true
     }
 
-    pub(crate) fn schema_declaration(&self) -> Option<ExprPath> {
+    pub(crate) fn schema_declaration(&self) -> Option<syn::ExprPath> {
         self.schema.as_ref().and_then(|schema| {
             schema
                 .with_funcs
@@ -208,7 +206,7 @@ impl Attributes {
         })
     }
 
-    pub(crate) fn schema_definitions(&self) -> Option<ExprPath> {
+    pub(crate) fn schema_definitions(&self) -> Option<syn::ExprPath> {
         self.schema.as_ref().and_then(|schema| {
             schema
                 .with_funcs
@@ -229,7 +227,10 @@ mod tests {
         Ok(borsh_attrs.bounds)
     }
 
-    use crate::internals::test_helpers::{debug_print_tokenizable, debug_print_vec_of_tokenizable};
+    use crate::internals::test_helpers::{
+        debug_print_tokenizable, debug_print_vec_of_tokenizable, local_insta_assert_debug_snapshot,
+        local_insta_assert_snapshot,
+    };
 
     use super::{bounds, Attributes};
 
@@ -249,7 +250,7 @@ mod tests {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
         };
-        insta::assert_debug_snapshot!(err);
+        local_insta_assert_debug_snapshot!(err);
     }
 
     #[test]
@@ -269,8 +270,8 @@ mod tests {
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
-        insta::assert_snapshot!(debug_print_vec_of_tokenizable(attrs.serialize));
-        insta::assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.serialize.clone()));
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
     }
 
     #[test]
@@ -290,8 +291,8 @@ mod tests {
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
-        insta::assert_snapshot!(debug_print_vec_of_tokenizable(attrs.serialize));
-        insta::assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.serialize.clone()));
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
     }
 
     #[test]
@@ -310,8 +311,8 @@ mod tests {
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
-        assert_eq!(attrs.serialize.unwrap().len(), 0);
-        insta::assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
+        assert_eq!(attrs.serialize.as_ref().unwrap().len(), 0);
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
     }
 
     #[test]
@@ -328,7 +329,7 @@ mod tests {
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
         assert!(attrs.serialize.is_none());
-        insta::assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
     }
 
     #[test]
@@ -347,7 +348,7 @@ mod tests {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
         };
-        insta::assert_debug_snapshot!(err);
+        local_insta_assert_debug_snapshot!(err);
     }
 
     #[test]
@@ -366,7 +367,7 @@ mod tests {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
         };
-        insta::assert_debug_snapshot!(err);
+        local_insta_assert_debug_snapshot!(err);
     }
 
     #[test]
@@ -385,7 +386,7 @@ mod tests {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
         };
-        insta::assert_debug_snapshot!(err);
+        local_insta_assert_debug_snapshot!(err);
     }
 
     #[test]
@@ -404,8 +405,8 @@ mod tests {
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
-        insta::assert_snapshot!(debug_print_tokenizable(attrs.serialize_with));
-        insta::assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
+        local_insta_assert_snapshot!(debug_print_tokenizable(attrs.serialize_with.as_ref()));
+        local_insta_assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
     }
 
     #[test]
@@ -427,7 +428,7 @@ mod tests {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
         };
-        insta::assert_debug_snapshot!(err);
+        local_insta_assert_debug_snapshot!(err);
     }
 }
 
@@ -436,8 +437,12 @@ mod tests {
 mod tests_schema {
     use crate::internals::{
         attributes::field::Attributes,
-        test_helpers::{debug_print_tokenizable, debug_print_vec_of_tokenizable},
+        test_helpers::{
+            debug_print_tokenizable, debug_print_vec_of_tokenizable,
+            local_insta_assert_debug_snapshot, local_insta_assert_snapshot,
+        },
     };
+
     use quote::quote;
     use syn::{Attribute, ItemStruct};
 
@@ -466,13 +471,13 @@ mod tests_schema {
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
 
         let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
-        let bounds = attrs.bounds.unwrap();
+        let bounds = attrs.bounds.clone().unwrap();
         assert!(bounds.serialize.is_none());
-        insta::assert_snapshot!(debug_print_vec_of_tokenizable(bounds.deserialize));
-        let schema = attrs.schema.unwrap();
-        insta::assert_snapshot!(debug_print_vec_of_tokenizable(schema.params));
-        insta::assert_snapshot!(debug_print_tokenizable(attrs.serialize_with));
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(bounds.deserialize));
         assert!(attrs.deserialize_with.is_none());
+        let schema = attrs.schema.clone().unwrap();
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(schema.params.clone()));
+        local_insta_assert_snapshot!(debug_print_tokenizable(attrs.serialize_with));
     }
 
     #[test]
@@ -493,7 +498,7 @@ mod tests_schema {
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
-        insta::assert_snapshot!(debug_print_vec_of_tokenizable(schema_attrs.unwrap().params));
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(schema_attrs.unwrap().params));
     }
     #[test]
     fn test_schema_params_parsing_error() {
@@ -516,7 +521,7 @@ mod tests_schema {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
         };
-        insta::assert_debug_snapshot!(err);
+        local_insta_assert_debug_snapshot!(err);
     }
 
     #[test]
@@ -540,7 +545,7 @@ mod tests_schema {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
         };
-        insta::assert_debug_snapshot!(err);
+        local_insta_assert_debug_snapshot!(err);
     }
 
     #[test]
@@ -561,7 +566,7 @@ mod tests_schema {
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
-        insta::assert_snapshot!(debug_print_vec_of_tokenizable(schema_attrs.unwrap().params));
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(schema_attrs.unwrap().params));
     }
     #[test]
     fn test_schema_params_parsing3() {
@@ -619,8 +624,8 @@ mod tests_schema {
         let schema = attrs.schema.unwrap();
         let with_funcs = schema.with_funcs.unwrap();
 
-        insta::assert_snapshot!(debug_print_tokenizable(with_funcs.declaration));
-        insta::assert_snapshot!(debug_print_tokenizable(with_funcs.definitions));
+        local_insta_assert_snapshot!(debug_print_tokenizable(with_funcs.declaration.clone()));
+        local_insta_assert_snapshot!(debug_print_tokenizable(with_funcs.definitions));
     }
 
     // both `declaration` and `definitions` have to be specified
@@ -644,6 +649,6 @@ mod tests_schema {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
         };
-        insta::assert_debug_snapshot!(err);
+        local_insta_assert_debug_snapshot!(err);
     }
 }
