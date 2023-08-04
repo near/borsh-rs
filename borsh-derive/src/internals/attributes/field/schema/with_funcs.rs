@@ -3,7 +3,11 @@ use std::collections::BTreeMap;
 use once_cell::sync::Lazy;
 use syn::meta::ParseNestedMeta;
 
-use crate::internals::attributes::{parsing::parse_lit_into, Symbol, DECLARATION, DEFINITIONS};
+use crate::internals::attributes::{
+    parsing::parse_lit_into,
+    schema_keys::{DECLARATION, DEFINITIONS},
+    Symbol,
+};
 
 pub(crate) enum Variants {
     Declaration(syn::ExprPath),

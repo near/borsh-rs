@@ -5,21 +5,29 @@ use std::collections::BTreeMap;
 use once_cell::sync::Lazy;
 use syn::{meta::ParseNestedMeta, Attribute, ExprPath, WherePredicate};
 
-use self::{bounds::BOUNDS_FIELD_PARSE_MAP, schema::SCHEMA_FIELD_PARSE_MAP};
+use self::bounds::BOUNDS_FIELD_PARSE_MAP;
 
 use super::{
     parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys, parse_lit_into},
-    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, PARAMS, SCHEMA, SERIALIZE_WITH, SKIP,
-    WITH_FUNCS,
+    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SERIALIZE_WITH, SKIP,
+};
+
+#[cfg(feature = "schema")]
+use {
+    super::schema_keys::{PARAMS, SCHEMA, WITH_FUNCS},
+    schema::SCHEMA_FIELD_PARSE_MAP,
 };
 
 pub mod bounds;
+#[cfg(feature = "schema")]
 pub mod schema;
+
 enum Variants {
-    Schema(schema::Attributes),
     Bounds(bounds::Bounds),
     SerializeWith(syn::ExprPath),
     DeserializeWith(syn::ExprPath),
+    #[cfg(feature = "schema")]
+    Schema(schema::Attributes),
 }
 
 type ParseFn = dyn Fn(Symbol, Symbol, &ParseNestedMeta) -> syn::Result<Variants> + Send + Sync;
@@ -34,12 +42,6 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
         Ok(Variants::Bounds(bounds_attributes))
     });
 
-    let f_schema: Box<ParseFn> = Box::new(|_attr_name, _meta_item_name, meta| {
-        let map_result = meta_get_by_symbol_keys(SCHEMA, meta, &SCHEMA_FIELD_PARSE_MAP)?;
-        let schema_attributes: schema::Attributes = map_result.into();
-        Ok(Variants::Schema(schema_attributes))
-    });
-
     let f_serialize_with: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
         parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta)
             .map(Variants::SerializeWith)
@@ -50,33 +52,37 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
             .map(Variants::DeserializeWith)
     });
 
+    #[cfg(feature = "schema")]
+    let f_schema: Box<ParseFn> = Box::new(|_attr_name, _meta_item_name, meta| {
+        let map_result = meta_get_by_symbol_keys(SCHEMA, meta, &SCHEMA_FIELD_PARSE_MAP)?;
+        let schema_attributes: schema::Attributes = map_result.into();
+        Ok(Variants::Schema(schema_attributes))
+    });
+
     m.insert(BOUND, f_bounds);
-    m.insert(SCHEMA, f_schema);
     m.insert(SERIALIZE_WITH, f_serialize_with);
     m.insert(DESERIALIZE_WITH, f_deserialize_with);
+    #[cfg(feature = "schema")]
+    m.insert(SCHEMA, f_schema);
     m
 });
 
 #[derive(Default)]
 pub(crate) struct Attributes {
     pub bounds: Option<bounds::Bounds>,
-    pub schema: Option<schema::Attributes>,
     pub serialize_with: Option<syn::ExprPath>,
     pub deserialize_with: Option<syn::ExprPath>,
+    #[cfg(feature = "schema")]
+    pub schema: Option<schema::Attributes>,
 }
 
 impl From<BTreeMap<Symbol, Variants>> for Attributes {
     fn from(mut map: BTreeMap<Symbol, Variants>) -> Self {
         let bounds = map.remove(&BOUND);
-        let schema = map.remove(&SCHEMA);
         let serialize_with = map.remove(&SERIALIZE_WITH);
         let deserialize_with = map.remove(&DESERIALIZE_WITH);
         let bounds = bounds.map(|variant| match variant {
             Variants::Bounds(bounds) => bounds,
-            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
-        });
-        let schema = schema.map(|variant| match variant {
-            Variants::Schema(schema) => schema,
             _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
 
@@ -89,11 +95,23 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
             Variants::DeserializeWith(deserialize_with) => deserialize_with,
             _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
+
+        #[cfg(feature = "schema")]
+        let schema = {
+            let schema = map.remove(&SCHEMA);
+            schema.map(|variant| match variant {
+                Variants::Schema(schema) => schema,
+                _ => {
+                    unreachable!("only one enum variant is expected to correspond to given map key")
+                }
+            })
+        };
         Self {
             bounds,
-            schema,
             serialize_with,
             deserialize_with,
+            #[cfg(feature = "schema")]
+            schema,
         }
     }
 }
@@ -108,6 +126,46 @@ impl Attributes {
                 ),
             ));
         }
+
+        #[cfg(feature = "schema")]
+        self.check_schema(skipped, attr)?;
+
+        Ok(())
+    }
+    pub(crate) fn parse(attrs: &[Attribute], skipped: bool) -> Result<Self, syn::Error> {
+        let attr = attrs.iter().find(|attr| attr.path() == BORSH);
+
+        let result: Self = if let Some(attr) = attr {
+            let result: Self = attr_get_by_symbol_keys(BORSH, attr, &BORSH_FIELD_PARSE_MAP)?.into();
+            result.check(skipped, attr)?;
+            result
+        } else {
+            BTreeMap::new().into()
+        };
+
+        Ok(result)
+    }
+    pub(crate) fn needs_bounds_derive(&self, ty: BoundType) -> bool {
+        let predicates = self.get_bounds(ty);
+        predicates.is_none()
+    }
+
+    fn get_bounds(&self, ty: BoundType) -> Option<Vec<WherePredicate>> {
+        let bounds = self.bounds.as_ref();
+        bounds.and_then(|bounds| match ty {
+            BoundType::Serialize => bounds.serialize.clone(),
+            BoundType::Deserialize => bounds.deserialize.clone(),
+        })
+    }
+    pub(crate) fn collect_bounds(&self, ty: BoundType) -> Vec<WherePredicate> {
+        let predicates = self.get_bounds(ty);
+        predicates.unwrap_or(vec![])
+    }
+}
+
+#[cfg(feature = "schema")]
+impl Attributes {
+    fn check_schema(&self, skipped: bool, attr: &Attribute) -> Result<(), syn::Error> {
         if let Some(ref schema) = self.schema {
             if skipped && schema.params.is_some() {
                 return Err(syn::Error::new_spanned(
@@ -131,23 +189,6 @@ impl Attributes {
         }
         Ok(())
     }
-    pub(crate) fn parse(attrs: &[Attribute], skipped: bool) -> Result<Self, syn::Error> {
-        let attr = attrs.iter().find(|attr| attr.path() == BORSH);
-
-        let result: Self = if let Some(attr) = attr {
-            let result: Self = attr_get_by_symbol_keys(BORSH, attr, &BORSH_FIELD_PARSE_MAP)?.into();
-            result.check(skipped, attr)?;
-            result
-        } else {
-            BTreeMap::new().into()
-        };
-
-        Ok(result)
-    }
-    pub(crate) fn needs_bounds_derive(&self, ty: BoundType) -> bool {
-        let predicates = self.get_bounds(ty);
-        predicates.is_none()
-    }
 
     pub(crate) fn needs_schema_params_derive(&self) -> bool {
         if let Some(ref schema) = self.schema {
@@ -157,6 +198,7 @@ impl Attributes {
         }
         true
     }
+
     pub(crate) fn schema_declaration(&self) -> Option<ExprPath> {
         self.schema.as_ref().and_then(|schema| {
             schema
@@ -174,24 +216,11 @@ impl Attributes {
                 .and_then(|with_funcs| with_funcs.definitions.clone())
         })
     }
-
-    fn get_bounds(&self, ty: BoundType) -> Option<Vec<WherePredicate>> {
-        let bounds = self.bounds.as_ref();
-        bounds.and_then(|bounds| match ty {
-            BoundType::Serialize => bounds.serialize.clone(),
-            BoundType::Deserialize => bounds.deserialize.clone(),
-        })
-    }
-    pub(crate) fn collect_bounds(&self, ty: BoundType) -> Vec<WherePredicate> {
-        let predicates = self.get_bounds(ty);
-        predicates.unwrap_or(vec![])
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use quote::{quote, ToTokens};
-    use std::fmt::Write;
+    use quote::quote;
     use syn::{Attribute, ItemStruct};
 
     fn parse_bounds(attrs: &[Attribute]) -> Result<Option<bounds::Bounds>, syn::Error> {
@@ -200,34 +229,9 @@ mod tests {
         Ok(borsh_attrs.bounds)
     }
 
-    fn parse_schema_attrs(attrs: &[Attribute]) -> Result<Option<schema::Attributes>, syn::Error> {
-        // #[borsh(schema(params = "..."))]
-        let borsh_attrs = Attributes::parse(attrs, false)?;
-        Ok(borsh_attrs.schema)
-    }
+    use crate::internals::test_helpers::{debug_print_tokenizable, debug_print_vec_of_tokenizable};
 
-    use super::{bounds, schema, Attributes};
-    fn debug_print_vec_of_tokenizable<T: ToTokens>(optional: Option<Vec<T>>) -> String {
-        let mut s = String::new();
-        if let Some(vec) = optional {
-            for element in vec {
-                writeln!(&mut s, "{}", element.to_token_stream()).unwrap();
-            }
-        } else {
-            write!(&mut s, "None").unwrap();
-        }
-        s
-    }
-
-    fn debug_print_tokenizable<T: ToTokens>(optional: Option<T>) -> String {
-        let mut s = String::new();
-        if let Some(type_) = optional {
-            writeln!(&mut s, "{}", type_.to_token_stream()).unwrap();
-        } else {
-            write!(&mut s, "None").unwrap();
-        }
-        s
-    }
+    use super::{bounds, Attributes};
 
     #[test]
     fn test_root_error() {
@@ -385,6 +389,93 @@ mod tests {
     }
 
     #[test]
+    fn test_ser_de_with_parsing1() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(
+                    serialize_with = "third_party_impl::serialize_third_party",
+                    deserialize_with = "third_party_impl::deserialize_third_party",
+                )]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
+        insta::assert_snapshot!(debug_print_tokenizable(attrs.serialize_with));
+        insta::assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
+    }
+
+    #[test]
+    fn test_root_bounds_and_wrong_key_combined() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(bound(deserialize = "K: Hash"),
+                        schhema(params = "T => <T as TraitName>::Associated, V => Vec<V>")
+                )]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+
+        let err = match Attributes::parse(&first_field.attrs, false) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        insta::assert_debug_snapshot!(err);
+    }
+}
+
+#[cfg(feature = "schema")]
+#[cfg(test)]
+mod tests_schema {
+    use crate::internals::{
+        attributes::field::Attributes,
+        test_helpers::{debug_print_tokenizable, debug_print_vec_of_tokenizable},
+    };
+    use quote::quote;
+    use syn::{Attribute, ItemStruct};
+
+    use super::schema;
+    fn parse_schema_attrs(attrs: &[Attribute]) -> Result<Option<schema::Attributes>, syn::Error> {
+        // #[borsh(schema(params = "..."))]
+        let borsh_attrs = Attributes::parse(attrs, false)?;
+        Ok(borsh_attrs.schema)
+    }
+
+    #[test]
+    fn test_root_bounds_and_params_combined() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(
+                    serialize_with = "third_party_impl::serialize_third_party",
+                    bound(deserialize = "K: Hash"),
+                    schema(params = "T => <T as TraitName>::Associated, V => Vec<V>")
+                )]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+
+        let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
+        let bounds = attrs.bounds.unwrap();
+        assert!(bounds.serialize.is_none());
+        insta::assert_snapshot!(debug_print_vec_of_tokenizable(bounds.deserialize));
+        let schema = attrs.schema.unwrap();
+        insta::assert_snapshot!(debug_print_vec_of_tokenizable(schema.params));
+        insta::assert_snapshot!(debug_print_tokenizable(attrs.serialize_with));
+        assert!(attrs.deserialize_with.is_none());
+    }
+
+    #[test]
     fn test_schema_params_parsing1() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct Parametrized<V, T>
@@ -510,26 +601,6 @@ mod tests {
     }
 
     #[test]
-    fn test_ser_de_with_parsing1() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
-            struct A {
-                #[borsh(
-                    serialize_with = "third_party_impl::serialize_third_party",
-                    deserialize_with = "third_party_impl::deserialize_third_party",
-                )]
-                x: u64,
-                y: String,
-            }
-        })
-        .unwrap();
-
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
-        insta::assert_snapshot!(debug_print_tokenizable(attrs.serialize_with));
-        insta::assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
-    }
-
-    #[test]
     fn test_schema_with_funcs_parsing() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct A {
@@ -570,55 +641,6 @@ mod tests {
         let attrs = Attributes::parse(&first_field.attrs, false);
 
         let err = match attrs {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
-        };
-        insta::assert_debug_snapshot!(err);
-    }
-
-    #[test]
-    fn test_root_bounds_and_params_combined() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
-            struct A {
-                #[borsh(
-                    serialize_with = "third_party_impl::serialize_third_party",
-                    bound(deserialize = "K: Hash"),
-                    schema(params = "T => <T as TraitName>::Associated, V => Vec<V>")
-                )]
-                x: u64,
-                y: String,
-            }
-        })
-        .unwrap();
-
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-
-        let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
-        let bounds = attrs.bounds.unwrap();
-        assert!(bounds.serialize.is_none());
-        insta::assert_snapshot!(debug_print_vec_of_tokenizable(bounds.deserialize));
-        let schema = attrs.schema.unwrap();
-        insta::assert_snapshot!(debug_print_vec_of_tokenizable(schema.params));
-        insta::assert_snapshot!(debug_print_tokenizable(attrs.serialize_with));
-        assert!(attrs.deserialize_with.is_none());
-    }
-
-    #[test]
-    fn test_root_bounds_and_wrong_key_combined() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
-            struct A {
-                #[borsh(bound(deserialize = "K: Hash"),
-                        schhema(params = "T => <T as TraitName>::Associated, V => Vec<V>")
-                )]
-                x: u64,
-                y: String,
-            }
-        })
-        .unwrap();
-
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-
-        let err = match Attributes::parse(&first_field.attrs, false) {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
         };

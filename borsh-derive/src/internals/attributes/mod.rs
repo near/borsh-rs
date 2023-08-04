@@ -24,20 +24,27 @@ pub const DESERIALIZE: Symbol = Symbol("deserialize", "deserialize = ...");
 pub const SKIP: Symbol = Symbol("borsh_skip", "borsh_skip");
 /// borsh_init - item-level only attribute  `BorshDeserialize` context
 pub const INIT: Symbol = Symbol("borsh_init", "borsh_init(...)");
-/// schema - sub-borsh nested meta, `BorshSchema` context
-pub const SCHEMA: Symbol = Symbol("schema", "schema(...)");
-/// params - sub-schema nested meta, field-level only attribute
-pub const PARAMS: Symbol = Symbol("params", "params = ...");
 /// serialize_with - sub-borsh nested meta, field-level only, `BorshSerialize` context
 pub const SERIALIZE_WITH: Symbol = Symbol("serialize_with", "serialize_with = ...");
 /// deserialize_with - sub-borsh nested meta, field-level only, `BorshDeserialize` context
 pub const DESERIALIZE_WITH: Symbol = Symbol("deserialize_with", "deserialize_with = ...");
-/// with_funcs - sub-schema nested meta, field-level only attribute
-pub const WITH_FUNCS: Symbol = Symbol("with_funcs", "with_funcs(...)");
-/// declaration - sub-with_funcs nested meta, field-level only attribute
-pub const DECLARATION: Symbol = Symbol("declaration", "declaration = ...");
-/// definitions - sub-with_funcs nested meta, field-level only attribute
-pub const DEFINITIONS: Symbol = Symbol("definitions", "definitions = ...");
+
+#[cfg(feature = "schema")]
+pub mod schema_keys {
+    use super::Symbol;
+
+    /// schema - sub-borsh nested meta, `BorshSchema` context
+    pub const SCHEMA: Symbol = Symbol("schema", "schema(...)");
+    /// params - sub-schema nested meta, field-level only attribute
+    pub const PARAMS: Symbol = Symbol("params", "params = ...");
+    /// serialize_with - sub-borsh nested meta, field-level only, `BorshSerialize` context
+    /// with_funcs - sub-schema nested meta, field-level only attribute
+    pub const WITH_FUNCS: Symbol = Symbol("with_funcs", "with_funcs(...)");
+    /// declaration - sub-with_funcs nested meta, field-level only attribute
+    pub const DECLARATION: Symbol = Symbol("declaration", "declaration = ...");
+    /// definitions - sub-with_funcs nested meta, field-level only attribute
+    pub const DEFINITIONS: Symbol = Symbol("definitions", "definitions = ...");
+}
 
 #[derive(Clone, Copy)]
 pub(crate) enum BoundType {

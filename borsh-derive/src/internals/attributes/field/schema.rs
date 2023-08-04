@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use crate::internals::attributes::{
     parsing::{meta_get_by_symbol_keys, parse_lit_into_vec},
-    Symbol, DECLARATION, DEFINITIONS, PARAMS, WITH_FUNCS,
+    schema_keys::{DECLARATION, DEFINITIONS, PARAMS, WITH_FUNCS},
+    Symbol,
 };
 use once_cell::sync::Lazy;
 use syn::{meta::ParseNestedMeta, Ident, Token, Type};
