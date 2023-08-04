@@ -240,25 +240,6 @@ mod tests {
     use super::{bounds, Attributes};
 
     #[test]
-    fn test_root_error() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
-            struct A {
-                #[borsh(boons)]
-                x: u64,
-                y: String,
-            }
-        })
-        .unwrap();
-
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let err = match Attributes::parse(&first_field.attrs, false) {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
-        };
-        local_insta_assert_debug_snapshot!(err);
-    }
-
-    #[test]
     fn test_bounds_parsing1() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct A {
@@ -412,28 +393,6 @@ mod tests {
         let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
         local_insta_assert_snapshot!(debug_print_tokenizable(attrs.serialize_with.as_ref()));
         local_insta_assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
-    }
-
-    #[test]
-    fn test_root_bounds_and_wrong_key_combined() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
-            struct A {
-                #[borsh(bound(deserialize = "K: Hash"),
-                        schhema(params = "T => <T as TraitName>::Associated, V => Vec<V>")
-                )]
-                x: u64,
-                y: String,
-            }
-        })
-        .unwrap();
-
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-
-        let err = match Attributes::parse(&first_field.attrs, false) {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
-        };
-        local_insta_assert_debug_snapshot!(err);
     }
 }
 
@@ -651,6 +610,47 @@ mod tests_schema {
         let attrs = Attributes::parse(&first_field.attrs, false);
 
         let err = match attrs {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        local_insta_assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn test_root_error() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(boons)]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let err = match Attributes::parse(&first_field.attrs, false) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        local_insta_assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn test_root_bounds_and_wrong_key_combined() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(bound(deserialize = "K: Hash"),
+                        schhema(params = "T => <T as TraitName>::Associated, V => Vec<V>")
+                )]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+
+        let err = match Attributes::parse(&first_field.attrs, false) {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
         };
