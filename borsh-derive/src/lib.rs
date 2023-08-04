@@ -12,13 +12,14 @@ use proc_macro_crate::FoundCrate;
 use syn::{parse_macro_input, DeriveInput, Ident, ItemEnum, ItemStruct, ItemUnion};
 
 mod internals;
+//  by convention, local to borsh-derive crate, imports from proc_macro (1) are not allowed in internal module or in any of its submodules.
 
-use crate::internals::attributes::check_item_attributes;
+use crate::internals::attributes::item::check_item_attributes;
 
-use internals::deserialize::{enum_de, struct_de, union_de};
 #[cfg(feature = "schema")]
-use internals::schema::{process_enum, process_struct};
-use internals::serialize::{enum_ser, struct_ser, union_ser};
+use internals::schema;
+use internals::{deserialize, serialize};
+
 /**
 # derive proc-macro for `borsh::ser::BorshSerialize` trait
 
@@ -242,11 +243,11 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     }
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        struct_ser(&input, cratename)
+        serialize::structs::process(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        enum_ser(&input, cratename)
+        serialize::enums::process(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
-        union_ser(&input, cratename)
+        serialize::unions::process(&input, cratename)
     } else {
         // Derive macros can only be defined on structs, enums, and unions.
         unreachable!()
@@ -536,11 +537,11 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     }
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        struct_de(&input, cratename)
+        deserialize::structs::process(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        enum_de(&input, cratename)
+        deserialize::enums::process(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
-        union_de(&input, cratename)
+        deserialize::unions::process(&input, cratename)
     } else {
         // Derive macros can only be defined on structs, enums, and unions.
         unreachable!()
@@ -751,9 +752,9 @@ pub fn borsh_schema(input: TokenStream) -> TokenStream {
     let cratename = Ident::new(name, Span::call_site());
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        process_struct(&input, cratename)
+        schema::structs::process(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        process_enum(&input, cratename)
+        schema::enums::process(&input, cratename)
     } else if syn::parse::<ItemUnion>(input).is_ok() {
         Err(syn::Error::new(
             Span::call_site(),

@@ -113,6 +113,11 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
         }
     }
 }
+
+pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
+    attrs.iter().any(|attr| attr.path() == SKIP)
+}
+
 impl Attributes {
     fn check(&self, skipped: bool, attr: &Attribute) -> Result<(), syn::Error> {
         if skipped && (self.serialize_with.is_some() || self.deserialize_with.is_some()) {

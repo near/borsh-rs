@@ -1,0 +1,22 @@
+---
+source: borsh-derive/src/internals/deserialize/structs/mod.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+impl<K, V, U> borsh::de::BorshDeserialize for G<K, V, U>
+where
+    K: borsh::de::BorshDeserialize,
+    V: borsh::de::BorshDeserialize,
+    U: core::default::Default,
+{
+    fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
+        reader: &mut R,
+    ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
+        Ok(
+            Self(
+                borsh::BorshDeserialize::deserialize_reader(reader)?,
+                core::default::Default::default(),
+            ),
+        )
+    }
+}
+

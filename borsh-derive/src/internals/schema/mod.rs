@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{
-    punctuated::Punctuated, token::Comma, Attribute, GenericParam, Generics, Ident, Type,
-    WherePredicate,
+    punctuated::Punctuated, token::Comma, Attribute, Field, Fields, GenericParam, Generics, Ident,
+    Type, WherePredicate,
 };
 
 use crate::internals::{
@@ -12,11 +12,13 @@ use crate::internals::{
     generics::type_contains_some_param,
 };
 
-mod r#enum;
-mod r#struct;
+use crate::internals::{
+    attributes::field, attributes::field::contains_skip,
+    attributes::field::schema::ParameterOverride, generics::FindTyParams,
+};
 
-pub use r#enum::process_enum;
-pub use r#struct::process_struct;
+pub mod enums;
+pub mod structs;
 
 pub fn filter_field_attrs(
     attrs: impl Iterator<Item = Attribute>,
@@ -87,5 +89,69 @@ pub fn filter_used_params(
         params: new_params,
         where_clause,
         ..generics.clone()
+    }
+}
+
+fn visit_field(field: &Field, visitor: &mut FindTyParams) -> syn::Result<()> {
+    let skipped = contains_skip(&field.attrs);
+    let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+    let needs_schema_params_derive = parsed.needs_schema_params_derive();
+    let schema_attrs = parsed.schema;
+    if !skipped {
+        if needs_schema_params_derive {
+            visitor.visit_field(field);
+        }
+        // there's no need to override params when field is skipped, because when field is skipped
+        // derive for it doesn't attempt to add any bounds, unlike `BorshDeserialize`, which
+        // adds `Default` bound on any type parameters in skipped field
+
+        if let Some(schema_attrs) = schema_attrs {
+            if let Some(schema_params) = schema_attrs.params {
+                for ParameterOverride {
+                    order_param,
+                    override_type,
+                    ..
+                } in schema_params
+                {
+                    visitor.param_associated_type_insert(order_param, override_type);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// check param usage in fields with respect to `borsh_skip` attribute usage
+pub fn visit_struct_fields(fields: &Fields, visitor: &mut FindTyParams) -> syn::Result<()> {
+    match &fields {
+        Fields::Named(fields) => {
+            for field in &fields.named {
+                visit_field(field, visitor)?;
+            }
+        }
+        Fields::Unnamed(fields) => {
+            for field in &fields.unnamed {
+                visit_field(field, visitor)?;
+            }
+        }
+        Fields::Unit => {}
+    }
+    Ok(())
+}
+
+/// check param usage in fields
+pub fn visit_struct_fields_unconditional(fields: &Fields, visitor: &mut FindTyParams) {
+    match &fields {
+        Fields::Named(fields) => {
+            for field in &fields.named {
+                visitor.visit_field(field);
+            }
+        }
+        Fields::Unnamed(fields) => {
+            for field in &fields.unnamed {
+                visitor.visit_field(field);
+            }
+        }
+        Fields::Unit => {}
     }
 }

@@ -1,0 +1,50 @@
+---
+source: borsh-derive/src/internals/schema/enums/mod.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+impl<B, A> borsh::BorshSchema for Side<B, A>
+where
+    A: Display + Debug,
+    B: Display + Debug,
+    B: borsh::BorshSchema,
+    A: borsh::BorshSchema,
+{
+    fn declaration() -> borsh::schema::Declaration {
+        let params = borsh::__private::maybestd::vec![
+            < B > ::declaration(), < A > ::declaration()
+        ];
+        format!(r#"{}<{}>"#, "Side", params.join(", "))
+    }
+    fn add_definitions_recursively(
+        definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
+            borsh::schema::Declaration,
+            borsh::schema::Definition,
+        >,
+    ) {
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        struct SideLeft<A>(
+            A,
+        )
+        where
+            A: Display + Debug;
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        struct SideRight<B>(
+            B,
+        )
+        where
+            B: Display + Debug;
+        <SideLeft<A> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <SideRight<B> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        let variants = borsh::__private::maybestd::vec![
+            ("Left".to_string(), < SideLeft < A > > ::declaration()), ("Right"
+            .to_string(), < SideRight < B > > ::declaration())
+        ];
+        let definition = borsh::schema::Definition::Enum {
+            variants,
+        };
+        Self::add_definition(Self::declaration(), definition, definitions);
+    }
+}
+

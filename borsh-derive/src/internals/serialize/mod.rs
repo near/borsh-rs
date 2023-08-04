@@ -1,7 +1,26 @@
-mod r#enum;
-mod r#struct;
-mod union;
+pub mod enums;
+pub mod structs;
+pub mod unions;
 
-pub use r#enum::enum_ser;
-pub use r#struct::struct_ser;
-pub use union::union_ser;
+use proc_macro2::TokenStream as TokenStream2;
+use quote::{quote, ToTokens};
+pub use structs::process;
+use syn::{ExprPath, Ident};
+
+/// function which computes derive output [proc_macro2::TokenStream]
+/// of code, which serializes single field
+pub(crate) fn field_serialization_output<T: ToTokens>(
+    arg: &T,
+    cratename: &Ident,
+    serialize_with: Option<ExprPath>,
+) -> TokenStream2 {
+    if let Some(func) = serialize_with {
+        quote! {
+            #func(#arg, writer)?;
+        }
+    } else {
+        quote! {
+            #cratename::BorshSerialize::serialize(#arg, writer)?;
+        }
+    }
+}
