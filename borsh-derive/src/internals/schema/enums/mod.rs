@@ -3,24 +3,22 @@ use quote::{quote, ToTokens};
 use std::collections::HashSet;
 use syn::{Fields, Ident, ItemEnum, ItemStruct, Path, Visibility, WhereClause};
 
-use crate::internals::{
-    generics::{compute_predicates, without_defaults, FindTyParams},
-    schema::filter_field_attrs,
-    schema::{
-        declaration, filter_used_params, visit_struct_fields, visit_struct_fields_unconditional,
-    },
-};
+use crate::internals::generics;
+use crate::internals::schema;
+
 fn transform_variant_fields(mut input: Fields) -> Fields {
     match input {
         Fields::Named(ref mut named) => {
             for field in &mut named.named {
-                let field_attrs = filter_field_attrs(field.attrs.drain(..)).collect::<Vec<_>>();
+                let field_attrs =
+                    schema::filter_field_attrs(field.attrs.drain(..)).collect::<Vec<_>>();
                 field.attrs = field_attrs;
             }
         }
         Fields::Unnamed(ref mut unnamed) => {
             for field in &mut unnamed.unnamed {
-                let field_attrs = filter_field_attrs(field.attrs.drain(..)).collect::<Vec<_>>();
+                let field_attrs =
+                    schema::filter_field_attrs(field.attrs.drain(..)).collect::<Vec<_>>();
                 field.attrs = field_attrs;
             }
         }
@@ -32,7 +30,7 @@ fn transform_variant_fields(mut input: Fields) -> Fields {
 pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let name_str = name.to_token_stream().to_string();
-    let generics = without_defaults(&input.generics);
+    let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let mut where_clause = where_clause.map_or_else(
@@ -42,7 +40,7 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         },
         Clone::clone,
     );
-    let mut enum_schema_params_visitor = FindTyParams::new(&generics);
+    let mut enum_schema_params_visitor = generics::FindTyParams::new(&generics);
 
     // Generate function that returns the schema for variants.
     // Definitions of the variants.
@@ -57,15 +55,19 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         let full_variant_ident = Ident::new(full_variant_name_str.as_str(), Span::call_site());
         let transformed_fields = transform_variant_fields(variant.fields.clone());
 
-        let mut enum_variant_schema_params_visitor = FindTyParams::new(&generics);
-        visit_struct_fields(&variant.fields, &mut enum_schema_params_visitor)?;
-        visit_struct_fields_unconditional(&variant.fields, &mut enum_variant_schema_params_visitor);
+        let mut enum_variant_schema_params_visitor = generics::FindTyParams::new(&generics);
+        schema::visit_struct_fields(&variant.fields, &mut enum_schema_params_visitor)?;
+        schema::visit_struct_fields_unconditional(
+            &variant.fields,
+            &mut enum_variant_schema_params_visitor,
+        );
 
         let variant_not_skipped_params = enum_variant_schema_params_visitor
             .process_for_params()
             .into_iter()
             .collect::<HashSet<_>>();
-        let inner_struct_generics = filter_used_params(&generics, variant_not_skipped_params);
+        let inner_struct_generics =
+            schema::filter_used_params(&generics, variant_not_skipped_params);
 
         let (_impl_generics, inner_struct_ty_generics, _where_clause) =
             inner_struct_generics.split_for_impl();
@@ -102,13 +104,13 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         }
     };
     let trait_path: Path = syn::parse2(quote! { #cratename::BorshSchema }).unwrap();
-    let predicates = compute_predicates(
+    let predicates = generics::compute_predicates(
         enum_schema_params_visitor.clone().process_for_bounds(),
         &trait_path,
     );
     where_clause.predicates.extend(predicates);
 
-    let declaration = declaration(
+    let declaration = schema::declaration(
         &name_str,
         cratename.clone(),
         enum_schema_params_visitor.process_for_bounds(),

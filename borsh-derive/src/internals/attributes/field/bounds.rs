@@ -5,14 +5,14 @@ use syn::{meta::ParseNestedMeta, WherePredicate};
 use crate::internals::attributes::{parsing::parse_lit_into_vec, Symbol, DESERIALIZE, SERIALIZE};
 use once_cell::sync::Lazy;
 
-pub(crate) enum Variants {
+pub enum Variants {
     Serialize(Vec<WherePredicate>),
     Deserialize(Vec<WherePredicate>),
 }
 
 type ParseFn = dyn Fn(Symbol, Symbol, &ParseNestedMeta) -> syn::Result<Variants> + Send + Sync;
 
-pub(crate) static BOUNDS_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|| {
+pub static BOUNDS_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|| {
     let mut m = BTreeMap::new();
     // assigning closure `let f = |args| {...};` and boxing closure `let f: Box<ParseFn> = Box::new(f);`
     // on 2 separate lines doesn't work
@@ -30,7 +30,7 @@ pub(crate) static BOUNDS_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> =
 });
 
 #[derive(Default, Clone)]
-pub(crate) struct Bounds {
+pub struct Bounds {
     pub serialize: Option<Vec<WherePredicate>>,
     pub deserialize: Option<Vec<WherePredicate>>,
 }

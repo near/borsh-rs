@@ -12,14 +12,14 @@ use self::with_funcs::{WithFuncs, WITH_FUNCS_FIELD_PARSE_MAP};
 
 pub mod with_funcs;
 
-pub(crate) enum Variants {
+pub enum Variants {
     Params(Vec<ParameterOverride>),
     WithFuncs(WithFuncs),
 }
 
 type ParseFn = dyn Fn(Symbol, Symbol, &ParseNestedMeta) -> syn::Result<Variants> + Send + Sync;
 
-pub(crate) static SCHEMA_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|| {
+pub static SCHEMA_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|| {
     let mut m = BTreeMap::new();
     // assigning closure `let f = |args| {...};` and boxing closure `let f: Box<ParseFn> = Box::new(f);`
     // on 2 separate lines doesn't work

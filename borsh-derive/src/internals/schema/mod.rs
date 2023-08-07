@@ -12,10 +12,7 @@ use crate::internals::{
     generics::type_contains_some_param,
 };
 
-use crate::internals::{
-    attributes::field, attributes::field::contains_skip,
-    attributes::field::schema::ParameterOverride, generics::FindTyParams,
-};
+use crate::internals::{attributes::field, attributes::field::schema, generics};
 
 pub mod enums;
 pub mod structs;
@@ -92,8 +89,8 @@ pub fn filter_used_params(
     }
 }
 
-fn visit_field(field: &Field, visitor: &mut FindTyParams) -> syn::Result<()> {
-    let skipped = contains_skip(&field.attrs);
+fn visit_field(field: &Field, visitor: &mut generics::FindTyParams) -> syn::Result<()> {
+    let skipped = field::contains_skip(&field.attrs);
     let parsed = field::Attributes::parse(&field.attrs, skipped)?;
     let needs_schema_params_derive = parsed.needs_schema_params_derive();
     let schema_attrs = parsed.schema;
@@ -107,7 +104,7 @@ fn visit_field(field: &Field, visitor: &mut FindTyParams) -> syn::Result<()> {
 
         if let Some(schema_attrs) = schema_attrs {
             if let Some(schema_params) = schema_attrs.params {
-                for ParameterOverride {
+                for schema::ParameterOverride {
                     order_param,
                     override_type,
                     ..
@@ -122,7 +119,10 @@ fn visit_field(field: &Field, visitor: &mut FindTyParams) -> syn::Result<()> {
 }
 
 /// check param usage in fields with respect to `borsh_skip` attribute usage
-pub fn visit_struct_fields(fields: &Fields, visitor: &mut FindTyParams) -> syn::Result<()> {
+pub fn visit_struct_fields(
+    fields: &Fields,
+    visitor: &mut generics::FindTyParams,
+) -> syn::Result<()> {
     match &fields {
         Fields::Named(fields) => {
             for field in &fields.named {
@@ -140,7 +140,7 @@ pub fn visit_struct_fields(fields: &Fields, visitor: &mut FindTyParams) -> syn::
 }
 
 /// check param usage in fields
-pub fn visit_struct_fields_unconditional(fields: &Fields, visitor: &mut FindTyParams) {
+pub fn visit_struct_fields_unconditional(fields: &Fields, visitor: &mut generics::FindTyParams) {
     match &fields {
         Fields::Named(fields) => {
             for field in &fields.named {

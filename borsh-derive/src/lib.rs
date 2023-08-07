@@ -11,8 +11,8 @@ use proc_macro_crate::crate_name;
 use proc_macro_crate::FoundCrate;
 use syn::{parse_macro_input, DeriveInput, Ident, ItemEnum, ItemStruct, ItemUnion};
 
-mod internals;
 //  by convention, local to borsh-derive crate, imports from proc_macro (1) are not allowed in internal module or in any of its submodules.
+mod internals;
 
 use crate::internals::attributes::item::check_item_attributes;
 
@@ -605,7 +605,7 @@ struct A {
 
 ###### syntax
 
-Attribute takes literal string value, which is a comma-separated list of ParameterOverride-s, which may be empty.
+Attribute takes literal string value, which is a comma-separated list of `ParameterOverride`-s, which may be empty.
 
 ###### usage
 It may be used in order to:
@@ -614,7 +614,7 @@ It may be used in order to:
 declaration parameters automatically.
 2. remove parameters, which do not take part in serialization/deserialization, from bounded ones and from declaration parameters.
 
-ParameterOverride describes an entry like `order_param => override_type`,
+`ParameterOverride` describes an entry like `order_param => override_type`,
 
 e.g. `K => <K as TraitName>::Associated`.
 

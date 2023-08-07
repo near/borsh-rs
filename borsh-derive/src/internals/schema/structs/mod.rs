@@ -2,18 +2,14 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens};
 use syn::{ExprPath, Fields, Ident, ItemStruct, Path, Type, WhereClause};
 
-use crate::internals::{
-    attributes::field,
-    attributes::field::contains_skip,
-    generics::{compute_predicates, without_defaults, FindTyParams},
-    schema::declaration,
-    schema::visit_struct_fields,
-};
+use crate::internals::attributes::field;
+use crate::internals::generics;
+use crate::internals::schema;
 
 /// function which computes derive output [proc_macro2::TokenStream]
 /// of code, which computes declaration of a single field, which is later added to
 /// the struct's definition as a whole  
-pub(crate) fn field_declaration_output(
+pub fn field_declaration_output(
     field_name: Option<&String>,
     field_type: &Type,
     cratename: &Ident,
@@ -37,7 +33,7 @@ pub(crate) fn field_declaration_output(
 
 /// function which computes derive output [proc_macro2::TokenStream]
 /// of code, which adds definitions of a field to the output `definitions: &mut BTreeMap`
-pub(crate) fn field_definitions_output(
+pub fn field_definitions_output(
     field_type: &Type,
     cratename: &Ident,
     definitions_override: Option<ExprPath>,
@@ -56,7 +52,7 @@ pub(crate) fn field_definitions_output(
 pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let name_str = name.to_token_stream().to_string();
-    let generics = without_defaults(&input.generics);
+    let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let mut where_clause = where_clause.map_or_else(
@@ -67,17 +63,17 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
         Clone::clone,
     );
 
-    let mut schema_params_visitor = FindTyParams::new(&generics);
+    let mut schema_params_visitor = generics::FindTyParams::new(&generics);
 
     // Generate function that returns the schema of required types.
     let mut fields_vec = vec![];
     let mut struct_fields = TokenStream2::new();
     let mut add_definitions_recursively_rec = TokenStream2::new();
-    visit_struct_fields(&input.fields, &mut schema_params_visitor)?;
+    schema::visit_struct_fields(&input.fields, &mut schema_params_visitor)?;
     match &input.fields {
         Fields::Named(fields) => {
             for field in &fields.named {
-                let skipped = contains_skip(&field.attrs);
+                let skipped = field::contains_skip(&field.attrs);
                 let parsed = field::Attributes::parse(&field.attrs, skipped)?;
                 if skipped {
                     continue;
@@ -104,7 +100,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
         }
         Fields::Unnamed(fields) => {
             for field in &fields.unnamed {
-                let skipped = contains_skip(&field.attrs);
+                let skipped = field::contains_skip(&field.attrs);
                 let parsed = field::Attributes::parse(&field.attrs, skipped)?;
                 if skipped {
                     continue;
@@ -151,14 +147,14 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
     };
 
     let trait_path: Path = syn::parse2(quote! { #cratename::BorshSchema }).unwrap();
-    let predicates = compute_predicates(
+    let predicates = generics::compute_predicates(
         schema_params_visitor.clone().process_for_bounds(),
         &trait_path,
     );
     where_clause.predicates.extend(predicates);
 
     // Generate function that returns the name of the type.
-    let declaration = declaration(
+    let declaration = schema::declaration(
         &name_str,
         cratename.clone(),
         schema_params_visitor.process_for_bounds(),

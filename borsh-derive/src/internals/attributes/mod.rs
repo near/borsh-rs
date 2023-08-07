@@ -46,7 +46,7 @@ pub mod schema_keys {
 }
 
 #[derive(Clone, Copy)]
-pub(crate) enum BoundType {
+pub enum BoundType {
     Serialize,
     Deserialize,
 }

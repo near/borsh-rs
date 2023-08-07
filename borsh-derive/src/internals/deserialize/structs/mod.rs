@@ -2,17 +2,13 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{Fields, Ident, ItemStruct, Path, WhereClause};
 
-use crate::internals::{
-    attributes::field::contains_skip,
-    attributes::item::contains_initialize_with,
-    attributes::{field, BoundType},
-    deserialize::field_deserialization_output,
-    generics::{compute_predicates, without_defaults, FindTyParams},
-};
+use crate::internals::attributes::{field, item, BoundType};
+use crate::internals::deserialize;
+use crate::internals::generics;
 
 pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
-    let generics = without_defaults(&input.generics);
+    let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let mut where_clause = where_clause.map_or_else(
         || WhereClause {
@@ -23,15 +19,15 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
     );
 
     let mut override_predicates = vec![];
-    let mut deserialize_params_visitor = FindTyParams::new(&generics);
-    let mut default_params_visitor = FindTyParams::new(&generics);
+    let mut deserialize_params_visitor = generics::FindTyParams::new(&generics);
+    let mut default_params_visitor = generics::FindTyParams::new(&generics);
 
-    let init_method = contains_initialize_with(&input.attrs);
+    let init_method = item::contains_initialize_with(&input.attrs);
     let return_value = match &input.fields {
         Fields::Named(fields) => {
             let mut body = TokenStream2::new();
             for field in &fields.named {
-                let skipped = contains_skip(&field.attrs);
+                let skipped = field::contains_skip(&field.attrs);
                 let parsed = field::Attributes::parse(&field.attrs, skipped)?;
 
                 override_predicates.extend(parsed.collect_bounds(BoundType::Deserialize));
@@ -49,7 +45,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
                     if needs_bounds_derive {
                         deserialize_params_visitor.visit_field(field);
                     }
-                    field_deserialization_output(
+                    deserialize::field_deserialization_output(
                         Some(field_name),
                         &cratename,
                         parsed.deserialize_with,
@@ -64,7 +60,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
         Fields::Unnamed(fields) => {
             let mut body = TokenStream2::new();
             for (_field_idx, field) in fields.unnamed.iter().enumerate() {
-                let skipped = contains_skip(&field.attrs);
+                let skipped = field::contains_skip(&field.attrs);
                 let parsed = field::Attributes::parse(&field.attrs, skipped)?;
                 override_predicates.extend(parsed.collect_bounds(BoundType::Deserialize));
                 let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
@@ -78,7 +74,11 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
                     if needs_bounds_derive {
                         deserialize_params_visitor.visit_field(field);
                     }
-                    field_deserialization_output(None, &cratename, parsed.deserialize_with)
+                    deserialize::field_deserialization_output(
+                        None,
+                        &cratename,
+                        parsed.deserialize_with,
+                    )
                 };
                 body.extend(delta);
             }
@@ -94,11 +94,11 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
     };
     let de_trait_path: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
     let default_trait_path: Path = syn::parse2(quote! { core::default::Default }).unwrap();
-    let de_predicates = compute_predicates(
+    let de_predicates = generics::compute_predicates(
         deserialize_params_visitor.process_for_bounds(),
         &de_trait_path,
     );
-    let default_predicates = compute_predicates(
+    let default_predicates = generics::compute_predicates(
         default_params_visitor.process_for_bounds(),
         &default_trait_path,
     );

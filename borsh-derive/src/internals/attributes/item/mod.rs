@@ -38,7 +38,7 @@ pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStre
     Ok(())
 }
 
-pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
+pub fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
     if input.variants.len() > 256 {
         return Err(syn::Error::new(
             input.span(),
