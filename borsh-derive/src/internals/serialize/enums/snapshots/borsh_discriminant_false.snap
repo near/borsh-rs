@@ -1,0 +1,30 @@
+---
+source: borsh-derive/src/internals/serialize/enums/mod.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+impl borsh::ser::BorshSerialize for X {
+    fn serialize<W: borsh::__private::maybestd::io::Write>(
+        &self,
+        writer: &mut W,
+    ) -> ::core::result::Result<(), borsh::__private::maybestd::io::Error> {
+        let variant_idx: u8 = match self {
+            X::A => 0u8,
+            X::B => 1u8,
+            X::C => 2u8,
+            X::D => 3u8,
+            X::E => 4u8,
+            X::F => 5u8,
+        };
+        writer.write_all(&variant_idx.to_le_bytes())?;
+        match self {
+            X::A => {}
+            X::B => {}
+            X::C => {}
+            X::D => {}
+            X::E => {}
+            X::F => {}
+        }
+        Ok(())
+    }
+}
+

@@ -1,3 +1,9 @@
+#![recursion_limit = "128"]
+#![cfg_attr(
+    feature = "force_exhaustive_checks",
+    feature(non_exhaustive_omitted_patterns_lint)
+)]
+
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -5,9 +11,14 @@ use proc_macro_crate::crate_name;
 use proc_macro_crate::FoundCrate;
 use syn::{parse_macro_input, DeriveInput, Ident, ItemEnum, ItemStruct, ItemUnion};
 
-use borsh_derive_internal::*;
+///  by convention, local to borsh-derive crate, imports from proc_macro (1) are not allowed in `internals` module or in any of its submodules.
+mod internals;
+
+use crate::internals::attributes::item::check_item_attributes;
+
 #[cfg(feature = "schema")]
-use borsh_schema_derive_internal::*;
+use internals::schema;
+use internals::{deserialize, serialize};
 
 /**
 # derive proc-macro for `borsh::ser::BorshSerialize` trait
@@ -232,11 +243,11 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     }
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        struct_ser(&input, cratename)
+        serialize::structs::process(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        enum_ser(&input, cratename)
+        serialize::enums::process(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
-        union_ser(&input, cratename)
+        serialize::unions::process(&input, cratename)
     } else {
         // Derive macros can only be defined on structs, enums, and unions.
         unreachable!()
@@ -526,11 +537,11 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     }
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        struct_de(&input, cratename)
+        deserialize::structs::process(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        enum_de(&input, cratename)
+        deserialize::enums::process(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
-        union_de(&input, cratename)
+        deserialize::unions::process(&input, cratename)
     } else {
         // Derive macros can only be defined on structs, enums, and unions.
         unreachable!()
@@ -594,7 +605,7 @@ struct A {
 
 ###### syntax
 
-Attribute takes literal string value, which is a comma-separated list of [ParameterOverride](borsh_derive_internal::attribute_helpers::field::schema::ParameterOverride)-s, which may be empty.
+Attribute takes literal string value, which is a comma-separated list of `ParameterOverride`-s, which may be empty.
 
 ###### usage
 It may be used in order to:
@@ -603,7 +614,7 @@ It may be used in order to:
 declaration parameters automatically.
 2. remove parameters, which do not take part in serialization/deserialization, from bounded ones and from declaration parameters.
 
-[ParameterOverride](borsh_derive_internal::attribute_helpers::field::schema::ParameterOverride) describes an entry like `order_param => override_type`,
+`ParameterOverride` describes an entry like `order_param => override_type`,
 
 e.g. `K => <K as TraitName>::Associated`.
 
@@ -741,9 +752,9 @@ pub fn borsh_schema(input: TokenStream) -> TokenStream {
     let cratename = Ident::new(name, Span::call_site());
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        process_struct(&input, cratename)
+        schema::structs::process(&input, cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        process_enum(&input, cratename)
+        schema::enums::process(&input, cratename)
     } else if syn::parse::<ItemUnion>(input).is_ok() {
         Err(syn::Error::new(
             Span::call_site(),

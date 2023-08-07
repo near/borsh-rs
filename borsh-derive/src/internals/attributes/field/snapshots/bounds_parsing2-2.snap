@@ -1,0 +1,7 @@
+---
+source: borsh-derive/src/internals/attributes/field/mod.rs
+expression: debug_print_vec_of_tokenizable(attrs.deserialize)
+---
+K : Hash + Eq + borsh :: de :: BorshDeserialize
+V : borsh :: de :: BorshDeserialize
+

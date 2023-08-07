@@ -1,6 +1,0 @@
----
-source: borsh-derive-internal/src/attribute_helpers/field.rs
-expression: debug_print_bounds(schema_params)
----
-T => < T as TraitName > :: Associated
-

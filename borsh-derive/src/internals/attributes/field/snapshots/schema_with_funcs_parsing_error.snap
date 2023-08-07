@@ -1,0 +1,7 @@
+---
+source: borsh-derive/src/internals/attributes/field/mod.rs
+expression: err
+---
+Error(
+    "both `declaration = ...` and `definitions = ...` have to be specified at the same time",
+)
