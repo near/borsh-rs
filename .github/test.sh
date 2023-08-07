@@ -16,5 +16,5 @@ cargo test --no-default-features --features derive,schema
 cargo test --no-default-features --test test_rc --features rc
 cargo test --no-default-features --features hashbrown
 popd
-pushd borsh-derive; 
-cargo t --features schema
+pushd borsh-derive
+cargo test --features schema
