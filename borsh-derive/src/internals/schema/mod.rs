@@ -3,31 +3,16 @@ use std::collections::HashSet;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{
-    punctuated::Punctuated, token::Comma, Attribute, Field, Fields, GenericParam, Generics, Ident,
-    Type, WherePredicate,
+    punctuated::Punctuated, token::Comma, Field, Fields, GenericParam, Generics, Ident, Type,
+    WherePredicate,
 };
 
-use crate::internals::{
-    attributes::{BORSH, SKIP},
-    generics::type_contains_some_param,
-};
-
-use crate::internals::{attributes::field, attributes::field::schema, generics};
+use crate::internals::{attributes::field, generics};
 
 pub mod enums;
 pub mod structs;
 
-pub fn filter_field_attrs(
-    attrs: impl Iterator<Item = Attribute>,
-) -> impl Iterator<Item = Attribute> {
-    attrs.filter(|attr| attr.path() == SKIP || attr.path() == BORSH)
-}
-
-pub fn declaration(
-    ident_str: &str,
-    cratename: Ident,
-    params_for_bounds: Vec<Type>,
-) -> TokenStream2 {
+fn declaration(ident_str: &str, cratename: Ident, params_for_bounds: Vec<Type>) -> TokenStream2 {
     // Generate function that returns the name of the type.
     let mut declaration_params = vec![];
     for type_param in params_for_bounds {
@@ -47,10 +32,7 @@ pub fn declaration(
     }
 }
 
-pub fn filter_used_params(
-    generics: &Generics,
-    not_skipped_type_params: HashSet<Ident>,
-) -> Generics {
+fn filter_used_params(generics: &Generics, not_skipped_type_params: HashSet<Ident>) -> Generics {
     let new_params = generics
         .params
         .clone()
@@ -68,9 +50,10 @@ pub fn filter_used_params(
             .iter()
             .filter(|predicate| match predicate {
                 WherePredicate::Lifetime(..) => true,
-                WherePredicate::Type(predicate_type) => {
-                    type_contains_some_param(&predicate_type.bounded_ty, &not_skipped_type_params)
-                }
+                WherePredicate::Type(predicate_type) => generics::type_contains_some_param(
+                    &predicate_type.bounded_ty,
+                    &not_skipped_type_params,
+                ),
                 #[cfg_attr(
                     feature = "force_exhaustive_checks",
                     deny(non_exhaustive_omitted_patterns)
@@ -104,7 +87,7 @@ fn visit_field(field: &Field, visitor: &mut generics::FindTyParams) -> syn::Resu
 
         if let Some(schema_attrs) = schema_attrs {
             if let Some(schema_params) = schema_attrs.params {
-                for schema::ParameterOverride {
+                for field::schema::ParameterOverride {
                     order_param,
                     override_type,
                     ..
@@ -119,10 +102,7 @@ fn visit_field(field: &Field, visitor: &mut generics::FindTyParams) -> syn::Resu
 }
 
 /// check param usage in fields with respect to `borsh_skip` attribute usage
-pub fn visit_struct_fields(
-    fields: &Fields,
-    visitor: &mut generics::FindTyParams,
-) -> syn::Result<()> {
+fn visit_struct_fields(fields: &Fields, visitor: &mut generics::FindTyParams) -> syn::Result<()> {
     match &fields {
         Fields::Named(fields) => {
             for field in &fields.named {
@@ -140,7 +120,7 @@ pub fn visit_struct_fields(
 }
 
 /// check param usage in fields
-pub fn visit_struct_fields_unconditional(fields: &Fields, visitor: &mut generics::FindTyParams) {
+fn visit_struct_fields_unconditional(fields: &Fields, visitor: &mut generics::FindTyParams) {
     match &fields {
         Fields::Named(fields) => {
             for field in &fields.named {

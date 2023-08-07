@@ -7,17 +7,13 @@ use syn::{
 };
 
 use crate::internals::{
-    attributes::field::contains_skip,
-    attributes::item::contains_use_discriminant,
-    attributes::{field, BoundType},
-    enum_discriminant_map::discriminant_map,
-    generics::{compute_predicates, without_defaults, FindTyParams},
-    serialize::field_serialization_output,
+    attributes::{field, item, BoundType},
+    enum_discriminant, generics, serialize,
 };
 
 pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let enum_ident = &input.ident;
-    let generics = without_defaults(&input.generics);
+    let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let mut where_clause = where_clause.map_or_else(
         || WhereClause {
@@ -27,13 +23,13 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         Clone::clone,
     );
 
-    let mut serialize_params_visitor = FindTyParams::new(&generics);
+    let mut serialize_params_visitor = generics::FindTyParams::new(&generics);
     let mut override_predicates = vec![];
-    let use_discriminant = contains_use_discriminant(input)?;
+    let use_discriminant = item::contains_use_discriminant(input)?;
 
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
-    let discriminants = discriminant_map(&input.variants);
+    let discriminants = enum_discriminant::map(&input.variants);
 
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_idx = u8::try_from(variant_idx).map_err(|err| {
@@ -106,7 +102,8 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         ))
     }
     let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
-    let predicates = compute_predicates(serialize_params_visitor.process_for_bounds(), &trait_path);
+    let predicates =
+        generics::compute_predicates(serialize_params_visitor.process_for_bounds(), &trait_path);
     where_clause.predicates.extend(predicates);
     where_clause.predicates.extend(override_predicates);
     Ok(quote! {
@@ -133,13 +130,13 @@ struct VariantParts {
 fn named_fields(
     cratename: &Ident,
     fields: &FieldsNamed,
-    params_visitor: &mut FindTyParams,
+    params_visitor: &mut generics::FindTyParams,
     override_output: &mut Vec<WherePredicate>,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
     for field in &fields.named {
-        let skipped = contains_skip(&field.attrs);
+        let skipped = field::contains_skip(&field.attrs);
         let parsed = field::Attributes::parse(&field.attrs, skipped)?;
 
         let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
@@ -150,7 +147,7 @@ fn named_fields(
             variant_header.extend(quote! { #field_ident, });
 
             let arg: Expr = syn::parse2(quote! { #field_ident }).unwrap();
-            let delta = field_serialization_output(&arg, cratename, parsed.serialize_with);
+            let delta = serialize::field_output(&arg, cratename, parsed.serialize_with);
             variant_body.extend(delta);
             if needs_bounds_derive {
                 params_visitor.visit_field(field);
@@ -168,13 +165,13 @@ fn named_fields(
 fn unnamed_fields(
     cratename: &Ident,
     fields: &FieldsUnnamed,
-    params_visitor: &mut FindTyParams,
+    params_visitor: &mut generics::FindTyParams,
     override_output: &mut Vec<WherePredicate>,
 ) -> syn::Result<VariantParts> {
     let mut variant_header = TokenStream2::new();
     let mut variant_body = TokenStream2::new();
     for (field_idx, field) in fields.unnamed.iter().enumerate() {
-        let skipped = contains_skip(&field.attrs);
+        let skipped = field::contains_skip(&field.attrs);
         let parsed = field::Attributes::parse(&field.attrs, skipped)?;
         let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
         override_output.extend(parsed.collect_bounds(BoundType::Serialize));
@@ -188,7 +185,7 @@ fn unnamed_fields(
             variant_header.extend(quote! { #field_ident, });
 
             let arg: Expr = syn::parse2(quote! { #field_ident }).unwrap();
-            let delta = field_serialization_output(&arg, cratename, parsed.serialize_with);
+            let delta = serialize::field_output(&arg, cratename, parsed.serialize_with);
             variant_body.extend(delta);
             if needs_bounds_derive {
                 params_visitor.visit_field(field);

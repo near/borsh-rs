@@ -6,7 +6,7 @@ use syn::{punctuated::Punctuated, token::Comma, Variant};
 
 /// Calculates the discriminant that will be assigned by the compiler.
 /// See: https://doc.rust-lang.org/reference/items/enumerations.html#assigning-discriminant-values
-pub fn discriminant_map(variants: &Punctuated<Variant, Comma>) -> HashMap<Ident, TokenStream> {
+pub fn map(variants: &Punctuated<Variant, Comma>) -> HashMap<Ident, TokenStream> {
     let mut map = HashMap::new();
     let mut next_discriminant_if_not_specified = quote! {0};
 

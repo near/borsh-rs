@@ -2,10 +2,10 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{Fields, Ident, ItemEnum, Path, WhereClause};
 
-use crate::internals::attributes::{field, item, BoundType};
-use crate::internals::deserialize;
-use crate::internals::enum_discriminant_map::discriminant_map;
-use crate::internals::generics;
+use crate::internals::{
+    attributes::{field, item, BoundType},
+    deserialize, enum_discriminant, generics,
+};
 use std::convert::TryFrom;
 
 pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
@@ -29,7 +29,7 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
     let use_discriminant = item::contains_use_discriminant(input)?;
 
     let mut variant_arms = TokenStream2::new();
-    let discriminants = discriminant_map(&input.variants);
+    let discriminants = enum_discriminant::map(&input.variants);
 
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_idx = u8::try_from(variant_idx).map_err(|err| {
@@ -61,7 +61,7 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                             deserialize_params_visitor.visit_field(field);
                         }
 
-                        variant_header.extend(deserialize::field_deserialization_output(
+                        variant_header.extend(deserialize::field_output(
                             Some(field_name),
                             &cratename,
                             parsed.deserialize_with,
@@ -86,7 +86,7 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
                         if needs_bounds_derive {
                             deserialize_params_visitor.visit_field(field);
                         }
-                        variant_header.extend(deserialize::field_deserialization_output(
+                        variant_header.extend(deserialize::field_output(
                             None,
                             &cratename,
                             parsed.deserialize_with,

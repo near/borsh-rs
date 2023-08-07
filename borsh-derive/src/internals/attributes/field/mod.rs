@@ -118,6 +118,13 @@ pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|attr| attr.path() == SKIP)
 }
 
+#[cfg(feature = "schema")]
+pub(crate) fn filter_attrs(
+    attrs: impl Iterator<Item = Attribute>,
+) -> impl Iterator<Item = Attribute> {
+    attrs.filter(|attr| attr.path() == SKIP || attr.path() == BORSH)
+}
+
 impl Attributes {
     fn check(&self, skipped: bool, attr: &Attribute) -> Result<(), syn::Error> {
         if skipped && (self.serialize_with.is_some() || self.deserialize_with.is_some()) {

@@ -2,9 +2,10 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{Fields, Ident, ItemStruct, Path, WhereClause};
 
-use crate::internals::attributes::{field, item, BoundType};
-use crate::internals::deserialize;
-use crate::internals::generics;
+use crate::internals::{
+    attributes::{field, item, BoundType},
+    deserialize, generics,
+};
 
 pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
@@ -45,11 +46,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
                     if needs_bounds_derive {
                         deserialize_params_visitor.visit_field(field);
                     }
-                    deserialize::field_deserialization_output(
-                        Some(field_name),
-                        &cratename,
-                        parsed.deserialize_with,
-                    )
+                    deserialize::field_output(Some(field_name), &cratename, parsed.deserialize_with)
                 };
                 body.extend(delta);
             }
@@ -74,11 +71,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
                     if needs_bounds_derive {
                         deserialize_params_visitor.visit_field(field);
                     }
-                    deserialize::field_deserialization_output(
-                        None,
-                        &cratename,
-                        parsed.deserialize_with,
-                    )
+                    deserialize::field_output(None, &cratename, parsed.deserialize_with)
                 };
                 body.extend(delta);
             }

@@ -2,14 +2,12 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens};
 use syn::{ExprPath, Fields, Ident, ItemStruct, Path, Type, WhereClause};
 
-use crate::internals::attributes::field;
-use crate::internals::generics;
-use crate::internals::schema;
+use crate::internals::{attributes::field, generics, schema};
 
 /// function which computes derive output [proc_macro2::TokenStream]
 /// of code, which computes declaration of a single field, which is later added to
 /// the struct's definition as a whole  
-pub fn field_declaration_output(
+fn field_declaration_output(
     field_name: Option<&String>,
     field_type: &Type,
     cratename: &Ident,
@@ -33,7 +31,7 @@ pub fn field_declaration_output(
 
 /// function which computes derive output [proc_macro2::TokenStream]
 /// of code, which adds definitions of a field to the output `definitions: &mut BTreeMap`
-pub fn field_definitions_output(
+fn field_definitions_output(
     field_type: &Type,
     cratename: &Ident,
     definitions_override: Option<ExprPath>,

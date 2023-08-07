@@ -11,7 +11,7 @@ use proc_macro_crate::crate_name;
 use proc_macro_crate::FoundCrate;
 use syn::{parse_macro_input, DeriveInput, Ident, ItemEnum, ItemStruct, ItemUnion};
 
-//  by convention, local to borsh-derive crate, imports from proc_macro (1) are not allowed in internal module or in any of its submodules.
+///  by convention, local to borsh-derive crate, imports from proc_macro (1) are not allowed in `internals` module or in any of its submodules.
 mod internals;
 
 use crate::internals::attributes::item::check_item_attributes;

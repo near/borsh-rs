@@ -5,15 +5,13 @@ use quote::quote;
 use syn::{Expr, Fields, Ident, Index, ItemStruct, Path, WhereClause};
 
 use crate::internals::{
-    attributes::field::contains_skip,
     attributes::{field, BoundType},
-    generics::{compute_predicates, without_defaults, FindTyParams},
-    serialize::field_serialization_output,
+    generics, serialize,
 };
 
 pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
-    let generics = without_defaults(&input.generics);
+    let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let mut where_clause = where_clause.map_or_else(
         || WhereClause {
@@ -23,12 +21,12 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
         Clone::clone,
     );
     let mut override_predicates = vec![];
-    let mut serialize_params_visitor = FindTyParams::new(&generics);
+    let mut serialize_params_visitor = generics::FindTyParams::new(&generics);
     let mut body = TokenStream2::new();
     match &input.fields {
         Fields::Named(fields) => {
             for field in &fields.named {
-                let skipped = contains_skip(&field.attrs);
+                let skipped = field::contains_skip(&field.attrs);
                 let parsed = field::Attributes::parse(&field.attrs, skipped)?;
                 let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
                 override_predicates.extend(parsed.collect_bounds(BoundType::Serialize));
@@ -38,7 +36,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
                 let field_name = field.ident.as_ref().unwrap();
 
                 let arg: Expr = syn::parse2(quote! { &self.#field_name }).unwrap();
-                let delta = field_serialization_output(&arg, &cratename, parsed.serialize_with);
+                let delta = serialize::field_output(&arg, &cratename, parsed.serialize_with);
 
                 body.extend(delta);
                 if needs_bounds_derive {
@@ -48,7 +46,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
         }
         Fields::Unnamed(fields) => {
             for (field_idx, field) in fields.unnamed.iter().enumerate() {
-                let skipped = contains_skip(&field.attrs);
+                let skipped = field::contains_skip(&field.attrs);
                 let parsed = field::Attributes::parse(&field.attrs, skipped)?;
                 let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
                 override_predicates.extend(parsed.collect_bounds(BoundType::Serialize));
@@ -58,7 +56,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
                         span: Span::call_site(),
                     };
                     let arg: Expr = syn::parse2(quote! { &self.#field_idx }).unwrap();
-                    let delta = field_serialization_output(&arg, &cratename, parsed.serialize_with);
+                    let delta = serialize::field_output(&arg, &cratename, parsed.serialize_with);
                     body.extend(delta);
                     if needs_bounds_derive {
                         serialize_params_visitor.visit_field(field);
@@ -69,7 +67,8 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
         Fields::Unit => {}
     }
     let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
-    let predicates = compute_predicates(serialize_params_visitor.process_for_bounds(), &trait_path);
+    let predicates =
+        generics::compute_predicates(serialize_params_visitor.process_for_bounds(), &trait_path);
     where_clause.predicates.extend(predicates);
     where_clause.predicates.extend(override_predicates);
     Ok(quote! {

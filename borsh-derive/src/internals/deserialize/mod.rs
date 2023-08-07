@@ -8,7 +8,7 @@ pub mod unions;
 
 /// function which computes derive output [proc_macro2::TokenStream]
 /// of code, which deserializes single field
-pub fn field_deserialization_output(
+fn field_output(
     field_name: Option<&Ident>,
     cratename: &Ident,
     deserialize_with: Option<ExprPath>,

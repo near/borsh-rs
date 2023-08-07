@@ -3,22 +3,19 @@ use quote::{quote, ToTokens};
 use std::collections::HashSet;
 use syn::{Fields, Ident, ItemEnum, ItemStruct, Path, Visibility, WhereClause};
 
-use crate::internals::generics;
-use crate::internals::schema;
+use crate::internals::{attributes::field, generics, schema};
 
 fn transform_variant_fields(mut input: Fields) -> Fields {
     match input {
         Fields::Named(ref mut named) => {
             for field in &mut named.named {
-                let field_attrs =
-                    schema::filter_field_attrs(field.attrs.drain(..)).collect::<Vec<_>>();
+                let field_attrs = field::filter_attrs(field.attrs.drain(..)).collect::<Vec<_>>();
                 field.attrs = field_attrs;
             }
         }
         Fields::Unnamed(ref mut unnamed) => {
             for field in &mut unnamed.unnamed {
-                let field_attrs =
-                    schema::filter_field_attrs(field.attrs.drain(..)).collect::<Vec<_>>();
+                let field_attrs = field::filter_attrs(field.attrs.drain(..)).collect::<Vec<_>>();
                 field.attrs = field_attrs;
             }
         }
