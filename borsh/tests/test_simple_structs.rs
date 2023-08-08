@@ -29,7 +29,7 @@ use bytes::{Bytes, BytesMut};
 use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-#[borsh_init(init)]
+#[borsh(init=init)]
 struct A<'a> {
     x: u64,
     b: B,

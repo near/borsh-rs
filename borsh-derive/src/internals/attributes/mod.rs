@@ -22,7 +22,7 @@ pub const DESERIALIZE: Symbol = Symbol("deserialize", "deserialize = ...");
 /// borsh_skip - field-level only attribute, `BorshSerialize`, `BorshDeserialize`, `BorshSchema` contexts
 pub const SKIP: Symbol = Symbol("borsh_skip", "borsh_skip");
 /// borsh_init - item-level only attribute  `BorshDeserialize` context
-pub const INIT: Symbol = Symbol("borsh_init", "borsh_init(...)");
+pub const INIT: Symbol = Symbol("init", "init(...)");
 /// serialize_with - sub-borsh nested meta, field-level only, `BorshSerialize` context
 pub const SERIALIZE_WITH: Symbol = Symbol("serialize_with", "serialize_with = ...");
 /// deserialize_with - sub-borsh nested meta, field-level only, `BorshDeserialize` context
