@@ -1,51 +1,38 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{Fields, Ident, ItemStruct, Path, WhereClause};
+use syn::{Fields, Ident, ItemStruct};
 
 use crate::internals::{
     attributes::{field, BoundType},
-    field_derive, generics,
+    generics, serialize,
 };
 
 pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let mut where_clause = where_clause.map_or_else(
-        || WhereClause {
-            where_token: Default::default(),
-            predicates: Default::default(),
-        },
-        Clone::clone,
-    );
-    let mut output = Output::new(&generics);
+    let mut where_clause = generics::default_where(where_clause);
+    let mut body = TokenStream2::new();
+    let mut generics_output = serialize::GenericsOutput::new(&generics);
     match &input.fields {
         Fields::Named(fields) => {
             for field in &fields.named {
-                let field_id =
-                    field_derive::FieldID::StructNamed(field.ident.as_ref().unwrap().clone());
+                let field_id = serialize::FieldId::Struct(field.ident.clone().unwrap());
 
-                process_field(field, field_id, &cratename, &mut output)?;
+                process_field(field, field_id, &cratename, &mut generics_output, &mut body)?;
             }
         }
         Fields::Unnamed(fields) => {
             for (field_idx, field) in fields.unnamed.iter().enumerate() {
-                let field_id = field_derive::FieldID::new_struct_index(field_idx)?;
+                let field_id = serialize::FieldId::new_struct_unnamed(field_idx)?;
 
-                process_field(field, field_id, &cratename, &mut output)?;
+                process_field(field, field_id, &cratename, &mut generics_output, &mut body)?;
             }
         }
         Fields::Unit => {}
     }
-    let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
-    let predicates = generics::compute_predicates(
-        output.serialize_params_visitor.process_for_bounds(),
-        &trait_path,
-    );
-    where_clause.predicates.extend(predicates);
-    where_clause.predicates.extend(output.override_predicates);
+    generics_output.extend(&mut where_clause, &cratename);
 
-    let body = output.body;
     Ok(quote! {
         impl #impl_generics #cratename::ser::BorshSerialize for #name #ty_generics #where_clause {
             fn serialize<W: #cratename::__private::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::__private::maybestd::io::Error> {
@@ -56,41 +43,26 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
     })
 }
 
-struct Output {
-    override_predicates: Vec<syn::WherePredicate>,
-    serialize_params_visitor: generics::FindTyParams,
-    body: TokenStream2,
-}
-
-impl Output {
-    fn new(generics: &syn::Generics) -> Self {
-        Self {
-            override_predicates: vec![],
-            serialize_params_visitor: generics::FindTyParams::new(generics),
-            body: TokenStream2::new(),
-        }
-    }
-}
-
 fn process_field(
     field: &syn::Field,
-    field_id: field_derive::FieldID,
+    field_id: serialize::FieldId,
     cratename: &Ident,
-    output: &mut Output,
+    generics: &mut serialize::GenericsOutput,
+    body: &mut TokenStream2,
 ) -> syn::Result<()> {
     let skipped = field::contains_skip(&field.attrs);
     let parsed = field::Attributes::parse(&field.attrs, skipped)?;
     let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
 
-    output
-        .override_predicates
+    generics
+        .overrides
         .extend(parsed.collect_bounds(BoundType::Serialize));
     if !skipped {
         let delta = field_id.serialize_output(cratename, parsed.serialize_with);
-        output.body.extend(delta);
+        body.extend(delta);
 
         if needs_bounds_derive {
-            output.serialize_params_visitor.visit_field(field);
+            generics.serialize_visitor.visit_field(field);
         }
     }
     Ok(())

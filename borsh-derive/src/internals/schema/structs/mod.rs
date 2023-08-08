@@ -67,7 +67,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
     // Generate function that returns the schema of required types.
     let mut fields_vec = vec![];
     let mut struct_fields = TokenStream2::new();
-    let mut add_definitions_recursively_rec = TokenStream2::new();
+    let mut add_definitions_recursively = TokenStream2::new();
     schema::visit_struct_fields(&input.fields, &mut schema_params_visitor)?;
     match &input.fields {
         Fields::Named(fields) => {
@@ -76,7 +76,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
                     field,
                     &cratename,
                     &mut fields_vec,
-                    &mut add_definitions_recursively_rec,
+                    &mut add_definitions_recursively,
                 )?;
             }
             if !fields_vec.is_empty() {
@@ -91,7 +91,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
                     field,
                     &cratename,
                     &mut fields_vec,
-                    &mut add_definitions_recursively_rec,
+                    &mut add_definitions_recursively,
                 )?;
             }
             if !fields_vec.is_empty() {
@@ -117,7 +117,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
             let no_recursion_flag = definitions.get(&Self::declaration()).is_none();
             Self::add_definition(Self::declaration(), definition, definitions);
             if no_recursion_flag {
-                #add_definitions_recursively_rec
+                #add_definitions_recursively
             }
         }
     };
@@ -148,7 +148,7 @@ fn process_field(
     field: &syn::Field,
     cratename: &Ident,
     fields_vec: &mut Vec<TokenStream2>,
-    add_definitions_recursively_rec: &mut TokenStream2,
+    add_definitions_recursively: &mut TokenStream2,
 ) -> syn::Result<()> {
     let skipped = field::contains_skip(&field.attrs);
     let parsed = field::Attributes::parse(&field.attrs, skipped)?;
@@ -161,7 +161,7 @@ fn process_field(
             cratename,
             parsed.schema_declaration(),
         ));
-        add_definitions_recursively_rec.extend(field_definitions_output(
+        add_definitions_recursively.extend(field_definitions_output(
             field_type,
             cratename,
             parsed.schema_definitions(),
