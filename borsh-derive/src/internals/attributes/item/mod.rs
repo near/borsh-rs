@@ -17,7 +17,7 @@ pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStre
                 if !meta.path.is_ident(USE_DISCRIMINANT) && !meta.path.is_ident(INIT.0) {
                     return Err(syn::Error::new(
                         meta.path.span(),
-                        "`use_discriminant` or `init` are the only supported attribute for `borsh`",
+                        "`use_discriminant` or `init` are only supported attributes for `borsh`",
                     ));
                 }
                 if meta.path.is_ident(USE_DISCRIMINANT) {
