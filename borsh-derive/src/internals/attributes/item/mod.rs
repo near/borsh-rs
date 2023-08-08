@@ -288,23 +288,4 @@ mod tests {
         let actual = contains_initialize_with(&item_struct.attrs);
         assert!(actual.is_none());
     }
-
-    #[test]
-    fn test_contains_initialize_with_expansion() {
-        let item_struct: DeriveInput = syn::parse2(quote! {
-        #[derive(BorshDeserialize, Debug)]
-        #[borsh_init(initializonsdfasfsa)]
-        struct A<'a> {
-            x: u64,
-            b: B,
-            y: f32,
-            z: String,
-            v: Vec<String>,
-
-        }
-            })
-        .unwrap();
-        let actual = contains_initialize_with(&item_struct.attrs);
-        assert!(actual.is_none());
-    }
 }
