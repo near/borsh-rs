@@ -1,14 +1,12 @@
 use core::convert::TryFrom;
 
-use proc_macro2::{Span, TokenStream as TokenStream2};
+use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{
-    Expr, Fields, FieldsNamed, FieldsUnnamed, Ident, ItemEnum, Path, WhereClause, WherePredicate,
-};
+use syn::{Fields, Ident, ItemEnum, Path, Variant, WhereClause, WherePredicate};
 
 use crate::internals::{
     attributes::{field, item, BoundType},
-    enum_discriminant, generics, serialize,
+    enum_discriminant, field_derive, generics,
 };
 
 pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
@@ -23,8 +21,9 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         Clone::clone,
     );
 
+    let mut override_predicates: Vec<WherePredicate> = vec![];
     let mut serialize_params_visitor = generics::FindTyParams::new(&generics);
-    let mut override_predicates = vec![];
+
     let use_discriminant = item::contains_use_discriminant(input)?;
 
     let mut all_variants_idx_body = TokenStream2::new();
@@ -45,56 +44,18 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         } else {
             quote! { #variant_idx }
         };
-        let (
-            VariantParts {
-                variant_header,
-                variant_body,
-            },
-            variant_idx_body,
-        ) = match &variant.fields {
-            Fields::Named(fields) => {
-                let variant_idx_body = quote!(
-                    #enum_ident::#variant_ident {..} => #discriminant_value,
-                );
-                (
-                    named_fields(
-                        &cratename,
-                        fields,
-                        &mut serialize_params_visitor,
-                        &mut override_predicates,
-                    )?,
-                    variant_idx_body,
-                )
-            }
-            Fields::Unnamed(fields) => {
-                let variant_idx_body = quote!(
-                    #enum_ident::#variant_ident(..) => #discriminant_value,
-                );
-                (
-                    unnamed_fields(
-                        &cratename,
-                        fields,
-                        &mut serialize_params_visitor,
-                        &mut override_predicates,
-                    )?,
-                    variant_idx_body,
-                )
-            }
-            Fields::Unit => {
-                let variant_idx_body = quote!(
-                    #enum_ident::#variant_ident => #discriminant_value,
-                );
+        let variant_output = process_variant(
+            variant,
+            enum_ident,
+            &discriminant_value,
+            &cratename,
+            &mut serialize_params_visitor,
+            &mut override_predicates,
+        )?;
 
-                (
-                    VariantParts {
-                        variant_header: TokenStream2::new(),
-                        variant_body: TokenStream2::new(),
-                    },
-                    variant_idx_body,
-                )
-            }
-        };
-        all_variants_idx_body.extend(variant_idx_body);
+        all_variants_idx_body.extend(variant_output.variant_idx_body);
+        let variant_header = variant_output.header;
+        let variant_body = variant_output.body;
         fields_body.extend(quote!(
             #enum_ident::#variant_ident #variant_header => {
                 #variant_body
@@ -123,80 +84,107 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
     })
 }
 
-struct VariantParts {
-    variant_header: TokenStream2,
-    variant_body: TokenStream2,
-}
-fn named_fields(
-    cratename: &Ident,
-    fields: &FieldsNamed,
-    params_visitor: &mut generics::FindTyParams,
-    override_output: &mut Vec<WherePredicate>,
-) -> syn::Result<VariantParts> {
-    let mut variant_header = TokenStream2::new();
-    let mut variant_body = TokenStream2::new();
-    for field in &fields.named {
-        let skipped = field::contains_skip(&field.attrs);
-        let parsed = field::Attributes::parse(&field.attrs, skipped)?;
-
-        let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
-        override_output.extend(parsed.collect_bounds(BoundType::Serialize));
-        if !skipped {
-            let field_ident = field.ident.clone().unwrap();
-
-            variant_header.extend(quote! { #field_ident, });
-
-            let arg: Expr = syn::parse2(quote! { #field_ident }).unwrap();
-            let delta = serialize::field_output(&arg, cratename, parsed.serialize_with);
-            variant_body.extend(delta);
-            if needs_bounds_derive {
-                params_visitor.visit_field(field);
-            }
-        }
-    }
-    // `..` pattern matching works even if all fields were specified
-    variant_header = quote! { { #variant_header .. }};
-    Ok(VariantParts {
-        variant_header,
-        variant_body,
-    })
+struct VariantOutput {
+    header: TokenStream2,
+    body: TokenStream2,
+    variant_idx_body: TokenStream2,
 }
 
-fn unnamed_fields(
-    cratename: &Ident,
-    fields: &FieldsUnnamed,
-    params_visitor: &mut generics::FindTyParams,
-    override_output: &mut Vec<WherePredicate>,
-) -> syn::Result<VariantParts> {
-    let mut variant_header = TokenStream2::new();
-    let mut variant_body = TokenStream2::new();
-    for (field_idx, field) in fields.unnamed.iter().enumerate() {
-        let skipped = field::contains_skip(&field.attrs);
-        let parsed = field::Attributes::parse(&field.attrs, skipped)?;
-        let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
-        override_output.extend(parsed.collect_bounds(BoundType::Serialize));
-        let field_idx = u32::try_from(field_idx).expect("up to 2^32 fields are supported");
-        if skipped {
-            let field_ident = Ident::new(format!("_id{}", field_idx).as_str(), Span::mixed_site());
-            variant_header.extend(quote! { #field_ident, });
-        } else {
-            let field_ident = Ident::new(format!("id{}", field_idx).as_str(), Span::mixed_site());
-
-            variant_header.extend(quote! { #field_ident, });
-
-            let arg: Expr = syn::parse2(quote! { #field_ident }).unwrap();
-            let delta = serialize::field_output(&arg, cratename, parsed.serialize_with);
-            variant_body.extend(delta);
-            if needs_bounds_derive {
-                params_visitor.visit_field(field);
-            }
+impl VariantOutput {
+    fn new() -> Self {
+        Self {
+            body: TokenStream2::new(),
+            header: TokenStream2::new(),
+            variant_idx_body: TokenStream2::new(),
         }
     }
-    variant_header = quote! { ( #variant_header )};
-    Ok(VariantParts {
-        variant_header,
-        variant_body,
-    })
+}
+
+fn process_variant(
+    variant: &Variant,
+    enum_ident: &Ident,
+    discriminant_value: &TokenStream2,
+    cratename: &Ident,
+    serialize_params_visitor: &mut generics::FindTyParams,
+    override_predicates: &mut Vec<WherePredicate>,
+) -> syn::Result<VariantOutput> {
+    let variant_ident = &variant.ident;
+    let mut variant_output = VariantOutput::new();
+    match &variant.fields {
+        Fields::Named(fields) => {
+            for field in &fields.named {
+                let field_id =
+                    field_derive::FieldID::EnumVariantNamed(field.ident.as_ref().unwrap().clone());
+                process_field(
+                    field,
+                    field_id,
+                    cratename,
+                    serialize_params_visitor,
+                    override_predicates,
+                    &mut variant_output,
+                )?;
+            }
+            let header = variant_output.header;
+            // `..` pattern matching works even if all fields were specified
+            variant_output.header = quote! { { #header.. }};
+            variant_output.variant_idx_body = quote!(
+                #enum_ident::#variant_ident {..} => #discriminant_value,
+            );
+        }
+        Fields::Unnamed(fields) => {
+            for (field_idx, field) in fields.unnamed.iter().enumerate() {
+                let field_id = field_derive::FieldID::new_enum_index(field_idx)?;
+                process_field(
+                    field,
+                    field_id,
+                    cratename,
+                    serialize_params_visitor,
+                    override_predicates,
+                    &mut variant_output,
+                )?;
+            }
+            let header = variant_output.header;
+            variant_output.header = quote! { ( #header )};
+            variant_output.variant_idx_body = quote!(
+                #enum_ident::#variant_ident(..) => #discriminant_value,
+            );
+        }
+        Fields::Unit => {
+            variant_output.variant_idx_body = quote!(
+                #enum_ident::#variant_ident => #discriminant_value,
+            );
+        }
+    };
+    Ok(variant_output)
+}
+
+fn process_field(
+    field: &syn::Field,
+    field_id: field_derive::FieldID,
+    cratename: &Ident,
+    serialize_params_visitor: &mut generics::FindTyParams,
+    override_predicates: &mut Vec<WherePredicate>,
+    output: &mut VariantOutput,
+) -> syn::Result<()> {
+    let skipped = field::contains_skip(&field.attrs);
+    let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+
+    let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
+    override_predicates.extend(parsed.collect_bounds(BoundType::Serialize));
+
+    let field_variant_header = field_id.enum_variant_header(skipped);
+    if let Some(field_variant_header) = field_variant_header {
+        output.header.extend(field_variant_header);
+    }
+
+    if !skipped {
+        let delta = field_id.serialize_output(cratename, parsed.serialize_with);
+        output.body.extend(delta);
+        if needs_bounds_derive {
+            serialize_params_visitor.visit_field(field);
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
