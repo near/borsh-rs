@@ -3,8 +3,18 @@ use std::collections::{HashMap, HashSet};
 use quote::{quote, ToTokens};
 use syn::{
     punctuated::Pair, Field, GenericArgument, Generics, Ident, Macro, Path, PathArguments,
-    PathSegment, ReturnType, Type, TypeParamBound, TypePath, WherePredicate,
+    PathSegment, ReturnType, Type, TypeParamBound, TypePath, WhereClause, WherePredicate,
 };
+
+pub fn default_where(where_clause: Option<&WhereClause>) -> WhereClause {
+    where_clause.map_or_else(
+        || WhereClause {
+            where_token: Default::default(),
+            predicates: Default::default(),
+        },
+        Clone::clone,
+    )
+}
 
 pub fn compute_predicates(params: Vec<Type>, traitname: &Path) -> Vec<WherePredicate> {
     params

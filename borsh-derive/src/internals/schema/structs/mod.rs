@@ -8,7 +8,7 @@ use crate::internals::{attributes::field, generics, schema};
 /// of code, which computes declaration of a single field, which is later added to
 /// the struct's definition as a whole  
 fn field_declaration_output(
-    field_name: Option<&String>,
+    field_name: Option<&Ident>,
     field_type: &Type,
     cratename: &Ident,
     declaration_override: Option<ExprPath>,
@@ -19,6 +19,7 @@ fn field_declaration_output(
     let path = declaration_override.unwrap_or(default_path);
 
     if let Some(field_name) = field_name {
+        let field_name = field_name.to_token_stream().to_string();
         quote! {
             (#field_name.to_string(), #path())
         }
@@ -66,29 +67,17 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
     // Generate function that returns the schema of required types.
     let mut fields_vec = vec![];
     let mut struct_fields = TokenStream2::new();
-    let mut add_definitions_recursively_rec = TokenStream2::new();
+    let mut add_definitions_recursively = TokenStream2::new();
     schema::visit_struct_fields(&input.fields, &mut schema_params_visitor)?;
     match &input.fields {
         Fields::Named(fields) => {
             for field in &fields.named {
-                let skipped = field::contains_skip(&field.attrs);
-                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
-                if skipped {
-                    continue;
-                }
-                let field_name = field.ident.as_ref().unwrap().to_token_stream().to_string();
-                let field_type = &field.ty;
-                fields_vec.push(field_declaration_output(
-                    Some(&field_name),
-                    field_type,
+                process_field(
+                    field,
                     &cratename,
-                    parsed.schema_declaration(),
-                ));
-                add_definitions_recursively_rec.extend(field_definitions_output(
-                    field_type,
-                    &cratename,
-                    parsed.schema_definitions(),
-                ));
+                    &mut fields_vec,
+                    &mut add_definitions_recursively,
+                )?;
             }
             if !fields_vec.is_empty() {
                 struct_fields = quote! {
@@ -98,23 +87,12 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
         }
         Fields::Unnamed(fields) => {
             for field in &fields.unnamed {
-                let skipped = field::contains_skip(&field.attrs);
-                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
-                if skipped {
-                    continue;
-                }
-                let field_type = &field.ty;
-                fields_vec.push(field_declaration_output(
-                    None,
-                    field_type,
+                process_field(
+                    field,
                     &cratename,
-                    parsed.schema_declaration(),
-                ));
-                add_definitions_recursively_rec.extend(field_definitions_output(
-                    field_type,
-                    &cratename,
-                    parsed.schema_definitions(),
-                ));
+                    &mut fields_vec,
+                    &mut add_definitions_recursively,
+                )?;
             }
             if !fields_vec.is_empty() {
                 struct_fields = quote! {
@@ -139,7 +117,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
             let no_recursion_flag = definitions.get(&Self::declaration()).is_none();
             Self::add_definition(Self::declaration(), definition, definitions);
             if no_recursion_flag {
-                #add_definitions_recursively_rec
+                #add_definitions_recursively
             }
         }
     };
@@ -165,6 +143,31 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
             #add_definitions_recursively
         }
     })
+}
+fn process_field(
+    field: &syn::Field,
+    cratename: &Ident,
+    fields_vec: &mut Vec<TokenStream2>,
+    add_definitions_recursively: &mut TokenStream2,
+) -> syn::Result<()> {
+    let skipped = field::contains_skip(&field.attrs);
+    let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+    if !skipped {
+        let field_name = field.ident.as_ref();
+        let field_type = &field.ty;
+        fields_vec.push(field_declaration_output(
+            field_name,
+            field_type,
+            cratename,
+            parsed.schema_declaration(),
+        ));
+        add_definitions_recursively.extend(field_definitions_output(
+            field_type,
+            cratename,
+            parsed.schema_definitions(),
+        ));
+    }
+    Ok(())
 }
 
 #[cfg(test)]

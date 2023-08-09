@@ -1,8 +1,6 @@
-use core::convert::TryFrom;
-
-use proc_macro2::{Span, TokenStream as TokenStream2};
+use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{Expr, Fields, Ident, Index, ItemStruct, Path, WhereClause};
+use syn::{Fields, Ident, ItemStruct};
 
 use crate::internals::{
     attributes::{field, BoundType},
@@ -13,64 +11,28 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
     let name = &input.ident;
     let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let mut where_clause = where_clause.map_or_else(
-        || WhereClause {
-            where_token: Default::default(),
-            predicates: Default::default(),
-        },
-        Clone::clone,
-    );
-    let mut override_predicates = vec![];
-    let mut serialize_params_visitor = generics::FindTyParams::new(&generics);
+    let mut where_clause = generics::default_where(where_clause);
     let mut body = TokenStream2::new();
+    let mut generics_output = serialize::GenericsOutput::new(&generics);
     match &input.fields {
         Fields::Named(fields) => {
             for field in &fields.named {
-                let skipped = field::contains_skip(&field.attrs);
-                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
-                let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
-                override_predicates.extend(parsed.collect_bounds(BoundType::Serialize));
-                if skipped {
-                    continue;
-                }
-                let field_name = field.ident.as_ref().unwrap();
+                let field_id = serialize::FieldId::Struct(field.ident.clone().unwrap());
 
-                let arg: Expr = syn::parse2(quote! { &self.#field_name }).unwrap();
-                let delta = serialize::field_output(&arg, &cratename, parsed.serialize_with);
-
-                body.extend(delta);
-                if needs_bounds_derive {
-                    serialize_params_visitor.visit_field(field);
-                }
+                process_field(field, field_id, &cratename, &mut generics_output, &mut body)?;
             }
         }
         Fields::Unnamed(fields) => {
             for (field_idx, field) in fields.unnamed.iter().enumerate() {
-                let skipped = field::contains_skip(&field.attrs);
-                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
-                let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
-                override_predicates.extend(parsed.collect_bounds(BoundType::Serialize));
-                if !skipped {
-                    let field_idx = Index {
-                        index: u32::try_from(field_idx).expect("up to 2^32 fields are supported"),
-                        span: Span::call_site(),
-                    };
-                    let arg: Expr = syn::parse2(quote! { &self.#field_idx }).unwrap();
-                    let delta = serialize::field_output(&arg, &cratename, parsed.serialize_with);
-                    body.extend(delta);
-                    if needs_bounds_derive {
-                        serialize_params_visitor.visit_field(field);
-                    }
-                }
+                let field_id = serialize::FieldId::new_struct_unnamed(field_idx)?;
+
+                process_field(field, field_id, &cratename, &mut generics_output, &mut body)?;
             }
         }
         Fields::Unit => {}
     }
-    let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
-    let predicates =
-        generics::compute_predicates(serialize_params_visitor.process_for_bounds(), &trait_path);
-    where_clause.predicates.extend(predicates);
-    where_clause.predicates.extend(override_predicates);
+    generics_output.extend(&mut where_clause, &cratename);
+
     Ok(quote! {
         impl #impl_generics #cratename::ser::BorshSerialize for #name #ty_generics #where_clause {
             fn serialize<W: #cratename::__private::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::__private::maybestd::io::Error> {
@@ -81,11 +43,37 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
     })
 }
 
+fn process_field(
+    field: &syn::Field,
+    field_id: serialize::FieldId,
+    cratename: &Ident,
+    generics: &mut serialize::GenericsOutput,
+    body: &mut TokenStream2,
+) -> syn::Result<()> {
+    let skipped = field::contains_skip(&field.attrs);
+    let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+    let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
+
+    generics
+        .overrides
+        .extend(parsed.collect_bounds(BoundType::Serialize));
+    if !skipped {
+        let delta = field_id.serialize_output(cratename, parsed.serialize_with);
+        body.extend(delta);
+
+        if needs_bounds_derive {
+            generics.serialize_visitor.visit_field(field);
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use crate::internals::test_helpers::{
         local_insta_assert_debug_snapshot, local_insta_assert_snapshot, pretty_print_syn_str,
     };
+    use proc_macro2::Span;
 
     use super::*;
 

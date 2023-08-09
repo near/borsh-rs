@@ -1,79 +1,29 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{Fields, Ident, ItemStruct, Path, WhereClause};
+use syn::{Fields, Ident, ItemStruct};
 
-use crate::internals::{
-    attributes::{field, item, BoundType},
-    deserialize, generics,
-};
+use crate::internals::{attributes::item, deserialize, generics};
 
 pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let mut where_clause = where_clause.map_or_else(
-        || WhereClause {
-            where_token: Default::default(),
-            predicates: Default::default(),
-        },
-        Clone::clone,
-    );
+    let mut where_clause = generics::default_where(where_clause);
+    let mut body = TokenStream2::new();
+    let mut generics_output = deserialize::GenericsOutput::new(&generics);
 
-    let mut override_predicates = vec![];
-    let mut deserialize_params_visitor = generics::FindTyParams::new(&generics);
-    let mut default_params_visitor = generics::FindTyParams::new(&generics);
-
-    let init_method = item::contains_initialize_with(&input.attrs);
     let return_value = match &input.fields {
         Fields::Named(fields) => {
-            let mut body = TokenStream2::new();
             for field in &fields.named {
-                let skipped = field::contains_skip(&field.attrs);
-                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
-
-                override_predicates.extend(parsed.collect_bounds(BoundType::Deserialize));
-                let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
-
-                let field_name = field.ident.as_ref().unwrap();
-                let delta = if skipped {
-                    if needs_bounds_derive {
-                        default_params_visitor.visit_field(field);
-                    }
-                    quote! {
-                        #field_name: core::default::Default::default(),
-                    }
-                } else {
-                    if needs_bounds_derive {
-                        deserialize_params_visitor.visit_field(field);
-                    }
-                    deserialize::field_output(Some(field_name), &cratename, parsed.deserialize_with)
-                };
-                body.extend(delta);
+                deserialize::process_field(field, &cratename, &mut body, &mut generics_output)?;
             }
             quote! {
                 Self { #body }
             }
         }
         Fields::Unnamed(fields) => {
-            let mut body = TokenStream2::new();
             for (_field_idx, field) in fields.unnamed.iter().enumerate() {
-                let skipped = field::contains_skip(&field.attrs);
-                let parsed = field::Attributes::parse(&field.attrs, skipped)?;
-                override_predicates.extend(parsed.collect_bounds(BoundType::Deserialize));
-                let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
-
-                let delta = if skipped {
-                    if needs_bounds_derive {
-                        default_params_visitor.visit_field(field);
-                    }
-                    quote! { core::default::Default::default(), }
-                } else {
-                    if needs_bounds_derive {
-                        deserialize_params_visitor.visit_field(field);
-                    }
-                    deserialize::field_output(None, &cratename, parsed.deserialize_with)
-                };
-                body.extend(delta);
+                deserialize::process_field(field, &cratename, &mut body, &mut generics_output)?;
             }
             quote! {
                 Self( #body )
@@ -85,20 +35,9 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
             }
         }
     };
-    let de_trait_path: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
-    let default_trait_path: Path = syn::parse2(quote! { core::default::Default }).unwrap();
-    let de_predicates = generics::compute_predicates(
-        deserialize_params_visitor.process_for_bounds(),
-        &de_trait_path,
-    );
-    let default_predicates = generics::compute_predicates(
-        default_params_visitor.process_for_bounds(),
-        &default_trait_path,
-    );
-    where_clause.predicates.extend(de_predicates);
-    where_clause.predicates.extend(default_predicates);
-    where_clause.predicates.extend(override_predicates);
-    if let Some(method_ident) = init_method {
+    generics_output.extend(&mut where_clause, &cratename);
+
+    if let Some(method_ident) = item::contains_initialize_with(&input.attrs) {
         Ok(quote! {
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
                 fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::__private::maybestd::io::Error> {
