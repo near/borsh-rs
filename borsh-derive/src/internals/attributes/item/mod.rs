@@ -1,7 +1,7 @@
 use crate::internals::attributes::{BORSH, INIT, SKIP, USE_DISCRIMINANT};
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum, Path};
+use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum};
 
 pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
     for attr in &derive_input.attrs {
@@ -71,6 +71,9 @@ pub fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
                     };
                 }
 
+                if meta.path.is_ident(INIT.0) {
+                    let _value_expr: Expr = meta.value()?.parse()?;
+                }
                 Ok(())
             })?;
         }
@@ -88,13 +91,15 @@ pub fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
     Ok(use_discriminant.unwrap_or(false))
 }
 
-pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Option<Path> {
+pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Option<String> {
     let mut res = None;
     for attr in attrs.iter() {
         if attr.path() == BORSH {
             let _ = attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident(INIT.0) {
-                    res = Some(meta.path);
+                    let value_expr: Expr = meta.value()?.parse()?;
+                    let value = value_expr.to_token_stream().to_string();
+                    res = Some(value);
                 }
                 Ok(())
             });

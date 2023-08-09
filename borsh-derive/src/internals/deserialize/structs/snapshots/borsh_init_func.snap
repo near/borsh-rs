@@ -10,7 +10,7 @@ impl borsh::de::BorshDeserialize for A {
             x: borsh::BorshDeserialize::deserialize_reader(reader)?,
             y: borsh::BorshDeserialize::deserialize_reader(reader)?,
         };
-        return_value.init();
+        return_value.initializonmethod();
         Ok(return_value)
     }
 }

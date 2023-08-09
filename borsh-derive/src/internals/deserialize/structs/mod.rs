@@ -98,7 +98,8 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
     where_clause.predicates.extend(de_predicates);
     where_clause.predicates.extend(default_predicates);
     where_clause.predicates.extend(override_predicates);
-    if let Some(method_ident) = init_method {
+    if let Some(init_method) = init_method {
+        let method_ident = syn::Ident::new(&init_method, input.ident.span());
         Ok(quote! {
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
                 fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::__private::maybestd::io::Error> {

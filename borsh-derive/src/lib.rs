@@ -520,7 +520,7 @@ enum X {
 ```
 
 */
-#[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh_init, borsh))]
+#[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh))]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
     let name = match name {

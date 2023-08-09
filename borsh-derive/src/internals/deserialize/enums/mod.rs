@@ -107,7 +107,8 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
         });
     }
 
-    let init = if let Some(method_ident) = init_method {
+    let init = if let Some(init_method) = init_method {
+        let method_ident = syn::Ident::new(&init_method, input.ident.span());
         quote! {
             return_value.#method_ident();
         }
@@ -362,6 +363,23 @@ mod tests {
         .unwrap();
         let actual = process(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
 
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+    #[test]
+    fn borsh_init_func() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            #[borsh(init = initializonmethod, use_discriminant = true)]
+            enum A {
+                A,
+                B = 20,
+                C,
+                D,
+                E = 10,
+                F,
+            }
+        })
+        .unwrap();
+        let actual = process(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 }

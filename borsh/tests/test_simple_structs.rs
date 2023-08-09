@@ -185,3 +185,29 @@ fn test_simple_struct() {
     assert_eq!(decoded_f2.aa.len(), 2);
     assert!(decoded_f2.aa.iter().all(|f2_a| f2_a == &expected_a));
 }
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[borsh(use_discriminant=true, init=initializonmethod)]
+enum AEnum {
+    A,
+    B,
+    C = 10,
+}
+
+impl AEnum {
+    pub fn initializonmethod(&mut self) {
+        *self = AEnum::C;
+    }
+}
+
+#[test]
+fn test_simple_enum() {
+    let mut a = AEnum::B;
+    // a.initializonmethod();
+    // assert_eq!(a, AEnum::C);
+    let encoded_a = a.try_to_vec().unwrap();
+    insta::assert_debug_snapshot!(encoded_a);
+
+    let mut decoded_a = from_slice::<AEnum>(&encoded_a).unwrap();
+    assert_eq!(a, decoded_a);
+}
