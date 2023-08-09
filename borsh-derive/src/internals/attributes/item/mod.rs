@@ -18,14 +18,11 @@ pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStre
         .to_compile_error());
     }
 
-    let attr = derive_input
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident(BORSH.0));
+    let attr = derive_input.attrs.iter().find(|attr| attr.path() == BORSH);
     if let Some(attr) = attr {
         if attr.path().is_ident(BORSH.0) {
             attr.parse_nested_meta(|meta| {
-                if !meta.path.is_ident(USE_DISCRIMINANT) && !meta.path.is_ident(INIT.0) {
+                if !meta.path.is_ident(USE_DISCRIMINANT) && meta.path != INIT {
                     return Err(syn::Error::new(
                         meta.path.span(),
                         "`use_discriminant` or `init` are only supported attributes for `borsh`",
@@ -62,7 +59,7 @@ pub fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
 
     let attrs = &input.attrs;
     let mut use_discriminant = None;
-    let attr = attrs.iter().find(|attr| attr.path().is_ident(BORSH.0));
+    let attr = attrs.iter().find(|attr| attr.path() == BORSH);
     if let Some(attr) = attr {
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident(USE_DISCRIMINANT) {
@@ -82,7 +79,7 @@ pub fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
                 };
             }
 
-            if meta.path.is_ident(INIT.0) {
+            if meta.path == INIT {
                 let _value_expr: Expr = meta.value()?.parse()?;
             }
             Ok(())
@@ -106,7 +103,7 @@ pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Option<Path> {
     let attr = attrs.iter().find(|attr| attr.path() == BORSH);
     if let Some(attr) = attr {
         let _ = attr.parse_nested_meta(|meta| {
-            if meta.path.is_ident(INIT.0) {
+            if meta.path == INIT {
                 let value_expr: Path = meta.value()?.parse()?;
                 res = Some(value_expr);
             } else if meta.path.is_ident(USE_DISCRIMINANT) {
@@ -222,7 +219,7 @@ mod tests {
     fn test_init_function() {
         let item_struct = syn::parse2::<DeriveInput>(quote! {
         #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-        #[borsh(init = initialization_method)]
+        #[borsh(init = initializonsdfasfsa)]
         struct A<'a> {
             x: u64,
         }
@@ -237,7 +234,7 @@ mod tests {
     fn test_init_function_wrong_format() {
         let item_struct: DeriveInput = syn::parse2(quote! {
         #[derive(BorshDeserialize, Debug)]
-        #[borsh(init_func = initialization_method)]
+        #[borsh(init_func = initializonsdfasfsa)]
         struct A<'a> {
             x: u64,
             b: B,
@@ -255,7 +252,7 @@ mod tests {
     fn test_contains_initialize_with_function() {
         let item_struct = syn::parse2::<DeriveInput>(quote! {
         #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-        #[borsh(init = initialization_method)]
+        #[borsh(init = initializonsdfasfsa)]
         struct A<'a> {
             x: u64,
         }
@@ -265,7 +262,7 @@ mod tests {
         let actual = contains_initialize_with(&item_struct.attrs);
         assert_eq!(
             actual.unwrap().to_token_stream().to_string(),
-            "initialization_method"
+            "initializonsdfasfsa"
         );
     }
 
@@ -273,7 +270,7 @@ mod tests {
     fn test_contains_initialize_with_function_wrong_format() {
         let item_struct: DeriveInput = syn::parse2(quote! {
         #[derive(BorshDeserialize, Debug)]
-        #[borsh(init_func = initialization_method)]
+        #[borsh(init_func = initializonsdfasfsa)]
         struct A<'a> {
             x: u64,
             b: B,
@@ -292,7 +289,7 @@ mod tests {
     fn test_contains_initialize_with_function_wrong_attr_format() {
         let item_struct: DeriveInput = syn::parse2(quote! {
         #[derive(BorshDeserialize, Debug)]
-        #[borsh_init(initialization_method)]
+        #[borsh_init(initializonsdfasfsa)]
         struct A<'a> {
             x: u64,
             b: B,

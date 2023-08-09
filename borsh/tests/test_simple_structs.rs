@@ -187,11 +187,11 @@ fn test_simple_struct() {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-#[borsh(use_discriminant=true, init=initializon_method)]
+#[borsh(init=initializon_method)]
 enum AEnum {
     A,
     B,
-    C = 10,
+    C,
 }
 
 impl AEnum {
