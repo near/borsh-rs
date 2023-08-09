@@ -202,12 +202,10 @@ impl AEnum {
 
 #[test]
 fn test_simple_enum() {
-    let mut a = AEnum::B;
-    // a.initializonmethod();
-    // assert_eq!(a, AEnum::C);
+    let a = AEnum::B;
     let encoded_a = a.try_to_vec().unwrap();
     insta::assert_debug_snapshot!(encoded_a);
 
-    let mut decoded_a = from_slice::<AEnum>(&encoded_a).unwrap();
-    assert_eq!(a, decoded_a);
+    let decoded_a = from_slice::<AEnum>(&encoded_a).unwrap();
+    assert_eq!(AEnum::C, decoded_a);
 }

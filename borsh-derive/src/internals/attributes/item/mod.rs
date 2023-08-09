@@ -1,7 +1,7 @@
 use crate::internals::attributes::{BORSH, INIT, SKIP, USE_DISCRIMINANT};
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum};
+use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum, Path};
 
 pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
     for attr in &derive_input.attrs {
@@ -91,16 +91,17 @@ pub fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
     Ok(use_discriminant.unwrap_or(false))
 }
 
-pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Option<String> {
+pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Option<Path> {
     let mut res = None;
     for attr in attrs.iter() {
         if attr.path() == BORSH {
             let _ = attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident(INIT.0) {
-                    let value_expr: Expr = meta.value()?.parse()?;
-                    let value = value_expr.to_token_stream().to_string();
-                    res = Some(value);
-                }
+                    let value_expr: Path = meta.value()?.parse()?;
+                    res = Some(value_expr);
+                } else if meta.path.is_ident(USE_DISCRIMINANT) {
+                    let _value_expr: Expr = meta.value()?.parse()?;
+                };
                 Ok(())
             });
         }
