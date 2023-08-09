@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-alpha.1](https://github.com/near/borsh-rs/compare/borsh-v0.11.0...borsh-v1.0.0-alpha.1) - 2023-08-07
+
+### Bug Fixes
+
+- Unused fields warn, fields for inner structs of derived BorshSchema method (#172)
+- #[borsh_skip] on field of struct enum variant (BorshSerialize) (#174)
+- Filter out foreign attributes in `BorshSchema` derive for enum (#177)
+
+### Documentation
+
+- Create a brief documentation of crate's features (#159)
+- Mention `schema` feature in doc.rs (#166)
+
+### Features
+
+- Forbid Vectors of Zero-sized types from de-/serialization to resolve the RUSTSEC-2023-0033 (#145)
+- Add top-level `from_slice` and `from_reader` helper functions to make the API nicer (#142)
+- [**breaking**] Add `#[borsh(use_discriminant = <bool>)]` attribute that changes enum discriminant de- and serialization behavior
+- [**breaking**] Remove `BinaryHeap` support (#161)
+- Sets/maps benches for reference point (#164)
+- Enforce canonicity on `HashSet/BTreeSet/HashMap/BTreeMap` (#162)
+- [**breaking**] Support recursive structures! (#178)
+  - `BorshSerialize`, `BorshDeserialize`, `BorshSchema` derives may break
+  - derives may require patching bounds with `#[borsh(bound(..))]` / `#[borsh(schema(params = ...))]`
+- Bounds for ser/de derive and schema_params for schema derive attributes (#180)
+- Derive attribute for 3rd party structs/enums as fields (#182)
+
+### Miscellaneous Tasks
+
+- Bump proc-macro-crate versions  (#149)
+- Add tests job for MSRV (1.65.0) (#151)
+- [**breaking**] Hide maybestd from public interface, despite it being technically available by new name of __maybestd (#153)
+- Fix broken reference-style link in minimum supported version badge (#154)
+- Remove a bunch of clippy-related TODOs (uninlined_format_args) (#156)
+- Simpler bounds on Rc/Arc impls (#167)
+- Invited @dj8yfo to CODEOWNERS (#169)
+- [**breaking**] Replace ErrorKind::InvalidInput with ErrorKind::InvalidData as per original std::io meaning (#170)
+
+### Refactor
+
+- [**breaking**] Make `hashbrown` dependency optional, `hashbrown` feature (#155)
+- [**breaking**] `BorshSchemaContainer` fields non-pub, `HashMap` -> `BTreeMap` in schema everywhere (#165)
+- [**breaking**] Move derive under #[cfg(feature = "derive")] (#168)
+- Introduce `__private` module with macro runtime (#171)
+- [**breaking**] Unsplit and removal of *-internal crates (#185)
+  - `borsh-schema-derive-internal` and `borsh-derive-internal` crates won't be published anymore
+
+### Testing
+
+- Add `insta` snapshots to borsh/tests (#157)
+- `insta` tests for prettified `TokenStream`-s in `borsh*derive-internal` (#176)
+
+### Ci
+
+- Only release-plz after other checks pass
+
 ## [0.11.0](https://github.com/near/borsh-rs/compare/borsh-v0.10.3...borsh-v0.11.0) - 2023-05-31
 
 ### Added
