@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-alpha.2](https://github.com/near/borsh-rs/compare/borsh-v1.0.0-alpha.1...borsh-v1.0.0-alpha.2) - 2023-08-09
+
+### Other
+- update dependencies
+
 ## [1.0.0-alpha.1](https://github.com/near/borsh-rs/compare/borsh-v0.11.0...borsh-v1.0.0-alpha.1) - 2023-08-07
 
 ### Bug Fixes
