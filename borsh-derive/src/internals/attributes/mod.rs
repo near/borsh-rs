@@ -14,7 +14,7 @@ pub const BORSH: Symbol = Symbol("borsh", "borsh(...)");
 /// bound - sub-borsh nested meta, field-level only, `BorshSerialize` and `BorshDeserialize` contexts
 pub const BOUND: Symbol = Symbol("bound", "bound(...)");
 //  use_discriminant - sub-borsh nested meta, item-level only, enums only, `BorshSerialize` and `BorshDeserialize` contexts
-pub const USE_DISCRIMINANT: Symbol = Symbol("use_discriminant", "use_discriminant");
+pub const USE_DISCRIMINANT: Symbol = Symbol("use_discriminant", "use_discriminant = ...");
 /// serialize - sub-bound nested meta attribute
 pub const SERIALIZE: Symbol = Symbol("serialize", "serialize = ...");
 /// deserialize - sub-bound nested meta attribute
