@@ -4,14 +4,25 @@ use quote::ToTokens;
 use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum, Path};
 
 pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
-    for attr in &derive_input.attrs {
-        if attr.path().is_ident(SKIP.0) {
-            return Err(syn::Error::new(
-                derive_input.ident.span(),
-                "`borsh_skip` is not allowed as derive input attribute",
-            )
-            .to_compile_error());
-        }
+    // TODO remove in next P
+    let attr = derive_input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident(SKIP.0));
+
+    if attr.is_some() {
+        return Err(syn::Error::new(
+            derive_input.ident.span(),
+            "`borsh_skip` is not allowed as derive input attribute",
+        )
+        .to_compile_error());
+    }
+
+    let attr = derive_input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident(BORSH.0));
+    if let Some(attr) = attr {
         if attr.path().is_ident(BORSH.0) {
             attr.parse_nested_meta(|meta| {
                 if !meta.path.is_ident(USE_DISCRIMINANT) && !meta.path.is_ident(INIT.0) {
@@ -51,32 +62,31 @@ pub fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
 
     let attrs = &input.attrs;
     let mut use_discriminant = None;
-    for attr in attrs {
-        if attr.path().is_ident(BORSH.0) {
-            attr.parse_nested_meta(|meta| {
-                if meta.path.is_ident(USE_DISCRIMINANT) {
-                    let value_expr: Expr = meta.value()?.parse()?;
-                    let value = value_expr.to_token_stream().to_string();
-                    match value.as_str() {
-                        "true" => {
-                            use_discriminant = Some(true);
-                        }
-                        "false" => use_discriminant = Some(false),
-                        _ => {
-                            return Err(syn::Error::new(
-                                value_expr.span(),
-                                "`use_discriminant` accepts only `true` or `false`",
-                            ));
-                        }
-                    };
-                }
+    let attr = attrs.iter().find(|attr| attr.path().is_ident(BORSH.0));
+    if let Some(attr) = attr {
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident(USE_DISCRIMINANT) {
+                let value_expr: Expr = meta.value()?.parse()?;
+                let value = value_expr.to_token_stream().to_string();
+                match value.as_str() {
+                    "true" => {
+                        use_discriminant = Some(true);
+                    }
+                    "false" => use_discriminant = Some(false),
+                    _ => {
+                        return Err(syn::Error::new(
+                            value_expr.span(),
+                            "`use_discriminant` accepts only `true` or `false`",
+                        ));
+                    }
+                };
+            }
 
-                if meta.path.is_ident(INIT.0) {
-                    let _value_expr: Expr = meta.value()?.parse()?;
-                }
-                Ok(())
-            })?;
-        }
+            if meta.path.is_ident(INIT.0) {
+                let _value_expr: Expr = meta.value()?.parse()?;
+            }
+            Ok(())
+        })?;
     }
     let has_explicit_discriminants = input
         .variants
@@ -93,18 +103,17 @@ pub fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
 
 pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Option<Path> {
     let mut res = None;
-    for attr in attrs.iter() {
-        if attr.path() == BORSH {
-            let _ = attr.parse_nested_meta(|meta| {
-                if meta.path.is_ident(INIT.0) {
-                    let value_expr: Path = meta.value()?.parse()?;
-                    res = Some(value_expr);
-                } else if meta.path.is_ident(USE_DISCRIMINANT) {
-                    let _value_expr: Expr = meta.value()?.parse()?;
-                };
-                Ok(())
-            });
-        }
+    let attr = attrs.iter().find(|attr| attr.path() == BORSH);
+    if let Some(attr) = attr {
+        let _ = attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident(INIT.0) {
+                let value_expr: Path = meta.value()?.parse()?;
+                res = Some(value_expr);
+            } else if meta.path.is_ident(USE_DISCRIMINANT) {
+                let _value_expr: Expr = meta.value()?.parse()?;
+            };
+            Ok(())
+        });
     }
 
     res
