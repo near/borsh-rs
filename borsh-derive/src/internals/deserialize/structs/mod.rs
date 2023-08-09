@@ -297,7 +297,7 @@ mod tests {
     #[test]
     fn borsh_init_func() {
         let item_enum: ItemStruct = syn::parse2(quote! {
-            #[borsh(init=initializonmethod)]
+            #[borsh(init=initializon_method)]
             struct A {
                 x: u64,
                 y: String,

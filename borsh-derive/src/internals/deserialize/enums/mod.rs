@@ -367,7 +367,7 @@ mod tests {
     #[test]
     fn borsh_init_func() {
         let item_enum: ItemEnum = syn::parse2(quote! {
-            #[borsh(init = initializonmethod, use_discriminant = true)]
+            #[borsh(init = initializon_method, use_discriminant = true)]
             enum A {
                 A,
                 B = 20,
@@ -384,7 +384,7 @@ mod tests {
     #[test]
     fn borsh_init_func_reversed() {
         let item_enum: ItemEnum = syn::parse2(quote! {
-            #[borsh(use_discriminant = true, init = initializonmethod )]
+            #[borsh(use_discriminant = true, init = initializon_method )]
             enum A {
                 A,
                 B = 20,
