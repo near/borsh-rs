@@ -303,12 +303,12 @@ Attribute's value is syn's [Path](syn::Path)-s, enclosed in parentheses.
 
 ###### usage
 
-`#[borsh_init(...)]` allows to automatically run an initialization function right after deserialization.
+`#[borsh(init=...)]` allows to automatically run an initialization function right after deserialization.
 This adds a lot of convenience for objects that are architectured to be used as strictly immutable.
 
 ```ignore
 #[derive(BorshDeserialize)]
-#[borsh_init(init)]
+#[borsh(init=init)]
 struct Message {
     message: String,
     timestamp: u64,
