@@ -5,10 +5,7 @@ use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum, Path};
 
 pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
     // TODO remove in next P
-    let attr = derive_input
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident(SKIP.0));
+    let attr = derive_input.attrs.iter().find(|attr| attr.path() == SKIP);
 
     if attr.is_some() {
         return Err(syn::Error::new(
@@ -20,31 +17,29 @@ pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStre
 
     let attr = derive_input.attrs.iter().find(|attr| attr.path() == BORSH);
     if let Some(attr) = attr {
-        if attr.path().is_ident(BORSH.0) {
-            attr.parse_nested_meta(|meta| {
-                if !meta.path.is_ident(USE_DISCRIMINANT) && meta.path != INIT {
+        attr.parse_nested_meta(|meta| {
+            if meta.path != USE_DISCRIMINANT && meta.path != INIT {
+                return Err(syn::Error::new(
+                    meta.path.span(),
+                    "`use_discriminant` or `init` are only supported attributes for `borsh`",
+                ));
+            }
+            if meta.path == USE_DISCRIMINANT {
+                let _expr: Expr = meta.value()?.parse()?;
+                if let syn::Data::Struct(ref _data) = derive_input.data {
                     return Err(syn::Error::new(
-                        meta.path.span(),
-                        "`use_discriminant` or `init` are only supported attributes for `borsh`",
+                        derive_input.ident.span(),
+                        "borsh(use_discriminant=<bool>) does not support structs",
                     ));
                 }
-                if meta.path.is_ident(USE_DISCRIMINANT) {
-                    let _expr: Expr = meta.value()?.parse()?;
-                    if let syn::Data::Struct(ref _data) = derive_input.data {
-                        return Err(syn::Error::new(
-                            derive_input.ident.span(),
-                            "borsh(use_discriminant=<bool>) does not support structs",
-                        ));
-                    }
-                }
-                if meta.path.is_ident(INIT.0) {
-                    let _expr: Expr = meta.value()?.parse()?;
-                }
+            }
+            if meta.path == INIT {
+                let _expr: Expr = meta.value()?.parse()?;
+            }
 
-                Ok(())
-            })
-            .map_err(|err| err.to_compile_error())?;
-        }
+            Ok(())
+        })
+        .map_err(|err| err.to_compile_error())?;
     }
     Ok(())
 }
@@ -62,7 +57,7 @@ pub fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
     let attr = attrs.iter().find(|attr| attr.path() == BORSH);
     if let Some(attr) = attr {
         attr.parse_nested_meta(|meta| {
-            if meta.path.is_ident(USE_DISCRIMINANT) {
+            if meta.path == USE_DISCRIMINANT {
                 let value_expr: Expr = meta.value()?.parse()?;
                 let value = value_expr.to_token_stream().to_string();
                 match value.as_str() {
@@ -106,7 +101,7 @@ pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Option<Path> {
             if meta.path == INIT {
                 let value_expr: Path = meta.value()?.parse()?;
                 res = Some(value_expr);
-            } else if meta.path.is_ident(USE_DISCRIMINANT) {
+            } else if meta.path == USE_DISCRIMINANT {
                 let _value_expr: Expr = meta.value()?.parse()?;
             };
             Ok(())

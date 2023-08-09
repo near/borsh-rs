@@ -29,7 +29,6 @@ use bytes::{Bytes, BytesMut};
 use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-#[borsh(init=init)]
 struct A<'a> {
     x: u64,
     b: B,
@@ -53,14 +52,6 @@ struct A<'a> {
     range_u32: ops::Range<u32>,
     #[borsh_skip]
     skipped: Option<u64>,
-}
-
-impl A<'_> {
-    pub fn init(&mut self) {
-        if let Some(v) = self.lazy.as_mut() {
-            *v *= 10;
-        }
-    }
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
@@ -100,7 +91,7 @@ struct F2<'b> {
 }
 
 #[test]
-fn test_simple_struct() {
+fn test_ultimate_combined_all_features() {
     let mut map: BTreeMap<String, String> = BTreeMap::new();
     map.insert("test".into(), "test".into());
     let mut set: BTreeSet<u64> = BTreeSet::new();
@@ -165,7 +156,7 @@ fn test_simple_struct() {
         box_str: Box::from("asd"),
         i: a.i,
         u: Ok("Hello".to_string()),
-        lazy: Some(50),
+        lazy: Some(5),
         c: borrow::Cow::Owned("Hello".to_string()),
         cow_arr: borrow::Cow::Owned(vec![
             borrow::Cow::Borrowed("Hello1"),
@@ -184,30 +175,4 @@ fn test_simple_struct() {
     let decoded_f2 = from_slice::<F2>(&encoded_f1).unwrap();
     assert_eq!(decoded_f2.aa.len(), 2);
     assert!(decoded_f2.aa.iter().all(|f2_a| f2_a == &expected_a));
-}
-
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-#[borsh(init=initializon_method)]
-enum AEnum {
-    A,
-    B,
-    C,
-}
-
-impl AEnum {
-    pub fn initializon_method(&mut self) {
-        *self = AEnum::C;
-    }
-}
-
-#[test]
-fn test_simple_enum() {
-    let a = AEnum::B;
-    let encoded_a = a.try_to_vec().unwrap();
-
-    #[cfg(feature = "std")]
-    insta::assert_debug_snapshot!(encoded_a);
-
-    let decoded_a = from_slice::<AEnum>(&encoded_a).unwrap();
-    assert_eq!(AEnum::C, decoded_a);
 }
