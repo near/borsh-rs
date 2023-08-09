@@ -222,7 +222,7 @@ mod tests {
     fn test_init_function() {
         let item_struct = syn::parse2::<DeriveInput>(quote! {
         #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-        #[borsh(init = initializonsdfasfsa)]
+        #[borsh(init = initialization_method)]
         struct A<'a> {
             x: u64,
         }
@@ -237,7 +237,7 @@ mod tests {
     fn test_init_function_wrong_format() {
         let item_struct: DeriveInput = syn::parse2(quote! {
         #[derive(BorshDeserialize, Debug)]
-        #[borsh(init_func = initializonsdfasfsa)]
+        #[borsh(init_func = initialization_method)]
         struct A<'a> {
             x: u64,
             b: B,
@@ -255,7 +255,7 @@ mod tests {
     fn test_contains_initialize_with_function() {
         let item_struct = syn::parse2::<DeriveInput>(quote! {
         #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-        #[borsh(init = initializonsdfasfsa)]
+        #[borsh(init = initialization_method)]
         struct A<'a> {
             x: u64,
         }
@@ -265,7 +265,7 @@ mod tests {
         let actual = contains_initialize_with(&item_struct.attrs);
         assert_eq!(
             actual.unwrap().to_token_stream().to_string(),
-            "initializonsdfasfsa"
+            "initialization_method"
         );
     }
 
@@ -273,7 +273,7 @@ mod tests {
     fn test_contains_initialize_with_function_wrong_format() {
         let item_struct: DeriveInput = syn::parse2(quote! {
         #[derive(BorshDeserialize, Debug)]
-        #[borsh(init_func = initializonsdfasfsa)]
+        #[borsh(init_func = initialization_method)]
         struct A<'a> {
             x: u64,
             b: B,
@@ -292,7 +292,7 @@ mod tests {
     fn test_contains_initialize_with_function_wrong_attr_format() {
         let item_struct: DeriveInput = syn::parse2(quote! {
         #[derive(BorshDeserialize, Debug)]
-        #[borsh_init(initializonsdfasfsa)]
+        #[borsh_init(initialization_method)]
         struct A<'a> {
             x: u64,
             b: B,
