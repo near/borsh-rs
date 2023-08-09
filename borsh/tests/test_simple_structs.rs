@@ -204,6 +204,8 @@ impl AEnum {
 fn test_simple_enum() {
     let a = AEnum::B;
     let encoded_a = a.try_to_vec().unwrap();
+
+    #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(encoded_a);
 
     let decoded_a = from_slice::<AEnum>(&encoded_a).unwrap();

@@ -254,7 +254,10 @@ mod tests {
         .unwrap();
 
         let actual = contains_initialize_with(&item_struct.attrs);
-        assert!(actual.is_some());
+        assert_eq!(
+            actual.unwrap().to_token_stream().to_string(),
+            "initializonsdfasfsa"
+        );
     }
 
     #[test]
