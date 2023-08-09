@@ -29,7 +29,7 @@ fn test_simple_struct() {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-#[borsh(init=initializon_method)]
+#[borsh(init=initialization_method)]
 enum AEnum {
     A,
     B,
@@ -37,7 +37,7 @@ enum AEnum {
 }
 
 impl AEnum {
-    pub fn initializon_method(&mut self) {
+    pub fn initialization_method(&mut self) {
         *self = AEnum::C;
     }
 }

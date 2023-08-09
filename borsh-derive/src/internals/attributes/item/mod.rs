@@ -4,7 +4,7 @@ use quote::ToTokens;
 use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum, Path};
 
 pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
-    // TODO remove in next P
+    // TODO remove in next PR
     let attr = derive_input.attrs.iter().find(|attr| attr.path() == SKIP);
 
     if attr.is_some() {
@@ -213,12 +213,45 @@ mod tests {
     #[test]
     fn test_init_function() {
         let item_struct = syn::parse2::<DeriveInput>(quote! {
-        #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-        #[borsh(init = initialization_method)]
-        struct A<'a> {
-            x: u64,
-        }
-                })
+            #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+            #[borsh(init = initialization_method)]
+            struct A<'a> {
+                x: u64,
+            }
+        })
+        .unwrap();
+
+        let actual = check_item_attributes(&item_struct);
+        assert!(actual.is_ok());
+    }
+
+    #[test]
+    fn test_init_function_with_use_discriminant() {
+        let item_struct = syn::parse2::<DeriveInput>(quote! {
+            #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+            #[borsh(use_discriminant=true, init = initialization_method)]
+            enum A {
+                B,
+                C,
+                D= 10,
+            }
+        })
+        .unwrap();
+
+        let actual = check_item_attributes(&item_struct);
+        assert!(actual.is_ok());
+    }
+    #[test]
+    fn test_init_function_with_use_discriminant_reversed() {
+        let item_struct = syn::parse2::<DeriveInput>(quote! {
+            #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+            #[borsh(init = initialization_method, use_discriminant=true)]
+            enum A {
+                B,
+                C,
+                D= 10,
+            }
+        })
         .unwrap();
 
         let actual = check_item_attributes(&item_struct);
@@ -246,12 +279,48 @@ mod tests {
     #[test]
     fn test_contains_initialize_with_function() {
         let item_struct = syn::parse2::<DeriveInput>(quote! {
-        #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-        #[borsh(init = initialization_method)]
-        struct A<'a> {
-            x: u64,
-        }
-                })
+            #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+            #[borsh(init = initialization_method)]
+            struct A<'a> {
+                x: u64,
+            }
+        })
+        .unwrap();
+
+        let actual = contains_initialize_with(&item_struct.attrs);
+        assert_eq!(
+            actual.unwrap().to_token_stream().to_string(),
+            "initialization_method"
+        );
+    }
+
+    #[test]
+    fn test_contains_initialize_with_use_discriminant() {
+        let item_struct = syn::parse2::<DeriveInput>(quote! {
+            #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+            #[borsh(init = initialization_method, use_discriminant=true)]
+            struct A<'a> {
+                x: u64,
+            }
+        })
+        .unwrap();
+
+        let actual = contains_initialize_with(&item_struct.attrs);
+        assert_eq!(
+            actual.unwrap().to_token_stream().to_string(),
+            "initialization_method"
+        );
+    }
+
+    #[test]
+    fn test_contains_initialize_with_function_use_discriminant() {
+        let item_struct = syn::parse2::<DeriveInput>(quote! {
+            #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+            #[borsh(use_discriminant=true, init = initialization_method)]
+            struct A<'a> {
+                x: u64,
+            }
+        })
         .unwrap();
 
         let actual = contains_initialize_with(&item_struct.attrs);
@@ -264,36 +333,13 @@ mod tests {
     #[test]
     fn test_contains_initialize_with_function_wrong_format() {
         let item_struct: DeriveInput = syn::parse2(quote! {
-        #[derive(BorshDeserialize, Debug)]
-        #[borsh(init_func = initialization_method)]
-        struct A<'a> {
-            x: u64,
-            b: B,
-            y: f32,
-            z: String,
-            v: Vec<String>,
-
-        }
-            })
-        .unwrap();
-        let actual = contains_initialize_with(&item_struct.attrs);
-        assert!(actual.is_none());
-    }
-
-    #[test]
-    fn test_contains_initialize_with_function_wrong_attr_format() {
-        let item_struct: DeriveInput = syn::parse2(quote! {
-        #[derive(BorshDeserialize, Debug)]
-        #[borsh_init(initialization_method)]
-        struct A<'a> {
-            x: u64,
-            b: B,
-            y: f32,
-            z: String,
-            v: Vec<String>,
-
-        }
-            })
+            #[derive(BorshDeserialize, Debug)]
+            #[borsh(init_func = initialization_method)]
+            struct A<'a> {
+                x: u64,
+                y: f32,
+            }
+        })
         .unwrap();
         let actual = contains_initialize_with(&item_struct.attrs);
         assert!(actual.is_none());

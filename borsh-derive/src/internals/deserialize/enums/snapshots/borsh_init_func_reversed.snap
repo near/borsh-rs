@@ -37,7 +37,7 @@ impl borsh::de::EnumExt for A {
                 ),
             )
         };
-        return_value.initializon_method();
+        return_value.initialization_method();
         Ok(return_value)
     }
 }

@@ -295,7 +295,7 @@ struct A<U, V> {
 
 ## Attributes
 
-### 1. `#[borsh_init(...)]` (item level attribute)
+### 1. `#[borsh(init=...)]` (item level attribute)
 
 ###### syntax
 

@@ -367,30 +367,13 @@ mod tests {
     #[test]
     fn borsh_init_func() {
         let item_enum: ItemEnum = syn::parse2(quote! {
-            #[borsh(init = initializon_method, use_discriminant = true)]
+            #[borsh(init = initialization_method)]
             enum A {
                 A,
-                B = 20,
+                B,
                 C,
                 D,
-                E = 10,
-                F,
-            }
-        })
-        .unwrap();
-        let actual = process(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
-    }
-    #[test]
-    fn borsh_init_func_reversed() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
-            #[borsh(use_discriminant = true, init = initializon_method )]
-            enum A {
-                A,
-                B = 20,
-                C,
-                D,
-                E = 10,
+                E,
                 F,
             }
         })
