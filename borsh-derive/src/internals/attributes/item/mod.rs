@@ -197,7 +197,7 @@ mod tests {
         local_insta_assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
     #[test]
-    fn test_check_use_borsh_invalid_on_whole_struct_check_attrs() {
+    fn test_check_attrs_borsh_invalid_on_whole_item() {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(invalid)]
