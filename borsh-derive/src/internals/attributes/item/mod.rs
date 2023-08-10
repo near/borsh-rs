@@ -5,9 +5,9 @@ use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum, Path};
 
 pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
     // TODO remove in next PR
-    let attr = derive_input.attrs.iter().find(|attr| attr.path() == SKIP);
+    let has_borsh_skip_on_top = derive_input.attrs.iter().any(|attr| attr.path() == SKIP);
 
-    if attr.is_some() {
+    if has_borsh_skip_on_top {
         return Err(syn::Error::new(
             derive_input.ident.span(),
             "`borsh_skip` is not allowed as derive input attribute",
@@ -169,7 +169,7 @@ mod tests {
         local_insta_assert_debug_snapshot!(err);
     }
     #[test]
-    fn test_check_use_discriminant_on_struct() {
+    fn test_check_use_discriminant_on_struct_check_attrs() {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = false)]
@@ -183,7 +183,7 @@ mod tests {
         local_insta_assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
     #[test]
-    fn test_check_use_borsh_skip_on_whole_struct() {
+    fn test_check_use_borsh_skip_on_whole_struct_check_attrs() {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh_skip]
@@ -197,7 +197,7 @@ mod tests {
         local_insta_assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
     #[test]
-    fn test_check_use_borsh_invalid_on_whole_struct() {
+    fn test_check_use_borsh_invalid_on_whole_struct_check_attrs() {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(invalid)]
@@ -211,7 +211,7 @@ mod tests {
         local_insta_assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
     #[test]
-    fn test_init_function() {
+    fn test_init_function_check_attrs() {
         let item_struct = syn::parse2::<DeriveInput>(quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(init = initialization_method)]
@@ -226,7 +226,7 @@ mod tests {
     }
 
     #[test]
-    fn test_init_function_with_use_discriminant() {
+    fn test_init_function_with_use_discriminant_check_attrs() {
         let item_struct = syn::parse2::<DeriveInput>(quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(use_discriminant=true, init = initialization_method)]
@@ -242,7 +242,7 @@ mod tests {
         assert!(actual.is_ok());
     }
     #[test]
-    fn test_init_function_with_use_discriminant_reversed() {
+    fn test_init_contains_discriminant_reversed_check_attrs() {
         let item_struct = syn::parse2::<DeriveInput>(quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(init = initialization_method, use_discriminant=true)]
@@ -259,7 +259,7 @@ mod tests {
     }
 
     #[test]
-    fn test_init_function_wrong_format() {
+    fn test_init_function_wrong_format_check_attrs() {
         let item_struct: DeriveInput = syn::parse2(quote! {
         #[derive(BorshDeserialize, Debug)]
         #[borsh(init_func = initialization_method)]
@@ -328,20 +328,5 @@ mod tests {
             actual.unwrap().to_token_stream().to_string(),
             "initialization_method"
         );
-    }
-
-    #[test]
-    fn test_contains_initialize_with_function_wrong_format() {
-        let item_struct: DeriveInput = syn::parse2(quote! {
-            #[derive(BorshDeserialize, Debug)]
-            #[borsh(init_func = initialization_method)]
-            struct A<'a> {
-                x: u64,
-                y: f32,
-            }
-        })
-        .unwrap();
-        let actual = contains_initialize_with(&item_struct.attrs);
-        assert!(actual.is_none());
     }
 }

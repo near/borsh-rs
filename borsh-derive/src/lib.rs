@@ -299,7 +299,7 @@ struct A<U, V> {
 
 ###### syntax
 
-Attribute's value is syn's [Path](syn::Path)-s, enclosed in parentheses.
+Attribute's value is syn's [Path](syn::Path)-s, passed to borsh top level meta attribute as value of `init` argument.
 
 ###### usage
 
