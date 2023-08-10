@@ -233,4 +233,17 @@ mod tests {
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
+    #[test]
+    fn borsh_init_func() {
+        let item_enum: ItemStruct = syn::parse2(quote! {
+            #[borsh(init=initialization_method)]
+            struct A {
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+        let actual = process(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
 }

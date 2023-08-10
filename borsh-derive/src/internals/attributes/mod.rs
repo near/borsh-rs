@@ -14,15 +14,15 @@ pub const BORSH: Symbol = Symbol("borsh", "borsh(...)");
 /// bound - sub-borsh nested meta, field-level only, `BorshSerialize` and `BorshDeserialize` contexts
 pub const BOUND: Symbol = Symbol("bound", "bound(...)");
 //  use_discriminant - sub-borsh nested meta, item-level only, enums only, `BorshSerialize` and `BorshDeserialize` contexts
-pub const USE_DISCRIMINANT: &str = "use_discriminant";
+pub const USE_DISCRIMINANT: Symbol = Symbol("use_discriminant", "use_discriminant = ...");
 /// serialize - sub-bound nested meta attribute
 pub const SERIALIZE: Symbol = Symbol("serialize", "serialize = ...");
 /// deserialize - sub-bound nested meta attribute
 pub const DESERIALIZE: Symbol = Symbol("deserialize", "deserialize = ...");
 /// borsh_skip - field-level only attribute, `BorshSerialize`, `BorshDeserialize`, `BorshSchema` contexts
 pub const SKIP: Symbol = Symbol("borsh_skip", "borsh_skip");
-/// borsh_init - item-level only attribute  `BorshDeserialize` context
-pub const INIT: Symbol = Symbol("borsh_init", "borsh_init(...)");
+/// init - sub-borsh nested meta, item-level only attribute  `BorshDeserialize` context
+pub const INIT: Symbol = Symbol("init", "init = ...");
 /// serialize_with - sub-borsh nested meta, field-level only, `BorshSerialize` context
 pub const SERIALIZE_WITH: Symbol = Symbol("serialize_with", "serialize_with = ...");
 /// deserialize_with - sub-borsh nested meta, field-level only, `BorshDeserialize` context

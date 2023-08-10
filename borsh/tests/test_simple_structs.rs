@@ -29,7 +29,6 @@ use bytes::{Bytes, BytesMut};
 use borsh::{from_slice, BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-#[borsh_init(init)]
 struct A<'a> {
     x: u64,
     b: B,
@@ -53,14 +52,6 @@ struct A<'a> {
     range_u32: ops::Range<u32>,
     #[borsh_skip]
     skipped: Option<u64>,
-}
-
-impl A<'_> {
-    pub fn init(&mut self) {
-        if let Some(v) = self.lazy.as_mut() {
-            *v *= 10;
-        }
-    }
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
@@ -100,7 +91,7 @@ struct F2<'b> {
 }
 
 #[test]
-fn test_simple_struct() {
+fn test_ultimate_combined_all_features() {
     let mut map: BTreeMap<String, String> = BTreeMap::new();
     map.insert("test".into(), "test".into());
     let mut set: BTreeSet<u64> = BTreeSet::new();
@@ -165,7 +156,7 @@ fn test_simple_struct() {
         box_str: Box::from("asd"),
         i: a.i,
         u: Ok("Hello".to_string()),
-        lazy: Some(50),
+        lazy: Some(5),
         c: borrow::Cow::Owned("Hello".to_string()),
         cow_arr: borrow::Cow::Owned(vec![
             borrow::Cow::Borrowed("Hello1"),

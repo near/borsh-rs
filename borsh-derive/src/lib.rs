@@ -295,20 +295,20 @@ struct A<U, V> {
 
 ## Attributes
 
-### 1. `#[borsh_init(...)]` (item level attribute)
+### 1. `#[borsh(init=...)]` (item level attribute)
 
 ###### syntax
 
-Attribute's value is syn's [Path](syn::Path)-s, enclosed in parentheses.
+Attribute's value is syn's [Path](syn::Path)-s, passed to borsh top level meta attribute as value of `init` argument.
 
 ###### usage
 
-`#[borsh_init(...)]` allows to automatically run an initialization function right after deserialization.
+`#[borsh(init=...)]` allows to automatically run an initialization function right after deserialization.
 This adds a lot of convenience for objects that are architectured to be used as strictly immutable.
 
 ```ignore
 #[derive(BorshDeserialize)]
-#[borsh_init(init)]
+#[borsh(init=init)]
 struct Message {
     message: String,
     timestamp: u64,
@@ -520,7 +520,7 @@ enum X {
 ```
 
 */
-#[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh_init, borsh))]
+#[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh))]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
     let name = match name {
