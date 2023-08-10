@@ -121,7 +121,7 @@ mod tests {
 
     use super::*;
     #[test]
-    fn test_check_use_discriminant() {
+    fn test_use_discriminant() {
         let item_enum: ItemEnum = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = false)]
@@ -136,7 +136,7 @@ mod tests {
     }
 
     #[test]
-    fn test_check_use_discriminant_true() {
+    fn test_use_discriminant_true() {
         let item_enum: ItemEnum = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = true)]
@@ -151,7 +151,7 @@ mod tests {
     }
 
     #[test]
-    fn test_check_use_discriminant_wrong_value() {
+    fn test_use_discriminant_wrong_value() {
         let item_enum: ItemEnum = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = 111)]
@@ -169,7 +169,7 @@ mod tests {
         local_insta_assert_debug_snapshot!(err);
     }
     #[test]
-    fn test_check_use_discriminant_on_struct_check_attrs() {
+    fn test_check_attrs_use_discriminant_on_struct() {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = false)]
@@ -183,7 +183,7 @@ mod tests {
         local_insta_assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
     #[test]
-    fn test_check_use_borsh_skip_on_whole_struct_check_attrs() {
+    fn test_check_attrs_borsh_skip_on_whole_item() {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh_skip]
@@ -211,7 +211,7 @@ mod tests {
         local_insta_assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
     #[test]
-    fn test_init_function_check_attrs() {
+    fn test_check_attrs_init_function() {
         let item_struct = syn::parse2::<DeriveInput>(quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(init = initialization_method)]
@@ -226,7 +226,7 @@ mod tests {
     }
 
     #[test]
-    fn test_init_function_with_use_discriminant_check_attrs() {
+    fn test_check_attrs_init_function_with_use_discriminant_reversed() {
         let item_struct = syn::parse2::<DeriveInput>(quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(use_discriminant=true, init = initialization_method)]
@@ -242,7 +242,7 @@ mod tests {
         assert!(actual.is_ok());
     }
     #[test]
-    fn test_init_contains_discriminant_reversed_check_attrs() {
+    fn test_check_attrs_init_function_with_use_discriminant() {
         let item_struct = syn::parse2::<DeriveInput>(quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(init = initialization_method, use_discriminant=true)]
@@ -259,7 +259,7 @@ mod tests {
     }
 
     #[test]
-    fn test_init_function_wrong_format_check_attrs() {
+    fn test_check_attrs_init_function_wrong_format() {
         let item_struct: DeriveInput = syn::parse2(quote! {
         #[derive(BorshDeserialize, Debug)]
         #[borsh(init_func = initialization_method)]
@@ -277,7 +277,7 @@ mod tests {
         local_insta_assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
     }
     #[test]
-    fn test_contains_initialize_with_function() {
+    fn test_init_function() {
         let item_struct = syn::parse2::<DeriveInput>(quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(init = initialization_method)]
@@ -295,7 +295,7 @@ mod tests {
     }
 
     #[test]
-    fn test_contains_initialize_with_contains_discriminant() {
+    fn test_init_function_with_use_discriminant() {
         let item_struct = syn::parse2::<ItemEnum>(quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(init = initialization_method, use_discriminant=true)]
@@ -317,7 +317,7 @@ mod tests {
     }
 
     #[test]
-    fn test_contains_initialize_with_contains_discriminant_reversed() {
+    fn test_init_function_with_use_discriminant_reversed() {
         let item_struct = syn::parse2::<ItemEnum>(quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(use_discriminant=true, init = initialization_method)]
