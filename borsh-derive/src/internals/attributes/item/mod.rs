@@ -295,12 +295,14 @@ mod tests {
     }
 
     #[test]
-    fn test_contains_initialize_with_use_discriminant() {
-        let item_struct = syn::parse2::<DeriveInput>(quote! {
+    fn test_contains_initialize_with_contains_discriminant() {
+        let item_struct = syn::parse2::<ItemEnum>(quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(init = initialization_method, use_discriminant=true)]
-            struct A<'a> {
-                x: u64,
+            enum A {
+                B,
+                C,
+                D,
             }
         })
         .unwrap();
@@ -310,15 +312,19 @@ mod tests {
             actual.unwrap().to_token_stream().to_string(),
             "initialization_method"
         );
+        let actual = contains_use_discriminant(&item_struct);
+        assert!(actual.unwrap());
     }
 
     #[test]
-    fn test_contains_initialize_with_function_use_discriminant() {
-        let item_struct = syn::parse2::<DeriveInput>(quote! {
+    fn test_contains_initialize_with_contains_discriminant_reversed() {
+        let item_struct = syn::parse2::<ItemEnum>(quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(use_discriminant=true, init = initialization_method)]
-            struct A<'a> {
-                x: u64,
+            enum A {
+                B,
+                C,
+                D,
             }
         })
         .unwrap();
@@ -328,5 +334,7 @@ mod tests {
             actual.unwrap().to_token_stream().to_string(),
             "initialization_method"
         );
+        let actual = contains_use_discriminant(&item_struct);
+        assert!(actual.unwrap());
     }
 }
