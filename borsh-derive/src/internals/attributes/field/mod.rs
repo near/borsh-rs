@@ -7,7 +7,7 @@ use self::bounds::BOUNDS_FIELD_PARSE_MAP;
 
 use super::{
     parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys, parse_lit_into},
-    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SERIALIZE_WITH, SKIP,
+    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SERIALIZE_WITH, SKIP, SKIP_SMALL,
 };
 
 #[cfg(feature = "schema")]
@@ -24,6 +24,7 @@ enum Variants {
     Bounds(bounds::Bounds),
     SerializeWith(syn::ExprPath),
     DeserializeWith(syn::ExprPath),
+    Skip(()),
     #[cfg(feature = "schema")]
     Schema(schema::Attributes),
 }
@@ -57,9 +58,13 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
         Ok(Variants::Schema(schema_attributes))
     });
 
+    let f_skip: Box<ParseFn> =
+        Box::new(|_attr_name, _meta_item_name, _meta| Ok(Variants::Skip(())));
+
     m.insert(BOUND, f_bounds);
     m.insert(SERIALIZE_WITH, f_serialize_with);
     m.insert(DESERIALIZE_WITH, f_deserialize_with);
+    m.insert(SKIP_SMALL, f_skip);
     #[cfg(feature = "schema")]
     m.insert(SCHEMA, f_schema);
     m
@@ -115,7 +120,16 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
 }
 
 pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(|attr| attr.path() == SKIP)
+    let mut res = false;
+    for attr in attrs.iter() {
+        let _ = attr.parse_nested_meta(|meta| {
+            if meta.path == SKIP_SMALL {
+                res = true;
+            }
+            Ok(())
+        });
+    }
+    res
 }
 
 #[cfg(feature = "schema")]

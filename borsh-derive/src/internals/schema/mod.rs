@@ -128,7 +128,7 @@ fn visit_field(field: &Field, visitor: &mut generics::FindTyParams) -> syn::Resu
     Ok(())
 }
 
-/// check param usage in fields with respect to `borsh_skip` attribute usage
+/// check param usage in fields with respect to `borsh(skip)` attribute usage
 fn visit_struct_fields(fields: &Fields, visitor: &mut generics::FindTyParams) -> syn::Result<()> {
     match &fields {
         Fields::Named(fields) => {

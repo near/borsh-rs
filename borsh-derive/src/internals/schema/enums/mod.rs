@@ -241,7 +241,7 @@ mod tests {
                 B {
                     #[serde(rename = "abc")]
                     c: i32,
-                    #[borsh_skip]
+                    #[borsh(skip)]
                     d: u32,
                     l: u64,
                 },
@@ -267,7 +267,7 @@ mod tests {
             enum A<C: Eq, W> where W: Hash {
                 Bacon,
                 Eggs,
-                Salad(Tomatoes, #[borsh_skip] C, Oil),
+                Salad(Tomatoes, #[borsh(skip)] C, Oil),
                 Sausage{wrapper: W, filling: Filling},
             }
         })
@@ -285,7 +285,7 @@ mod tests {
                 Eggs,
                 Salad(Tomatoes, C, Oil),
                 Sausage{
-                    #[borsh_skip]
+                    #[borsh(skip)]
                     wrapper: W,
                     filling: Filling,
                     unexpected: U,
@@ -375,8 +375,7 @@ mod tests {
             {
                 B {
                     x: Vec<V>,
-                    #[borsh_skip]
-                    #[borsh(schema(params = "K => <K as TraitName>::Associated"))]
+                    #[borsh(skip,schema(params = "K => <K as TraitName>::Associated"))]
                     z: <K as TraitName>::Associated,
                 },
                 C(T, u16),
@@ -396,8 +395,7 @@ mod tests {
                 C3(u64, u64),
                 C4(
                     u64,
-                    #[borsh_skip]
-                    #[borsh(schema(with_funcs(
+                    #[borsh(skip,schema(with_funcs(
                         declaration = "third_party_impl::declaration::<K, V>",
                         definitions = "third_party_impl::add_definitions_recursively::<K, V>"
                     )))]

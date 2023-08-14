@@ -154,7 +154,7 @@ mod tests {
     fn borsh_skip_tuple_variant_field() {
         let item_enum: ItemEnum = syn::parse2(quote! {
             enum AATTB {
-                B(#[borsh_skip] i32, #[borsh_skip] u32),
+                B(#[borsh(skip)] i32, #[borsh(skip)] u32),
 
                 NegatedVariant {
                     beta: u8,
@@ -194,7 +194,7 @@ mod tests {
 
             enum AB {
                 B {
-                    #[borsh_skip]
+                    #[borsh(skip)]
                     c: i32,
 
                     d: u32,
@@ -218,10 +218,10 @@ mod tests {
 
             enum AAB {
                 B {
-                    #[borsh_skip]
+                    #[borsh(skip)]
                     c: i32,
 
-                    #[borsh_skip]
+                    #[borsh(skip)]
                     d: u32,
                 },
 
@@ -294,7 +294,7 @@ mod tests {
         let item_struct: ItemEnum = syn::parse2(quote! {
             enum A<K: Key, V, U> where V: Value {
                 B {
-                    #[borsh_skip]
+                    #[borsh(skip)]
                     x: HashMap<K, V>,
                     y: String,
                 },
@@ -316,7 +316,7 @@ mod tests {
                     x: HashMap<K, V>,
                     y: String,
                 },
-                C(K, #[borsh_skip] Vec<U>),
+                C(K, #[borsh(skip)] Vec<U>),
             }
         })
         .unwrap();

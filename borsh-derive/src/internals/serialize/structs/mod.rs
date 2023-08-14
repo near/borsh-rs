@@ -150,7 +150,7 @@ mod tests {
     fn generic_tuple_struct_borsh_skip1() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct G<K, V, U> (
-                #[borsh_skip]
+                #[borsh(skip)]
                 HashMap<K, V>,
                 U,
             );
@@ -167,7 +167,7 @@ mod tests {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct G<K, V, U> (
                 HashMap<K, V>,
-                #[borsh_skip]
+                #[borsh(skip)]
                 U,
             );
         })
@@ -182,7 +182,7 @@ mod tests {
     fn generic_named_fields_struct_borsh_skip() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct G<K, V, U> {
-                #[borsh_skip]
+                #[borsh(skip)]
                 x: HashMap<K, V>,
                 y: U,
             }
@@ -269,8 +269,8 @@ mod tests {
     fn check_serialize_with_skip_conflict() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct A<K: Ord, V> {
-                #[borsh_skip]
                 #[borsh(serialize_with = "third_party_impl::serialize_third_party")]
+                #[borsh(skip)]
                 x: ThirdParty<K, V>,
                 y: u64,
             }

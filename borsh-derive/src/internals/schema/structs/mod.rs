@@ -291,7 +291,7 @@ mod tests {
     #[test]
     fn tuple_struct_whole_skip() {
         let item_struct: ItemStruct = syn::parse2(quote! {
-            struct A(#[borsh_skip] String);
+            struct A(#[borsh(skip)] String);
         })
         .unwrap();
 
@@ -306,7 +306,7 @@ mod tests {
     #[test]
     fn tuple_struct_partial_skip() {
         let item_struct: ItemStruct = syn::parse2(quote! {
-            struct A(#[borsh_skip] u64, String);
+            struct A(#[borsh(skip)] u64, String);
         })
         .unwrap();
 
@@ -322,7 +322,7 @@ mod tests {
     fn generic_tuple_struct_borsh_skip1() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct G<K, V, U> (
-                #[borsh_skip]
+                #[borsh(skip)]
                 HashMap<K, V>,
                 U,
             );
@@ -339,7 +339,7 @@ mod tests {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct G<K, V, U> (
                 HashMap<K, V>,
-                #[borsh_skip]
+                #[borsh(skip)]
                 U,
             );
         })
@@ -354,7 +354,7 @@ mod tests {
     fn generic_tuple_struct_borsh_skip3() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct G<U, K, V> (
-                #[borsh_skip]
+                #[borsh(skip)]
                 HashMap<K, V>,
                 U,
                 K,
@@ -370,7 +370,7 @@ mod tests {
     #[test]
     fn generic_tuple_struct_borsh_skip4() {
         let item_struct: ItemStruct = syn::parse2(quote! {
-            struct ASalad<C>(Tomatoes, #[borsh_skip] C, Oil);
+            struct ASalad<C>(Tomatoes, #[borsh(skip)] C, Oil);
         })
         .unwrap();
 
@@ -383,7 +383,7 @@ mod tests {
     fn generic_named_fields_struct_borsh_skip() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct G<K, V, U> {
-                #[borsh_skip]
+                #[borsh(skip)]
                 x: HashMap<K, V>,
                 y: U,
             }
@@ -477,8 +477,7 @@ mod tests {
             where
                 T: TraitName,
             {
-                #[borsh_skip]
-                #[borsh(schema(params =
+                #[borsh(skip,schema(params =
                     "T => <T as TraitName>::Associated"
                ))]
                 field: <T as TraitName>::Associated,
@@ -496,8 +495,7 @@ mod tests {
     fn check_with_funcs_skip_conflict() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct A<K, V> {
-                #[borsh_skip]
-                #[borsh(schema(with_funcs(
+                #[borsh(skip,schema(with_funcs(
                     declaration = "third_party_impl::declaration::<K, V>",
                     definitions = "third_party_impl::add_definitions_recursively::<K, V>"
                 )))]

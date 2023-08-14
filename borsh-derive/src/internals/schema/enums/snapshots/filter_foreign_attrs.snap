@@ -16,7 +16,7 @@ impl borsh::BorshSchema for A {
         #[derive(borsh::BorshSchema)]
         struct AB {
             c: i32,
-            #[borsh_skip]
+            #[borsh(skip)]
             d: u32,
             l: u64,
         }

@@ -25,7 +25,7 @@ where
         struct AEggs;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
-        struct ASalad<C: Eq>(Tomatoes, #[borsh_skip] C, Oil);
+        struct ASalad<C: Eq>(Tomatoes, #[borsh(skip)] C, Oil);
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         struct ASausage<W>

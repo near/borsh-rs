@@ -50,7 +50,7 @@ struct A<'a> {
     c: borrow::Cow<'a, str>,
     cow_arr: borrow::Cow<'a, [borrow::Cow<'a, str>]>,
     range_u32: ops::Range<u32>,
-    #[borsh_skip]
+    #[borsh(skip)]
     skipped: Option<u64>,
 }
 
