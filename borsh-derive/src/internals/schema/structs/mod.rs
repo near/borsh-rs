@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens};
-use syn::{ExprPath, Fields, Ident, ItemStruct, Path, Type, WhereClause};
+use syn::{ExprPath, Fields, Ident, ItemStruct, Type};
 
 use crate::internals::{attributes::field, generics, schema};
 
@@ -50,31 +50,56 @@ fn field_definitions_output(
 
 pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
-    let name_str = name.to_token_stream().to_string();
+    let struct_name = name.to_token_stream().to_string();
     let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let mut where_clause = generics::default_where(where_clause);
+    let mut generics_output = schema::GenericsOutput::new(&generics);
+    let (struct_fields, add_definitions_recursively) =
+        process_fields(&cratename, &input.fields, &mut generics_output)?;
 
-    let mut where_clause = where_clause.map_or_else(
-        || WhereClause {
-            where_token: Default::default(),
-            predicates: Default::default(),
-        },
-        Clone::clone,
-    );
+    let add_definitions_recursively = quote! {
+        fn add_definitions_recursively(definitions: &mut #cratename::__private::maybestd::collections::BTreeMap<#cratename::schema::Declaration, #cratename::schema::Definition>) {
+            #struct_fields
+            let definition = #cratename::schema::Definition::Struct { fields };
 
-    let mut schema_params_visitor = generics::FindTyParams::new(&generics);
+            let no_recursion_flag = definitions.get(&Self::declaration()).is_none();
+            Self::add_definition(Self::declaration(), definition, definitions);
+            if no_recursion_flag {
+                #add_definitions_recursively
+            }
+        }
+    };
+
+    let (predicates, declaration) = generics_output.result(&struct_name, &cratename);
+    where_clause.predicates.extend(predicates);
+    Ok(quote! {
+        impl #impl_generics #cratename::BorshSchema for #name #ty_generics #where_clause {
+            fn declaration() -> #cratename::schema::Declaration {
+                #declaration
+            }
+            #add_definitions_recursively
+        }
+    })
+}
+
+fn process_fields(
+    cratename: &Ident,
+    fields: &Fields,
+    generics: &mut schema::GenericsOutput,
+) -> syn::Result<(TokenStream2, TokenStream2)> {
+    let mut struct_fields = TokenStream2::new();
+    let mut add_definitions_recursively = TokenStream2::new();
 
     // Generate function that returns the schema of required types.
     let mut fields_vec = vec![];
-    let mut struct_fields = TokenStream2::new();
-    let mut add_definitions_recursively = TokenStream2::new();
-    schema::visit_struct_fields(&input.fields, &mut schema_params_visitor)?;
-    match &input.fields {
+    schema::visit_struct_fields(fields, &mut generics.params_visitor)?;
+    match fields {
         Fields::Named(fields) => {
             for field in &fields.named {
                 process_field(
                     field,
-                    &cratename,
+                    cratename,
                     &mut fields_vec,
                     &mut add_definitions_recursively,
                 )?;
@@ -89,7 +114,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
             for field in &fields.unnamed {
                 process_field(
                     field,
-                    &cratename,
+                    cratename,
                     &mut fields_vec,
                     &mut add_definitions_recursively,
                 )?;
@@ -108,41 +133,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
             let fields = #cratename::schema::Fields::Empty;
         };
     }
-
-    let add_definitions_recursively = quote! {
-        fn add_definitions_recursively(definitions: &mut #cratename::__private::maybestd::collections::BTreeMap<#cratename::schema::Declaration, #cratename::schema::Definition>) {
-            #struct_fields
-            let definition = #cratename::schema::Definition::Struct { fields };
-
-            let no_recursion_flag = definitions.get(&Self::declaration()).is_none();
-            Self::add_definition(Self::declaration(), definition, definitions);
-            if no_recursion_flag {
-                #add_definitions_recursively
-            }
-        }
-    };
-
-    let trait_path: Path = syn::parse2(quote! { #cratename::BorshSchema }).unwrap();
-    let predicates = generics::compute_predicates(
-        schema_params_visitor.clone().process_for_bounds(),
-        &trait_path,
-    );
-    where_clause.predicates.extend(predicates);
-
-    // Generate function that returns the name of the type.
-    let declaration = schema::declaration(
-        &name_str,
-        cratename.clone(),
-        schema_params_visitor.process_for_bounds(),
-    );
-    Ok(quote! {
-        impl #impl_generics #cratename::BorshSchema for #name #ty_generics #where_clause {
-            fn declaration() -> #cratename::schema::Declaration {
-                #declaration
-            }
-            #add_definitions_recursively
-        }
-    })
+    Ok((struct_fields, add_definitions_recursively))
 }
 fn process_field(
     field: &syn::Field,
