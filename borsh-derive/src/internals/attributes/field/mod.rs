@@ -7,7 +7,7 @@ use self::bounds::BOUNDS_FIELD_PARSE_MAP;
 
 use super::{
     parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys, parse_lit_into},
-    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SERIALIZE_WITH, SKIP, SKIP_SMALL,
+    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SERIALIZE_WITH, SKIP,
 };
 
 #[cfg(feature = "schema")]
@@ -64,7 +64,7 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
     m.insert(BOUND, f_bounds);
     m.insert(SERIALIZE_WITH, f_serialize_with);
     m.insert(DESERIALIZE_WITH, f_deserialize_with);
-    m.insert(SKIP_SMALL, f_skip);
+    m.insert(SKIP, f_skip);
     #[cfg(feature = "schema")]
     m.insert(SCHEMA, f_schema);
     m
@@ -123,7 +123,7 @@ pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
     let mut res = false;
     for attr in attrs.iter() {
         let _ = attr.parse_nested_meta(|meta| {
-            if meta.path == SKIP_SMALL {
+            if meta.path == SKIP {
                 res = true;
             }
             Ok(())
