@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{
-    punctuated::Punctuated, token::Comma, Field, Fields, GenericParam, Generics, Ident, Type,
+    punctuated::Punctuated, token::Comma, Field, Fields, GenericParam, Generics, Ident, Path, Type,
     WherePredicate,
 };
 
@@ -11,6 +11,33 @@ use crate::internals::{attributes::field, generics};
 
 pub mod enums;
 pub mod structs;
+
+struct GenericsOutput {
+    params_visitor: generics::FindTyParams,
+}
+
+impl GenericsOutput {
+    fn new(generics: &Generics) -> Self {
+        Self {
+            params_visitor: generics::FindTyParams::new(generics),
+        }
+    }
+    fn result(self, item_name: &str, cratename: &Ident) -> (Vec<WherePredicate>, TokenStream2) {
+        let trait_path: Path = syn::parse2(quote! { #cratename::BorshSchema }).unwrap();
+        let predicates = generics::compute_predicates(
+            self.params_visitor.clone().process_for_bounds(),
+            &trait_path,
+        );
+        // Generate function that returns the name of the type.
+        let declaration = declaration(
+            item_name,
+            cratename.clone(),
+            self.params_visitor.process_for_bounds(),
+        );
+
+        (predicates, declaration)
+    }
+}
 
 fn declaration(ident_str: &str, cratename: Ident, params_for_bounds: Vec<Type>) -> TokenStream2 {
     // Generate function that returns the name of the type.

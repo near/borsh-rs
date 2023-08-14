@@ -1,7 +1,7 @@
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{quote, ToTokens};
 use std::collections::HashSet;
-use syn::{Fields, Ident, ItemEnum, ItemStruct, Path, Visibility, WhereClause};
+use syn::{Fields, Generics, Ident, ItemEnum, ItemStruct, Variant, Visibility};
 
 use crate::internals::{attributes::field, generics, schema};
 
@@ -26,69 +26,27 @@ fn transform_variant_fields(mut input: Fields) -> Fields {
 
 pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
     let name = &input.ident;
-    let name_str = name.to_token_stream().to_string();
+    let enum_name = name.to_token_stream().to_string();
     let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let mut where_clause = generics::default_where(where_clause);
+    let mut generics_output = schema::GenericsOutput::new(&generics);
 
-    let mut where_clause = where_clause.map_or_else(
-        || WhereClause {
-            where_token: Default::default(),
-            predicates: Default::default(),
-        },
-        Clone::clone,
-    );
-    let mut enum_schema_params_visitor = generics::FindTyParams::new(&generics);
-
-    // Generate function that returns the schema for variants.
-    // Definitions of the variants.
+    // Generate functions that return the schema for variants.
     let mut variants_defs = vec![];
-    // Definitions of the inner structs used in variants.
     let mut inner_defs = TokenStream2::new();
-    // Recursive calls to `add_definitions_recursively`.
     let mut add_recursive_defs = TokenStream2::new();
     for variant in &input.variants {
-        let variant_name_str = variant.ident.to_token_stream().to_string();
-        let full_variant_name_str = format!("{}{}", name_str, variant_name_str);
-        let full_variant_ident = Ident::new(full_variant_name_str.as_str(), Span::call_site());
-        let transformed_fields = transform_variant_fields(variant.fields.clone());
-
-        let mut enum_variant_schema_params_visitor = generics::FindTyParams::new(&generics);
-        schema::visit_struct_fields(&variant.fields, &mut enum_schema_params_visitor)?;
-        schema::visit_struct_fields_unconditional(
-            &variant.fields,
-            &mut enum_variant_schema_params_visitor,
-        );
-
-        let variant_not_skipped_params = enum_variant_schema_params_visitor
-            .process_for_params()
-            .into_iter()
-            .collect::<HashSet<_>>();
-        let inner_struct_generics =
-            schema::filter_used_params(&generics, variant_not_skipped_params);
-
-        let (_impl_generics, inner_struct_ty_generics, _where_clause) =
-            inner_struct_generics.split_for_impl();
-        let inner_struct = ItemStruct {
-            attrs: vec![],
-            vis: Visibility::Inherited,
-            struct_token: Default::default(),
-            ident: full_variant_ident.clone(),
-            generics: inner_struct_generics.clone(),
-            fields: transformed_fields,
-            semi_token: Some(Default::default()),
-        };
-
-        inner_defs.extend(quote! {
-            #[allow(dead_code)]
-            #[derive(#cratename::BorshSchema)]
-            #inner_struct
-        });
-        add_recursive_defs.extend(quote! {
-            <#full_variant_ident #inner_struct_ty_generics as #cratename::BorshSchema>::add_definitions_recursively(definitions);
-        });
-        variants_defs.push(quote! {
-            (#variant_name_str.to_string(), <#full_variant_ident #inner_struct_ty_generics>::declaration())
-        });
+        let variant_output = process_variant(
+            variant,
+            &cratename,
+            &enum_name,
+            &generics,
+            &mut generics_output,
+        )?;
+        inner_defs.extend(variant_output.inner_struct);
+        add_recursive_defs.extend(variant_output.add_definitions_recursively_call);
+        variants_defs.push(variant_output.variant_entry);
     }
 
     let type_definitions = quote! {
@@ -100,18 +58,9 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
             Self::add_definition(Self::declaration(), definition, definitions);
         }
     };
-    let trait_path: Path = syn::parse2(quote! { #cratename::BorshSchema }).unwrap();
-    let predicates = generics::compute_predicates(
-        enum_schema_params_visitor.clone().process_for_bounds(),
-        &trait_path,
-    );
-    where_clause.predicates.extend(predicates);
 
-    let declaration = schema::declaration(
-        &name_str,
-        cratename.clone(),
-        enum_schema_params_visitor.process_for_bounds(),
-    );
+    let (predicates, declaration) = generics_output.result(&enum_name, &cratename);
+    where_clause.predicates.extend(predicates);
     Ok(quote! {
         impl #impl_generics #cratename::BorshSchema for #name #ty_generics #where_clause {
             fn declaration() -> #cratename::schema::Declaration {
@@ -120,6 +69,78 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
             #type_definitions
         }
     })
+}
+
+struct VariantOutput {
+    /// rust definition of the inner struct used in variant.
+    inner_struct: TokenStream2,
+    /// call to `add_definitions_recursively`.
+    add_definitions_recursively_call: TokenStream2,
+    /// entry with a variant's declaration, element in vector of whole enum's definition
+    variant_entry: TokenStream2,
+}
+
+fn process_variant(
+    variant: &Variant,
+    cratename: &Ident,
+    enum_name: &str,
+    enum_generics: &Generics,
+    generics_output: &mut schema::GenericsOutput,
+) -> syn::Result<VariantOutput> {
+    let variant_name = variant.ident.to_token_stream().to_string();
+    let full_variant_name = format!("{}{}", enum_name, variant_name);
+    let full_variant_ident = Ident::new(&full_variant_name, Span::call_site());
+
+    schema::visit_struct_fields(&variant.fields, &mut generics_output.params_visitor)?;
+    let (inner_struct, inner_struct_generics) =
+        inner_struct_definition(variant, cratename, &full_variant_ident, enum_generics);
+    let (_ig, inner_struct_ty_generics, _wc) = inner_struct_generics.split_for_impl();
+
+    let add_definitions_recursively_call = quote! {
+        <#full_variant_ident #inner_struct_ty_generics as #cratename::BorshSchema>::add_definitions_recursively(definitions);
+    };
+    let variant_entry = quote! {
+        (#variant_name.to_string(), <#full_variant_ident #inner_struct_ty_generics>::declaration())
+    };
+    Ok(VariantOutput {
+        inner_struct,
+        add_definitions_recursively_call,
+        variant_entry,
+    })
+}
+
+fn inner_struct_definition(
+    variant: &Variant,
+    cratename: &Ident,
+    inner_struct_ident: &Ident,
+    enum_generics: &Generics,
+) -> (TokenStream2, Generics) {
+    let transformed_fields = transform_variant_fields(variant.fields.clone());
+
+    let mut variant_schema_params_visitor = generics::FindTyParams::new(enum_generics);
+    schema::visit_struct_fields_unconditional(&variant.fields, &mut variant_schema_params_visitor);
+    let variant_not_skipped_params = variant_schema_params_visitor
+        .process_for_params()
+        .into_iter()
+        .collect::<HashSet<_>>();
+    let inner_struct_generics =
+        schema::filter_used_params(enum_generics, variant_not_skipped_params);
+
+    let inner_struct = ItemStruct {
+        attrs: vec![],
+        vis: Visibility::Inherited,
+        struct_token: Default::default(),
+        ident: inner_struct_ident.clone(),
+        generics: inner_struct_generics.clone(),
+        fields: transformed_fields,
+        semi_token: Some(Default::default()),
+    };
+    let inner_struct = quote! {
+        #[allow(dead_code)]
+        #[derive(#cratename::BorshSchema)]
+        #inner_struct
+    };
+    (inner_struct, inner_struct_generics)
 }
 
 #[cfg(test)]
