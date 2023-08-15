@@ -50,14 +50,13 @@ fn process_field(
     generics: &mut serialize::GenericsOutput,
     body: &mut TokenStream2,
 ) -> syn::Result<()> {
-    let skipped = field::contains_skip(&field.attrs);
-    let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+    let parsed = field::Attributes::parse(&field.attrs)?;
     let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
 
     generics
         .overrides
         .extend(parsed.collect_bounds(BoundType::Serialize));
-    if !skipped {
+    if !parsed.skip {
         let delta = field_id.serialize_output(cratename, parsed.serialize_with);
         body.extend(delta);
 
@@ -269,8 +268,7 @@ mod tests {
     fn check_serialize_with_skip_conflict() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct A<K: Ord, V> {
-                #[borsh(serialize_with = "third_party_impl::serialize_third_party")]
-                #[borsh(skip)]
+                #[borsh(skip,serialize_with = "third_party_impl::serialize_third_party")]
                 x: ThirdParty<K, V>,
                 y: u64,
             }

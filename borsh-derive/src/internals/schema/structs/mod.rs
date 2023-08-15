@@ -141,9 +141,8 @@ fn process_field(
     fields_vec: &mut Vec<TokenStream2>,
     add_definitions_recursively: &mut TokenStream2,
 ) -> syn::Result<()> {
-    let skipped = field::contains_skip(&field.attrs);
-    let parsed = field::Attributes::parse(&field.attrs, skipped)?;
-    if !skipped {
+    let parsed = field::Attributes::parse(&field.attrs)?;
+    if !parsed.skip {
         let field_name = field.ident.as_ref();
         let field_type = &field.ty;
         fields_vec.push(field_declaration_output(

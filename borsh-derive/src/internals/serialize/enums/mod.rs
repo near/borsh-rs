@@ -121,20 +121,19 @@ fn process_field(
     generics: &mut serialize::GenericsOutput,
     output: &mut VariantOutput,
 ) -> syn::Result<()> {
-    let skipped = field::contains_skip(&field.attrs);
-    let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+    let parsed = field::Attributes::parse(&field.attrs)?;
 
     let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
     generics
         .overrides
         .extend(parsed.collect_bounds(BoundType::Serialize));
 
-    let field_variant_header = field_id.enum_variant_header(skipped);
+    let field_variant_header = field_id.enum_variant_header(parsed.skip);
     if let Some(field_variant_header) = field_variant_header {
         output.header.extend(field_variant_header);
     }
 
-    if !skipped {
+    if !parsed.skip {
         let delta = field_id.serialize_output(cratename, parsed.serialize_with);
         output.body.extend(delta);
         if needs_bounds_derive {

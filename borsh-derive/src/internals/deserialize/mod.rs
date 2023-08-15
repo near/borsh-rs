@@ -44,8 +44,7 @@ fn process_field(
     body: &mut TokenStream2,
     generics: &mut GenericsOutput,
 ) -> syn::Result<()> {
-    let skipped = field::contains_skip(&field.attrs);
-    let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+    let parsed = field::Attributes::parse(&field.attrs)?;
 
     generics
         .overrides
@@ -53,7 +52,7 @@ fn process_field(
     let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
 
     let field_name = field.ident.as_ref();
-    let delta = if skipped {
+    let delta = if parsed.skip {
         if needs_bounds_derive {
             generics.default_visitor.visit_field(field);
         }
