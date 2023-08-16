@@ -47,24 +47,24 @@ struct A<U, V> {
 #[derive(BorshSerialize)]
 struct A<U, V> {
     x: U,
-    #[borsh_skip]
+    #[borsh(skip)]
     y: V,
 }
 ```
 
 ## Attributes
 
-### 1. `#[borsh_skip]` (field level attribute)
+### 1. `#[borsh(skip)]` (field level attribute)
 
-`#[borsh_skip]` makes derive skip serializing annotated field.
+`#[borsh(skip)]` makes derive skip serializing annotated field.
 
-`#[borsh_skip]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::ser::BorshSerialize`.
+`#[borsh(skip)]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::ser::BorshSerialize`.
 
 ```ignore
 #[derive(BorshSerialize)]
 struct A {
     x: u64,
-    #[borsh_skip]
+    #[borsh(skip)]
     y: f32,
 }
 ```
@@ -109,10 +109,10 @@ where
 }
 ```
 
-###### interaction with `#[borsh_skip]`
+###### interaction with `#[borsh(skip)]`
 
 `#[borsh(bound(serialize = ...))]` replaces bounds, which are derived automatically,
-irrelevant of whether `#[borsh_skip]` attribute is present.
+irrelevant of whether `#[borsh(skip)]` attribute is present.
 
 ### 3. `#[borsh(serialize_with = ...)]` (field level attribute)
 
@@ -161,9 +161,9 @@ struct B<K, V> {
 }
 ```
 
-###### interaction with `#[borsh_skip]`
+###### interaction with `#[borsh(skip)]`
 
-`#[borsh(serialize_with = ...)]` is not allowed to be used simultaneously with `#[borsh_skip]`.
+`#[borsh(serialize_with = ...)]` is not allowed to be used simultaneously with `#[borsh(skip)]`.
 
 ### 4. `borsh(use_discriminant=<bool>)` (item level attribute)
 This attribute is only applicable to enums.
@@ -226,7 +226,7 @@ enum X {
 ```
 
 */
-#[proc_macro_derive(BorshSerialize, attributes(borsh_skip, borsh))]
+#[proc_macro_derive(BorshSerialize, attributes(borsh))]
 pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
     let name = match name {
@@ -287,7 +287,7 @@ struct A<U, V> {
 #[derive(BorshDeserialize)]
 struct A<U, V> {
     x: U,
-    #[borsh_skip]
+    #[borsh(skip)]
     y: V,
 }
 ```
@@ -325,11 +325,11 @@ impl Message {
 }
 ```
 
-### 2. `#[borsh_skip]` (field level attribute)
+### 2. `#[borsh(skip)]` (field level attribute)
 
-`#[borsh_skip]` makes derive skip deserializing annotated field.
+`#[borsh(skip)]` makes derive skip deserializing annotated field.
 
-`#[borsh_skip]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::de::BorshDeserialize`.
+`#[borsh(skip)]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::de::BorshDeserialize`.
 
 It adds `core::default::Default` bound to any
 parameters encountered in annotated field.
@@ -339,7 +339,7 @@ parameters encountered in annotated field.
 #[derive(BorshDeserialize)]
 struct A {
     x: u64,
-    #[borsh_skip]
+    #[borsh(skip)]
     y: f32,
 }
 ```
@@ -388,18 +388,17 @@ where
 }
 ```
 
-###### interaction with `#[borsh_skip]`
+###### interaction with `#[borsh(skip)]`
 
 `#[borsh(bound(deserialize = ...))]` replaces bounds, which are derived automatically,
-irrelevant of whether `#[borsh_skip]` attribute is present.
+irrelevant of whether `#[borsh(skip)]` attribute is present.
 
 ```ignore
 /// implicit derived `core::default::Default` bounds on `K` and `V` type parameters are removed by
 /// empty bound specified, as `HashMap` has its own `Default` implementation
 #[derive(BorshDeserialize)]
 struct A<K, V, U>(
-    #[borsh_skip]
-    #[borsh(bound(deserialize = ""))]
+    #[borsh(skip, bound(deserialize = ""))]
     HashMap<K, V>,
     U,
 );
@@ -451,9 +450,9 @@ struct B<K: Hash + Eq, V> {
 }
 ```
 
-###### interaction with `#[borsh_skip]`
+###### interaction with `#[borsh(skip)]`
 
-`#[borsh(deserialize_with = ...)]` is not allowed to be used simultaneously with `#[borsh_skip]`.
+`#[borsh(deserialize_with = ...)]` is not allowed to be used simultaneously with `#[borsh(skip)]`.
 
 ### 5. `borsh(use_discriminant=<bool>)` (item level attribute)
 
@@ -520,7 +519,7 @@ enum X {
 ```
 
 */
-#[proc_macro_derive(BorshDeserialize, attributes(borsh_skip, borsh))]
+#[proc_macro_derive(BorshDeserialize, attributes(borsh))]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
     let name = match name {
@@ -579,24 +578,24 @@ struct A<U, V> {
 #[derive(BorshSchema)]
 struct A<U, V> {
     x: U,
-    #[borsh_skip]
+    #[borsh(skip)]
     y: V,
 }
 ```
 
 ## Attributes
 
-### 1. `#[borsh_skip]` (field level attribute)
+### 1. `#[borsh(skip)]` (field level attribute)
 
-`#[borsh_skip]` makes derive skip including schema from annotated field into schema's implementation.
+`#[borsh(skip)]` makes derive skip including schema from annotated field into schema's implementation.
 
-`#[borsh_skip]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::BorshSchema`.
+`#[borsh(skip)]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::BorshSchema`.
 
 ```ignore
 #[derive(BorshSchema)]
 struct A {
     x: u64,
-    #[borsh_skip]
+    #[borsh(skip)]
     y: f32,
 }
 ```
@@ -668,9 +667,9 @@ where
 }
 ```
 
-###### interaction with `#[borsh_skip]`
+###### interaction with `#[borsh(skip)]`
 
-`#[borsh(schema(params = ...))]` is not allowed to be used simultaneously with `#[borsh_skip]`.
+`#[borsh(schema(params = ...))]` is not allowed to be used simultaneously with `#[borsh(skip)]`.
 
 ### 3. `#[borsh(schema(with_funcs(declaration = ..., definitions = ...)))]` (field level attribute)
 
@@ -736,13 +735,13 @@ struct B<K, V> {
 }
 ```
 
-###### interaction with `#[borsh_skip]`
+###### interaction with `#[borsh(skip)]`
 
-`#[borsh(schema(with_funcs(declaration = ..., definitions = ...)))]` is not allowed to be used simultaneously with `#[borsh_skip]`.
+`#[borsh(schema(with_funcs(declaration = ..., definitions = ...)))]` is not allowed to be used simultaneously with `#[borsh(skip)]`.
 
 */
 #[cfg(feature = "schema")]
-#[proc_macro_derive(BorshSchema, attributes(borsh_skip, borsh))]
+#[proc_macro_derive(BorshSchema, attributes(borsh))]
 pub fn borsh_schema(input: TokenStream) -> TokenStream {
     let name = &crate_name("borsh").unwrap();
     let name = match name {

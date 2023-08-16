@@ -1,21 +1,11 @@
-use crate::internals::attributes::{BORSH, INIT, SKIP, USE_DISCRIMINANT};
+use crate::internals::attributes::{BORSH, INIT, USE_DISCRIMINANT};
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum, Path};
 
 pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
-    // TODO remove in next PR
-    let has_borsh_skip_on_top = derive_input.attrs.iter().any(|attr| attr.path() == SKIP);
-
-    if has_borsh_skip_on_top {
-        return Err(syn::Error::new(
-            derive_input.ident.span(),
-            "`borsh_skip` is not allowed as derive input attribute",
-        )
-        .to_compile_error());
-    }
-
     let attr = derive_input.attrs.iter().find(|attr| attr.path() == BORSH);
+
     if let Some(attr) = attr {
         attr.parse_nested_meta(|meta| {
             if meta.path != USE_DISCRIMINANT && meta.path != INIT {
@@ -44,7 +34,7 @@ pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStre
     Ok(())
 }
 
-pub fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
+pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
     if input.variants.len() > 256 {
         return Err(syn::Error::new(
             input.span(),
@@ -186,7 +176,7 @@ mod tests {
     fn test_check_attrs_borsh_skip_on_whole_item() {
         let item_enum: DeriveInput = syn::parse2(quote! {
             #[derive(BorshDeserialize, Debug)]
-            #[borsh_skip]
+            #[borsh(skip)]
             struct AWithUseDiscriminantFalse {
                  x: X,
                  y: Y,

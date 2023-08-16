@@ -93,33 +93,28 @@ struct D<T: Ord, U> {
 
 #[cfg(hash_collections)]
 #[derive(BorshSerialize)]
-struct G<K, V, U>(#[borsh_skip] HashMap<K, V>, U);
+struct G<K, V, U>(#[borsh(skip)] HashMap<K, V>, U);
 
 #[cfg(hash_collections)]
 #[derive(BorshDeserialize)]
-struct G1<K, V, U>(#[borsh_skip] HashMap<K, V>, U);
+struct G1<K, V, U>(#[borsh(skip)] HashMap<K, V>, U);
 
 #[cfg(hash_collections)]
 #[derive(BorshDeserialize)]
-struct G2<K: PartialOrd + Hash + Eq, V, U>(HashMap<K, V>, #[borsh_skip] U);
+struct G2<K: PartialOrd + Hash + Eq, V, U>(HashMap<K, V>, #[borsh(skip)] U);
 
 /// implicit derived `core::default::Default` bounds on `K` and `V` are dropped by empty bound
 /// specified, as `HashMap` hash its own `Default` implementation
 #[cfg(hash_collections)]
 #[derive(BorshDeserialize)]
-struct G3<K, V, U>(
-    #[borsh_skip]
-    #[borsh(bound(deserialize = ""))]
-    HashMap<K, V>,
-    U,
-);
+struct G3<K, V, U>(#[borsh(skip, bound(deserialize = ""))] HashMap<K, V>, U);
 
 #[cfg(hash_collections)]
 #[derive(BorshSerialize, BorshDeserialize)]
 struct H<K: Ord, V, U> {
     x: BTreeMap<K, V>,
     #[allow(unused)]
-    #[borsh_skip]
+    #[borsh(skip)]
     y: U,
 }
 
@@ -135,7 +130,7 @@ enum E<T: Ord, U, G> {
 enum I1<K, V, U> {
     B {
         #[allow(unused)]
-        #[borsh_skip]
+        #[borsh(skip)]
         x: HashMap<K, V>,
         y: String,
     },
@@ -146,7 +141,7 @@ enum I1<K, V, U> {
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 enum I2<K: PartialOrd + Eq + Hash, V, U> {
     B { x: HashMap<K, V>, y: String },
-    C(K, #[borsh_skip] U),
+    C(K, #[borsh(skip)] U),
 }
 
 trait TraitName {

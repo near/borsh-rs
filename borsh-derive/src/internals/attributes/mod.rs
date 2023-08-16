@@ -19,8 +19,8 @@ pub const USE_DISCRIMINANT: Symbol = Symbol("use_discriminant", "use_discriminan
 pub const SERIALIZE: Symbol = Symbol("serialize", "serialize = ...");
 /// deserialize - sub-bound nested meta attribute
 pub const DESERIALIZE: Symbol = Symbol("deserialize", "deserialize = ...");
-/// borsh_skip - field-level only attribute, `BorshSerialize`, `BorshDeserialize`, `BorshSchema` contexts
-pub const SKIP: Symbol = Symbol("borsh_skip", "borsh_skip");
+/// skip - sub-borsh nested meta, field-level only attribute, `BorshSerialize`, `BorshDeserialize`, `BorshSchema` contexts
+pub const SKIP: Symbol = Symbol("skip", "skip");
 /// init - sub-borsh nested meta, item-level only attribute  `BorshDeserialize` context
 pub const INIT: Symbol = Symbol("init", "init = ...");
 /// serialize_with - sub-borsh nested meta, field-level only, `BorshSerialize` context

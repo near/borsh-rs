@@ -77,7 +77,7 @@ enum AWithSkip<C, W> {
     Eggs,
     Salad(u32, C, u32),
     Sausage {
-        #[borsh_skip]
+        #[borsh(skip)]
         wrapper: W,
         filling: u32,
     },

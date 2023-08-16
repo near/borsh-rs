@@ -100,11 +100,10 @@ fn filter_used_params(generics: &Generics, not_skipped_type_params: HashSet<Iden
 }
 
 fn visit_field(field: &Field, visitor: &mut generics::FindTyParams) -> syn::Result<()> {
-    let skipped = field::contains_skip(&field.attrs);
-    let parsed = field::Attributes::parse(&field.attrs, skipped)?;
+    let parsed = field::Attributes::parse(&field.attrs)?;
     let needs_schema_params_derive = parsed.needs_schema_params_derive();
     let schema_attrs = parsed.schema;
-    if !skipped {
+    if !parsed.skip {
         if needs_schema_params_derive {
             visitor.visit_field(field);
         }
@@ -128,7 +127,7 @@ fn visit_field(field: &Field, visitor: &mut generics::FindTyParams) -> syn::Resu
     Ok(())
 }
 
-/// check param usage in fields with respect to `borsh_skip` attribute usage
+/// check param usage in fields with respect to `borsh(skip)` attribute usage
 fn visit_struct_fields(fields: &Fields, visitor: &mut generics::FindTyParams) -> syn::Result<()> {
     match &fields {
         Fields::Named(fields) => {

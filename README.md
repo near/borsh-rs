@@ -42,7 +42,7 @@ fn test_simple_struct() {
 ## Features
 
 Opting out from Serde allows borsh to have some features that currently are not available for serde-compatible serializers.
-Currently we support two features: `borsh(init=<your initilization method name>` and `borsh_skip` (the former one not available in Serde).
+Currently we support two features: `borsh(init=<your initilization method name>` and `borsh(skip)` (the former one not available in Serde).
 
 `borsh(init=...)` allows to automatically run an initialization function right after deserialization. This adds a lot of convenience for objects that are architectured to be used as strictly immutable. Usage example:
 
@@ -65,13 +65,13 @@ impl Message {
 }
 ```
 
-`borsh_skip` allows to skip serializing/deserializing fields, assuming they implement `Default` trait, similary to `#[serde(skip)]`.
+`borsh(skip)` allows to skip serializing/deserializing fields, assuming they implement `Default` trait, similary to `#[serde(skip)]`.
 
 ```rust
 #[derive(BorshSerialize, BorshDeserialize)]
 struct A {
     x: u64,
-    #[borsh_skip]
+    #[borsh(skip)]
     y: f32,
 }
 ```

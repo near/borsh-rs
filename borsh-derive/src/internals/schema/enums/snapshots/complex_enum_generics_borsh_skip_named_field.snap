@@ -31,7 +31,7 @@ where
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         struct ASausage<W, U> {
-            #[borsh_skip]
+            #[borsh(skip)]
             wrapper: W,
             filling: Filling,
             unexpected: U,

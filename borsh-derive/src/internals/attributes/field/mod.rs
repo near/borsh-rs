@@ -24,6 +24,7 @@ enum Variants {
     Bounds(bounds::Bounds),
     SerializeWith(syn::ExprPath),
     DeserializeWith(syn::ExprPath),
+    Skip(()),
     #[cfg(feature = "schema")]
     Schema(schema::Attributes),
 }
@@ -57,9 +58,12 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
         Ok(Variants::Schema(schema_attributes))
     });
 
+    let f_skip: Box<ParseFn> =
+        Box::new(|_attr_name, _meta_item_name, _meta| Ok(Variants::Skip(())));
     m.insert(BOUND, f_bounds);
     m.insert(SERIALIZE_WITH, f_serialize_with);
     m.insert(DESERIALIZE_WITH, f_deserialize_with);
+    m.insert(SKIP, f_skip);
     #[cfg(feature = "schema")]
     m.insert(SCHEMA, f_schema);
     m
@@ -70,6 +74,7 @@ pub(crate) struct Attributes {
     pub bounds: Option<bounds::Bounds>,
     pub serialize_with: Option<syn::ExprPath>,
     pub deserialize_with: Option<syn::ExprPath>,
+    pub skip: bool,
     #[cfg(feature = "schema")]
     pub schema: Option<schema::Attributes>,
 }
@@ -79,6 +84,7 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
         let bounds = map.remove(&BOUND);
         let serialize_with = map.remove(&SERIALIZE_WITH);
         let deserialize_with = map.remove(&DESERIALIZE_WITH);
+        let skip = map.remove(&SKIP);
         let bounds = bounds.map(|variant| match variant {
             Variants::Bounds(bounds) => bounds,
             _ => unreachable!("only one enum variant is expected to correspond to given map key"),
@@ -91,6 +97,11 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
 
         let deserialize_with = deserialize_with.map(|variant| match variant {
             Variants::DeserializeWith(deserialize_with) => deserialize_with,
+            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
+        });
+
+        let skip = skip.map(|variant| match variant {
+            Variants::Skip(skip) => skip,
             _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
 
@@ -108,26 +119,23 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
             bounds,
             serialize_with,
             deserialize_with,
+            skip: skip.is_some(),
             #[cfg(feature = "schema")]
             schema,
         }
     }
 }
 
-pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(|attr| attr.path() == SKIP)
-}
-
 #[cfg(feature = "schema")]
 pub(crate) fn filter_attrs(
     attrs: impl Iterator<Item = Attribute>,
 ) -> impl Iterator<Item = Attribute> {
-    attrs.filter(|attr| attr.path() == SKIP || attr.path() == BORSH)
+    attrs.filter(|attr| attr.path() == BORSH)
 }
 
 impl Attributes {
-    fn check(&self, skipped: bool, attr: &Attribute) -> Result<(), syn::Error> {
-        if skipped && (self.serialize_with.is_some() || self.deserialize_with.is_some()) {
+    fn check(&self, attr: &Attribute) -> Result<(), syn::Error> {
+        if self.skip && (self.serialize_with.is_some() || self.deserialize_with.is_some()) {
             return Err(syn::Error::new_spanned(
                 attr,
                 format!(
@@ -138,16 +146,16 @@ impl Attributes {
         }
 
         #[cfg(feature = "schema")]
-        self.check_schema(skipped, attr)?;
+        self.check_schema(attr)?;
 
         Ok(())
     }
-    pub(crate) fn parse(attrs: &[Attribute], skipped: bool) -> Result<Self, syn::Error> {
+    pub(crate) fn parse(attrs: &[Attribute]) -> Result<Self, syn::Error> {
         let attr = attrs.iter().find(|attr| attr.path() == BORSH);
 
         let result: Self = if let Some(attr) = attr {
             let result: Self = attr_get_by_symbol_keys(BORSH, attr, &BORSH_FIELD_PARSE_MAP)?.into();
-            result.check(skipped, attr)?;
+            result.check(attr)?;
             result
         } else {
             BTreeMap::new().into()
@@ -175,9 +183,9 @@ impl Attributes {
 
 #[cfg(feature = "schema")]
 impl Attributes {
-    fn check_schema(&self, skipped: bool, attr: &Attribute) -> Result<(), syn::Error> {
+    fn check_schema(&self, attr: &Attribute) -> Result<(), syn::Error> {
         if let Some(ref schema) = self.schema {
-            if skipped && schema.params.is_some() {
+            if self.skip && schema.params.is_some() {
                 return Err(syn::Error::new_spanned(
                     attr,
                     format!(
@@ -187,7 +195,7 @@ impl Attributes {
                 ));
             }
 
-            if skipped && schema.with_funcs.is_some() {
+            if self.skip && schema.with_funcs.is_some() {
                 return Err(syn::Error::new_spanned(
                     attr,
                     format!(
@@ -235,7 +243,7 @@ mod tests {
 
     fn parse_bounds(attrs: &[Attribute]) -> Result<Option<bounds::Bounds>, syn::Error> {
         // #[borsh(bound(serialize = "...", deserialize = "..."))]
-        let borsh_attrs = Attributes::parse(attrs, false)?;
+        let borsh_attrs = Attributes::parse(attrs)?;
         Ok(borsh_attrs.bounds)
     }
 
@@ -397,9 +405,40 @@ mod tests {
         .unwrap();
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
+        let attrs = Attributes::parse(&first_field.attrs).unwrap();
         local_insta_assert_snapshot!(debug_print_tokenizable(attrs.serialize_with.as_ref()));
         local_insta_assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
+    }
+    #[test]
+    fn test_borsh_skip() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(skip)]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+
+        let result = Attributes::parse(&first_field.attrs).unwrap();
+        assert!(result.skip);
+    }
+    #[test]
+    fn test_borsh_no_skip() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+
+        let result = Attributes::parse(&first_field.attrs).unwrap();
+        assert!(!result.skip);
     }
 }
 
@@ -420,7 +459,7 @@ mod tests_schema {
     use super::schema;
     fn parse_schema_attrs(attrs: &[Attribute]) -> Result<Option<schema::Attributes>, syn::Error> {
         // #[borsh(schema(params = "..."))]
-        let borsh_attrs = Attributes::parse(attrs, false)?;
+        let borsh_attrs = Attributes::parse(attrs)?;
         Ok(borsh_attrs.schema)
     }
 
@@ -441,7 +480,7 @@ mod tests_schema {
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
 
-        let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
+        let attrs = Attributes::parse(&first_field.attrs).unwrap();
         let bounds = attrs.bounds.clone().unwrap();
         assert!(bounds.serialize.is_none());
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(bounds.deserialize));
@@ -591,7 +630,7 @@ mod tests_schema {
         .unwrap();
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let attrs = Attributes::parse(&first_field.attrs, false).unwrap();
+        let attrs = Attributes::parse(&first_field.attrs).unwrap();
         let schema = attrs.schema.unwrap();
         let with_funcs = schema.with_funcs.unwrap();
 
@@ -614,7 +653,7 @@ mod tests_schema {
         .unwrap();
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let attrs = Attributes::parse(&first_field.attrs, false);
+        let attrs = Attributes::parse(&first_field.attrs);
 
         let err = match attrs {
             Ok(..) => unreachable!("expecting error here"),
@@ -635,7 +674,7 @@ mod tests_schema {
         .unwrap();
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let err = match Attributes::parse(&first_field.attrs, false) {
+        let err = match Attributes::parse(&first_field.attrs) {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
         };
@@ -657,7 +696,7 @@ mod tests_schema {
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
 
-        let err = match Attributes::parse(&first_field.attrs, false) {
+        let err = match Attributes::parse(&first_field.attrs) {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
         };
