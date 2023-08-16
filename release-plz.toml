@@ -6,6 +6,7 @@ changelog_update = false
 name = "borsh"
 changelog_update = true
 changelog_path = "./CHANGELOG.md"
+changelog_include = ["borsh-derive"] 
 
 [[package]]
 name = "fuzz-run"
