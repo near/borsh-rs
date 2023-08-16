@@ -398,8 +398,7 @@ irrelevant of whether `#[borsh(skip)]` attribute is present.
 /// empty bound specified, as `HashMap` has its own `Default` implementation
 #[derive(BorshDeserialize)]
 struct A<K, V, U>(
-    #[borsh(skip)]
-    #[borsh(bound(deserialize = ""))]
+    #[borsh(skip, bound(deserialize = ""))]
     HashMap<K, V>,
     U,
 );

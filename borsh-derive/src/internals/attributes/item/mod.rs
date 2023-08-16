@@ -1,4 +1,4 @@
-use crate::internals::attributes::{BORSH, INIT, SKIP, USE_DISCRIMINANT};
+use crate::internals::attributes::{BORSH, INIT, USE_DISCRIMINANT};
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum, Path};
@@ -8,10 +8,10 @@ pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStre
 
     if let Some(attr) = attr {
         attr.parse_nested_meta(|meta| {
-            if meta.path != USE_DISCRIMINANT && meta.path != INIT && meta.path != SKIP {
+            if meta.path != USE_DISCRIMINANT && meta.path != INIT {
                 return Err(syn::Error::new(
                     meta.path.span(),
-                    "`use_discriminant` or `init` or `skip` are only supported attributes for `borsh`",
+                    "`use_discriminant` or `init` are only supported attributes for `borsh`",
                 ));
             }
             if meta.path == USE_DISCRIMINANT {
@@ -25,13 +25,6 @@ pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStre
             }
             if meta.path == INIT {
                 let _expr: Expr = meta.value()?.parse()?;
-            }
-
-            if meta.path == SKIP {
-                return Err(syn::Error::new(
-                    meta.path.span(),
-                    "borsh(skip) is only supported for fields",
-                ));
             }
 
             Ok(())

@@ -7,7 +7,7 @@ use self::bounds::BOUNDS_FIELD_PARSE_MAP;
 
 use super::{
     parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys, parse_lit_into},
-    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SERIALIZE_WITH, SKIP, SKIP_SMALL,
+    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SERIALIZE_WITH, SKIP,
 };
 
 #[cfg(feature = "schema")]
@@ -63,7 +63,7 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
     m.insert(BOUND, f_bounds);
     m.insert(SERIALIZE_WITH, f_serialize_with);
     m.insert(DESERIALIZE_WITH, f_deserialize_with);
-    m.insert(SKIP_SMALL, f_skip);
+    m.insert(SKIP, f_skip);
     #[cfg(feature = "schema")]
     m.insert(SCHEMA, f_schema);
     m
@@ -84,7 +84,7 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
         let bounds = map.remove(&BOUND);
         let serialize_with = map.remove(&SERIALIZE_WITH);
         let deserialize_with = map.remove(&DESERIALIZE_WITH);
-        let skip = map.remove(&SKIP_SMALL);
+        let skip = map.remove(&SKIP);
         let bounds = bounds.map(|variant| match variant {
             Variants::Bounds(bounds) => bounds,
             _ => unreachable!("only one enum variant is expected to correspond to given map key"),
@@ -130,7 +130,7 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
 pub(crate) fn filter_attrs(
     attrs: impl Iterator<Item = Attribute>,
 ) -> impl Iterator<Item = Attribute> {
-    attrs.filter(|attr| attr.path() == SKIP || attr.path() == BORSH)
+    attrs.filter(|attr| attr.path() == BORSH)
 }
 
 impl Attributes {
@@ -408,6 +408,37 @@ mod tests {
         let attrs = Attributes::parse(&first_field.attrs).unwrap();
         local_insta_assert_snapshot!(debug_print_tokenizable(attrs.serialize_with.as_ref()));
         local_insta_assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
+    }
+    #[test]
+    fn test_borsh_skip() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(skip)]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+
+        let result = Attributes::parse(&first_field.attrs).unwrap();
+        assert!(result.skip);
+    }
+    #[test]
+    fn test_borsh_no_skip() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+
+        let result = Attributes::parse(&first_field.attrs).unwrap();
+        assert!(!result.skip);
     }
 }
 
