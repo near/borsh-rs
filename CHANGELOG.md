@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-alpha.3](https://github.com/near/borsh-rs/compare/borsh-v1.0.0-alpha.2...borsh-v1.0.0-alpha.3) - 2023-08-16
+
+### Other
+- update dependencies
+- split up schema derive functions ([#191](https://github.com/near/borsh-rs/pull/191))
+
 ## [1.0.0-alpha.2](https://github.com/near/borsh-rs/compare/borsh-v1.0.0-alpha.1...borsh-v1.0.0-alpha.2) - 2023-08-10
 
 ### Other
