@@ -1,0 +1,7 @@
+---
+source: borsh-derive/src/internals/attributes/field/mod.rs
+expression: err
+---
+Error(
+    "multiple `borsh` attributes not allowed",
+)
