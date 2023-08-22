@@ -54,7 +54,7 @@ struct NamedA<T> {
 /// `T: Hash + Eq` bound is required for `BorshDeserialize` derive to be successful
 #[cfg(hash_collections)]
 #[derive(BorshSerialize, BorshDeserialize)]
-struct C<T: PartialOrd + Hash + Eq, U> {
+struct C<T: Ord + Hash + Eq, U> {
     a: String,
     b: HashMap<T, U>,
 }
@@ -65,7 +65,7 @@ struct C<T: PartialOrd + Hash + Eq, U> {
 #[derive(BorshSerialize)]
 struct C1<T, U> {
     a: String,
-    #[borsh(bound(serialize = "T: borsh::ser::BorshSerialize + PartialOrd,
+    #[borsh(bound(serialize = "T: borsh::ser::BorshSerialize + Ord,
          U: borsh::ser::BorshSerialize"))]
     b: HashMap<T, U>,
 }
@@ -77,10 +77,8 @@ struct C1<T, U> {
 #[derive(BorshDeserialize)]
 struct C2<T, U> {
     a: String,
-    #[borsh(bound(
-        deserialize = "T: PartialOrd + Hash + Eq + borsh::de::BorshDeserialize,
-         U: borsh::de::BorshDeserialize"
-    ))]
+    #[borsh(bound(deserialize = "T: Ord + Hash + Eq + borsh::de::BorshDeserialize,
+         U: borsh::de::BorshDeserialize"))]
     b: HashMap<T, U>,
 }
 
@@ -101,7 +99,7 @@ struct G1<K, V, U>(#[borsh(skip)] HashMap<K, V>, U);
 
 #[cfg(hash_collections)]
 #[derive(BorshDeserialize)]
-struct G2<K: PartialOrd + Hash + Eq, V, U>(HashMap<K, V>, #[borsh(skip)] U);
+struct G2<K: Ord + Hash + Eq, V, U>(HashMap<K, V>, #[borsh(skip)] U);
 
 /// implicit derived `core::default::Default` bounds on `K` and `V` are dropped by empty bound
 /// specified, as `HashMap` hash its own `Default` implementation
@@ -139,7 +137,7 @@ enum I1<K, V, U> {
 
 #[cfg(hash_collections)]
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-enum I2<K: PartialOrd + Eq + Hash, V, U> {
+enum I2<K: Ord + Eq + Hash, V, U> {
     B { x: HashMap<K, V>, y: String },
     C(K, #[borsh(skip)] U),
 }

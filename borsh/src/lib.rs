@@ -43,6 +43,7 @@
   are encountered in ascending order with respect to [PartialOrd](core::cmp::PartialOrd) for hash collections,
   and [Ord](core::cmp::Ord) for btree ones. Deserialization emits error otherwise.
 
+  If this feature is not enabled, it is possible that two different byte slices could deserialize into the same `HashMap`/`HashSet` object.
 
 ### Config aliases
 

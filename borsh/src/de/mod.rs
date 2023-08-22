@@ -490,12 +490,10 @@ pub mod hashes {
     #[cfg(feature = "de_strict_order")]
     use crate::__private::maybestd::io::{Error, ErrorKind};
     use crate::error::check_zst;
-    #[cfg(feature = "de_strict_order")]
-    use core::cmp::Ordering;
 
     impl<T, H> BorshDeserialize for HashSet<T, H>
     where
-        T: BorshDeserialize + Eq + Hash + PartialOrd,
+        T: BorshDeserialize + Eq + Hash + Ord,
         H: BuildHasher + Default,
     {
         #[inline]
@@ -513,7 +511,7 @@ pub mod hashes {
                 let [a, b] = pair else {
                     unreachable!("`windows` always return a slice of length 2 or nothing");
                 };
-                let cmp_result = a.partial_cmp(b).map_or(false, Ordering::is_lt);
+                let cmp_result = a.cmp(b).is_lt();
                 if !cmp_result {
                     return Err(Error::new(
                         ErrorKind::InvalidData,
@@ -528,7 +526,7 @@ pub mod hashes {
 
     impl<K, V, H> BorshDeserialize for HashMap<K, V, H>
     where
-        K: BorshDeserialize + Eq + Hash + PartialOrd,
+        K: BorshDeserialize + Eq + Hash + Ord,
         V: BorshDeserialize,
         H: BuildHasher + Default,
     {
@@ -548,7 +546,7 @@ pub mod hashes {
                 let [(a_k, _a_v), (b_k, _b_v)] = pair else {
                     unreachable!("`windows` always return a slice of length 2 or nothing");
                 };
-                let cmp_result = a_k.partial_cmp(b_k).map_or(false, Ordering::is_lt);
+                let cmp_result = a_k.cmp(b_k).is_lt();
                 if !cmp_result {
                     return Err(Error::new(
                         ErrorKind::InvalidData,

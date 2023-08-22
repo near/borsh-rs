@@ -17,7 +17,7 @@ use alloc::{boxed::Box, string::String, vec::Vec};
 
 #[cfg(hash_collections)]
 #[derive(BorshSerialize, BorshDeserialize)]
-struct CRec<U: PartialOrd + Hash + Eq> {
+struct CRec<U: Ord + Hash + Eq> {
     a: String,
     b: HashMap<U, CRec<U>>,
 }
