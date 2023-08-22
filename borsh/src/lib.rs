@@ -10,6 +10,12 @@
   When enabled, this will cause `borsh` to use the standard library. Currently,
   disabling this feature will result in building the crate in `no_std` environment.
 
+  Borsh has `nostd_io` module when compiled with **std** disabled. It contains a few items,
+  counterparts of `std::io` items,
+  which are used in [BorshSerialize](crate::ser::BorshSerialize) and [BorshDeserialize](crate::de::BorshDeserialize)
+  traits' definitions in absence of `std`. Most prominent of them are `borsh::nostd_io::Read` and `borsh::nostd_io::Write` traits.
+
+
 ### Default features
 
 * **std** - enabled by default.
@@ -52,8 +58,6 @@
   Gates implementation of [BorshSerialize](crate::ser::BorshSerialize), [BorshDeserialize](crate::de::BorshDeserialize)
   and [BorshSchema](crate::schema::BorshSchema)
   for [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
-* **derive_schema** -
-  This is a feature alias, set up in `build.rs` to be equivalent to (**derive** AND **schema**).
 
 
 */
@@ -62,7 +66,7 @@
 extern crate alloc;
 
 /// Derive macro available if borsh is built with `features = ["derive", "schema"]`.
-#[cfg(derive_schema)]
+#[cfg(feature = "schema")]
 pub use borsh_derive::BorshSchema;
 
 /// Derive macro available if borsh is built with `features = ["derive"]`.
@@ -73,18 +77,18 @@ pub mod de;
 
 // See `hash_collections` alias definition in build.rs
 /// Module is available if borsh is built with `features = ["derive", "schema"]`.
-#[cfg(derive_schema)]
+#[cfg(feature = "schema")]
 pub mod schema;
 /// Module is available if borsh is built with `features = ["derive", "schema"]`.
-#[cfg(derive_schema)]
+#[cfg(feature = "schema")]
 pub(crate) mod schema_helpers;
 pub mod ser;
 
 pub use de::BorshDeserialize;
 pub use de::{from_reader, from_slice};
-#[cfg(derive_schema)]
+#[cfg(feature = "schema")]
 pub use schema::BorshSchema;
-#[cfg(derive_schema)]
+#[cfg(feature = "schema")]
 pub use schema_helpers::{schema_container_of, try_from_slice_with_schema, try_to_vec_with_schema};
 pub use ser::helpers::{to_vec, to_writer};
 pub use ser::BorshSerialize;
@@ -92,11 +96,6 @@ pub mod error;
 
 #[cfg(all(feature = "std", feature = "hashbrown"))]
 compile_error!("feature \"std\" and feature \"hashbrown\" don't make sense at the same time");
-
-#[cfg(all(feature = "schema", not(feature = "derive")))]
-compile_error!(
-    "feature \"schema\" depends on \"derive\" feature in its implementation; enable it too.."
-);
 
 #[cfg(not(feature = "std"))]
 pub mod nostd_io;
