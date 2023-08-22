@@ -1,4 +1,5 @@
 use crate::__private::maybestd::{
+    collections::BTreeMap,
     io::{Error, ErrorKind, Result},
     vec::Vec,
 };
@@ -11,7 +12,7 @@ use crate::{BorshDeserialize, BorshSchema, BorshSerialize};
 /// correct.
 pub fn try_from_slice_with_schema<T: BorshDeserialize + BorshSchema>(v: &[u8]) -> Result<T> {
     let (schema, object) = from_slice::<(BorshSchemaContainer, T)>(v)?;
-    if T::schema_container() != schema {
+    if schema_container_of::<T>() != schema {
         return Err(Error::new(
             ErrorKind::InvalidData,
             "Borsh schema does not match",
@@ -23,8 +24,15 @@ pub fn try_from_slice_with_schema<T: BorshDeserialize + BorshSchema>(v: &[u8]) -
 /// Serialize object into a vector of bytes and prefix with the schema serialized as vector of
 /// bytes in Borsh format.
 pub fn try_to_vec_with_schema<T: BorshSerialize + BorshSchema>(value: &T) -> Result<Vec<u8>> {
-    let schema = T::schema_container();
+    let schema = schema_container_of::<T>();
     let mut res = schema.try_to_vec()?;
-    res.extend(value.try_to_vec()?);
+    value.serialize(&mut res)?;
     Ok(res)
+}
+
+pub fn schema_container_of<T: BorshSchema>() -> BorshSchemaContainer {
+    let mut definitions = BTreeMap::new();
+    T::add_definitions_recursively(&mut definitions);
+
+    BorshSchemaContainer::new(T::declaration(), definitions)
 }

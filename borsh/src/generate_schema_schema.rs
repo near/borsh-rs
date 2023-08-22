@@ -1,13 +1,13 @@
 //! Generate `BorshSchemaCointainer` for `BorshSchemaContainer` and save it into a file.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-use borsh::schema::BorshSchema;
-use borsh::BorshSerialize;
+use borsh::{schema_container_of, BorshSerialize};
 use std::fs::File;
 use std::io::Write;
 
 fn main() {
-    let container = borsh::schema::BorshSchemaContainer::schema_container();
+    let container = schema_container_of::<borsh::schema::BorshSchemaContainer>();
+
     println!("{:#?}", container);
     let data = container
         .try_to_vec()

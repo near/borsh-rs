@@ -21,7 +21,7 @@
   [BorshDeserialize](crate::de::BorshDeserialize) traits.
 * **schema** -
   Gates [BorshSchema](crate::schema::BorshSchema) trait and its derive macro.
-  Gates [schema](crate::schema) and [schema_helpers](crate::schema_helpers) modules.
+  Gates [schema](crate::schema) module.
   This feature requires **derive** to be enabled too.
 * **rc** -
   Gates implementation of [BorshSerialize](crate::ser::BorshSerialize) and [BorshDeserialize](crate::de::BorshDeserialize)
@@ -77,7 +77,7 @@ pub mod de;
 pub mod schema;
 /// Module is available if borsh is built with `features = ["derive", "schema"]`.
 #[cfg(derive_schema)]
-pub mod schema_helpers;
+pub(crate) mod schema_helpers;
 pub mod ser;
 
 pub use de::BorshDeserialize;
@@ -85,7 +85,7 @@ pub use de::{from_reader, from_slice};
 #[cfg(derive_schema)]
 pub use schema::BorshSchema;
 #[cfg(derive_schema)]
-pub use schema_helpers::{try_from_slice_with_schema, try_to_vec_with_schema};
+pub use schema_helpers::{schema_container_of, try_from_slice_with_schema, try_to_vec_with_schema};
 pub use ser::helpers::{to_vec, to_writer};
 pub use ser::BorshSerialize;
 pub mod error;

@@ -17,7 +17,7 @@ use alloc::{
 };
 
 use borsh::schema::*;
-use borsh::schema_helpers::{try_from_slice_with_schema, try_to_vec_with_schema};
+use borsh::{try_from_slice_with_schema, try_to_vec_with_schema};
 
 macro_rules! map(
     () => { BTreeMap::new() };

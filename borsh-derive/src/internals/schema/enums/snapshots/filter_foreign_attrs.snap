@@ -34,7 +34,7 @@ impl borsh::BorshSchema for A {
         let definition = borsh::schema::Definition::Enum {
             variants,
         };
-        Self::add_definition(Self::declaration(), definition, definitions);
+        borsh::schema::add_definition(Self::declaration(), definition, definitions);
     }
 }
 

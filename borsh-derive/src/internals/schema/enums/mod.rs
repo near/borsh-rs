@@ -55,7 +55,7 @@ pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> 
             #add_recursive_defs
             let variants = #cratename::__private::maybestd::vec![#(#variants_defs),*];
             let definition = #cratename::schema::Definition::Enum{variants};
-            Self::add_definition(Self::declaration(), definition, definitions);
+            #cratename::schema::add_definition(Self::declaration(), definition, definitions);
         }
     };
 
