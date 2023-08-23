@@ -2,7 +2,7 @@
 #![allow(clippy::float_cmp)]
 #![cfg(feature = "derive")]
 
-use borsh::{from_slice, BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 use bson::oid::ObjectId;
 
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug)]
@@ -15,7 +15,7 @@ fn test_object_id() {
         ObjectId::from_bytes([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]),
         33,
     );
-    let serialized = obj.try_to_vec().unwrap();
+    let serialized = to_vec(&obj).unwrap();
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(serialized);
     let deserialized: StructWithObjectId = from_slice(&serialized).unwrap();

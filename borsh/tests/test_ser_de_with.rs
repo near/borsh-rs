@@ -11,7 +11,7 @@ use alloc::{
     collections::BTreeMap,
     string::{String, ToString},
 };
-use borsh::{from_slice, BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
 #[derive(Debug, PartialEq, Eq)]
 struct ThirdParty<K, V>(pub BTreeMap<K, V>);
@@ -87,7 +87,7 @@ fn test_overriden_struct() {
     let th_p = ThirdParty(m);
     let a = A { x: th_p, y: 42 };
 
-    let data = a.try_to_vec().unwrap();
+    let data = to_vec(&a).unwrap();
 
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
@@ -103,7 +103,7 @@ fn test_overriden_enum() {
     let th_p = ThirdParty(m);
     let c = C::C4(42, th_p);
 
-    let data = c.try_to_vec().unwrap();
+    let data = to_vec(&c).unwrap();
 
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);

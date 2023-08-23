@@ -1,5 +1,5 @@
 use benchmarks::{Account, Block, BlockHeader, Generate, SignedTransaction};
-use borsh::{from_slice, BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 use rand::SeedableRng;
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 use speedy::Endianness;
@@ -22,7 +22,7 @@ where
     let mut group = c.benchmark_group(group_name);
 
     let objects: Vec<_> = (0..num_samples).map(|_| T::generate(&mut rng)).collect();
-    let borsh_datas: Vec<Vec<u8>> = objects.iter().map(|t| t.try_to_vec().unwrap()).collect();
+    let borsh_datas: Vec<Vec<u8>> = objects.iter().map(|t| to_vec(t).unwrap()).collect();
     let borsh_sizes: Vec<_> = borsh_datas.iter().map(|d| d.len()).collect();
 
     for i in 0..objects.len() {
@@ -50,7 +50,7 @@ where
             BenchmarkId::new("borsh", benchmark_param_display.clone()),
             obj,
             |b, d| {
-                b.iter(|| d.try_to_vec().unwrap());
+                b.iter(|| to_vec(d).unwrap());
             },
         );
         group.bench_with_input(
@@ -87,7 +87,7 @@ where
         .iter()
         .map(|t| bincode::serialize(t).unwrap())
         .collect();
-    let borsh_datas: Vec<Vec<u8>> = objects.iter().map(|t| t.try_to_vec().unwrap()).collect();
+    let borsh_datas: Vec<Vec<u8>> = objects.iter().map(|t| to_vec(t).unwrap()).collect();
     let speedy_datas: Vec<Vec<u8>> = objects
         .iter()
         .map(|t| t.write_to_vec(Endianness::LittleEndian).unwrap())

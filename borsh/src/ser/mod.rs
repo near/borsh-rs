@@ -18,8 +18,6 @@ use crate::__private::maybestd::{rc::Rc, sync::Arc};
 
 pub(crate) mod helpers;
 
-const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;
-
 /// A data-structure that can be serialized into binary format by NBOR.
 ///
 /// ```
@@ -57,8 +55,9 @@ pub trait BorshSerialize {
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()>;
 
     /// Serialize this instance into a vector of bytes.
+    #[deprecated = "use `borsh::to_vec(&object)` instead"]
     fn try_to_vec(&self) -> Result<Vec<u8>> {
-        let mut result = Vec::with_capacity(DEFAULT_SERIALIZER_CAPACITY);
+        let mut result = Vec::with_capacity(helpers::DEFAULT_SERIALIZER_CAPACITY);
         self.serialize(&mut result)?;
         Ok(result)
     }

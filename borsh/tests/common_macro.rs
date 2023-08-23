@@ -5,7 +5,7 @@ macro_rules! set_insert_deser_assert_macro [
         $($set.insert($key));*
         ;
 
-        let $data = $set.try_to_vec().unwrap();
+        let $data = borsh::to_vec(&$set).unwrap();
         #[cfg(feature = "std")]
         insta::assert_debug_snapshot!($data);
     ]
@@ -17,7 +17,8 @@ macro_rules! map_insert_deser_assert_macro [
     [$map: ident, $data: ident, $($key: expr => $value: expr),*] => [
         $($map.insert($key, $value));*
         ;
-        let $data = $map.try_to_vec().unwrap();
+
+        let $data = borsh::to_vec(&$map).unwrap();
         #[cfg(feature = "std")]
         insta::assert_debug_snapshot!($data);
     ]

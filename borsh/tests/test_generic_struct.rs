@@ -23,7 +23,7 @@ use alloc::{
 #[cfg(not(feature = "std"))]
 use core::result::Result;
 
-use borsh::{from_slice, BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 struct A<T, F, G> {
@@ -183,7 +183,7 @@ fn test_generic_struct() {
         c: Err("error".to_string()),
         d: [0, 1, 2, 3, 4],
     };
-    let data = a.try_to_vec().unwrap();
+    let data = to_vec(&a).unwrap();
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_a = from_slice::<A<String, u64, String>>(&data).unwrap();
@@ -196,7 +196,7 @@ fn test_generic_associated_type_field() {
         field: "value".to_string(),
         another: "field".to_string(),
     };
-    let data = a.try_to_vec().unwrap();
+    let data = to_vec(&a).unwrap();
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_a = from_slice::<Parametrized<u32, String>>(&data).unwrap();
@@ -213,7 +213,7 @@ fn test_generic_struct_hashmap() {
         a: "field".to_string(),
         b: hashmap,
     };
-    let data = a.try_to_vec().unwrap();
+    let data = to_vec(&a).unwrap();
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_a = from_slice::<C<u32, String>>(&data).unwrap();
@@ -229,7 +229,7 @@ fn test_generic_enum() {
     let c: B<String, u64> = B::Y(656556u64);
 
     let list = vec![b, c];
-    let data = list.try_to_vec().unwrap();
+    let data = to_vec(&list).unwrap();
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_list = from_slice::<Vec<B<String, u64>>>(&data).unwrap();

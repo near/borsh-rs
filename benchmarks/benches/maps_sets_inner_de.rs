@@ -5,7 +5,7 @@ use std::{
 };
 
 use benchmarks::{Generate, PublicKey};
-use borsh::{from_slice, BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::SeedableRng;
 
@@ -21,7 +21,7 @@ where
 
     let collection: U = (0..num_samples).map(|_| T::generate(&mut rng)).collect();
 
-    let serialized: Vec<u8> = collection.try_to_vec().unwrap();
+    let serialized: Vec<u8> = to_vec(&collection).unwrap();
 
     group.bench_with_input(BenchmarkId::new("borsh_de", ""), &serialized, |b, d| {
         b.iter(|| from_slice::<U>(d).unwrap());
