@@ -21,6 +21,7 @@ use crate::__private::maybestd::{
 
 #[cfg(feature = "rc")]
 use crate::__private::maybestd::{rc::Rc, sync::Arc};
+use crate::error::check_zst;
 
 mod hint;
 
@@ -388,12 +389,7 @@ where
 {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        if size_of::<T>() == 0 {
-            return Err(Error::new(
-                ErrorKind::InvalidData,
-                "Vectors of zero-sized types are not allowed due to deny-of-service concerns on deserialization.",
-            ));
-        }
+        check_zst::<T>()?;
 
         let len = u32::deserialize_reader(reader)?;
         if len == 0 {
@@ -493,6 +489,7 @@ pub mod hashes {
     const ERROR_WRONG_ORDER_OF_KEYS: &str = "keys were not serialized in ascending order";
     #[cfg(feature = "de_strict_order")]
     use crate::__private::maybestd::io::{Error, ErrorKind};
+    use crate::error::check_zst;
     #[cfg(feature = "de_strict_order")]
     use core::cmp::Ordering;
 
@@ -537,6 +534,7 @@ pub mod hashes {
     {
         #[inline]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+            check_zst::<K>()?;
             // NOTE: deserialize-as-you-go approach as once was in HashSet is better in the sense
             // that it allows to fail early, and not allocate memory for all the entries
             // which may fail `cmp()` checks
@@ -604,6 +602,7 @@ where
 {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        check_zst::<K>()?;
         // NOTE: deserialize-as-you-go approach as once was in HashSet is better in the sense
         // that it allows to fail early, and not allocate memory for all the entries
         // which may fail `cmp()` checks

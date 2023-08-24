@@ -87,6 +87,7 @@ pub use schema::BorshSchema;
 pub use schema_helpers::{try_from_slice_with_schema, try_to_vec_with_schema};
 pub use ser::helpers::{to_vec, to_writer};
 pub use ser::BorshSerialize;
+pub mod error;
 
 #[cfg(all(feature = "std", feature = "hashbrown"))]
 compile_error!("feature \"std\" and feature \"hashbrown\" don't make sense at the same time");

@@ -1,14 +1,16 @@
 use core::convert::TryFrom;
 use core::marker::PhantomData;
-use core::mem::size_of;
 
-use crate::__private::maybestd::{
-    borrow::{Cow, ToOwned},
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
-    io::{Error, ErrorKind, Result, Write},
-    string::String,
-    vec::Vec,
+use crate::{
+    __private::maybestd::{
+        borrow::{Cow, ToOwned},
+        boxed::Box,
+        collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
+        io::{ErrorKind, Result, Write},
+        string::String,
+        vec::Vec,
+    },
+    error::check_zst,
 };
 
 #[cfg(feature = "rc")]
@@ -278,12 +280,8 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        if size_of::<T>() == 0 {
-            return Err(Error::new(
-                ErrorKind::InvalidData,
-                "Vectors of zero-sized types are not allowed due to deny-of-service concerns on deserialization.",
-            ));
-        }
+        check_zst::<T>()?;
+
         self.as_slice().serialize(writer)
     }
 }
@@ -318,6 +316,8 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        check_zst::<T>()?;
+
         writer.write_all(
             &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidData)?).to_le_bytes(),
         )?;
@@ -333,6 +333,8 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        check_zst::<T>()?;
+
         writer.write_all(
             &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidData)?).to_le_bytes(),
         )?;
@@ -350,6 +352,7 @@ pub mod hashes {
     //! Module defines [BorshSerialize](crate::ser::BorshSerialize) implementation for  
     //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use crate::__private::maybestd::vec::Vec;
+    use crate::error::check_zst;
     use crate::{
         BorshSerialize,
         __private::maybestd::collections::{HashMap, HashSet},
@@ -367,6 +370,8 @@ pub mod hashes {
     {
         #[inline]
         fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+            check_zst::<K>()?;
+
             let mut vec = self.iter().collect::<Vec<_>>();
             vec.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
             u32::try_from(vec.len())
@@ -387,6 +392,8 @@ pub mod hashes {
     {
         #[inline]
         fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+            check_zst::<T>()?;
+
             let mut vec = self.iter().collect::<Vec<_>>();
             vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
             u32::try_from(vec.len())
@@ -407,6 +414,7 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        check_zst::<K>()?;
         // NOTE: BTreeMap iterates over the entries that are sorted by key, so the serialization
         // result will be consistent without a need to sort the entries as we do for HashMap
         // serialization.
@@ -427,6 +435,7 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        check_zst::<T>()?;
         // NOTE: BTreeSet iterates over the items that are sorted, so the serialization result will
         // be consistent without a need to sort the entries as we do for HashSet serialization.
         u32::try_from(self.len())
