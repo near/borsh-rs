@@ -364,7 +364,7 @@ pub mod hashes {
 
     impl<K, V, H> BorshSerialize for HashMap<K, V, H>
     where
-        K: BorshSerialize + PartialOrd,
+        K: BorshSerialize + Ord,
         V: BorshSerialize,
         H: BuildHasher,
     {
@@ -373,7 +373,7 @@ pub mod hashes {
             check_zst::<K>()?;
 
             let mut vec = self.iter().collect::<Vec<_>>();
-            vec.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
+            vec.sort_by(|(a, _), (b, _)| a.cmp(b));
             u32::try_from(vec.len())
                 .map_err(|_| ErrorKind::InvalidData)?
                 .serialize(writer)?;
@@ -387,7 +387,7 @@ pub mod hashes {
 
     impl<T, H> BorshSerialize for HashSet<T, H>
     where
-        T: BorshSerialize + PartialOrd,
+        T: BorshSerialize + Ord,
         H: BuildHasher,
     {
         #[inline]
@@ -395,7 +395,7 @@ pub mod hashes {
             check_zst::<T>()?;
 
             let mut vec = self.iter().collect::<Vec<_>>();
-            vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            vec.sort();
             u32::try_from(vec.len())
                 .map_err(|_| ErrorKind::InvalidData)?
                 .serialize(writer)?;

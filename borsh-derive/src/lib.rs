@@ -83,13 +83,13 @@ Attribute adds possibility to override bounds for `BorshSerialize` in order to e
 2. fixing complex cases, when derive hasn't figured out the right bounds on type parameters automatically.
 
 ```ignore
-/// additional bound `T: PartialOrd` (required by `HashMap`) is injected into
+/// additional bound `T: Ord` (required by `HashMap`) is injected into
 /// derived trait implementation via attribute to avoid adding the bounds on the struct itself
 #[derive(BorshSerialize)]
 struct A<T, U> {
     a: String,
     #[borsh(bound(serialize =
-        "T: borsh::ser::BorshSerialize + PartialOrd,
+        "T: borsh::ser::BorshSerialize + Ord,
          U: borsh::ser::BorshSerialize"))]
     b: HashMap<T, U>,
 }
@@ -360,14 +360,14 @@ Attribute adds possibility to override bounds for `BorshDeserialize` in order to
 2. fixing complex cases, when derive hasn't figured out the right bounds on type parameters automatically.
 
 ```ignore
-/// additional bounds `T: PartialOrd + Hash + Eq` (required by `HashMap`) are injected into
+/// additional bounds `T: Ord + Hash + Eq` (required by `HashMap`) are injected into
 /// derived trait implementation via attribute to avoid adding the bounds on the struct itself
 #[derive(BorshDeserialize)]
 struct A<T, U> {
     a: String,
     #[borsh(bound(
         deserialize =
-        "T: PartialOrd + Hash + Eq + borsh::de::BorshDeserialize,
+        "T: Ord + Hash + Eq + borsh::de::BorshDeserialize,
          U: borsh::de::BorshDeserialize"
     ))]
     b: HashMap<T, U>,
