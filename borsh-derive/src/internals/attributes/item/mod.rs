@@ -3,10 +3,12 @@ use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum, Path};
 
-pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
-    let attr = derive_input.attrs.iter().find(|attr| attr.path() == BORSH);
+use super::get_one_attribute;
 
-    if let Some(attr) = attr {
+pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
+    let borsh = get_one_attribute(&derive_input.attrs).map_err(|err| err.to_compile_error())?;
+
+    if let Some(attr) = borsh {
         attr.parse_nested_meta(|meta| {
             if meta.path != USE_DISCRIMINANT && meta.path != INIT {
                 return Err(syn::Error::new(
@@ -231,6 +233,25 @@ mod tests {
         let actual = check_item_attributes(&item_struct);
         assert!(actual.is_ok());
     }
+
+    #[test]
+    fn test_reject_multiple_borsh_attrs() {
+        let item_struct = syn::parse2::<DeriveInput>(quote! {
+            #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+            #[borsh(use_discriminant=true)]
+            #[borsh(init = initialization_method)]
+            enum A {
+                B,
+                C,
+                D= 10,
+            }
+        })
+        .unwrap();
+
+        let actual = check_item_attributes(&item_struct);
+        local_insta_assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
+    }
+
     #[test]
     fn test_check_attrs_init_function_with_use_discriminant() {
         let item_struct = syn::parse2::<DeriveInput>(quote! {

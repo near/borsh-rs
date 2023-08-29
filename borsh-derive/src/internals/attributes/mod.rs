@@ -1,4 +1,4 @@
-use syn::Path;
+use syn::{Attribute, Path};
 
 pub mod field;
 pub mod item;
@@ -60,4 +60,16 @@ impl<'a> PartialEq<Symbol> for &'a Path {
     fn eq(&self, word: &Symbol) -> bool {
         self.is_ident(word.0)
     }
+}
+
+fn get_one_attribute(attrs: &[Attribute]) -> syn::Result<Option<&Attribute>> {
+    let count = attrs.iter().filter(|attr| attr.path() == BORSH).count();
+    let borsh = attrs.iter().find(|attr| attr.path() == BORSH);
+    if count > 1 {
+        return Err(syn::Error::new_spanned(
+            borsh.unwrap(),
+            format!("multiple `{}` attributes not allowed", BORSH.0),
+        ));
+    }
+    Ok(borsh)
 }
