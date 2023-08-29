@@ -132,6 +132,23 @@ where
     }
 }
 
+/// Helper method to add a single type definition to the map.
+pub fn add_definition(
+    declaration: Declaration,
+    definition: Definition,
+    definitions: &mut BTreeMap<Declaration, Definition>,
+) {
+    match definitions.entry(declaration) {
+        Entry::Occupied(occ) => {
+            let existing_def = occ.get();
+            assert_eq!(existing_def, &definition, "Redefining type schema for the same type name. Types with the same names are not supported.");
+        }
+        Entry::Vacant(vac) => {
+            vac.insert(definition);
+        }
+    }
+}
+
 /// The declaration and the definition of the type that can be used to (de)serialize Borsh without
 /// the Rust type that produced it.
 pub trait BorshSchema {
@@ -139,33 +156,8 @@ pub trait BorshSchema {
     /// this is an empty map. Type definition explains how to serialize/deserialize a type.
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>);
 
-    /// Helper method to add a single type definition to the map.
-    fn add_definition(
-        declaration: Declaration,
-        definition: Definition,
-        definitions: &mut BTreeMap<Declaration, Definition>,
-    ) {
-        match definitions.entry(declaration) {
-            Entry::Occupied(occ) => {
-                let existing_def = occ.get();
-                assert_eq!(existing_def, &definition, "Redefining type schema for the same type name. Types with the same names are not supported.");
-            }
-            Entry::Vacant(vac) => {
-                vac.insert(definition);
-            }
-        }
-    }
     /// Get the name of the type without brackets.
     fn declaration() -> Declaration;
-
-    fn schema_container() -> BorshSchemaContainer {
-        let mut definitions = BTreeMap::new();
-        Self::add_definitions_recursively(&mut definitions);
-        BorshSchemaContainer {
-            declaration: Self::declaration(),
-            definitions,
-        }
-    }
 }
 
 impl BorshSchema for BorshSchemaContainer
@@ -188,7 +180,7 @@ where
             ),
         ])));
         let definition = Definition::Struct { fields };
-        Self::add_definition(
+        add_definition(
             <Self as BorshSchema>::declaration(),
             definition,
             definitions,
@@ -254,7 +246,7 @@ where
             length: N as u32,
             elements: T::declaration(),
         };
-        Self::add_definition(Self::declaration(), definition, definitions);
+        add_definition(Self::declaration(), definition, definitions);
         T::add_definitions_recursively(definitions);
     }
     fn declaration() -> Declaration {
@@ -273,7 +265,7 @@ where
                 ("Some".to_string(), T::declaration()),
             ],
         };
-        Self::add_definition(Self::declaration(), definition, definitions);
+        add_definition(Self::declaration(), definition, definitions);
         T::add_definitions_recursively(definitions);
     }
 
@@ -294,7 +286,7 @@ where
                 ("Err".to_string(), E::declaration()),
             ],
         };
-        Self::add_definition(Self::declaration(), definition, definitions);
+        add_definition(Self::declaration(), definition, definitions);
         T::add_definitions_recursively(definitions);
     }
 
@@ -311,7 +303,7 @@ where
         let definition = Definition::Sequence {
             elements: T::declaration(),
         };
-        Self::add_definition(Self::declaration(), definition, definitions);
+        add_definition(Self::declaration(), definition, definitions);
         T::add_definitions_recursively(definitions);
     }
 
@@ -328,7 +320,7 @@ where
         let definition = Definition::Sequence {
             elements: T::declaration(),
         };
-        Self::add_definition(Self::declaration(), definition, definitions);
+        add_definition(Self::declaration(), definition, definitions);
         T::add_definitions_recursively(definitions);
     }
 
@@ -345,7 +337,7 @@ pub mod hashes {
     //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use crate::BorshSchema;
 
-    use super::{Declaration, Definition};
+    use super::{add_definition, Declaration, Definition};
     use crate::__private::maybestd::collections::BTreeMap;
 
     use crate::__private::maybestd::collections::{HashMap, HashSet};
@@ -361,7 +353,7 @@ pub mod hashes {
             let definition = Definition::Sequence {
                 elements: <(K, V)>::declaration(),
             };
-            Self::add_definition(Self::declaration(), definition, definitions);
+            add_definition(Self::declaration(), definition, definitions);
             <(K, V)>::add_definitions_recursively(definitions);
         }
 
@@ -377,7 +369,7 @@ pub mod hashes {
             let definition = Definition::Sequence {
                 elements: <T>::declaration(),
             };
-            Self::add_definition(Self::declaration(), definition, definitions);
+            add_definition(Self::declaration(), definition, definitions);
             <T>::add_definitions_recursively(definitions);
         }
 
@@ -396,7 +388,7 @@ where
         let definition = Definition::Sequence {
             elements: <(K, V)>::declaration(),
         };
-        Self::add_definition(Self::declaration(), definition, definitions);
+        add_definition(Self::declaration(), definition, definitions);
         <(K, V)>::add_definitions_recursively(definitions);
     }
 
@@ -413,7 +405,7 @@ where
         let definition = Definition::Sequence {
             elements: <T>::declaration(),
         };
-        Self::add_definition(Self::declaration(), definition, definitions);
+        add_definition(Self::declaration(), definition, definitions);
         <T>::add_definitions_recursively(definitions);
     }
 
@@ -442,7 +434,7 @@ macro_rules! impl_tuple {
             let elements = vec![$($name::declaration()),+];
 
             let definition = Definition::Tuple { elements };
-            Self::add_definition(Self::declaration(), definition, definitions);
+            add_definition(Self::declaration(), definition, definitions);
             $(
                 $name::add_definitions_recursively(definitions);
             )+

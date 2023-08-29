@@ -9,13 +9,14 @@ use alloc::vec;
 
 use borsh::{self, from_slice};
 #[cfg(feature = "schema")]
-use borsh::{try_from_slice_with_schema, BorshSchema};
+use borsh::{schema_container_of, try_from_slice_with_schema};
 
 #[cfg(feature = "schema")]
 #[test]
 fn test_to_vec() {
     let value = 42u8;
-    let seriazeble = (<u8 as BorshSchema>::schema_container(), value);
+
+    let seriazeble = (schema_container_of::<u8>(), value);
     let serialized = borsh::to_vec(&seriazeble).unwrap();
     #[cfg(feature = "std")]
     println!("serialized: {:?}", serialized);
