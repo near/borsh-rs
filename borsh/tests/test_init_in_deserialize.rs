@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(feature = "derive")]
 
-use borsh::{from_slice, BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 #[borsh(init=init)]
 struct A {
@@ -18,7 +18,8 @@ impl A {
 #[test]
 fn test_simple_struct() {
     let a = A { lazy: Some(5) };
-    let encoded_a = a.try_to_vec().unwrap();
+
+    let encoded_a = to_vec(&a).unwrap();
 
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(encoded_a);
@@ -45,7 +46,7 @@ impl AEnum {
 #[test]
 fn test_simple_enum() {
     let a = AEnum::B;
-    let encoded_a = a.try_to_vec().unwrap();
+    let encoded_a = to_vec(&a).unwrap();
 
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(encoded_a);

@@ -25,7 +25,7 @@ pub fn try_from_slice_with_schema<T: BorshDeserialize + BorshSchema>(v: &[u8]) -
 /// bytes in Borsh format.
 pub fn try_to_vec_with_schema<T: BorshSerialize + BorshSchema>(value: &T) -> Result<Vec<u8>> {
     let schema = schema_container_of::<T>();
-    let mut res = schema.try_to_vec()?;
+    let mut res = crate::to_vec(&schema)?;
     value.serialize(&mut res)?;
     Ok(res)
 }

@@ -1,12 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-use borsh::{from_slice, BorshSerialize};
+use borsh::{from_slice, to_vec};
 
 macro_rules! test_primitive {
     ($test_name: ident, $v: expr, $t: ty) => {
         #[test]
         fn $test_name() {
             let expected: $t = $v;
-            let buf = expected.try_to_vec().unwrap();
+
+            let buf = to_vec(&expected).unwrap();
             #[cfg(feature = "std")]
             insta::assert_debug_snapshot!(buf);
             let actual = from_slice::<$t>(&buf).expect("failed to deserialize");

@@ -4,14 +4,15 @@
 extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::string::{String, ToString};
-use borsh::{from_slice, BorshSerialize};
+use borsh::{from_slice, to_vec};
 
 macro_rules! test_string {
     ($test_name: ident, $str: expr, $snap: expr) => {
         #[test]
         fn $test_name() {
             let s = $str.to_string();
-            let buf = s.try_to_vec().unwrap();
+
+            let buf = to_vec(&s).unwrap();
             #[cfg(feature = "std")]
             if $snap {
                 insta::assert_debug_snapshot!(buf);

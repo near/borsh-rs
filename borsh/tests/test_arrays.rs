@@ -1,9 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::float_cmp)]
 
+use borsh::{from_slice, to_vec};
 #[cfg(feature = "derive")]
-use borsh::BorshDeserialize;
-use borsh::{from_slice, BorshSerialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -12,7 +12,7 @@ use alloc::string::{String, ToString};
 
 macro_rules! test_array {
     ($v: expr, $t: ty, $len: expr) => {
-        let buf = $v.try_to_vec().unwrap();
+        let buf = borsh::to_vec(&$v).unwrap();
         #[cfg(feature = "std")]
         insta::assert_debug_snapshot!(buf);
         let actual_v: [$t; $len] = from_slice(&buf).expect("failed to deserialize");
@@ -63,7 +63,7 @@ struct CustomStruct(u8);
 #[test]
 fn test_custom_struct_array() {
     let arr = [CustomStruct(0), CustomStruct(1), CustomStruct(2)];
-    let serialized = arr.try_to_vec().unwrap();
+    let serialized = to_vec(&arr).unwrap();
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(serialized);
     let deserialized: [CustomStruct; 3] = from_slice(&serialized).unwrap();
@@ -73,7 +73,7 @@ fn test_custom_struct_array() {
 #[test]
 fn test_string_array() {
     let arr = ["0".to_string(), "1".to_string(), "2".to_string()];
-    let serialized = arr.try_to_vec().unwrap();
+    let serialized = to_vec(&arr).unwrap();
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(serialized);
     let deserialized: [String; 3] = from_slice(&serialized).unwrap();

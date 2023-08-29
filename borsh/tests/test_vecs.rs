@@ -1,5 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-use borsh::{from_slice, BorshSerialize};
+use borsh::{from_slice, to_vec};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -12,7 +12,7 @@ use alloc::{
 
 macro_rules! test_vec {
     ($v: expr, $t: ty, $snap: expr) => {
-        let buf = $v.try_to_vec().unwrap();
+        let buf = to_vec(&$v).unwrap();
         #[cfg(feature = "std")]
         if $snap {
             insta::assert_debug_snapshot!(buf);

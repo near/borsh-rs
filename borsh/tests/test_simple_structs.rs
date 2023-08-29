@@ -26,7 +26,7 @@ use alloc::{
 
 use bytes::{Bytes, BytesMut};
 
-use borsh::{from_slice, BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 struct A<'a> {
@@ -127,9 +127,9 @@ fn test_ultimate_combined_all_features() {
         range_u32: 12..71,
         skipped: Some(6),
     };
-    let encoded_a = a.try_to_vec().unwrap();
+    let encoded_a = to_vec(&a).unwrap();
     let e = E { a: &a };
-    let encoded_ref_a = e.try_to_vec().unwrap();
+    let encoded_ref_a = to_vec(&e).unwrap();
     assert_eq!(encoded_ref_a, encoded_a);
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(encoded_a);
@@ -169,7 +169,7 @@ fn test_ultimate_combined_all_features() {
     assert_eq!(expected_a, decoded_a);
 
     let f1 = F1 { aa: &[&a, &a] };
-    let encoded_f1 = f1.try_to_vec().unwrap();
+    let encoded_f1 = to_vec(&f1).unwrap();
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(encoded_f1);
     let decoded_f2 = from_slice::<F2>(&encoded_f1).unwrap();

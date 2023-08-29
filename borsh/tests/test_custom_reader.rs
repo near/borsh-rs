@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(feature = "derive")]
-use borsh::{from_reader, BorshDeserialize, BorshSerialize};
+use borsh::{from_reader, to_vec, BorshDeserialize, BorshSerialize};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -33,7 +33,7 @@ fn test_custom_reader() {
         item2: "foo".into(),
         item3: 1.2345,
     };
-    let bytes = s.try_to_vec().unwrap();
+    let bytes = to_vec(&s).unwrap();
     let mut reader = CustomReader {
         data: bytes,
         read_index: 0,
@@ -51,7 +51,7 @@ fn test_custom_reader_with_insufficient_data() {
         item2: "foo".into(),
         item3: 1.2345,
     };
-    let mut bytes = s.try_to_vec().unwrap();
+    let mut bytes = to_vec(&s).unwrap();
     bytes.pop().unwrap();
     let mut reader = CustomReader {
         data: bytes,
@@ -72,7 +72,7 @@ fn test_custom_reader_with_too_much_data() {
         item2: "foo".into(),
         item3: 1.2345,
     };
-    let mut bytes = s.try_to_vec().unwrap();
+    let mut bytes = to_vec(&s).unwrap();
     bytes.push(1);
     let mut reader = CustomReader {
         data: bytes,
@@ -107,7 +107,7 @@ fn test_custom_reader_that_doesnt_fill_slices() {
         item2: "foo".into(),
         item3: 1.2345,
     };
-    let bytes = s.try_to_vec().unwrap();
+    let bytes = to_vec(&s).unwrap();
     let mut reader = CustomReaderThatDoesntFillSlices {
         data: bytes,
         read_index: 0,

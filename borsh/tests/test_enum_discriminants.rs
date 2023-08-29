@@ -7,7 +7,7 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::vec;
 
-use borsh::{from_slice, BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 // sequence, no unit enums
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
 #[borsh(use_discriminant = true)]
@@ -39,7 +39,7 @@ fn test_discriminant_serde_no_unit_type() {
     let expected_discriminants = [0u8, 20, 21, 10, 22, 11];
 
     for (ind, value) in values.iter().enumerate() {
-        let data = value.try_to_vec().unwrap();
+        let data = to_vec(value).unwrap();
         assert_eq!(data[0], expected_discriminants[ind]);
         assert_eq!(from_slice::<XY>(&data).unwrap(), values[ind]);
     }
@@ -58,7 +58,7 @@ fn test_discriminant_serde_no_unit_type_no_use_discriminant() {
     let expected_discriminants = [0u8, 1, 2, 3, 4, 5];
 
     for (ind, value) in values.iter().enumerate() {
-        let data = value.try_to_vec().unwrap();
+        let data = to_vec(value).unwrap();
         assert_eq!(data[0], expected_discriminants[ind]);
         assert_eq!(from_slice::<XYNoDiscriminant>(&data).unwrap(), values[ind]);
     }
@@ -84,17 +84,17 @@ enum MyEnumNoDiscriminant {
 #[test]
 fn test_discriminant_minimal_true() {
     assert_eq!(MyDiscriminantEnum::A as u8, 20);
-    assert_eq!(MyDiscriminantEnum::A.try_to_vec().unwrap(), vec![20]);
+    assert_eq!(to_vec(&MyDiscriminantEnum::A).unwrap(), vec![20]);
 }
 
 #[test]
 fn test_discriminant_minimal_false() {
     assert_eq!(MyDiscriminantEnumFalse::A as u8, 20);
     assert_eq!(
-        MyEnumNoDiscriminant::A.try_to_vec().unwrap(),
-        MyDiscriminantEnumFalse::A.try_to_vec().unwrap(),
+        to_vec(&MyEnumNoDiscriminant::A).unwrap(),
+        to_vec(&MyDiscriminantEnumFalse::A).unwrap(),
     );
-    assert_eq!(MyDiscriminantEnumFalse::A.try_to_vec().unwrap(), vec![0]);
+    assert_eq!(to_vec(&MyDiscriminantEnumFalse::A).unwrap(), vec![0]);
 }
 
 // sequence
@@ -121,7 +121,7 @@ fn test_discriminant_serde_no_use_discriminant() {
     ];
     let expected_discriminants = [0u8, 1, 2, 3, 4, 5];
     for (index, value) in values.iter().enumerate() {
-        let data = value.try_to_vec().unwrap();
+        let data = to_vec(value).unwrap();
         assert_eq!(data[0], expected_discriminants[index]);
         assert_eq!(from_slice::<XNoDiscriminant>(&data).unwrap(), values[index]);
     }
@@ -155,7 +155,7 @@ enum X {
 fn test_discriminant_serialization() {
     let values = vec![X::A, X::B, X::C, X::D, X::E, X::F];
     for value in values {
-        assert_eq!(value.try_to_vec().unwrap(), [value as u8]);
+        assert_eq!(to_vec(&value).unwrap(), [value as u8]);
     }
 }
 
@@ -178,7 +178,7 @@ fn test_discriminant_serde() {
     let values = vec![X::A, X::B, X::C, X::D, X::E, X::F];
     let expected_discriminants = [0u8, 20, 21, 22, 10, 11];
     for (index, value) in values.iter().enumerate() {
-        let data = value.try_to_vec().unwrap();
+        let data = to_vec(value).unwrap();
         assert_eq!(data[0], expected_discriminants[index]);
         assert_eq!(from_slice::<X>(&data).unwrap(), values[index]);
     }

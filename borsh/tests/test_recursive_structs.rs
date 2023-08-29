@@ -1,5 +1,5 @@
 #![cfg(feature = "derive")]
-use borsh::{from_slice, BorshDeserialize, BorshSerialize};
+use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
 #[cfg(feature = "hashbrown")]
 use hashbrown::HashMap;
@@ -64,7 +64,8 @@ fn test_recursive_struct() {
         a: "three".to_string(),
         b: vec![one, two],
     };
-    let data = three.try_to_vec().unwrap();
+
+    let data = to_vec(&three).unwrap();
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_three = from_slice::<CRecB>(&data).unwrap();
@@ -80,7 +81,7 @@ fn test_recursive_enum() {
     let two = ERecD::C(10, vec![]);
 
     let three = ERecD::C(11, vec![one, two]);
-    let data = three.try_to_vec().unwrap();
+    let data = to_vec(&three).unwrap();
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_three = from_slice::<ERecD>(&data).unwrap();

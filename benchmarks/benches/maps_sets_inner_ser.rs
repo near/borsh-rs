@@ -4,7 +4,7 @@ use std::{
     iter::FromIterator,
 };
 
-use borsh::BorshSerialize;
+use borsh::{to_vec, BorshSerialize};
 
 use benchmarks::Generate;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
@@ -23,7 +23,7 @@ where
     let collection: U = (0..num_samples).map(|_| T::generate(&mut rng)).collect();
 
     group.bench_with_input(BenchmarkId::new("borsh_ser", ""), &collection, |b, d| {
-        b.iter(|| d.try_to_vec().unwrap());
+        b.iter(|| to_vec(d).unwrap());
     });
 }
 

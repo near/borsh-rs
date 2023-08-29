@@ -871,7 +871,7 @@ impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
 /// Deserializes an object from a slice of bytes.
 /// # Example
 /// ```
-/// use borsh::{BorshDeserialize, BorshSerialize, from_slice};
+/// use borsh::{BorshDeserialize, BorshSerialize, from_slice, to_vec};
 ///
 /// /// derive is only available if borsh is built with `features = ["derive"]`
 /// # #[cfg(feature = "derive")]
@@ -884,7 +884,7 @@ impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
 /// # #[cfg(feature = "derive")]
 /// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
 /// # #[cfg(feature = "derive")]
-/// let encoded = original.try_to_vec().unwrap();
+/// let encoded = to_vec(&original).unwrap();
 /// # #[cfg(feature = "derive")]
 /// let decoded = from_slice::<MyStruct>(&encoded).unwrap();
 /// # #[cfg(feature = "derive")]
@@ -911,7 +911,7 @@ pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
 /// Deserializes an object from a reader.
 /// # Example
 /// ```
-/// use borsh::{BorshDeserialize, BorshSerialize, from_reader};
+/// use borsh::{BorshDeserialize, BorshSerialize, from_reader, to_vec};
 ///
 /// /// derive is only available if borsh is built with `features = ["derive"]`
 /// # #[cfg(feature = "derive")]
@@ -924,7 +924,7 @@ pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
 /// # #[cfg(feature = "derive")]
 /// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
 /// # #[cfg(feature = "derive")]
-/// let encoded = original.try_to_vec().unwrap();
+/// let encoded = to_vec(&original).unwrap();
 /// # #[cfg(feature = "derive")]
 /// let decoded = from_reader::<_, MyStruct>(&mut encoded.as_slice()).unwrap();
 /// # #[cfg(feature = "derive")]
