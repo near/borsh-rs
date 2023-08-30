@@ -93,11 +93,6 @@ pub mod error;
 #[cfg(all(feature = "std", feature = "hashbrown"))]
 compile_error!("feature \"std\" and feature \"hashbrown\" don't make sense at the same time");
 
-#[cfg(all(feature = "schema", not(feature = "derive")))]
-compile_error!(
-    "feature \"schema\" depends on \"derive\" feature in its implementation; enable it too.."
-);
-
 #[cfg(not(feature = "std"))]
 pub mod nostd_io;
 
