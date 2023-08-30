@@ -6,7 +6,7 @@ use crate::{
         borrow::{Cow, ToOwned},
         boxed::Box,
         collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
-        io::{ErrorKind, Result, Write},
+        io::{Error, ErrorKind, Result, Write},
         string::String,
         vec::Vec,
     },
@@ -17,6 +17,8 @@ use crate::{
 use crate::__private::maybestd::{rc::Rc, sync::Arc};
 
 pub(crate) mod helpers;
+
+const FLOAT_NAN_ERR: &str = "For portability reasons we do not allow to serialize NaNs.";
 
 /// A data-structure that can be serialized into binary format by NBOR.
 ///
@@ -149,10 +151,9 @@ macro_rules! impl_for_float {
         impl BorshSerialize for $type {
             #[inline]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-                assert!(
-                    !self.is_nan(),
-                    "For portability reasons we do not allow to serialize NaNs."
-                );
+                if self.is_nan() {
+                    return Err(Error::new(ErrorKind::InvalidData, FLOAT_NAN_ERR));
+                }
                 writer.write_all(&self.to_bits().to_le_bytes())
             }
         }
