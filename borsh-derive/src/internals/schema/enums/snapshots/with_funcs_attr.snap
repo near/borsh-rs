@@ -21,9 +21,11 @@ where
     ) {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct CC3(u64, u64);
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct CC4<K, V>(
             u64,
             #[borsh(

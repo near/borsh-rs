@@ -14,6 +14,7 @@ impl borsh::BorshSchema for A {
     ) {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct ABacon;
         <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let variants = borsh::__private::maybestd::vec![
