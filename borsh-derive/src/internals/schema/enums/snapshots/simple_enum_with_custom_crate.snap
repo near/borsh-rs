@@ -1,0 +1,43 @@
+---
+source: borsh-derive/src/internals/schema/enums/mod.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+impl reexporter::borsh::BorshSchema for A {
+    fn declaration() -> reexporter::borsh::schema::Declaration {
+        "A".to_string()
+    }
+    fn add_definitions_recursively(
+        definitions: &mut reexporter::borsh::__private::maybestd::collections::BTreeMap<
+            reexporter::borsh::schema::Declaration,
+            reexporter::borsh::schema::Definition,
+        >,
+    ) {
+        #[allow(dead_code)]
+        #[derive(reexporter::borsh::BorshSchema)]
+        #[borsh(crate = "reexporter :: borsh")]
+        struct ABacon;
+        #[allow(dead_code)]
+        #[derive(reexporter::borsh::BorshSchema)]
+        #[borsh(crate = "reexporter :: borsh")]
+        struct AEggs;
+        <ABacon as reexporter::borsh::BorshSchema>::add_definitions_recursively(
+            definitions,
+        );
+        <AEggs as reexporter::borsh::BorshSchema>::add_definitions_recursively(
+            definitions,
+        );
+        let variants = reexporter::borsh::__private::maybestd::vec![
+            ("Bacon".to_string(), < ABacon > ::declaration()), ("Eggs".to_string(), <
+            AEggs > ::declaration())
+        ];
+        let definition = reexporter::borsh::schema::Definition::Enum {
+            variants,
+        };
+        reexporter::borsh::schema::add_definition(
+            Self::declaration(),
+            definition,
+            definitions,
+        );
+    }
+}
+

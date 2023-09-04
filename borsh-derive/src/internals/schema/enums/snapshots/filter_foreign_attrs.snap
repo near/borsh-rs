@@ -14,6 +14,7 @@ impl borsh::BorshSchema for A {
     ) {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct AB {
             c: i32,
             #[borsh(skip)]
@@ -22,6 +23,7 @@ impl borsh::BorshSchema for A {
         }
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct ANegative {
             beta: String,
         }

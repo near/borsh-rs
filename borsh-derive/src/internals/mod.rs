@@ -6,5 +6,7 @@ mod generics;
 pub mod schema;
 pub mod serialize;
 
+pub mod cratename;
+
 #[cfg(test)]
 mod test_helpers;

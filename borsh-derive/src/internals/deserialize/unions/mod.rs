@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
-use syn::{Ident, ItemUnion};
+use syn::{ItemUnion, Path};
 
-pub fn process(_input: &ItemUnion, _cratename: Ident) -> syn::Result<TokenStream2> {
+pub fn process(_input: &ItemUnion, _cratename: Path) -> syn::Result<TokenStream2> {
     unimplemented!()
 }

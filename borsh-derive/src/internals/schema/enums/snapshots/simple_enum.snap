@@ -14,9 +14,11 @@ impl borsh::BorshSchema for A {
     ) {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct ABacon;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct AEggs;
         <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <AEggs as borsh::BorshSchema>::add_definitions_recursively(definitions);

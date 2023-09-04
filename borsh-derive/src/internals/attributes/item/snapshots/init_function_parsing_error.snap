@@ -1,0 +1,7 @@
+---
+source: borsh-derive/src/internals/attributes/item/mod.rs
+expression: err
+---
+Error(
+    "expected identifier",
+)

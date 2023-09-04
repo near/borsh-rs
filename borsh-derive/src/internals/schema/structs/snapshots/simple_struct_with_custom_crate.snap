@@ -1,0 +1,41 @@
+---
+source: borsh-derive/src/internals/schema/structs/mod.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+impl reexporter::borsh::BorshSchema for A {
+    fn declaration() -> reexporter::borsh::schema::Declaration {
+        "A".to_string()
+    }
+    fn add_definitions_recursively(
+        definitions: &mut reexporter::borsh::__private::maybestd::collections::BTreeMap<
+            reexporter::borsh::schema::Declaration,
+            reexporter::borsh::schema::Definition,
+        >,
+    ) {
+        let fields = reexporter::borsh::schema::Fields::NamedFields(
+            reexporter::borsh::__private::maybestd::vec![
+                ("x".to_string(), < u64 as reexporter::borsh::BorshSchema >
+                ::declaration()), ("y".to_string(), < String as
+                reexporter::borsh::BorshSchema > ::declaration())
+            ],
+        );
+        let definition = reexporter::borsh::schema::Definition::Struct {
+            fields,
+        };
+        let no_recursion_flag = definitions.get(&Self::declaration()).is_none();
+        reexporter::borsh::schema::add_definition(
+            Self::declaration(),
+            definition,
+            definitions,
+        );
+        if no_recursion_flag {
+            <u64 as reexporter::borsh::BorshSchema>::add_definitions_recursively(
+                definitions,
+            );
+            <String as reexporter::borsh::BorshSchema>::add_definitions_recursively(
+                definitions,
+            );
+        }
+    }
+}
+

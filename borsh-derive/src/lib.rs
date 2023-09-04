@@ -6,19 +6,28 @@
 
 extern crate proc_macro;
 use proc_macro::TokenStream;
+#[cfg(feature = "schema")]
 use proc_macro2::Span;
-use proc_macro_crate::crate_name;
-use proc_macro_crate::FoundCrate;
-use syn::{parse_macro_input, DeriveInput, Ident, ItemEnum, ItemStruct, ItemUnion};
+use syn::{DeriveInput, Error, ItemEnum, ItemStruct, ItemUnion, Path};
 
 ///  by convention, local to borsh-derive crate, imports from proc_macro (1) are not allowed in `internals` module or in any of its submodules.
 mod internals;
 
-use crate::internals::attributes::item::check_item_attributes;
+use crate::internals::attributes::item;
 
 #[cfg(feature = "schema")]
 use internals::schema;
-use internals::{deserialize, serialize};
+use internals::{cratename, deserialize, serialize};
+
+fn check_attrs_get_cratename(input: &TokenStream) -> Result<Path, Error> {
+    let input = input.clone();
+
+    let derive_input = syn::parse::<DeriveInput>(input)?;
+
+    item::check_attributes(&derive_input)?;
+
+    cratename::get(&derive_input.attrs)
+}
 
 /**
 # derive proc-macro for `borsh::ser::BorshSerialize` trait
@@ -54,118 +63,60 @@ struct A<U, V> {
 
 ## Attributes
 
-### 1. `#[borsh(skip)]` (field level attribute)
+### 1. `#[borsh(crate = "path::to::borsh")]` (item level attribute)
 
-`#[borsh(skip)]` makes derive skip serializing annotated field.
+###### syntax
 
-`#[borsh(skip)]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::ser::BorshSerialize`.
+Attribute takes literal string value, which is the [Path](syn::Path) to `borsh` crate used.
+
+###### usage
+
+Attribute is optional.
+
+1. If the attribute is not provided, [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh`
+in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
+
+```bash
+ 1  error: proc-macro derive panicked
+   --> path/to/file.rs:27:10
+    |
+ 27 | #[derive(BorshSerialize, BorshDeserialize)]
+    |          ^^^^^^^^^^^^^^
+    |
+    = help: message: called `Result::unwrap()` on an `Err` value: CrateNotFound { crate_name: "borsh", path: "/path/to/Cargo.toml" }
+```
+
+2. If the attribute is provided, the check for `borsh` in `[dependencies]` of the relevant `Cargo.toml` is skipped.
+
+Examples of usage:
 
 ```ignore
+use reexporter::borsh::BorshSerialize;
+
+// specifying the attribute removes need for a direct import of `borsh` into `[dependencies]`
 #[derive(BorshSerialize)]
-struct A {
+#[borsh(crate = "reexporter::borsh")]
+struct B {
     x: u64,
-    #[borsh(skip)]
-    y: f32,
+    y: i32,
+    c: String,
 }
 ```
-
-### 2. `#[borsh(bound(serialize = ...))]` (field level attribute)
-
-###### syntax
-
-Attribute takes literal string value, which is a comma-separated list of syn's [WherePredicate](syn::WherePredicate)-s, which may be empty.
-
-###### usage
-
-Attribute adds possibility to override bounds for `BorshSerialize` in order to enable:
-
-1. removal of bounds on type parameters from struct/enum definition itself and moving them to the trait's implementation block.
-2. fixing complex cases, when derive hasn't figured out the right bounds on type parameters automatically.
 
 ```ignore
-/// additional bound `T: Ord` (required by `HashMap`) is injected into
-/// derived trait implementation via attribute to avoid adding the bounds on the struct itself
+use reexporter::borsh::{self, BorshSerialize};
+
+// specifying the attribute removes need for a direct import of `borsh` into `[dependencies]`
 #[derive(BorshSerialize)]
-struct A<T, U> {
-    a: String,
-    #[borsh(bound(serialize =
-        "T: borsh::ser::BorshSerialize + Ord,
-         U: borsh::ser::BorshSerialize"))]
-    b: HashMap<T, U>,
+#[borsh(crate = "borsh")]
+struct B {
+    x: u64,
+    y: i32,
+    c: String,
 }
 ```
 
-
-```ignore
-/// derive here figures the bound erroneously as `T: borsh::ser::BorshSerialize`
-#[derive(BorshSerialize)]
-struct A<T, V>
-where
-    T: TraitName,
-{
-    #[borsh(bound(serialize = "<T as TraitName>::Associated: borsh::ser::BorshSerialize"))]
-    field: <T as TraitName>::Associated,
-    another: V,
-}
-```
-
-###### interaction with `#[borsh(skip)]`
-
-`#[borsh(bound(serialize = ...))]` replaces bounds, which are derived automatically,
-irrelevant of whether `#[borsh(skip)]` attribute is present.
-
-### 3. `#[borsh(serialize_with = ...)]` (field level attribute)
-
-###### syntax
-
-Attribute takes literal string value, which is a syn's [ExprPath](syn::ExprPath).
-
-###### usage
-
-Attribute adds possibility to specify full path of function, optionally qualified with generics,
-with which to serialize the annotated field.
-
-It may be used when `BorshSerialize` cannot be implemented for field's type, if it's from foreign crate.
-
-It may be used to override the implementation of serialization for some other reason.
-
-```ignore
-use indexmap::IndexMap;
-
-mod index_map_impl {
-    use super::IndexMap;
-    use core::hash::Hash;
-    use std::io;
-
-    pub fn serialize_index_map<
-        K: borsh::ser::BorshSerialize,
-        V: borsh::ser::BorshSerialize,
-        W: io::Write,
-    >(
-        obj: &IndexMap<K, V>,
-        writer: &mut W,
-    ) -> ::core::result::Result<(), io::Error> {
-        let key_value_tuples = obj.iter().collect::<Vec<_>>();
-        borsh::BorshSerialize::serialize(&key_value_tuples, writer)?;
-        Ok(())
-    }
-}
-
-#[derive(BorshSerialize)]
-struct B<K, V> {
-    #[borsh(
-        serialize_with = "index_map_impl::serialize_index_map",
-    )]
-    x: IndexMap<K, V>,
-    y: String,
-}
-```
-
-###### interaction with `#[borsh(skip)]`
-
-`#[borsh(serialize_with = ...)]` is not allowed to be used simultaneously with `#[borsh(skip)]`.
-
-### 4. `borsh(use_discriminant=<bool>)` (item level attribute)
+### 2. `borsh(use_discriminant=<bool>)` (item level attribute)
 This attribute is only applicable to enums.
 `use_discriminant` allows to override the default behavior of serialization of enums with explicit discriminant.
 `use_discriminant` is `false` behaves like version of borsh of 0.10.3.
@@ -225,22 +176,127 @@ enum X {
 }
 ```
 
+### 3. `#[borsh(skip)]` (field level attribute)
+
+`#[borsh(skip)]` makes derive skip serializing annotated field.
+
+`#[borsh(skip)]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::ser::BorshSerialize`.
+
+```ignore
+#[derive(BorshSerialize)]
+struct A {
+    x: u64,
+    #[borsh(skip)]
+    y: f32,
+}
+```
+
+### 4. `#[borsh(bound(serialize = ...))]` (field level attribute)
+
+###### syntax
+
+Attribute takes literal string value, which is a comma-separated list of syn's [WherePredicate](syn::WherePredicate)-s, which may be empty.
+
+###### usage
+
+Attribute adds possibility to override bounds for `BorshSerialize` in order to enable:
+
+1. removal of bounds on type parameters from struct/enum definition itself and moving them to the trait's implementation block.
+2. fixing complex cases, when derive hasn't figured out the right bounds on type parameters automatically.
+
+```ignore
+/// additional bound `T: Ord` (required by `HashMap`) is injected into
+/// derived trait implementation via attribute to avoid adding the bounds on the struct itself
+#[derive(BorshSerialize)]
+struct A<T, U> {
+    a: String,
+    #[borsh(bound(serialize =
+        "T: borsh::ser::BorshSerialize + Ord,
+         U: borsh::ser::BorshSerialize"))]
+    b: HashMap<T, U>,
+}
+```
+
+
+```ignore
+/// derive here figures the bound erroneously as `T: borsh::ser::BorshSerialize`
+#[derive(BorshSerialize)]
+struct A<T, V>
+where
+    T: TraitName,
+{
+    #[borsh(bound(serialize = "<T as TraitName>::Associated: borsh::ser::BorshSerialize"))]
+    field: <T as TraitName>::Associated,
+    another: V,
+}
+```
+
+###### interaction with `#[borsh(skip)]`
+
+`#[borsh(bound(serialize = ...))]` replaces bounds, which are derived automatically,
+irrelevant of whether `#[borsh(skip)]` attribute is present.
+
+### 5. `#[borsh(serialize_with = ...)]` (field level attribute)
+
+###### syntax
+
+Attribute takes literal string value, which is a syn's [ExprPath](syn::ExprPath).
+
+###### usage
+
+Attribute adds possibility to specify full path of function, optionally qualified with generics,
+with which to serialize the annotated field.
+
+It may be used when `BorshSerialize` cannot be implemented for field's type, if it's from foreign crate.
+
+It may be used to override the implementation of serialization for some other reason.
+
+```ignore
+use indexmap::IndexMap;
+
+mod index_map_impl {
+    use super::IndexMap;
+    use core::hash::Hash;
+    use std::io;
+
+    pub fn serialize_index_map<
+        K: borsh::ser::BorshSerialize,
+        V: borsh::ser::BorshSerialize,
+        W: io::Write,
+    >(
+        obj: &IndexMap<K, V>,
+        writer: &mut W,
+    ) -> ::core::result::Result<(), io::Error> {
+        let key_value_tuples = obj.iter().collect::<Vec<_>>();
+        borsh::BorshSerialize::serialize(&key_value_tuples, writer)?;
+        Ok(())
+    }
+}
+
+#[derive(BorshSerialize)]
+struct B<K, V> {
+    #[borsh(
+        serialize_with = "index_map_impl::serialize_index_map",
+    )]
+    x: IndexMap<K, V>,
+    y: String,
+}
+```
+
+###### interaction with `#[borsh(skip)]`
+
+`#[borsh(serialize_with = ...)]` is not allowed to be used simultaneously with `#[borsh(skip)]`.
+
+
 */
 #[proc_macro_derive(BorshSerialize, attributes(borsh))]
 pub fn borsh_serialize(input: TokenStream) -> TokenStream {
-    let name = &crate_name("borsh").unwrap();
-    let name = match name {
-        FoundCrate::Itself => "borsh",
-        FoundCrate::Name(name) => name.as_str(),
+    let cratename = match check_attrs_get_cratename(&input) {
+        Ok(cratename) => cratename,
+        Err(err) => {
+            return err.to_compile_error().into();
+        }
     };
-    let cratename = Ident::new(name, Span::call_site());
-
-    let for_derive_input = input.clone();
-    let derive_input = parse_macro_input!(for_derive_input as DeriveInput);
-
-    if let Err(err) = check_item_attributes(&derive_input) {
-        return err.into();
-    }
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
         serialize::structs::process(&input, cratename)
@@ -295,7 +351,60 @@ struct A<U, V> {
 
 ## Attributes
 
-### 1. `#[borsh(init=...)]` (item level attribute)
+### 1. `#[borsh(crate = "path::to::borsh")]` (item level attribute)
+
+###### syntax
+
+Attribute takes literal string value, which is the [Path](syn::Path) to `borsh` crate used.
+
+###### usage
+
+Attribute is optional.
+
+1. If the attribute is not provided, [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh`
+in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
+
+```bash
+ 1  error: proc-macro derive panicked
+   --> path/to/file.rs:27:10
+    |
+ 27 | #[derive(BorshDeserialize, BorshSerialize)]
+    |          ^^^^^^^^^^^^^^^^
+    |
+    = help: message: called `Result::unwrap()` on an `Err` value: CrateNotFound { crate_name: "borsh", path: "/path/to/Cargo.toml" }
+```
+
+2. If the attribute is provided, the check for `borsh` in `[dependencies]` of the relevant `Cargo.toml` is skipped.
+
+Examples of usage:
+
+```ignore
+use reexporter::borsh::BorshDeserialize;
+
+// specifying the attribute removes need for a direct import of `borsh` into `[dependencies]`
+#[derive(BorshDeserialize)]
+#[borsh(crate = "reexporter::borsh")]
+struct B {
+    x: u64,
+    y: i32,
+    c: String,
+}
+```
+
+```ignore
+use reexporter::borsh::{self, BorshDeserialize};
+
+// specifying the attribute removes need for a direct import of `borsh` into `[dependencies]`
+#[derive(BorshDeserialize)]
+#[borsh(crate = "borsh")]
+struct B {
+    x: u64,
+    y: i32,
+    c: String,
+}
+```
+
+### 2. `#[borsh(init=...)]` (item level attribute)
 
 ###### syntax
 
@@ -325,136 +434,7 @@ impl Message {
 }
 ```
 
-### 2. `#[borsh(skip)]` (field level attribute)
-
-`#[borsh(skip)]` makes derive skip deserializing annotated field.
-
-`#[borsh(skip)]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::de::BorshDeserialize`.
-
-It adds `core::default::Default` bound to any
-parameters encountered in annotated field.
-
-
-```ignore
-#[derive(BorshDeserialize)]
-struct A {
-    x: u64,
-    #[borsh(skip)]
-    y: f32,
-}
-```
-
-
-### 3. `#[borsh(bound(deserialize = ...))]` (field level attribute)
-
-###### syntax
-
-Attribute takes literal string value, which is a comma-separated list of syn's [WherePredicate](syn::WherePredicate)-s, which may be empty.
-
-
-###### usage
-
-Attribute adds possibility to override bounds for `BorshDeserialize` in order to enable:
-
-1. removal of bounds on type parameters from struct/enum definition itself and moving them to the trait's implementation block.
-2. fixing complex cases, when derive hasn't figured out the right bounds on type parameters automatically.
-
-```ignore
-/// additional bounds `T: Ord + Hash + Eq` (required by `HashMap`) are injected into
-/// derived trait implementation via attribute to avoid adding the bounds on the struct itself
-#[derive(BorshDeserialize)]
-struct A<T, U> {
-    a: String,
-    #[borsh(bound(
-        deserialize =
-        "T: Ord + Hash + Eq + borsh::de::BorshDeserialize,
-         U: borsh::de::BorshDeserialize"
-    ))]
-    b: HashMap<T, U>,
-}
-```
-
-
-```ignore
-// derive here figures the bound erroneously as `T: borsh::de::BorshDeserialize,`
-#[derive(BorshDeserialize)]
-struct A<T, V>
-where
-    T: TraitName,
-{
-    #[borsh(bound(deserialize = "<T as TraitName>::Associated: borsh::de::BorshDeserialize"))]
-    field: <T as TraitName>::Associated,
-    another: V,
-}
-```
-
-###### interaction with `#[borsh(skip)]`
-
-`#[borsh(bound(deserialize = ...))]` replaces bounds, which are derived automatically,
-irrelevant of whether `#[borsh(skip)]` attribute is present.
-
-```ignore
-/// implicit derived `core::default::Default` bounds on `K` and `V` type parameters are removed by
-/// empty bound specified, as `HashMap` has its own `Default` implementation
-#[derive(BorshDeserialize)]
-struct A<K, V, U>(
-    #[borsh(skip, bound(deserialize = ""))]
-    HashMap<K, V>,
-    U,
-);
-```
-
-### 4. `#[borsh(deserialize_with = ...)]` (field level attribute)
-
-###### syntax
-
-Attribute takes literal string value, which is a syn's [ExprPath](syn::ExprPath).
-
-###### usage
-
-Attribute adds possibility to specify full path of function, optionally qualified with generics,
-with which to deserialize the annotated field.
-
-It may be used when `BorshDeserialize` cannot be implemented for field's type, if it's from foreign crate.
-
-It may be used to override the implementation of deserialization for some other reason.
-
-```ignore
-use indexmap::IndexMap;
-
-mod index_map_impl {
-    use super::IndexMap;
-    use core::hash::Hash;
-    use std::io;
-
-    pub fn deserialize_index_map<
-        R: io::Read,
-        K: borsh::de::BorshDeserialize + Hash + Eq,
-        V: borsh::de::BorshDeserialize,
-    >(
-        reader: &mut R,
-    ) -> ::core::result::Result<IndexMap<K, V>, io::Error> {
-        let vec: Vec<(K, V)> = borsh::BorshDeserialize::deserialize_reader(reader)?;
-        let result: IndexMap<K, V> = vec.into_iter().collect();
-        Ok(result)
-    }
-}
-
-#[derive(BorshDeserialize)]
-struct B<K: Hash + Eq, V> {
-    #[borsh(
-        deserialize_with = "index_map_impl::deserialize_index_map",
-    )]
-    x: IndexMap<K, V>,
-    y: String,
-}
-```
-
-###### interaction with `#[borsh(skip)]`
-
-`#[borsh(deserialize_with = ...)]` is not allowed to be used simultaneously with `#[borsh(skip)]`.
-
-### 5. `borsh(use_discriminant=<bool>)` (item level attribute)
+### 3. `borsh(use_discriminant=<bool>)` (item level attribute)
 
 This attribute is only applicable to enums.
 `use_discriminant` allows to override the default behavior of serialization of enums with explicit discriminant.
@@ -518,22 +498,145 @@ enum X {
 }
 ```
 
+
+### 4. `#[borsh(skip)]` (field level attribute)
+
+`#[borsh(skip)]` makes derive skip deserializing annotated field.
+
+`#[borsh(skip)]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::de::BorshDeserialize`.
+
+It adds `core::default::Default` bound to any
+parameters encountered in annotated field.
+
+
+```ignore
+#[derive(BorshDeserialize)]
+struct A {
+    x: u64,
+    #[borsh(skip)]
+    y: f32,
+}
+```
+
+
+### 5. `#[borsh(bound(deserialize = ...))]` (field level attribute)
+
+###### syntax
+
+Attribute takes literal string value, which is a comma-separated list of syn's [WherePredicate](syn::WherePredicate)-s, which may be empty.
+
+
+###### usage
+
+Attribute adds possibility to override bounds for `BorshDeserialize` in order to enable:
+
+1. removal of bounds on type parameters from struct/enum definition itself and moving them to the trait's implementation block.
+2. fixing complex cases, when derive hasn't figured out the right bounds on type parameters automatically.
+
+```ignore
+/// additional bounds `T: Ord + Hash + Eq` (required by `HashMap`) are injected into
+/// derived trait implementation via attribute to avoid adding the bounds on the struct itself
+#[derive(BorshDeserialize)]
+struct A<T, U> {
+    a: String,
+    #[borsh(bound(
+        deserialize =
+        "T: Ord + Hash + Eq + borsh::de::BorshDeserialize,
+         U: borsh::de::BorshDeserialize"
+    ))]
+    b: HashMap<T, U>,
+}
+```
+
+
+```ignore
+// derive here figures the bound erroneously as `T: borsh::de::BorshDeserialize,`
+#[derive(BorshDeserialize)]
+struct A<T, V>
+where
+    T: TraitName,
+{
+    #[borsh(bound(deserialize = "<T as TraitName>::Associated: borsh::de::BorshDeserialize"))]
+    field: <T as TraitName>::Associated,
+    another: V,
+}
+```
+
+###### interaction with `#[borsh(skip)]`
+
+`#[borsh(bound(deserialize = ...))]` replaces bounds, which are derived automatically,
+irrelevant of whether `#[borsh(skip)]` attribute is present.
+
+```ignore
+/// implicit derived `core::default::Default` bounds on `K` and `V` type parameters are removed by
+/// empty bound specified, as `HashMap` has its own `Default` implementation
+#[derive(BorshDeserialize)]
+struct A<K, V, U>(
+    #[borsh(skip, bound(deserialize = ""))]
+    HashMap<K, V>,
+    U,
+);
+```
+
+### 6. `#[borsh(deserialize_with = ...)]` (field level attribute)
+
+###### syntax
+
+Attribute takes literal string value, which is a syn's [ExprPath](syn::ExprPath).
+
+###### usage
+
+Attribute adds possibility to specify full path of function, optionally qualified with generics,
+with which to deserialize the annotated field.
+
+It may be used when `BorshDeserialize` cannot be implemented for field's type, if it's from foreign crate.
+
+It may be used to override the implementation of deserialization for some other reason.
+
+```ignore
+use indexmap::IndexMap;
+
+mod index_map_impl {
+    use super::IndexMap;
+    use core::hash::Hash;
+    use std::io;
+
+    pub fn deserialize_index_map<
+        R: io::Read,
+        K: borsh::de::BorshDeserialize + Hash + Eq,
+        V: borsh::de::BorshDeserialize,
+    >(
+        reader: &mut R,
+    ) -> ::core::result::Result<IndexMap<K, V>, io::Error> {
+        let vec: Vec<(K, V)> = borsh::BorshDeserialize::deserialize_reader(reader)?;
+        let result: IndexMap<K, V> = vec.into_iter().collect();
+        Ok(result)
+    }
+}
+
+#[derive(BorshDeserialize)]
+struct B<K: Hash + Eq, V> {
+    #[borsh(
+        deserialize_with = "index_map_impl::deserialize_index_map",
+    )]
+    x: IndexMap<K, V>,
+    y: String,
+}
+```
+
+###### interaction with `#[borsh(skip)]`
+
+`#[borsh(deserialize_with = ...)]` is not allowed to be used simultaneously with `#[borsh(skip)]`.
+
 */
 #[proc_macro_derive(BorshDeserialize, attributes(borsh))]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
-    let name = &crate_name("borsh").unwrap();
-    let name = match name {
-        FoundCrate::Itself => "borsh",
-        FoundCrate::Name(name) => name.as_str(),
+    let cratename = match check_attrs_get_cratename(&input) {
+        Ok(cratename) => cratename,
+        Err(err) => {
+            return err.to_compile_error().into();
+        }
     };
-    let cratename = Ident::new(name, Span::call_site());
-
-    let for_derive_input = input.clone();
-    let derive_input = parse_macro_input!(for_derive_input as DeriveInput);
-
-    if let Err(err) = check_item_attributes(&derive_input) {
-        return err.into();
-    }
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
         deserialize::structs::process(&input, cratename)
@@ -585,7 +688,60 @@ struct A<U, V> {
 
 ## Attributes
 
-### 1. `#[borsh(skip)]` (field level attribute)
+### 1. `#[borsh(crate = "path::to::borsh")]` (item level attribute)
+
+###### syntax
+
+Attribute takes literal string value, which is the [Path](syn::Path) to `borsh` crate used.
+
+###### usage
+
+Attribute is optional.
+
+1. If the attribute is not provided, [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh`
+in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
+
+```bash
+ 1  error: proc-macro derive panicked
+   --> path/to/file.rs:27:10
+    |
+ 27 | #[derive(BorshSchema, BorshSerialize)]
+    |          ^^^^^^^^^^^
+    |
+    = help: message: called `Result::unwrap()` on an `Err` value: CrateNotFound { crate_name: "borsh", path: "/path/to/Cargo.toml" }
+```
+
+2. If the attribute is provided, the check for `borsh` in `[dependencies]` of the relevant `Cargo.toml` is skipped.
+
+Examples of usage:
+
+```ignore
+use reexporter::borsh::BorshSchema;
+
+// specifying the attribute removes need for a direct import of `borsh` into `[dependencies]`
+#[derive(BorshSchema)]
+#[borsh(crate = "reexporter::borsh")]
+struct B {
+    x: u64,
+    y: i32,
+    c: String,
+}
+```
+
+```ignore
+use reexporter::borsh::{self, BorshSchema};
+
+// specifying the attribute removes need for a direct import of `borsh` into `[dependencies]`
+#[derive(BorshSchema)]
+#[borsh(crate = "borsh")]
+struct B {
+    x: u64,
+    y: i32,
+    c: String,
+}
+```
+
+### 2. `#[borsh(skip)]` (field level attribute)
 
 `#[borsh(skip)]` makes derive skip including schema from annotated field into schema's implementation.
 
@@ -600,7 +756,7 @@ struct A {
 }
 ```
 
-### 2. `#[borsh(schema(params = ...))]` (field level attribute)
+### 3. `#[borsh(schema(params = ...))]` (field level attribute)
 
 ###### syntax
 
@@ -671,7 +827,7 @@ where
 
 `#[borsh(schema(params = ...))]` is not allowed to be used simultaneously with `#[borsh(skip)]`.
 
-### 3. `#[borsh(schema(with_funcs(declaration = ..., definitions = ...)))]` (field level attribute)
+### 4. `#[borsh(schema(with_funcs(declaration = ..., definitions = ...)))]` (field level attribute)
 
 ###### syntax
 
@@ -743,12 +899,12 @@ struct B<K, V> {
 #[cfg(feature = "schema")]
 #[proc_macro_derive(BorshSchema, attributes(borsh))]
 pub fn borsh_schema(input: TokenStream) -> TokenStream {
-    let name = &crate_name("borsh").unwrap();
-    let name = match name {
-        FoundCrate::Itself => "borsh",
-        FoundCrate::Name(name) => name.as_str(),
+    let cratename = match check_attrs_get_cratename(&input) {
+        Ok(cratename) => cratename,
+        Err(err) => {
+            return err.to_compile_error().into();
+        }
     };
-    let cratename = Ident::new(name, Span::call_site());
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
         schema::structs::process(&input, cratename)

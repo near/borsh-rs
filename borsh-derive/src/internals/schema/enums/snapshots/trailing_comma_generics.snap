@@ -23,6 +23,7 @@ where
     ) {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct SideLeft<A>(
             A,
         )
@@ -30,6 +31,7 @@ where
             A: Display + Debug;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct SideRight<B>(
             B,
         )

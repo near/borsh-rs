@@ -25,7 +25,7 @@ impl GenericsOutput {
             default_visitor: generics::FindTyParams::new(generics),
         }
     }
-    fn extend(self, where_clause: &mut syn::WhereClause, cratename: &Ident) {
+    fn extend(self, where_clause: &mut syn::WhereClause, cratename: &Path) {
         let de_trait: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
         let default_trait: Path = syn::parse2(quote! { core::default::Default }).unwrap();
         let de_predicates =
@@ -40,7 +40,7 @@ impl GenericsOutput {
 
 fn process_field(
     field: &syn::Field,
-    cratename: &Ident,
+    cratename: &Path,
     body: &mut TokenStream2,
     generics: &mut GenericsOutput,
 ) -> syn::Result<()> {
@@ -71,7 +71,7 @@ fn process_field(
 /// of code, which deserializes single field
 fn field_output(
     field_name: Option<&Ident>,
-    cratename: &Ident,
+    cratename: &Path,
     deserialize_with: Option<ExprPath>,
 ) -> TokenStream2 {
     let default_path: ExprPath =

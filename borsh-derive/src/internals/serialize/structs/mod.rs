@@ -1,13 +1,13 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{Fields, Ident, ItemStruct};
+use syn::{Fields, ItemStruct, Path};
 
 use crate::internals::{
     attributes::{field, BoundType},
     generics, serialize,
 };
 
-pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2> {
+pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
@@ -46,7 +46,7 @@ pub fn process(input: &ItemStruct, cratename: Ident) -> syn::Result<TokenStream2
 fn process_field(
     field: &syn::Field,
     field_id: serialize::FieldId,
-    cratename: &Ident,
+    cratename: &Path,
     generics: &mut serialize::GenericsOutput,
     body: &mut TokenStream2,
 ) -> syn::Result<()> {
@@ -70,9 +70,9 @@ fn process_field(
 #[cfg(test)]
 mod tests {
     use crate::internals::test_helpers::{
-        local_insta_assert_debug_snapshot, local_insta_assert_snapshot, pretty_print_syn_str,
+        default_cratename, local_insta_assert_debug_snapshot, local_insta_assert_snapshot,
+        pretty_print_syn_str,
     };
-    use proc_macro2::Span;
 
     use super::*;
 
@@ -86,7 +86,23 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
+
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn simple_struct_with_custom_crate() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let crate_: Path = syn::parse2(quote! { reexporter::borsh }).unwrap();
+        let actual = process(&item_struct, crate_).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -101,7 +117,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -112,7 +128,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -126,7 +142,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -140,7 +156,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -156,7 +172,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -172,7 +188,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -188,7 +204,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -206,7 +222,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -225,7 +241,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -243,7 +259,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -259,7 +275,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -275,7 +291,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site()));
+        let actual = process(&item_struct, default_cratename());
 
         let err = match actual {
             Ok(..) => unreachable!("expecting error here"),
