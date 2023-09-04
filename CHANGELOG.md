@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-alpha.4](https://github.com/near/borsh-rs/compare/borsh-v1.0.0-alpha.3...borsh-v1.0.0-alpha.4) - 2023-09-04
+
+### Added
+- [**breaking**] raise bound on keys in hashcollections `PartialOrd` -> `Ord` ([#203](https://github.com/near/borsh-rs/pull/203))
+- forbid most collections from containing zst elements/keys ([#202](https://github.com/near/borsh-rs/pull/202))
+- add `#[borsh(crate = ...)]` item-level attribute ([#210](https://github.com/near/borsh-rs/pull/210))
+- forbid multiple `borsh` attr occurencies ([#199](https://github.com/near/borsh-rs/pull/199))
+
+### Other
+- various flaws correction ([#205](https://github.com/near/borsh-rs/pull/205))
+- [**breaking**] deprecate `try_to_vec` method from `BorshSerialize` ([#206](https://github.com/near/borsh-rs/pull/206))
+- [**breaking**] make `BorshSchema::add_definition` default implementation a free-standing func ([#204](https://github.com/near/borsh-rs/pull/204))
+- remove `#[non_exhaustive]` on `borsh::schema::Definition` ([#200](https://github.com/near/borsh-rs/pull/200))
+
 ## [1.0.0-alpha.3](https://github.com/near/borsh-rs/compare/borsh-v1.0.0-alpha.2...borsh-v1.0.0-alpha.3) - 2023-08-16
 
 ### Other
