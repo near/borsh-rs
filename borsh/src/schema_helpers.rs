@@ -37,32 +37,57 @@ pub fn schema_container_of<T: BorshSchema>() -> BorshSchemaContainer {
     BorshSchemaContainer::new(T::declaration(), definitions)
 }
 
-/// Returns the largest possible size of serialised object.
+/// Possible error when calculating theoretical maximum size of encoded type.
 ///
-/// Returns `None` if the maximal size overflows `usize`.  This may happen for
-/// nested dynamically-sized types such as `Vec<Vec<u8>>` whose maximum size is
-/// `4 + u32::MAX * (4 + u32::MAX)`.
+/// This is error returned by [`max_serialized_size`] function.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum MaxSizeError {
+    /// The theoretical maximum size of the encoded value overflows `usize`.
+    ///
+    /// This may happen for nested dynamically-sized types such as
+    /// `Vec<Vec<u8>>` whose maximum size is `4 + u32::MAX * (4 + u32::MAX)`.
+    Overflow,
+
+    /// The type is recursive and thus theoretical maximum size is infinite.
+    ///
+    /// Simple type in which this triggers is `struct Rec(Option<Box<Rec>>)`.
+    Recursive,
+
+    /// Some of the declared types were lacking definition making it impossible
+    /// to calculate the size.
+    MissingDefinition,
+}
+
+/// Returns the largest possible size of serialised object.
 ///
 /// The function has limitations which may lead it to overestimate the size.
 /// For example, hypothetical `IPv4Packet` would be encoded as at most ~64 KiB.
 /// However, if it uses sequence schema, this function will claim that the
 /// maximum size is ~4 GiB.
 ///
+/// Even when if returned upper bound is correct, the theoretical value may be
+/// *much* larger than any practical length.  For example, maximum encoded
+/// length of `String` is 4 GiB while in practice one may encounter strings of
+/// at most dozen of characters.  Depending on usage, caller should apply upper
+/// bound on the result.
+///
 /// # Example
 ///
 /// ```
-/// assert_eq!(Some(0), borsh::max_serialized_size::<()>());
-/// assert_eq!(Some(8), borsh::max_serialized_size::<usize>());
+/// assert_eq!(Ok(0), borsh::max_serialized_size::<()>());
+/// assert_eq!(Ok(8), borsh::max_serialized_size::<usize>());
 ///
 /// // 4 bytes of length and u32::MAX for the longest possible string.
-/// assert_eq!(Some(4 + 4294967295), borsh::max_serialized_size::<String>());
+/// assert_eq!(Ok(4 + 4294967295), borsh::max_serialized_size::<String>());
 ///
-/// assert_eq!(None, borsh::max_serialized_size::<Vec<String>>());
+/// assert_eq!(Err(borsh::MaxSizeError::Overflow),
+///            borsh::max_serialized_size::<Vec<String>>());
 /// ```
-pub fn max_serialized_size<T: BorshSchema>() -> Option<usize> {
+pub fn max_serialized_size<T: BorshSchema>() -> core::result::Result<usize, MaxSizeError> {
     let mut definitions = BTreeMap::new();
     T::add_definitions_recursively(&mut definitions);
-    max_serialized_size_impl(1, T::declaration().as_str(), &definitions)
+    let mut stack = Vec::new();
+    max_serialized_size_impl(1, T::declaration().as_str(), &definitions, &mut stack)
 }
 
 /// Checks whether given declaration schema serialises to an empty string.
@@ -98,33 +123,46 @@ fn is_zero_size(declaration: &str, defs: &BTreeMap<Declaration, Definition>) -> 
 }
 
 /// Implementation of [`BorshSchema::max_serialized_size`].
-fn max_serialized_size_impl(
+fn max_serialized_size_impl<'a>(
     count: usize,
-    declaration: &str,
-    defs: &BTreeMap<Declaration, Definition>,
-) -> Option<usize> {
+    declaration: &'a str,
+    defs: &'a BTreeMap<Declaration, Definition>,
+    stack: &mut Vec<&'a str>,
+) -> core::result::Result<usize, MaxSizeError> {
     use core::convert::TryFrom;
 
     /// Maximum number of elements in a vector or length of a string which can
     /// be serialised.
-    ///
-    /// This is `u32::MAX` cast to `usize`.
-    const MAX_LEN: usize = 4294967295;
+    const MAX_LEN: usize = u32::MAX as usize;
+
+    fn add(x: usize, y: usize) -> core::result::Result<usize, MaxSizeError> {
+        x.checked_add(y).ok_or(MaxSizeError::Overflow)
+    }
+
+    fn mul(x: usize, y: usize) -> core::result::Result<usize, MaxSizeError> {
+        x.checked_mul(y).ok_or(MaxSizeError::Overflow)
+    }
 
     /// Calculates max serialised size of a tuple with given members.
     fn tuple<'a>(
         count: usize,
         elements: impl core::iter::IntoIterator<Item = &'a Declaration>,
-        defs: &BTreeMap<Declaration, Definition>,
-    ) -> Option<usize> {
+        defs: &'a BTreeMap<Declaration, Definition>,
+        stack: &mut Vec<&'a str>,
+    ) -> ::core::result::Result<usize, MaxSizeError> {
         let mut sum: usize = 0;
         for el in elements {
-            sum = sum.checked_add(max_serialized_size_impl(1, el, defs)?)?;
+            sum = add(sum, max_serialized_size_impl(1, el, defs, stack)?)?;
         }
-        count.checked_mul(sum)
+        mul(count, sum)
     }
 
-    match defs.get(declaration).ok_or(declaration) {
+    if stack.iter().find(|dec| **dec == declaration).is_some() {
+        return Err(MaxSizeError::Recursive);
+    }
+    stack.push(declaration);
+
+    let res = match defs.get(declaration).ok_or(declaration) {
         Ok(Definition::Array { length, elements }) => {
             // Aggregate `count` and `length` to a single number.  If this
             // overflows, check if array’s element is zero-sized.
@@ -132,112 +170,137 @@ fn max_serialized_size_impl(
                 .ok()
                 .and_then(|len| len.checked_mul(count));
             match count {
-                Some(0) => Some(0),
-                Some(count) => max_serialized_size_impl(count, elements, defs),
-                None if is_zero_size(elements, defs) => Some(0),
-                None => None,
+                Some(0) => Ok(0),
+                Some(count) => max_serialized_size_impl(count, elements, defs, stack),
+                None if is_zero_size(elements, defs) => Ok(0),
+                None => Err(MaxSizeError::Overflow),
             }
         }
         Ok(Definition::Sequence { elements }) => {
             // Assume that sequence has MAX_LEN elements since that’s the most
             // it can have.
-            let sz = max_serialized_size_impl(MAX_LEN, elements, defs)?;
-            // Add four to account for encoded length.
-            count.checked_mul(sz.checked_add(4)?)
+            let sz = max_serialized_size_impl(MAX_LEN, elements, defs, stack)?;
+            mul(count, add(sz, 4)?)
         }
 
         Ok(Definition::Enum { variants }) => {
             // Size of an enum is the largest variant plus one for tag.
             let mut max = 0;
             for (_, variant) in variants {
-                let sz = max_serialized_size_impl(1, variant, defs)?;
+                let sz = max_serialized_size_impl(1, variant, defs, stack)?;
                 max = max.max(sz);
             }
-            max.checked_add(1)
+            max.checked_add(1).ok_or(MaxSizeError::Overflow)
         }
 
         // Tuples and structs sum sizes of all the members.
-        Ok(Definition::Tuple { elements }) => tuple(count, elements, defs),
+        Ok(Definition::Tuple { elements }) => tuple(count, elements, defs, stack),
         Ok(Definition::Struct { fields }) => match fields {
-            Fields::NamedFields(fields) => {
-                tuple(count, fields.into_iter().map(|(_, field)| field), defs)
-            }
-            Fields::UnnamedFields(fields) => tuple(count, fields, defs),
-            Fields::Empty => Some(0),
+            Fields::NamedFields(fields) => tuple(
+                count,
+                fields.into_iter().map(|(_, field)| field),
+                defs,
+                stack,
+            ),
+            Fields::UnnamedFields(fields) => tuple(count, fields, defs, stack),
+            Fields::Empty => Ok(0),
         },
 
-        // Handle primitive types.  They have well-known sizes.
-        Err("nil") => Some(0),
-        Err("bool" | "i8" | "u8") => Some(count),
-        Err("i16" | "u16") => count.checked_mul(2),
-        Err("i32" | "u32" | "f32") => count.checked_mul(4),
-        Err("i64" | "u64" | "f64") => count.checked_mul(8),
-        Err("i128" | "u128") => count.checked_mul(16),
+        // Primitive types.
+        Err("nil") => Ok(0),
+        Err("bool" | "i8" | "u8") => Ok(count),
+        Err("i16" | "u16") => mul(count, 2),
+        Err("i32" | "u32" | "f32") => mul(count, 4),
+        Err("i64" | "u64" | "f64") => mul(count, 8),
+        Err("i128" | "u128") => mul(count, 16),
 
-        // Assume string with maximum length.  This is equivalent to `Vec<u8>`.
-        Err("string") => count.checked_mul(MAX_LEN.checked_add(4)?),
+        // string is just Vec<u8>
+        Err("string") => mul(count, add(MAX_LEN, 4)?),
 
-        Err(_) => None,
-    }
+        Err(_) => Err(MaxSizeError::MissingDefinition),
+    }?;
+
+    stack.pop();
+    Ok(res)
 }
 
 #[test]
 fn test_max_serialized_size() {
     #[cfg(not(feature = "std"))]
-    use alloc::string::String;
+    use alloc::string::{String, ToString};
 
-    mod test_structs {
-        use crate as borsh;
-        #[cfg(not(feature = "std"))]
-        use alloc::string::ToString as _;
+    const MAX_LEN: usize = u32::MAX as usize;
 
-        #[derive(::borsh_derive::BorshSchema)]
-        pub struct TestEmpty;
+    assert_eq!(Ok(2), max_serialized_size::<u16>());
+    assert_eq!(Ok(8), max_serialized_size::<usize>());
 
-        #[derive(::borsh_derive::BorshSchema)]
-        pub struct TestNamed {
-            _foo: usize,
-            _bar: [u8; 15],
-        }
-
-        #[derive(::borsh_derive::BorshSchema)]
-        pub struct TestUnnamed(usize, [u8; 15]);
-    }
-
-    const MAX_LEN: usize = 4294967295;
-
-    assert_eq!(Some(2), max_serialized_size::<u16>());
-    assert_eq!(Some(8), max_serialized_size::<usize>());
-
-    assert_eq!(Some(1), max_serialized_size::<Option<()>>());
-    assert_eq!(Some(2), max_serialized_size::<Option<u8>>());
+    assert_eq!(Ok(1), max_serialized_size::<Option<()>>());
+    assert_eq!(Ok(2), max_serialized_size::<Option<u8>>());
     assert_eq!(
-        Some(9),
+        Ok(9),
         max_serialized_size::<core::result::Result<u8, usize>>()
     );
 
-    assert_eq!(Some(0), max_serialized_size::<()>());
-    assert_eq!(Some(1), max_serialized_size::<(u8,)>());
-    assert_eq!(Some(5), max_serialized_size::<(u8, u32)>());
+    assert_eq!(Ok(0), max_serialized_size::<()>());
+    assert_eq!(Ok(1), max_serialized_size::<(u8,)>());
+    assert_eq!(Ok(5), max_serialized_size::<(u8, u32)>());
 
-    assert_eq!(Some(0), max_serialized_size::<[u8; 0]>());
-    assert_eq!(Some(16), max_serialized_size::<[u8; 16]>());
-    assert_eq!(Some(16), max_serialized_size::<[[u8; 4]; 4]>());
+    assert_eq!(Ok(0), max_serialized_size::<[u8; 0]>());
+    assert_eq!(Ok(16), max_serialized_size::<[u8; 16]>());
+    assert_eq!(Ok(16), max_serialized_size::<[[u8; 4]; 4]>());
 
-    assert_eq!(Some(4 + MAX_LEN), max_serialized_size::<Vec<u8>>());
-    assert_eq!(Some(4 + MAX_LEN), max_serialized_size::<String>());
+    assert_eq!(Ok(4 + MAX_LEN), max_serialized_size::<Vec<u8>>());
+    assert_eq!(Ok(4 + MAX_LEN), max_serialized_size::<String>());
 
-    assert_eq!(None, max_serialized_size::<Vec<Vec<u8>>>());
-    assert_eq!(Some(4 + MAX_LEN * 4), max_serialized_size::<Vec<Vec<()>>>());
     assert_eq!(
-        Some(0),
+        Err(MaxSizeError::Overflow),
+        max_serialized_size::<Vec<Vec<u8>>>()
+    );
+    assert_eq!(Ok(4 + MAX_LEN * 4), max_serialized_size::<Vec<Vec<()>>>());
+    assert_eq!(
+        Ok(0),
         max_serialized_size::<[[[(); MAX_LEN]; MAX_LEN]; MAX_LEN]>()
     );
 
-    use test_structs::*;
+    use crate as borsh;
 
-    assert_eq!(Some(0), max_serialized_size::<TestEmpty>());
-    assert_eq!(Some(23), max_serialized_size::<TestNamed>());
-    assert_eq!(Some(23), max_serialized_size::<TestUnnamed>());
-    assert_eq!(None, max_serialized_size::<BorshSchemaContainer>());
+    #[derive(::borsh_derive::BorshSchema)]
+    pub struct Empty;
+
+    #[derive(::borsh_derive::BorshSchema)]
+    pub struct Named {
+        _foo: usize,
+        _bar: [u8; 15],
+    }
+
+    #[derive(::borsh_derive::BorshSchema)]
+    pub struct Unnamed(usize, [u8; 15]);
+
+    #[derive(::borsh_derive::BorshSchema)]
+    struct Multiple {
+        _usz0: usize,
+        _usz1: usize,
+        _usz2: usize,
+        _vec0: Vec<usize>,
+        _vec1: Vec<usize>,
+    }
+
+    #[derive(::borsh_derive::BorshSchema)]
+    struct Recursive(Option<Box<Recursive>>);
+
+    assert_eq!(Ok(0), max_serialized_size::<Empty>());
+    assert_eq!(Ok(23), max_serialized_size::<Named>());
+    assert_eq!(Ok(23), max_serialized_size::<Unnamed>());
+    assert_eq!(
+        Ok(3 * 8 + 2 * (4 + MAX_LEN * 8)),
+        max_serialized_size::<Multiple>()
+    );
+    assert_eq!(
+        Err(MaxSizeError::Overflow),
+        max_serialized_size::<BorshSchemaContainer>()
+    );
+    assert_eq!(
+        Err(MaxSizeError::Recursive),
+        max_serialized_size::<Recursive>()
+    );
 }
