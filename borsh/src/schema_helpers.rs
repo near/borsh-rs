@@ -226,7 +226,6 @@ fn max_serialized_size_impl<'a>(
 
 #[test]
 fn test_max_serialized_size() {
-    #[cfg(not(feature = "std"))]
     use alloc::string::{String, ToString};
 
     const MAX_LEN: usize = u32::MAX as usize;
@@ -286,7 +285,7 @@ fn test_max_serialized_size() {
     }
 
     #[derive(::borsh_derive::BorshSchema)]
-    struct Recursive(Option<Box<Recursive>>);
+    struct Recursive(Option<alloc::boxed::Box<Recursive>>);
 
     assert_eq!(Ok(0), max_serialized_size::<Empty>());
     assert_eq!(Ok(23), max_serialized_size::<Named>());
