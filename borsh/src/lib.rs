@@ -64,7 +64,6 @@
 
 */
 
-#[cfg(not(feature = "std"))]
 extern crate alloc;
 
 /// Derive macro available if borsh is built with `features = ["derive", "schema"]`.

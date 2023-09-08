@@ -35,6 +35,16 @@ pub type VariantName = String;
 pub type FieldName = String;
 /// The type that we use to represent the definition of the Borsh type.
 
+/// Description of data encoding on the wire.
+///
+/// Note: Since at the end of the day users can define arbitrary serialisation,
+/// it’s not always possible to express using definitions how a type is encoded.
+/// For example, let’s say programmer uses [varint] encoding for their data.
+/// Such type cannot be fully expressed using `BorshSchema` (or at least not
+/// easily).  As a consequence, a tool which validates whether binary data
+/// matches a schema wouldn’t be able to validate data including such types.
+///
+/// [varint]: https://en.wikipedia.org/wiki/Variable-length_quantity#Variants
 #[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
 pub enum Definition {
     /// A fixed-size array with the length known at the compile time and the same-type elements.
@@ -44,10 +54,31 @@ pub enum Definition {
     /// A fixed-size tuple with the length known at the compile time and the elements of different
     /// types.
     Tuple { elements: Vec<Declaration> },
-    /// A tagged union, a.k.a enum. Tagged-unions have variants with associated structures.
+
+    /// A possibly tagged union, a.k.a enum.
+    ///
+    /// Tagged unions are prefixed by a tag identifying encoded variant followed
+    /// by encoding of that variant.
+    ///
+    /// Untagged unions don’t have a separate tag which means that knowledge of
+    /// the type is necessary to fully analyse the binary.  Variants may still
+    /// be used to list possible values or determine the longest possible
+    /// encoding.
     Enum {
+        /// Width in bytes of the discriminant tag.
+        ///
+        /// Zero indicates this is an untagged union.  In standard borsh
+        /// encoding this is one however custom encoding formats may use larger
+        /// width if they need to encode more than 256 variants.
+        ///
+        /// Note: This definition must not be used if the tag is not encoded
+        /// using little-endian format.
+        tag_width: u8,
+
+        /// Possible variants of the enumeration.
         variants: Vec<(VariantName, Declaration)>,
     },
+
     /// A structure, structurally similar to a tuple.
     Struct { fields: Fields },
 }
@@ -281,6 +312,7 @@ where
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Enum {
+            tag_width: 1,
             variants: vec![
                 ("None".to_string(), <()>::declaration()),
                 ("Some".to_string(), T::declaration()),
@@ -302,6 +334,7 @@ where
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Enum {
+            tag_width: 1,
             variants: vec![
                 ("Ok".to_string(), T::declaration()),
                 ("Err".to_string(), E::declaration()),
@@ -521,11 +554,14 @@ mod tests {
         Option::<u64>::add_definitions_recursively(&mut actual_defs);
         assert_eq!("Option<u64>", actual_name);
         assert_eq!(
-            map! {"Option<u64>" =>
-            Definition::Enum{ variants: vec![
-                ("None".to_string(), "nil".to_string()),
-                ("Some".to_string(), "u64".to_string()),
-            ]}
+            map! {
+                "Option<u64>" => Definition::Enum {
+                    tag_width: 1,
+                    variants: vec![
+                        ("None".to_string(), "nil".to_string()),
+                        ("Some".to_string(), "u64".to_string()),
+                    ]
+                }
             },
             actual_defs
         );
@@ -539,16 +575,20 @@ mod tests {
         assert_eq!("Option<Option<u64>>", actual_name);
         assert_eq!(
             map! {
-            "Option<u64>" =>
-                Definition::Enum {variants: vec![
-                ("None".to_string(), "nil".to_string()),
-                ("Some".to_string(), "u64".to_string()),
-                ]},
-            "Option<Option<u64>>" =>
-                Definition::Enum {variants: vec![
-                ("None".to_string(), "nil".to_string()),
-                ("Some".to_string(), "Option<u64>".to_string()),
-                ]}
+                "Option<u64>" => Definition::Enum {
+                    tag_width: 1,
+                    variants: vec![
+                        ("None".to_string(), "nil".to_string()),
+                        ("Some".to_string(), "u64".to_string()),
+                    ]
+                },
+                "Option<Option<u64>>" => Definition::Enum {
+                    tag_width: 1,
+                    variants: vec![
+                        ("None".to_string(), "nil".to_string()),
+                        ("Some".to_string(), "Option<u64>".to_string()),
+                    ]
+                }
             },
             actual_defs
         );

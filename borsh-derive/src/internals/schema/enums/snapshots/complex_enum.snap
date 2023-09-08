@@ -35,13 +35,13 @@ impl borsh::BorshSchema for A {
         <AEggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <ASalad as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <ASausage as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        let variants = borsh::__private::maybestd::vec![
-            ("Bacon".to_string(), < ABacon > ::declaration()), ("Eggs".to_string(), <
-            AEggs > ::declaration()), ("Salad".to_string(), < ASalad > ::declaration()),
-            ("Sausage".to_string(), < ASausage > ::declaration())
-        ];
         let definition = borsh::schema::Definition::Enum {
-            variants,
+            tag_width: 1,
+            variants: borsh::__private::maybestd::vec![
+                ("Bacon".to_string(), < ABacon > ::declaration()), ("Eggs".to_string(), <
+                AEggs > ::declaration()), ("Salad".to_string(), < ASalad >
+                ::declaration()), ("Sausage".to_string(), < ASausage > ::declaration())
+            ],
         };
         borsh::schema::add_definition(Self::declaration(), definition, definitions);
     }
