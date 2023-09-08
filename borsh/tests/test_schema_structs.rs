@@ -84,7 +84,10 @@ pub fn boxed() {
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-        "Vec<u8>" => Definition::Sequence { elements: "u8".to_string() },
+            "Vec<u8>" => Definition::Sequence {
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: "u8".to_string(),
+            },
         "A" => Definition::Struct{ fields: Fields::NamedFields(vec![
         ("_f1".to_string(), "u64".to_string()),
         ("_f2".to_string(), "string".to_string()),
@@ -174,7 +177,10 @@ pub fn simple_generics() {
         ("_f2".to_string(), "string".to_string())
         ])
         },
-        "HashMap<u64, string>" => Definition::Sequence {elements: "Tuple<u64, string>".to_string()},
+            "HashMap<u64, string>" => Definition::Sequence {
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: "Tuple<u64, string>".to_string(),
+            },
         "Tuple<u64, string>" => Definition::Tuple{elements: vec!["u64".to_string(), "string".to_string()]},
         "u64" => Definition::Primitive(8)
         },
