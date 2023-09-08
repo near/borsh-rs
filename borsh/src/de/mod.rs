@@ -315,19 +315,6 @@ impl BorshDeserialize for bool {
     }
 }
 
-impl<T> BorshDeserialize for core::ops::Range<T>
-where
-    T: BorshDeserialize,
-{
-    #[inline]
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        Ok(Self {
-            start: T::deserialize_reader(reader)?,
-            end: T::deserialize_reader(reader)?,
-        })
-    }
-}
-
 impl<T> BorshDeserialize for Option<T>
 where
     T: BorshDeserialize,
@@ -476,7 +463,7 @@ where
 #[cfg(hash_collections)]
 pub mod hashes {
     //!
-    //! Module defines [BorshDeserialize](crate::de::BorshDeserialize) implementation for  
+    //! Module defines [BorshDeserialize](crate::de::BorshDeserialize) implementation for
     //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use core::hash::{BuildHasher, Hash};
 
@@ -802,13 +789,16 @@ fn array_deserialization_doesnt_leak() {
     }
 }
 
-impl BorshDeserialize for () {
-    fn deserialize_reader<R: Read>(_reader: &mut R) -> Result<Self> {
-        Ok(())
-    }
-}
-
 macro_rules! impl_tuple {
+    (@unit $name:ty) => {
+        impl BorshDeserialize for $name {
+            #[inline]
+            fn deserialize_reader<R: Read>(_reader: &mut R) -> Result<Self> {
+                Ok(<$name>::default())
+            }
+        }
+    };
+
     ($($name:ident)+) => {
       impl<$($name),+> BorshDeserialize for ($($name,)+)
       where $($name: BorshDeserialize,)+
@@ -821,6 +811,9 @@ macro_rules! impl_tuple {
       }
     };
 }
+
+impl_tuple!(@unit ());
+impl_tuple!(@unit core::ops::RangeFull);
 
 impl_tuple!(T0);
 impl_tuple!(T0 T1);
@@ -842,6 +835,24 @@ impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16);
 impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17);
 impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18);
 impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19);
+
+macro_rules! impl_range {
+    ($typ:ident, $make:expr $(, $side:ident)*) => {
+        impl<T: BorshDeserialize> BorshDeserialize for core::ops::$typ<T> {
+            #[inline]
+            fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+                let ($($side,)*) = <_>::deserialize_reader(reader)?;
+                Ok($make)
+            }
+        }
+    };
+}
+
+impl_range!(Range, start..end, start, end);
+impl_range!(RangeInclusive, start..=end, start, end);
+impl_range!(RangeFrom, start.., start);
+impl_range!(RangeTo, ..end, end);
+impl_range!(RangeToInclusive, ..=end, end);
 
 #[cfg(feature = "rc")]
 impl<T: ?Sized> BorshDeserialize for Rc<T>
