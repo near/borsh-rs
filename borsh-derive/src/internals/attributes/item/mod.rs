@@ -1,19 +1,18 @@
-use crate::internals::attributes::{BORSH, INIT, USE_DISCRIMINANT};
-use proc_macro2::TokenStream;
+use crate::internals::attributes::{BORSH, CRATE, INIT, USE_DISCRIMINANT};
 use quote::ToTokens;
-use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum, Path};
+use syn::{spanned::Spanned, Attribute, DeriveInput, Error, Expr, ItemEnum, Path};
 
-use super::get_one_attribute;
+use super::{get_one_attribute, parsing};
 
-pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStream> {
-    let borsh = get_one_attribute(&derive_input.attrs).map_err(|err| err.to_compile_error())?;
+pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
+    let borsh = get_one_attribute(&derive_input.attrs)?;
 
     if let Some(attr) = borsh {
         attr.parse_nested_meta(|meta| {
-            if meta.path != USE_DISCRIMINANT && meta.path != INIT {
+            if meta.path != USE_DISCRIMINANT && meta.path != INIT && meta.path != CRATE {
                 return Err(syn::Error::new(
                     meta.path.span(),
-                    "`use_discriminant` or `init` are only supported attributes for `borsh`",
+                    "`crate`, `use_discriminant` or `init` are the only supported attributes for `borsh`",
                 ));
             }
             if meta.path == USE_DISCRIMINANT {
@@ -24,14 +23,12 @@ pub fn check_item_attributes(derive_input: &DeriveInput) -> Result<(), TokenStre
                         "borsh(use_discriminant=<bool>) does not support structs",
                     ));
                 }
-            }
-            if meta.path == INIT {
+            } else if meta.path == INIT || meta.path == CRATE {
                 let _expr: Expr = meta.value()?.parse()?;
             }
 
             Ok(())
-        })
-        .map_err(|err| err.to_compile_error())?;
+        })?;
     }
     Ok(())
 }
@@ -64,9 +61,7 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
                         ));
                     }
                 };
-            }
-
-            if meta.path == INIT {
+            } else if meta.path == INIT || meta.path == CRATE {
                 let _value_expr: Expr = meta.value()?.parse()?;
             }
             Ok(())
@@ -85,29 +80,47 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
     Ok(use_discriminant.unwrap_or(false))
 }
 
-pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Option<Path> {
+pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
     let mut res = None;
     let attr = attrs.iter().find(|attr| attr.path() == BORSH);
     if let Some(attr) = attr {
-        let _ = attr.parse_nested_meta(|meta| {
+        attr.parse_nested_meta(|meta| {
             if meta.path == INIT {
                 let value_expr: Path = meta.value()?.parse()?;
                 res = Some(value_expr);
-            } else if meta.path == USE_DISCRIMINANT {
+            } else if meta.path == USE_DISCRIMINANT || meta.path == CRATE {
                 let _value_expr: Expr = meta.value()?.parse()?;
-            };
+            }
+
             Ok(())
-        });
+        })?;
     }
 
-    res
+    Ok(res)
+}
+
+pub(crate) fn get_crate(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
+    let mut res = None;
+    let attr = attrs.iter().find(|attr| attr.path() == BORSH);
+    if let Some(attr) = attr {
+        attr.parse_nested_meta(|meta| {
+            if meta.path == CRATE {
+                let value_expr: Path = parsing::parse_lit_into(BORSH, CRATE, &meta)?;
+                res = Some(value_expr);
+            } else if meta.path == USE_DISCRIMINANT || meta.path == INIT {
+                let _value_expr: Expr = meta.value()?.parse()?;
+            }
+
+            Ok(())
+        })?;
+    }
+
+    Ok(res)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::internals::test_helpers::{
-        local_insta_assert_debug_snapshot, local_insta_assert_snapshot,
-    };
+    use crate::internals::test_helpers::local_insta_assert_debug_snapshot;
     use quote::{quote, ToTokens};
     use syn::ItemEnum;
 
@@ -171,8 +184,8 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = check_item_attributes(&item_enum);
-        local_insta_assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
+        let actual = check_attributes(&item_enum);
+        local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
     #[test]
     fn test_check_attrs_borsh_skip_on_whole_item() {
@@ -185,8 +198,8 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = check_item_attributes(&item_enum);
-        local_insta_assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
+        let actual = check_attributes(&item_enum);
+        local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
     #[test]
     fn test_check_attrs_borsh_invalid_on_whole_item() {
@@ -199,8 +212,8 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = check_item_attributes(&item_enum);
-        local_insta_assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
+        let actual = check_attributes(&item_enum);
+        local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
     #[test]
     fn test_check_attrs_init_function() {
@@ -213,7 +226,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = check_item_attributes(&item_struct);
+        let actual = check_attributes(&item_struct);
         assert!(actual.is_ok());
     }
 
@@ -230,7 +243,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = check_item_attributes(&item_struct);
+        let actual = check_attributes(&item_struct);
         assert!(actual.is_ok());
     }
 
@@ -248,8 +261,8 @@ mod tests {
         })
         .unwrap();
 
-        let actual = check_item_attributes(&item_struct);
-        local_insta_assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
+        let actual = check_attributes(&item_struct);
+        local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
 
     #[test]
@@ -265,7 +278,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = check_item_attributes(&item_struct);
+        let actual = check_attributes(&item_struct);
         assert!(actual.is_ok());
     }
 
@@ -284,8 +297,8 @@ mod tests {
         }
             })
         .unwrap();
-        let actual = check_item_attributes(&item_struct);
-        local_insta_assert_snapshot!(actual.unwrap_err().to_token_stream().to_string());
+        let actual = check_attributes(&item_struct);
+        local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
     #[test]
     fn test_init_function() {
@@ -303,6 +316,25 @@ mod tests {
             actual.unwrap().to_token_stream().to_string(),
             "initialization_method"
         );
+    }
+
+    #[test]
+    fn test_init_function_parsing_error() {
+        let item_struct = syn::parse2::<DeriveInput>(quote! {
+            #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+            #[borsh(init={strange; blocky})]
+            struct A {
+                lazy: Option<u64>,
+            }
+        })
+        .unwrap();
+
+        let actual = contains_initialize_with(&item_struct.attrs);
+        let err = match actual {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        local_insta_assert_debug_snapshot!(err);
     }
 
     #[test]
@@ -347,5 +379,33 @@ mod tests {
         );
         let actual = contains_use_discriminant(&item_struct);
         assert!(actual.unwrap());
+    }
+
+    #[test]
+    fn test_init_function_with_use_discriminant_with_crate() {
+        let item_struct = syn::parse2::<ItemEnum>(quote! {
+            #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+            #[borsh(init = initialization_method, crate = "reexporter::borsh", use_discriminant=true)]
+            enum A {
+                B,
+                C,
+                D,
+            }
+        })
+        .unwrap();
+
+        let actual = contains_initialize_with(&item_struct.attrs);
+        assert_eq!(
+            actual.unwrap().to_token_stream().to_string(),
+            "initialization_method"
+        );
+        let actual = contains_use_discriminant(&item_struct);
+        assert!(actual.unwrap());
+
+        let crate_ = get_crate(&item_struct.attrs);
+        assert_eq!(
+            crate_.unwrap().to_token_stream().to_string(),
+            "reexporter :: borsh"
+        );
     }
 }

@@ -14,15 +14,19 @@ impl borsh::BorshSchema for A {
     ) {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct ABacon;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct AEggs;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct ASalad(Tomatoes, Cucumber, Oil);
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct ASausage {
             wrapper: Wrapper,
             filling: Filling,

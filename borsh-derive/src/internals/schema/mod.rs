@@ -22,7 +22,7 @@ impl GenericsOutput {
             params_visitor: generics::FindTyParams::new(generics),
         }
     }
-    fn result(self, item_name: &str, cratename: &Ident) -> (Vec<WherePredicate>, TokenStream2) {
+    fn result(self, item_name: &str, cratename: &Path) -> (Vec<WherePredicate>, TokenStream2) {
         let trait_path: Path = syn::parse2(quote! { #cratename::BorshSchema }).unwrap();
         let predicates = generics::compute_predicates(
             self.params_visitor.clone().process_for_bounds(),
@@ -39,7 +39,7 @@ impl GenericsOutput {
     }
 }
 
-fn declaration(ident_str: &str, cratename: Ident, params_for_bounds: Vec<Type>) -> TokenStream2 {
+fn declaration(ident_str: &str, cratename: Path, params_for_bounds: Vec<Type>) -> TokenStream2 {
     // Generate function that returns the name of the type.
     let mut declaration_params = vec![];
     for type_param in params_for_bounds {

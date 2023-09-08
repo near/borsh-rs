@@ -21,7 +21,7 @@ impl GenericsOutput {
             serialize_visitor: generics::FindTyParams::new(generics),
         }
     }
-    fn extend(self, where_clause: &mut syn::WhereClause, cratename: &Ident) {
+    fn extend(self, where_clause: &mut syn::WhereClause, cratename: &Path) {
         let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
         let predicates =
             generics::compute_predicates(self.serialize_visitor.process_for_bounds(), &trait_path);
@@ -78,7 +78,7 @@ impl FieldId {
     /// of code, which serializes single field
     pub fn serialize_output(
         &self,
-        cratename: &Ident,
+        cratename: &Path,
         serialize_with: Option<ExprPath>,
     ) -> TokenStream2 {
         let arg: Expr = self.serialize_arg();

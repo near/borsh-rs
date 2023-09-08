@@ -1,7 +1,7 @@
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{quote, ToTokens};
 use std::collections::HashSet;
-use syn::{Fields, Generics, Ident, ItemEnum, ItemStruct, Variant, Visibility};
+use syn::{Fields, Generics, Ident, ItemEnum, ItemStruct, Path, Variant, Visibility};
 
 use crate::internals::{attributes::field, generics, schema};
 
@@ -24,7 +24,7 @@ fn transform_variant_fields(mut input: Fields) -> Fields {
     input
 }
 
-pub fn process(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2> {
+pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let enum_name = name.to_token_stream().to_string();
     let generics = generics::without_defaults(&input.generics);
@@ -82,7 +82,7 @@ struct VariantOutput {
 
 fn process_variant(
     variant: &Variant,
-    cratename: &Ident,
+    cratename: &Path,
     enum_name: &str,
     enum_generics: &Generics,
     generics_output: &mut schema::GenericsOutput,
@@ -111,7 +111,7 @@ fn process_variant(
 
 fn inner_struct_definition(
     variant: &Variant,
-    cratename: &Ident,
+    cratename: &Path,
     inner_struct_ident: &Ident,
     enum_generics: &Generics,
 ) -> (TokenStream2, Generics) {
@@ -135,9 +135,11 @@ fn inner_struct_definition(
         fields: transformed_fields,
         semi_token: Some(Default::default()),
     };
+    let crate_str = syn::LitStr::new(&cratename.to_token_stream().to_string(), Span::call_site());
     let inner_struct = quote! {
         #[allow(dead_code)]
         #[derive(#cratename::BorshSchema)]
+        #[borsh(crate = #crate_str)]
         #inner_struct
     };
     (inner_struct, inner_struct_generics)
@@ -146,7 +148,8 @@ fn inner_struct_definition(
 #[cfg(test)]
 mod tests {
     use crate::internals::test_helpers::{
-        local_insta_assert_debug_snapshot, local_insta_assert_snapshot, pretty_print_syn_str,
+        default_cratename, local_insta_assert_debug_snapshot, local_insta_assert_snapshot,
+        pretty_print_syn_str,
     };
 
     use super::*;
@@ -161,7 +164,23 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
+
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn simple_enum_with_custom_crate() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum A {
+                Bacon,
+                Eggs
+            }
+        })
+        .unwrap();
+
+        let crate_: Path = syn::parse2(quote! { reexporter::borsh }).unwrap();
+        let actual = process(&item_enum, crate_).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -175,7 +194,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -191,7 +210,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -207,7 +226,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -225,11 +244,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(
-            &item_struct,
-            Ident::new("borsh", proc_macro2::Span::call_site()),
-        )
-        .unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -252,11 +267,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(
-            &item_struct,
-            Ident::new("borsh", proc_macro2::Span::call_site()),
-        )
-        .unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -273,7 +284,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -294,7 +305,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -311,7 +322,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -336,7 +347,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -361,7 +372,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -383,7 +394,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site()));
+        let actual = process(&item_struct, default_cratename());
 
         local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
@@ -405,7 +416,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site()));
+        let actual = process(&item_struct, default_cratename());
 
         local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
@@ -427,7 +438,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, Ident::new("borsh", Span::call_site())).unwrap();
+        let actual = process(&item_struct, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }

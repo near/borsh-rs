@@ -21,15 +21,19 @@ where
     ) {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct ABacon;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct AEggs;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct ASalad<C>(Tomatoes, C, Oil);
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
         struct ASausage<W, U> {
             #[borsh(skip)]
             wrapper: W,

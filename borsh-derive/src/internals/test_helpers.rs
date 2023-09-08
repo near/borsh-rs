@@ -1,6 +1,9 @@
+use super::cratename::BORSH;
+use proc_macro2::Span;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use std::fmt::Write;
+use syn::{Ident, Path};
 
 pub fn pretty_print_syn_str(input: &TokenStream) -> syn::Result<String> {
     let input = format!("{}", quote!(#input));
@@ -47,6 +50,11 @@ macro_rules! local_insta_assert_snapshot {
             insta::assert_snapshot!($value);
         });
     }};
+}
+
+pub(crate) fn default_cratename() -> Path {
+    let cratename = Ident::new(BORSH, Span::call_site());
+    cratename.into()
 }
 
 pub(crate) use {local_insta_assert_debug_snapshot, local_insta_assert_snapshot};

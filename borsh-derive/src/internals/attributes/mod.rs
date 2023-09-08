@@ -27,6 +27,8 @@ pub const INIT: Symbol = Symbol("init", "init = ...");
 pub const SERIALIZE_WITH: Symbol = Symbol("serialize_with", "serialize_with = ...");
 /// deserialize_with - sub-borsh nested meta, field-level only, `BorshDeserialize` context
 pub const DESERIALIZE_WITH: Symbol = Symbol("deserialize_with", "deserialize_with = ...");
+/// crate - sub-borsh nested meta, item-level only, `BorshSerialize`, `BorshDeserialize`, `BorshSchema` contexts
+pub const CRATE: Symbol = Symbol("crate", "crate = ...");
 
 #[cfg(feature = "schema")]
 pub mod schema_keys {
