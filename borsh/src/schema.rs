@@ -234,7 +234,7 @@ impl BorshSchema for () {
 }
 
 macro_rules! impl_for_renamed_primitives {
-    ($($type: ident : $name: ident)+) => {
+    ($($type: ty : $name: ident)+) => {
     $(
         impl BorshSchema for $type {
             fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
@@ -257,6 +257,18 @@ impl_for_renamed_primitives!(String: string);
 impl_for_renamed_primitives!(str: string);
 impl_for_renamed_primitives!(isize: i64);
 impl_for_renamed_primitives!(usize: u64);
+
+impl_for_renamed_primitives!(core::num::NonZeroI8: i8);
+impl_for_renamed_primitives!(core::num::NonZeroI16: i16);
+impl_for_renamed_primitives!(core::num::NonZeroI32: i32);
+impl_for_renamed_primitives!(core::num::NonZeroI64: i64);
+impl_for_renamed_primitives!(core::num::NonZeroI128: i128);
+impl_for_renamed_primitives!(core::num::NonZeroU8: u8);
+impl_for_renamed_primitives!(core::num::NonZeroU16: u16);
+impl_for_renamed_primitives!(core::num::NonZeroU32: u32);
+impl_for_renamed_primitives!(core::num::NonZeroU64: u64);
+impl_for_renamed_primitives!(core::num::NonZeroU128: u128);
+impl_for_renamed_primitives!(core::num::NonZeroUsize: usize);
 
 impl<T, const N: usize> BorshSchema for [T; N]
 where
@@ -585,13 +597,19 @@ mod tests {
 
     #[test]
     fn simple_tuple() {
-        let actual_name = <(u64, String)>::declaration();
+        let actual_name = <(u64, core::num::NonZeroU16, String)>::declaration();
         let mut actual_defs = map!();
-        <(u64, String)>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("Tuple<u64, string>", actual_name);
+        <(u64, core::num::NonZeroU16, String)>::add_definitions_recursively(&mut actual_defs);
+        assert_eq!("Tuple<u64, u16, string>", actual_name);
         assert_eq!(
             map! {
-                "Tuple<u64, string>" => Definition::Tuple { elements: vec![ "u64".to_string(), "string".to_string()]}
+                "Tuple<u64, u16, string>" => Definition::Tuple {
+                    elements: vec![
+                        "u64".to_string(),
+                        "u16".to_string(),
+                        "string".to_string()
+                    ]
+                }
             },
             actual_defs
         );
