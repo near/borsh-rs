@@ -63,7 +63,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Run clippy
-      run: cargo clippy --benches -- -D clippy::all
+      run: cargo clippy --features schema --benches -- -D clippy::all
 
   cargo-fmt:
     runs-on: ubuntu-20.04

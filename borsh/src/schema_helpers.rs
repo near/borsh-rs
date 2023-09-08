@@ -105,15 +105,15 @@ fn is_zero_size(declaration: &str, defs: &BTreeMap<Declaration, Definition>) -> 
         }
         Ok(Definition::Sequence { .. }) => false,
         Ok(Definition::Tuple { elements }) => elements
-            .into_iter()
+            .iter()
             .all(|element| is_zero_size(element.as_str(), defs)),
         Ok(Definition::Enum { .. }) => false,
         Ok(Definition::Struct { fields }) => match fields {
             Fields::NamedFields(fields) => fields
-                .into_iter()
+                .iter()
                 .all(|(_, field)| is_zero_size(field.as_str(), defs)),
             Fields::UnnamedFields(fields) => fields
-                .into_iter()
+                .iter()
                 .all(|field| is_zero_size(field.as_str(), defs)),
             Fields::Empty => true,
         },
@@ -157,7 +157,7 @@ fn max_serialized_size_impl<'a>(
         mul(count, sum)
     }
 
-    if stack.iter().find(|dec| **dec == declaration).is_some() {
+    if stack.iter().any(|dec| *dec == declaration) {
         return Err(MaxSizeError::Recursive);
     }
     stack.push(declaration);
@@ -196,12 +196,9 @@ fn max_serialized_size_impl<'a>(
         // Tuples and structs sum sizes of all the members.
         Ok(Definition::Tuple { elements }) => tuple(count, elements, defs, stack),
         Ok(Definition::Struct { fields }) => match fields {
-            Fields::NamedFields(fields) => tuple(
-                count,
-                fields.into_iter().map(|(_, field)| field),
-                defs,
-                stack,
-            ),
+            Fields::NamedFields(fields) => {
+                tuple(count, fields.iter().map(|(_, field)| field), defs, stack)
+            }
             Fields::UnnamedFields(fields) => tuple(count, fields, defs, stack),
             Fields::Empty => Ok(0),
         },
