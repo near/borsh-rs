@@ -23,6 +23,8 @@ use crate::__private::maybestd::{
     vec::Vec,
 };
 use crate::{BorshDeserialize, BorshSchema as BorshSchemaMacro, BorshSerialize};
+use core::borrow::Borrow;
+use core::cmp::Ord;
 use core::marker::PhantomData;
 
 /// The type that we use to represent the declaration of the Borsh type.
@@ -78,24 +80,33 @@ impl BorshSchemaContainer {
         }
     }
 
+    /// generate [BorshSchemaContainer] for type `T`
     pub fn for_type<T: BorshSchema>() -> Self {
         let mut definitions = Default::default();
         T::add_definitions_recursively(&mut definitions);
         Self::new(T::declaration(), definitions)
     }
 
-    pub fn declaration(&self) -> &str {
-        self.declaration.as_str()
+    pub fn declaration(&self) -> &Declaration {
+        &self.declaration
     }
     pub fn definitions(&self) -> impl Iterator<Item = (&'_ Declaration, &'_ Definition)> {
         self.definitions.iter()
     }
 
-    pub fn get_definition(&self, declaration: &str) -> Option<&Definition> {
+    pub fn get_definition<Q>(&self, declaration: &Q) -> Option<&Definition>
+    where
+        Declaration: Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
         self.definitions.get(declaration)
     }
 
-    pub fn get_mut_definition(&mut self, declaration: &str) -> Option<&mut Definition> {
+    pub fn get_mut_definition<Q>(&mut self, declaration: &Q) -> Option<&mut Definition>
+    where
+        Declaration: Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
         self.definitions.get_mut(declaration)
     }
 
@@ -106,7 +117,11 @@ impl BorshSchemaContainer {
     ) -> Option<Definition> {
         self.definitions.insert(declaration, definition)
     }
-    pub fn remove_definition(&mut self, declaration: &str) -> Option<Definition> {
+    pub fn remove_definition<Q>(&mut self, declaration: &Q) -> Option<Definition>
+    where
+        Declaration: Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
         self.definitions.remove(declaration)
     }
 }

@@ -1,5 +1,4 @@
 use crate::__private::maybestd::{
-    collections::BTreeMap,
     io::{Error, ErrorKind, Result},
     vec::Vec,
 };
@@ -30,11 +29,11 @@ pub fn try_to_vec_with_schema<T: BorshSerialize + BorshSchema>(value: &T) -> Res
     Ok(res)
 }
 
+/// generate [BorshSchemaContainer] for type `T`
+///
+/// this is an alias of [BorshSchemaContainer::for_type]
 pub fn schema_container_of<T: BorshSchema>() -> BorshSchemaContainer {
-    let mut definitions = BTreeMap::new();
-    T::add_definitions_recursively(&mut definitions);
-
-    BorshSchemaContainer::new(T::declaration(), definitions)
+    BorshSchemaContainer::for_type::<T>()
 }
 
 /// Possible error when calculating theoretical maximum size of encoded type.
@@ -58,7 +57,7 @@ pub enum MaxSizeError {
     MissingDefinition,
 }
 
-/// Returns the largest possible size of serialised object.
+/// Returns the largest possible size of a serialised object based solely on its type.
 ///
 /// The function has limitations which may lead it to overestimate the size.
 /// For example, hypothetical `IPv4Packet` would be encoded as at most ~64 KiB.
