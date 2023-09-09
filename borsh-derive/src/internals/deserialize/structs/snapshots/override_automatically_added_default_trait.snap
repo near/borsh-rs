@@ -6,9 +6,9 @@ impl<K, V, U> borsh::de::BorshDeserialize for G1<K, V, U>
 where
     U: borsh::de::BorshDeserialize,
 {
-    fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
+    fn deserialize_reader<R: borsh::io::Read>(
         reader: &mut R,
-    ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
+    ) -> ::core::result::Result<Self, borsh::io::Error> {
         Ok(
             Self(
                 core::default::Default::default(),

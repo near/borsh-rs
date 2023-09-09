@@ -3,10 +3,10 @@ source: borsh-derive/src/internals/serialize/structs/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl reexporter::borsh::ser::BorshSerialize for A {
-    fn serialize<W: reexporter::borsh::__private::maybestd::io::Write>(
+    fn serialize<W: reexporter::borsh::io::Write>(
         &self,
         writer: &mut W,
-    ) -> ::core::result::Result<(), reexporter::borsh::__private::maybestd::io::Error> {
+    ) -> ::core::result::Result<(), reexporter::borsh::io::Error> {
         reexporter::borsh::BorshSerialize::serialize(&self.x, writer)?;
         reexporter::borsh::BorshSerialize::serialize(&self.y, writer)?;
         Ok(())

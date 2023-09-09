@@ -3,12 +3,9 @@ source: borsh-derive/src/internals/deserialize/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl reexporter::borsh::de::BorshDeserialize for A {
-    fn deserialize_reader<R: reexporter::borsh::__private::maybestd::io::Read>(
+    fn deserialize_reader<R: reexporter::borsh::io::Read>(
         reader: &mut R,
-    ) -> ::core::result::Result<
-        Self,
-        reexporter::borsh::__private::maybestd::io::Error,
-    > {
+    ) -> ::core::result::Result<Self, reexporter::borsh::io::Error> {
         let tag = <u8 as reexporter::borsh::de::BorshDeserialize>::deserialize_reader(
             reader,
         )?;
@@ -16,13 +13,10 @@ impl reexporter::borsh::de::BorshDeserialize for A {
     }
 }
 impl reexporter::borsh::de::EnumExt for A {
-    fn deserialize_variant<R: reexporter::borsh::__private::maybestd::io::Read>(
+    fn deserialize_variant<R: reexporter::borsh::io::Read>(
         reader: &mut R,
         variant_tag: u8,
-    ) -> ::core::result::Result<
-        Self,
-        reexporter::borsh::__private::maybestd::io::Error,
-    > {
+    ) -> ::core::result::Result<Self, reexporter::borsh::io::Error> {
         let mut return_value = if variant_tag == 0u8 {
             A::B {
                 x: reexporter::borsh::BorshDeserialize::deserialize_reader(reader)?,
@@ -35,8 +29,8 @@ impl reexporter::borsh::de::EnumExt for A {
             )
         } else {
             return Err(
-                reexporter::borsh::__private::maybestd::io::Error::new(
-                    reexporter::borsh::__private::maybestd::io::ErrorKind::InvalidData,
+                reexporter::borsh::io::Error::new(
+                    reexporter::borsh::io::ErrorKind::InvalidData,
                     reexporter::borsh::__private::maybestd::format!(
                         "Unexpected variant tag: {:?}", variant_tag
                     ),

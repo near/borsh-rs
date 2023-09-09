@@ -19,30 +19,25 @@ struct ThirdParty<K, V>(pub BTreeMap<K, V>);
 mod third_party_impl {
     use super::ThirdParty;
 
-    #[cfg(feature = "std")]
-    use std::io;
-
-    #[cfg(not(feature = "std"))]
-    use borsh::nostd_io as io;
     pub(super) fn serialize_third_party<
         K: borsh::ser::BorshSerialize,
         V: borsh::ser::BorshSerialize,
-        W: io::Write,
+        W: borsh::io::Write,
     >(
         obj: &ThirdParty<K, V>,
         writer: &mut W,
-    ) -> ::core::result::Result<(), io::Error> {
+    ) -> ::core::result::Result<(), borsh::io::Error> {
         borsh::BorshSerialize::serialize(&obj.0, writer)?;
         Ok(())
     }
 
     pub(super) fn deserialize_third_party<
-        R: io::Read,
+        R: borsh::io::Read,
         K: borsh::de::BorshDeserialize + Ord,
         V: borsh::de::BorshDeserialize,
     >(
         reader: &mut R,
-    ) -> ::core::result::Result<ThirdParty<K, V>, io::Error> {
+    ) -> ::core::result::Result<ThirdParty<K, V>, borsh::io::Error> {
         Ok(ThirdParty(borsh::BorshDeserialize::deserialize_reader(
             reader,
         )?))

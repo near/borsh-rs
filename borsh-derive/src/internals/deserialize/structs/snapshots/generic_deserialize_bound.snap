@@ -7,9 +7,9 @@ where
     T: PartialOrd + Hash + Eq + borsh::de::BorshDeserialize,
     U: borsh::de::BorshDeserialize,
 {
-    fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
+    fn deserialize_reader<R: borsh::io::Read>(
         reader: &mut R,
-    ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
+    ) -> ::core::result::Result<Self, borsh::io::Error> {
         Ok(Self {
             a: borsh::BorshDeserialize::deserialize_reader(reader)?,
             b: borsh::BorshDeserialize::deserialize_reader(reader)?,

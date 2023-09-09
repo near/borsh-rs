@@ -257,16 +257,15 @@ use indexmap::IndexMap;
 mod index_map_impl {
     use super::IndexMap;
     use core::hash::Hash;
-    use std::io;
 
     pub fn serialize_index_map<
         K: borsh::ser::BorshSerialize,
         V: borsh::ser::BorshSerialize,
-        W: io::Write,
+        W: borsh::io::Write,
     >(
         obj: &IndexMap<K, V>,
         writer: &mut W,
-    ) -> ::core::result::Result<(), io::Error> {
+    ) -> ::core::result::Result<(), borsh::io::Error> {
         let key_value_tuples = obj.iter().collect::<Vec<_>>();
         borsh::BorshSerialize::serialize(&key_value_tuples, writer)?;
         Ok(())
@@ -599,15 +598,14 @@ use indexmap::IndexMap;
 mod index_map_impl {
     use super::IndexMap;
     use core::hash::Hash;
-    use std::io;
 
     pub fn deserialize_index_map<
-        R: io::Read,
+        R: borsh::io::Read,
         K: borsh::de::BorshDeserialize + Hash + Eq,
         V: borsh::de::BorshDeserialize,
     >(
         reader: &mut R,
-    ) -> ::core::result::Result<IndexMap<K, V>, io::Error> {
+    ) -> ::core::result::Result<IndexMap<K, V>, borsh::io::Error> {
         let vec: Vec<(K, V)> = borsh::BorshDeserialize::deserialize_reader(reader)?;
         let result: IndexMap<K, V> = vec.into_iter().collect();
         Ok(result)
