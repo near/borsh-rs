@@ -10,12 +10,6 @@ use alloc::{
     vec::Vec,
 };
 
-#[cfg(feature = "std")]
-use std::io;
-
-#[cfg(not(feature = "std"))]
-use borsh::nostd_io as io;
-
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
 
@@ -91,8 +85,8 @@ struct CustomReader {
     read_index: usize,
 }
 
-impl io::Read for CustomReader {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+impl borsh::io::Read for CustomReader {
+    fn read(&mut self, buf: &mut [u8]) -> borsh::io::Result<usize> {
         let len = buf.len().min(self.data.len() - self.read_index);
         buf[0..len].copy_from_slice(&self.data[self.read_index..self.read_index + len]);
         self.read_index += len;
@@ -123,8 +117,8 @@ struct CustomReaderThatDoesntFillSlices {
     read_index: usize,
 }
 
-impl io::Read for CustomReaderThatDoesntFillSlices {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+impl borsh::io::Read for CustomReaderThatDoesntFillSlices {
+    fn read(&mut self, buf: &mut [u8]) -> borsh::io::Result<usize> {
         let len = buf.len().min(self.data.len() - self.read_index);
         let len = if len <= 1 { len } else { len / 2 };
         buf[0..len].copy_from_slice(&self.data[self.read_index..self.read_index + len]);
@@ -139,15 +133,15 @@ fn test_custom_reader_that_fails_preserves_error_information() {
 
     let err = from_reader::<CustomReaderThatFails, Serializable>(&mut reader).unwrap_err();
     assert_eq!(err.to_string(), "I don't like to run");
-    assert_eq!(err.kind(), io::ErrorKind::ConnectionAborted);
+    assert_eq!(err.kind(), borsh::io::ErrorKind::ConnectionAborted);
 }
 
 struct CustomReaderThatFails;
 
-impl io::Read for CustomReaderThatFails {
-    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
-        Err(io::Error::new(
-            io::ErrorKind::ConnectionAborted,
+impl borsh::io::Read for CustomReaderThatFails {
+    fn read(&mut self, _buf: &mut [u8]) -> borsh::io::Result<usize> {
+        Err(borsh::io::Error::new(
+            borsh::io::ErrorKind::ConnectionAborted,
             "I don't like to run",
         ))
     }

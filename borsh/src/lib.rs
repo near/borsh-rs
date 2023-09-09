@@ -7,14 +7,16 @@
 ### Ecosystem features
 
 * **std** -
-  When enabled, this will cause `borsh` to use the standard library. Currently,
-  disabling this feature will result in building the crate in `no_std` environment.
+  When enabled, `borsh` uses the standard library. Disabling this feature will
+  result in building the crate in `no_std` environment.
 
-  Borsh has `nostd_io` module when compiled with **std** disabled. It contains a few items,
-  counterparts of `std::io` items,
-  which are used in [BorshSerialize](crate::ser::BorshSerialize) and [BorshDeserialize](crate::de::BorshDeserialize)
-  traits' definitions in absence of `std`. Most prominent of them are `borsh::nostd_io::Read` and `borsh::nostd_io::Write` traits.
+  To carter such builds, Borsh offers [`io`] module which includes a items which
+  are used in [`BorshSerialize`] and [`BorshDeserialize`] traits.  Most notably
+  `io::Read`, `io::Write` and `io::Result`.
 
+  When **std** feature is enabled, those items are re-exports of corresponding
+  `std::io` items.  Otherwise they are borsh-specific types which mimic
+  behaviour of corresponding standard types.
 
 ### Default features
 
@@ -100,8 +102,21 @@ pub mod error;
 #[cfg(all(feature = "std", feature = "hashbrown"))]
 compile_error!("feature \"std\" and feature \"hashbrown\" don't make sense at the same time");
 
+#[cfg(feature = "std")]
+use std::io as io_impl;
 #[cfg(not(feature = "std"))]
-pub mod nostd_io;
+mod nostd_io;
+#[cfg(not(feature = "std"))]
+use nostd_io as io_impl;
+
+/// Subset of `std::io` which is used as part of borsh public API.
+///
+/// When crate is built with `std` feature disabled (it’s enabled by default),
+/// the exported types are custom borsh types which try to mimic behaviour of
+/// corresponding standard types usually offering subset of features.
+pub mod io {
+    pub use super::io_impl::{Error, ErrorKind, Read, Result, Write};
+}
 
 #[doc(hidden)]
 pub mod __private {
@@ -111,7 +126,7 @@ pub mod __private {
     /// module.
     #[cfg(feature = "std")]
     pub mod maybestd {
-        pub use std::{borrow, boxed, collections, format, io, string, vec};
+        pub use std::{borrow, boxed, collections, format, string, vec};
 
         #[cfg(feature = "rc")]
         pub use std::{rc, sync};
@@ -127,10 +142,6 @@ pub mod __private {
             pub use alloc::collections::{btree_map, BTreeMap, BTreeSet, LinkedList, VecDeque};
             #[cfg(feature = "hashbrown")]
             pub use hashbrown::*;
-        }
-
-        pub mod io {
-            pub use crate::nostd_io::*;
         }
     }
 }

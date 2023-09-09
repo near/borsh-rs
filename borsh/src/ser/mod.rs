@@ -1,17 +1,15 @@
 use core::convert::TryFrom;
 use core::marker::PhantomData;
 
-use crate::{
-    __private::maybestd::{
-        borrow::{Cow, ToOwned},
-        boxed::Box,
-        collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
-        io::{Error, ErrorKind, Result, Write},
-        string::String,
-        vec::Vec,
-    },
-    error::check_zst,
+use crate::__private::maybestd::{
+    borrow::{Cow, ToOwned},
+    boxed::Box,
+    collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
+    string::String,
+    vec::Vec,
 };
+use crate::error::check_zst;
+use crate::io::{Error, ErrorKind, Result, Write};
 
 #[cfg(feature = "rc")]
 use crate::__private::maybestd::{rc::Rc, sync::Arc};
@@ -349,7 +347,7 @@ where
 #[cfg(hash_collections)]
 pub mod hashes {
     //!
-    //! Module defines [BorshSerialize](crate::ser::BorshSerialize) implementation for  
+    //! Module defines [BorshSerialize](crate::ser::BorshSerialize) implementation for
     //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use crate::__private::maybestd::vec::Vec;
     use crate::error::check_zst;
@@ -360,7 +358,7 @@ pub mod hashes {
     use core::convert::TryFrom;
     use core::hash::BuildHasher;
 
-    use crate::__private::maybestd::io::{ErrorKind, Result, Write};
+    use crate::io::{ErrorKind, Result, Write};
 
     impl<K, V, H> BorshSerialize for HashMap<K, V, H>
     where

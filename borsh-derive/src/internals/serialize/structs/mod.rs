@@ -35,7 +35,7 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
 
     Ok(quote! {
         impl #impl_generics #cratename::ser::BorshSerialize for #name #ty_generics #where_clause {
-            fn serialize<W: #cratename::__private::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::__private::maybestd::io::Error> {
+            fn serialize<W: #cratename::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::io::Error> {
                 #body
                 Ok(())
             }
