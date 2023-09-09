@@ -94,7 +94,7 @@ pub fn max_serialized_size(
     schema: &BorshSchemaContainer,
 ) -> core::result::Result<usize, MaxSizeError> {
     let mut stack = Vec::new();
-    max_serialized_size_impl(1, schema.declaration(), &schema, &mut stack)
+    max_serialized_size_impl(1, schema.declaration(), schema, &mut stack)
 }
 
 /// Checks whether given declaration schema serialises to an empty string.
