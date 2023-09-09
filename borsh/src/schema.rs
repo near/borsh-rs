@@ -23,6 +23,8 @@ use crate::__private::maybestd::{
     vec::Vec,
 };
 use crate::{BorshDeserialize, BorshSchema as BorshSchemaMacro, BorshSerialize};
+use core::borrow::Borrow;
+use core::cmp::Ord;
 use core::marker::PhantomData;
 
 /// The type that we use to represent the declaration of the Borsh type.
@@ -78,6 +80,13 @@ impl BorshSchemaContainer {
         }
     }
 
+    /// generate [BorshSchemaContainer] for type `T`
+    pub fn for_type<T: BorshSchema>() -> Self {
+        let mut definitions = Default::default();
+        T::add_definitions_recursively(&mut definitions);
+        Self::new(T::declaration(), definitions)
+    }
+
     pub fn declaration(&self) -> &Declaration {
         &self.declaration
     }
@@ -85,11 +94,19 @@ impl BorshSchemaContainer {
         self.definitions.iter()
     }
 
-    pub fn get_definition(&self, declaration: &Declaration) -> Option<&Definition> {
+    pub fn get_definition<Q>(&self, declaration: &Q) -> Option<&Definition>
+    where
+        Declaration: Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
         self.definitions.get(declaration)
     }
 
-    pub fn get_mut_definition(&mut self, declaration: &Declaration) -> Option<&mut Definition> {
+    pub fn get_mut_definition<Q>(&mut self, declaration: &Q) -> Option<&mut Definition>
+    where
+        Declaration: Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
         self.definitions.get_mut(declaration)
     }
 
@@ -100,7 +117,11 @@ impl BorshSchemaContainer {
     ) -> Option<Definition> {
         self.definitions.insert(declaration, definition)
     }
-    pub fn remove_definition(&mut self, declaration: &Declaration) -> Option<Definition> {
+    pub fn remove_definition<Q>(&mut self, declaration: &Q) -> Option<Definition>
+    where
+        Declaration: Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
         self.definitions.remove(declaration)
     }
 }
@@ -333,7 +354,7 @@ where
 #[cfg(hash_collections)]
 pub mod hashes {
     //!
-    //! Module defines [BorshSchema](crate::schema::BorshSchema) implementation for  
+    //! Module defines [BorshSchema](crate::schema::BorshSchema) implementation for
     //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use crate::BorshSchema;
 
