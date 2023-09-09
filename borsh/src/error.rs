@@ -1,4 +1,4 @@
-use crate::__private::maybestd::io::{Error, ErrorKind, Result};
+use crate::io::{Error, ErrorKind, Result};
 use core::mem::size_of;
 pub const ERROR_ZST_FORBIDDEN: &str = "Collections of zero-sized types are not allowed due to deny-of-service concerns on deserialization.";
 

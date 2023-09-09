@@ -1,8 +1,6 @@
 use crate::BorshSerialize;
-use crate::__private::maybestd::{
-    io::{Result, Write},
-    vec::Vec,
-};
+use crate::__private::maybestd::vec::Vec;
+use crate::io::{Result, Write};
 
 pub(super) const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;
 

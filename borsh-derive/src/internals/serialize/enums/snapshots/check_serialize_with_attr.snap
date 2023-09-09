@@ -7,10 +7,10 @@ where
     K: borsh::ser::BorshSerialize,
     V: borsh::ser::BorshSerialize,
 {
-    fn serialize<W: borsh::__private::maybestd::io::Write>(
+    fn serialize<W: borsh::io::Write>(
         &self,
         writer: &mut W,
-    ) -> ::core::result::Result<(), borsh::__private::maybestd::io::Error> {
+    ) -> ::core::result::Result<(), borsh::io::Error> {
         let variant_idx: u8 = match self {
             C::C3(..) => 0u8,
             C::C4 { .. } => 1u8,

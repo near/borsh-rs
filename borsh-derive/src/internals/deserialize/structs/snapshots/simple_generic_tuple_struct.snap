@@ -6,9 +6,9 @@ impl<T> borsh::de::BorshDeserialize for TupleA<T>
 where
     T: borsh::de::BorshDeserialize,
 {
-    fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
+    fn deserialize_reader<R: borsh::io::Read>(
         reader: &mut R,
-    ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
+    ) -> ::core::result::Result<Self, borsh::io::Error> {
         Ok(
             Self(
                 borsh::BorshDeserialize::deserialize_reader(reader)?,
