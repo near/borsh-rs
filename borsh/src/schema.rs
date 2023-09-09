@@ -17,7 +17,6 @@ use crate::__private::maybestd::collections::{btree_map::Entry, BTreeMap, BTreeS
 use crate::__private::maybestd::{
     boxed::Box,
     format,
-    io::{Read, Result as IOResult, Write},
     string::{String, ToString},
     vec,
     vec::Vec,
@@ -62,7 +61,7 @@ pub enum Fields {
 }
 
 /// All schema information needed to deserialize a single type.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize)]
 pub struct BorshSchemaContainer {
     /// Declaration of the type.
     declaration: Declaration,
@@ -105,33 +104,6 @@ impl BorshSchemaContainer {
     }
 }
 
-impl BorshSerialize for BorshSchemaContainer
-where
-    Declaration: BorshSerialize,
-    BTreeMap<Declaration, Definition>: BorshSerialize,
-{
-    fn serialize<W: Write>(&self, writer: &mut W) -> IOResult<()> {
-        let declaration = self.declaration();
-        let definitions: BTreeMap<&Declaration, &Definition> = self.definitions().collect();
-        BorshSerialize::serialize(declaration, writer)?;
-        BorshSerialize::serialize(&definitions, writer)?;
-        Ok(())
-    }
-}
-
-impl BorshDeserialize for BorshSchemaContainer
-where
-    Declaration: BorshDeserialize,
-    BTreeMap<Declaration, Definition>: BorshDeserialize,
-{
-    fn deserialize_reader<R: Read>(reader: &mut R) -> IOResult<Self> {
-        let declaration: Declaration = BorshDeserialize::deserialize_reader(reader)?;
-        let definitions: BTreeMap<Declaration, Definition> =
-            BorshDeserialize::deserialize_reader(reader)?;
-        Ok(Self::new(declaration, definitions))
-    }
-}
-
 /// Helper method to add a single type definition to the map.
 pub fn add_definition(
     declaration: Declaration,
@@ -165,6 +137,7 @@ where
     Declaration: BorshSchema,
     BTreeMap<Declaration, Definition>: BorshSchema,
 {
+    #[inline]
     fn declaration() -> Declaration {
         "BorshSchemaContainer".to_string()
     }
@@ -191,6 +164,7 @@ where
         );
     }
 }
+
 impl<T> BorshSchema for Box<T>
 where
     T: BorshSchema + ?Sized,
@@ -333,7 +307,7 @@ where
 #[cfg(hash_collections)]
 pub mod hashes {
     //!
-    //! Module defines [BorshSchema](crate::schema::BorshSchema) implementation for  
+    //! Module defines [BorshSchema](crate::schema::BorshSchema) implementation for
     //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use crate::BorshSchema;
 
