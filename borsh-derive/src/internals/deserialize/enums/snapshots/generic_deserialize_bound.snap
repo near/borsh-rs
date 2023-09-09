@@ -7,9 +7,9 @@ where
     T: PartialOrd + Hash + Eq + borsh::de::BorshDeserialize,
     U: borsh::de::BorshDeserialize,
 {
-    fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
+    fn deserialize_reader<R: borsh::io::Read>(
         reader: &mut R,
-    ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
+    ) -> ::core::result::Result<Self, borsh::io::Error> {
         let tag = <u8 as borsh::de::BorshDeserialize>::deserialize_reader(reader)?;
         <Self as borsh::de::EnumExt>::deserialize_variant(reader, tag)
     }
@@ -19,10 +19,10 @@ where
     T: PartialOrd + Hash + Eq + borsh::de::BorshDeserialize,
     U: borsh::de::BorshDeserialize,
 {
-    fn deserialize_variant<R: borsh::__private::maybestd::io::Read>(
+    fn deserialize_variant<R: borsh::io::Read>(
         reader: &mut R,
         variant_tag: u8,
-    ) -> ::core::result::Result<Self, borsh::__private::maybestd::io::Error> {
+    ) -> ::core::result::Result<Self, borsh::io::Error> {
         let mut return_value = if variant_tag == 0u8 {
             A::C {
                 a: borsh::BorshDeserialize::deserialize_reader(reader)?,
@@ -35,8 +35,8 @@ where
             )
         } else {
             return Err(
-                borsh::__private::maybestd::io::Error::new(
-                    borsh::__private::maybestd::io::ErrorKind::InvalidData,
+                borsh::io::Error::new(
+                    borsh::io::ErrorKind::InvalidData,
                     borsh::__private::maybestd::format!(
                         "Unexpected variant tag: {:?}", variant_tag
                     ),

@@ -13,11 +13,11 @@ use crate::__private::maybestd::{
     boxed::Box,
     collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
     format,
-    io::{Error, ErrorKind, Read, Result},
     string::{String, ToString},
     vec,
     vec::Vec,
 };
+use crate::io::{Error, ErrorKind, Read, Result};
 
 #[cfg(feature = "rc")]
 use crate::__private::maybestd::{rc::Rc, sync::Arc};
@@ -105,14 +105,14 @@ pub trait EnumExt: BorshDeserialize {
     ///
     /// # #[cfg(feature = "derive")]
     /// impl borsh::de::BorshDeserialize for OneOrZero {
-    ///     fn deserialize_reader<R: borsh::__private::maybestd::io::Read>(
+    ///     fn deserialize_reader<R: borsh::io::Read>(
     ///         reader: &mut R,
-    ///     ) -> borsh::__private::maybestd::io::Result<Self> {
+    ///     ) -> borsh::io::Result<Self> {
     ///         use borsh::de::EnumExt;
     ///         let tag = u8::deserialize_reader(reader)?;
     ///         if tag == 2 {
-    ///             Err(borsh::__private::maybestd::io::Error::new(
-    ///                 borsh::__private::maybestd::io::ErrorKind::InvalidData,
+    ///             Err(borsh::io::Error::new(
+    ///                 borsh::io::ErrorKind::InvalidData,
     ///                 "MyEnum::Many not allowed here",
     ///             ))
     ///         } else {
@@ -476,20 +476,20 @@ where
 #[cfg(hash_collections)]
 pub mod hashes {
     //!
-    //! Module defines [BorshDeserialize](crate::de::BorshDeserialize) implementation for  
+    //! Module defines [BorshDeserialize](crate::de::BorshDeserialize) implementation for
     //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use core::hash::{BuildHasher, Hash};
 
     use crate::BorshDeserialize;
     use crate::__private::maybestd::collections::{HashMap, HashSet};
-    use crate::__private::maybestd::io::{Read, Result};
     use crate::__private::maybestd::vec::Vec;
+    use crate::io::{Read, Result};
 
     #[cfg(feature = "de_strict_order")]
     const ERROR_WRONG_ORDER_OF_KEYS: &str = "keys were not serialized in ascending order";
-    #[cfg(feature = "de_strict_order")]
-    use crate::__private::maybestd::io::{Error, ErrorKind};
     use crate::error::check_zst;
+    #[cfg(feature = "de_strict_order")]
+    use crate::io::{Error, ErrorKind};
 
     impl<T, H> BorshDeserialize for HashSet<T, H>
     where

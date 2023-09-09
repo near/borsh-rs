@@ -41,7 +41,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
 
     Ok(quote! {
         impl #impl_generics #cratename::ser::BorshSerialize for #enum_ident #ty_generics #where_clause {
-            fn serialize<W: #cratename::__private::maybestd::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::__private::maybestd::io::Error> {
+            fn serialize<W: #cratename::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::io::Error> {
                 let variant_idx: u8 = match self {
                     #all_variants_idx_body
                 };

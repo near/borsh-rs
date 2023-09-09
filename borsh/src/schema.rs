@@ -13,15 +13,15 @@
 
 #![allow(dead_code)] // Unclear why rust check complains on fields of `Definition` variants.
 use crate as borsh; // For `#[derive(BorshSerialize, BorshDeserialize)]`.
-use crate::__private::maybestd::collections::{btree_map::Entry, BTreeMap, BTreeSet};
 use crate::__private::maybestd::{
     boxed::Box,
+    collections::{btree_map::Entry, BTreeMap, BTreeSet},
     format,
-    io::{Read, Result as IOResult, Write},
     string::{String, ToString},
     vec,
     vec::Vec,
 };
+use crate::io::{Read, Result as IOResult, Write};
 use crate::{BorshDeserialize, BorshSchema as BorshSchemaMacro, BorshSerialize};
 use core::borrow::Borrow;
 use core::cmp::Ord;
