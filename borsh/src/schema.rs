@@ -78,18 +78,24 @@ impl BorshSchemaContainer {
         }
     }
 
-    pub fn declaration(&self) -> &Declaration {
-        &self.declaration
+    pub fn for_type<T: BorshSchema>() -> Self {
+        let mut definitions = Default::default();
+        T::add_definitions_recursively(&mut definitions);
+        Self::new(T::declaration(), definitions)
+    }
+
+    pub fn declaration(&self) -> &str {
+        self.declaration.as_str()
     }
     pub fn definitions(&self) -> impl Iterator<Item = (&'_ Declaration, &'_ Definition)> {
         self.definitions.iter()
     }
 
-    pub fn get_definition(&self, declaration: &Declaration) -> Option<&Definition> {
+    pub fn get_definition(&self, declaration: &str) -> Option<&Definition> {
         self.definitions.get(declaration)
     }
 
-    pub fn get_mut_definition(&mut self, declaration: &Declaration) -> Option<&mut Definition> {
+    pub fn get_mut_definition(&mut self, declaration: &str) -> Option<&mut Definition> {
         self.definitions.get_mut(declaration)
     }
 
@@ -100,7 +106,7 @@ impl BorshSchemaContainer {
     ) -> Option<Definition> {
         self.definitions.insert(declaration, definition)
     }
-    pub fn remove_definition(&mut self, declaration: &Declaration) -> Option<Definition> {
+    pub fn remove_definition(&mut self, declaration: &str) -> Option<Definition> {
         self.definitions.remove(declaration)
     }
 }
