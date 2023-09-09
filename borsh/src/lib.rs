@@ -143,9 +143,5 @@ pub mod __private {
             #[cfg(feature = "hashbrown")]
             pub use hashbrown::*;
         }
-
-        pub mod io {
-            pub use crate::nostd_io::*;
-        }
     }
 }
