@@ -53,8 +53,10 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
         fn add_definitions_recursively(definitions: &mut #cratename::__private::maybestd::collections::BTreeMap<#cratename::schema::Declaration, #cratename::schema::Definition>) {
             #inner_defs
             #add_recursive_defs
-            let variants = #cratename::__private::maybestd::vec![#(#variants_defs),*];
-            let definition = #cratename::schema::Definition::Enum{variants};
+            let definition = #cratename::schema::Definition::Enum {
+                tag_width: 1,
+                variants: #cratename::__private::maybestd::vec![#(#variants_defs),*],
+            };
             #cratename::schema::add_definition(Self::declaration(), definition, definitions);
         }
     };
