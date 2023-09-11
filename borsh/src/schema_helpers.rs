@@ -238,7 +238,9 @@ fn max_serialized_size_impl<'a>(
 mod tests {
     use super::*;
 
-    use alloc::{
+    // this is not integration test module, so can use __private for ease of imports;
+    // it cannot be made integration, as it tests `is_zero_size` function, chosen to be non-pub
+    use crate::__private::maybestd::{
         boxed::Box,
         collections::BTreeMap,
         string::{String, ToString},

@@ -68,7 +68,7 @@ pub enum Definition {
         /// Width in bytes of the discriminant tag.
         ///
         /// Zero indicates this is an untagged union.  In standard borsh
-        /// encoding this is one however custom encoding formats may use larger
+        /// encoding this is one. However custom encoding formats may use larger
         /// width if they need to encode more than 256 variants.
         ///
         /// Note: This definition must not be used if the tag is not encoded
