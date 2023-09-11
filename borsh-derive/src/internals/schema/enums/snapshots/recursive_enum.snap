@@ -36,12 +36,12 @@ where
         struct AC<K: Key>(K, Vec<A>);
         <AB<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <AC<K> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        let variants = borsh::__private::maybestd::vec![
-            ("B".to_string(), < AB < K, V > > ::declaration()), ("C".to_string(), < AC <
-            K > > ::declaration())
-        ];
         let definition = borsh::schema::Definition::Enum {
-            variants,
+            tag_width: 1,
+            variants: borsh::__private::maybestd::vec![
+                ("B".to_string(), < AB < K, V > > ::declaration()), ("C".to_string(), <
+                AC < K > > ::declaration())
+            ],
         };
         borsh::schema::add_definition(Self::declaration(), definition, definitions);
     }

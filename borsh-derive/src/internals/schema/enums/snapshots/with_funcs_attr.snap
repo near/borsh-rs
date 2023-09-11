@@ -40,12 +40,12 @@ where
         );
         <CC3 as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <CC4<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        let variants = borsh::__private::maybestd::vec![
-            ("C3".to_string(), < CC3 > ::declaration()), ("C4".to_string(), < CC4 < K, V
-            > > ::declaration())
-        ];
         let definition = borsh::schema::Definition::Enum {
-            variants,
+            tag_width: 1,
+            variants: borsh::__private::maybestd::vec![
+                ("C3".to_string(), < CC3 > ::declaration()), ("C4".to_string(), < CC4 <
+                K, V > > ::declaration())
+            ],
         };
         borsh::schema::add_definition(Self::declaration(), definition, definitions);
     }

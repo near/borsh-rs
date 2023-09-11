@@ -39,12 +39,12 @@ where
             B: Display + Debug;
         <SideLeft<A> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <SideRight<B> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        let variants = borsh::__private::maybestd::vec![
-            ("Left".to_string(), < SideLeft < A > > ::declaration()), ("Right"
-            .to_string(), < SideRight < B > > ::declaration())
-        ];
         let definition = borsh::schema::Definition::Enum {
-            variants,
+            tag_width: 1,
+            variants: borsh::__private::maybestd::vec![
+                ("Left".to_string(), < SideLeft < A > > ::declaration()), ("Right"
+                .to_string(), < SideRight < B > > ::declaration())
+            ],
         };
         borsh::schema::add_definition(Self::declaration(), definition, definitions);
     }
