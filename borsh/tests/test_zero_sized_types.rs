@@ -38,6 +38,20 @@ fn test_serialize_vec_of_zst() {
 }
 
 #[test]
+fn test_serialize_vec_of_unit_type() {
+    let v = vec![(), (), ()];
+    let res = to_vec(&v);
+    assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+}
+
+#[test]
+fn test_serialize_vec_of_vec_of_unit_type() {
+    let v: Vec<Vec<()>> = vec![vec![(), (), ()]];
+    let res = to_vec(&v);
+    assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+}
+
+#[test]
 fn test_deserialize_vec_deque_of_zst() {
     let v = [0u8, 0u8, 0u8, 64u8];
     let res = from_slice::<VecDeque<A>>(&v);

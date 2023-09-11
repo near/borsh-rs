@@ -53,6 +53,10 @@ pub enum MaxSizeError {
     /// Some of the declared types were lacking definition making it impossible
     /// to calculate the size.
     MissingDefinition,
+
+    /// sequences of zero sized types of dynamic length are forbidden by definition
+    /// see <https://github.com/near/borsh-rs/pull/202> and related ones
+    ZSTSequenceNotArray,
 }
 
 /// Returns the largest possible size of a serialised object based solely on its type.
@@ -187,6 +191,9 @@ fn max_serialized_size_impl<'a>(
             }
         }
         Ok(Definition::Sequence { elements }) => {
+            if is_zero_size(elements, schema) {
+                return Err(MaxSizeError::ZSTSequenceNotArray);
+            }
             // Assume that sequence has MAX_LEN elements since that’s the most
             // it can have.
             let sz = max_serialized_size_impl(MAX_LEN, elements, schema, stack)?;
@@ -243,6 +250,7 @@ mod tests {
     use crate::__private::maybestd::{
         boxed::Box,
         collections::BTreeMap,
+        format,
         string::{String, ToString},
         vec,
     };
@@ -286,7 +294,7 @@ mod tests {
         test_ok::<String>(4 + MAX_LEN);
 
         test_err::<Vec<Vec<u8>>>(MaxSizeError::Overflow);
-        test_ok::<Vec<Vec<()>>>(4 + MAX_LEN * 4);
+        test_err::<Vec<Vec<()>>>(MaxSizeError::ZSTSequenceNotArray);
         test_ok::<[[[(); MAX_LEN]; MAX_LEN]; MAX_LEN]>(0);
     }
 
@@ -336,7 +344,8 @@ mod tests {
 
         impl<const N: usize, T: BorshSchema> BorshSchema for Maybe<N, T> {
             fn declaration() -> Declaration {
-                "Maybe".into()
+                let res = format!(r#"Maybe<{}>"#, T::declaration());
+                res
             }
             fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
                 let definition = Definition::Enum {
