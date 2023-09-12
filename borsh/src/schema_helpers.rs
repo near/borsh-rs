@@ -225,11 +225,11 @@ fn max_serialized_size_impl<'a>(
 
         // Primitive types.
         Err("nil") => Ok(0),
-        Err("bool" | "i8" | "u8") => Ok(count),
-        Err("i16" | "u16") => mul(count, 2),
-        Err("i32" | "u32" | "f32") => mul(count, 4),
-        Err("i64" | "u64" | "f64") => mul(count, 8),
-        Err("i128" | "u128") => mul(count, 16),
+        Err("bool" | "i8" | "u8" | "nonzero_i8" | "nonzero_u8") => Ok(count),
+        Err("i16" | "u16" | "nonzero_i16" | "nonzero_u16") => mul(count, 2),
+        Err("i32" | "u32" | "f32" | "nonzero_i32" | "nonzero_u32") => mul(count, 4),
+        Err("i64" | "u64" | "f64" | "nonzero_i64" | "nonzero_u64") => mul(count, 8),
+        Err("i128" | "u128" | "nonzero_i128" | "nonzero_u128") => mul(count, 16),
 
         // string is just Vec<u8>
         Err("string") => mul(count, add(MAX_LEN, 4)?),
@@ -277,6 +277,9 @@ mod tests {
     fn max_serialized_size_built_in_types() {
         test_ok::<u16>(2);
         test_ok::<usize>(8);
+
+        test_ok::<core::num::NonZeroI16>(2);
+        test_ok::<core::num::NonZeroU32>(4);
 
         test_ok::<Option<()>>(1);
         test_ok::<Option<u8>>(2);
