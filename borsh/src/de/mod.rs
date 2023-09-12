@@ -837,8 +837,8 @@ impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18);
 impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19);
 
 macro_rules! impl_range {
-    ($typ:ident, $make:expr $(, $side:ident)*) => {
-        impl<T: BorshDeserialize> BorshDeserialize for core::ops::$typ<T> {
+    ($type:ident, $make:expr, $($side:ident),*) => {
+        impl<T: BorshDeserialize> BorshDeserialize for core::ops::$type<T> {
             #[inline]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                 let ($($side,)*) = <_>::deserialize_reader(reader)?;

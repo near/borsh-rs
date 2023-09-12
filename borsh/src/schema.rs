@@ -295,11 +295,23 @@ impl_for_renamed_primitives!(core::num::NonZeroU128: nonzero_u128);
 impl_for_renamed_primitives!(core::num::NonZeroUsize: nonzero_u64);
 
 impl_for_renamed_primitives!((): nil);
-impl_for_renamed_primitives!(core::ops::RangeFull: nil);
+
+impl BorshSchema for core::ops::RangeFull {
+    #[inline]
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        let fields = Fields::Empty;
+        let def = Definition::Struct { fields };
+        add_definition(Self::declaration(), def, definitions);
+    }
+    #[inline]
+    fn declaration() -> Declaration {
+        "RangeFull".into()
+    }
+}
 
 macro_rules! impl_for_range {
-    ($typ:ident $(, $name:ident)*) => {
-        impl<T: BorshSchema> BorshSchema for core::ops::$typ<T> {
+    ($type:ident, $($name:ident),*) => {
+        impl<T: BorshSchema> BorshSchema for core::ops::$type<T> {
             fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
                 let decl = T::declaration();
                 let fields = Fields::NamedFields(vec![$(
@@ -310,7 +322,7 @@ macro_rules! impl_for_range {
                 T::add_definitions_recursively(definitions);
             }
             fn declaration() -> Declaration {
-                format!("{}<{}>", stringify!($typ), T::declaration())
+                format!("{}<{}>", stringify!($type), T::declaration())
             }
         }
     };
@@ -815,7 +827,17 @@ mod tests {
 
     #[test]
     fn range() {
-        assert_eq!("nil", <core::ops::RangeFull>::declaration());
+        assert_eq!("RangeFull", <core::ops::RangeFull>::declaration());
+        let mut actual_defs = map!();
+        <core::ops::RangeFull>::add_definitions_recursively(&mut actual_defs);
+        assert_eq!(
+            map! {
+                "RangeFull" => Definition::Struct {
+                    fields: Fields::Empty
+                }
+            },
+            actual_defs
+        );
 
         let actual_name = <core::ops::Range<u64>>::declaration();
         let mut actual_defs = map!();

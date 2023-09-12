@@ -559,8 +559,8 @@ impl_tuple!(0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T
 impl_tuple!(0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 15 T15 16 T16 17 T17 18 T18 19 T19);
 
 macro_rules! impl_range {
-    ($typ:ident, $this:ident $(, $field:expr)*) => {
-        impl<T: BorshSerialize> BorshSerialize for core::ops::$typ<T> {
+    ($type:ident, $this:ident, $($field:expr),*) => {
+        impl<T: BorshSerialize> BorshSerialize for core::ops::$type<T> {
             #[inline]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
                 let $this = self;
