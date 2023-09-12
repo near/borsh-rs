@@ -55,12 +55,12 @@ where
         <EnumParametrizedC<
             T,
         > as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        let variants = borsh::__private::maybestd::vec![
-            ("B".to_string(), < EnumParametrizedB < K, V > > ::declaration()), ("C"
-            .to_string(), < EnumParametrizedC < T > > ::declaration())
-        ];
         let definition = borsh::schema::Definition::Enum {
-            variants,
+            tag_width: 1,
+            variants: borsh::__private::maybestd::vec![
+                ("B".to_string(), < EnumParametrizedB < K, V > > ::declaration()), ("C"
+                .to_string(), < EnumParametrizedC < T > > ::declaration())
+            ],
         };
         borsh::schema::add_definition(Self::declaration(), definition, definitions);
     }

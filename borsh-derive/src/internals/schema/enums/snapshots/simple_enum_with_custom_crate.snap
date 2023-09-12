@@ -26,12 +26,12 @@ impl reexporter::borsh::BorshSchema for A {
         <AEggs as reexporter::borsh::BorshSchema>::add_definitions_recursively(
             definitions,
         );
-        let variants = reexporter::borsh::__private::maybestd::vec![
-            ("Bacon".to_string(), < ABacon > ::declaration()), ("Eggs".to_string(), <
-            AEggs > ::declaration())
-        ];
         let definition = reexporter::borsh::schema::Definition::Enum {
-            variants,
+            tag_width: 1,
+            variants: reexporter::borsh::__private::maybestd::vec![
+                ("Bacon".to_string(), < ABacon > ::declaration()), ("Eggs".to_string(), <
+                AEggs > ::declaration())
+            ],
         };
         reexporter::borsh::schema::add_definition(
             Self::declaration(),

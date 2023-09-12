@@ -1,4 +1,4 @@
-#![cfg(feature = "schema")]
+#![cfg(feature = "unstable__schema")]
 
 #[cfg(feature = "std")]
 use std::collections::BTreeMap;
@@ -76,39 +76,24 @@ pub fn recursive_enum_schema() {
     assert_eq!(
         map! {
            "ERecD" => Definition::Enum {
+                tag_width: 1,
                 variants: vec![
-
-                    (
-                        "B".to_string(),
-                        "ERecDB".to_string(),
-                    ),
-                    (
-                        "C".to_string(),
-                        "ERecDC".to_string(),
-                    ),
+                    ("B".to_string(), "ERecDB".to_string()),
+                    ("C".to_string(), "ERecDC".to_string()),
                 ]
             },
             "ERecDB" => Definition::Struct {
-
                 fields: Fields::NamedFields (
                     vec![
-                        (
-                            "x".to_string(),
-                            "string".to_string(),
-                        ),
-                        (
-                            "y".to_string(),
-                            "i32".to_string(),
-                        ),
+                        ("x".to_string(), "string".to_string()),
+                        ("y".to_string(), "i32".to_string()),
                     ]
-
                 )
             },
             "ERecDC" => Definition::Struct {
                 fields: Fields::UnnamedFields( vec![
                     "u8".to_string(),
                     "Vec<ERecD>".to_string(),
-
                 ])
             },
             "Vec<ERecD>" => Definition::Sequence {

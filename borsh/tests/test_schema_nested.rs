@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(hash_collections)]
 #![allow(dead_code)] // Local structures do not have their fields used.
-#![cfg(feature = "schema")]
+#![cfg(feature = "unstable__schema")]
 
 use borsh::schema::*;
 #[cfg(feature = "hashbrown")]
@@ -68,17 +68,24 @@ pub fn duplicated_instantiations() {
     <A<Cucumber, Wrapper<String>>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-        "A<Cucumber, Wrapper<string>>" => Definition::Enum {variants: vec![
-         ("Bacon".to_string(), "ABacon".to_string()),
-         ("Eggs".to_string(), "AEggs".to_string()),
-         ("Salad".to_string(), "ASalad<Cucumber>".to_string()),
-         ("Sausage".to_string(), "ASausage<Wrapper<string>>".to_string())
-        ]},
-        "A<string, string>" => Definition::Enum {variants: vec![
-            ("Bacon".to_string(), "ABacon".to_string()),
-            ("Eggs".to_string(), "AEggs".to_string()),
-            ("Salad".to_string(), "ASalad<string>".to_string()),
-            ("Sausage".to_string(), "ASausage<string>".to_string())]},
+            "A<Cucumber, Wrapper<string>>" => Definition::Enum {
+                tag_width: 1,
+                variants: vec![
+                    ("Bacon".to_string(), "ABacon".to_string()),
+                    ("Eggs".to_string(), "AEggs".to_string()),
+                    ("Salad".to_string(), "ASalad<Cucumber>".to_string()),
+                    ("Sausage".to_string(), "ASausage<Wrapper<string>>".to_string())
+                ]
+            },
+            "A<string, string>" => Definition::Enum {
+                tag_width: 1,
+                variants: vec![
+                    ("Bacon".to_string(), "ABacon".to_string()),
+                    ("Eggs".to_string(), "AEggs".to_string()),
+                    ("Salad".to_string(), "ASalad<string>".to_string()),
+                    ("Sausage".to_string(), "ASausage<string>".to_string())
+                ]
+            },
         "ABacon" => Definition::Struct {fields: Fields::Empty},
         "AEggs" => Definition::Struct {fields: Fields::Empty},
         "ASalad<Cucumber>" => Definition::Struct {fields: Fields::UnnamedFields(vec!["Tomatoes".to_string(), "Cucumber".to_string(), "Oil<u64, string>".to_string()])},
@@ -89,8 +96,20 @@ pub fn duplicated_instantiations() {
         "Filling" => Definition::Struct {fields: Fields::Empty},
         "HashMap<u64, string>" => Definition::Sequence { elements: "Tuple<u64, string>".to_string()},
         "Oil<u64, string>" => Definition::Struct { fields: Fields::NamedFields(vec![("seeds".to_string(), "HashMap<u64, string>".to_string()), ("liquid".to_string(), "Option<u64>".to_string())])},
-        "Option<string>" => Definition::Enum {variants: vec![("None".to_string(), "nil".to_string()), ("Some".to_string(), "string".to_string())]},
-        "Option<u64>" => Definition::Enum { variants: vec![("None".to_string(), "nil".to_string()), ("Some".to_string(), "u64".to_string())]},
+            "Option<string>" => Definition::Enum {
+                tag_width: 1,
+                variants: vec![
+                    ("None".to_string(), "nil".to_string()),
+                    ("Some".to_string(), "string".to_string())
+                ]
+            },
+            "Option<u64>" => Definition::Enum {
+                tag_width: 1,
+                variants: vec![
+                    ("None".to_string(), "nil".to_string()),
+                    ("Some".to_string(), "u64".to_string())
+                ]
+            },
         "Tomatoes" => Definition::Struct {fields: Fields::Empty},
         "Tuple<u64, string>" => Definition::Tuple {elements: vec!["u64".to_string(), "string".to_string()]},
         "Wrapper<string>" => Definition::Struct{ fields: Fields::NamedFields(vec![("foo".to_string(), "Option<string>".to_string()), ("bar".to_string(), "A<string, string>".to_string())])}

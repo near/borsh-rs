@@ -1,5 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg(feature = "schema")]
+#![cfg(feature = "unstable__schema")]
 
 #[cfg(feature = "std")]
 use std::collections::BTreeMap;
@@ -130,10 +130,13 @@ pub fn enum_overriden() {
     <C<u64, String>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-            "C<u64, string>" => Definition::Enum { variants: vec![
-                ("C3".to_string(), "CC3".to_string()),
-                ("C4".to_string(), "CC4<u64, string>".to_string())
-            ] },
+            "C<u64, string>" => Definition::Enum {
+                tag_width: 1,
+                variants: vec![
+                    ("C3".to_string(), "CC3".to_string()),
+                    ("C4".to_string(), "CC4<u64, string>".to_string())
+                ]
+            },
             "CC3" => Definition::Struct { fields: Fields::UnnamedFields(vec!["u64".to_string(), "u64".to_string()]) },
             "CC4<u64, string>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
                 "u64".to_string(), "ThirdParty<u64, string>".to_string()
