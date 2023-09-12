@@ -281,6 +281,10 @@ mod tests {
         test_ok::<core::num::NonZeroI16>(2);
         test_ok::<core::num::NonZeroU32>(4);
 
+        test_ok::<core::ops::RangeFull>(0);
+        test_ok::<core::ops::RangeInclusive<u8>>(2);
+        test_ok::<core::ops::RangeToInclusive<u64>>(8);
+
         test_ok::<Option<()>>(1);
         test_ok::<Option<u8>>(2);
         test_ok::<core::result::Result<u8, usize>>(9);

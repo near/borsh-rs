@@ -168,17 +168,6 @@ impl BorshSerialize for bool {
     }
 }
 
-impl<T> BorshSerialize for core::ops::Range<T>
-where
-    T: BorshSerialize,
-{
-    #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        self.start.serialize(writer)?;
-        self.end.serialize(writer)
-    }
-}
-
 impl<T> BorshSerialize for Option<T>
 where
     T: BorshSerialize,
@@ -522,13 +511,16 @@ where
     }
 }
 
-impl BorshSerialize for () {
-    fn serialize<W: Write>(&self, _writer: &mut W) -> Result<()> {
-        Ok(())
-    }
-}
-
 macro_rules! impl_tuple {
+    (@unit $name:ty) => {
+        impl BorshSerialize for $name {
+            #[inline]
+            fn serialize<W: Write>(&self, _writer: &mut W) -> Result<()> {
+                Ok(())
+            }
+        }
+    };
+
     ($($idx:tt $name:ident)+) => {
       impl<$($name),+> BorshSerialize for ($($name,)+)
       where $($name: BorshSerialize,)+
@@ -541,6 +533,9 @@ macro_rules! impl_tuple {
       }
     };
 }
+
+impl_tuple!(@unit ());
+impl_tuple!(@unit core::ops::RangeFull);
 
 impl_tuple!(0 T0);
 impl_tuple!(0 T0 1 T1);
@@ -562,6 +557,25 @@ impl_tuple!(0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T
 impl_tuple!(0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 15 T15 16 T16 17 T17);
 impl_tuple!(0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 15 T15 16 T16 17 T17 18 T18);
 impl_tuple!(0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 15 T15 16 T16 17 T17 18 T18 19 T19);
+
+macro_rules! impl_range {
+    ($type:ident, $this:ident, $($field:expr),*) => {
+        impl<T: BorshSerialize> BorshSerialize for core::ops::$type<T> {
+            #[inline]
+            fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+                let $this = self;
+                $( $field.serialize(writer)?; )*
+                Ok(())
+            }
+        }
+    };
+}
+
+impl_range!(Range, this, &this.start, &this.end);
+impl_range!(RangeInclusive, this, this.start(), this.end());
+impl_range!(RangeFrom, this, &this.start);
+impl_range!(RangeTo, this, &this.end);
+impl_range!(RangeToInclusive, this, &this.end);
 
 #[cfg(feature = "rc")]
 impl<T: BorshSerialize + ?Sized> BorshSerialize for Rc<T> {

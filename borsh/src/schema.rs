@@ -256,22 +256,14 @@ where
     }
 }
 
-impl BorshSchema for () {
-    fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
-
-    fn declaration() -> Declaration {
-        "nil".to_string()
-    }
-}
-
 macro_rules! impl_for_renamed_primitives {
     ($($type: ty : $name: ident)+) => {
     $(
         impl BorshSchema for $type {
+            #[inline]
             fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
-            fn declaration() -> Declaration {
-                stringify!($name).to_string()
-            }
+            #[inline]
+            fn declaration() -> Declaration { stringify!($name).into() }
         }
     )+
     };
@@ -279,7 +271,7 @@ macro_rules! impl_for_renamed_primitives {
 
 macro_rules! impl_for_primitives {
     ($($type: ident)+) => {
-    impl_for_renamed_primitives!{$($type : $type)+}
+        impl_for_renamed_primitives!{$($type : $type)+}
     };
 }
 
@@ -301,6 +293,46 @@ impl_for_renamed_primitives!(core::num::NonZeroU64: nonzero_u64);
 impl_for_renamed_primitives!(core::num::NonZeroU128: nonzero_u128);
 // see 12 lines above
 impl_for_renamed_primitives!(core::num::NonZeroUsize: nonzero_u64);
+
+impl_for_renamed_primitives!((): nil);
+
+impl BorshSchema for core::ops::RangeFull {
+    #[inline]
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        let fields = Fields::Empty;
+        let def = Definition::Struct { fields };
+        add_definition(Self::declaration(), def, definitions);
+    }
+    #[inline]
+    fn declaration() -> Declaration {
+        "RangeFull".into()
+    }
+}
+
+macro_rules! impl_for_range {
+    ($type:ident, $($name:ident),*) => {
+        impl<T: BorshSchema> BorshSchema for core::ops::$type<T> {
+            fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+                let decl = T::declaration();
+                let fields = Fields::NamedFields(vec![$(
+                    (FieldName::from(stringify!($name)), decl.clone())
+                ),*]);
+                let def = Definition::Struct { fields };
+                add_definition(Self::declaration(), def, definitions);
+                T::add_definitions_recursively(definitions);
+            }
+            fn declaration() -> Declaration {
+                format!("{}<{}>", stringify!($type), T::declaration())
+            }
+        }
+    };
+}
+
+impl_for_range!(Range, start, end);
+impl_for_range!(RangeInclusive, start, end);
+impl_for_range!(RangeFrom, start);
+impl_for_range!(RangeTo, end);
+impl_for_range!(RangeToInclusive, end);
 
 impl<T, const N: usize> BorshSchema for [T; N]
 where
@@ -791,5 +823,51 @@ mod tests {
         assert_eq!("nil", phantom_declaration);
         let phantom_declaration = PhantomData::<Vec<u8>>::declaration();
         assert_eq!("nil", phantom_declaration);
+    }
+
+    #[test]
+    fn range() {
+        assert_eq!("RangeFull", <core::ops::RangeFull>::declaration());
+        let mut actual_defs = map!();
+        <core::ops::RangeFull>::add_definitions_recursively(&mut actual_defs);
+        assert_eq!(
+            map! {
+                "RangeFull" => Definition::Struct {
+                    fields: Fields::Empty
+                }
+            },
+            actual_defs
+        );
+
+        let actual_name = <core::ops::Range<u64>>::declaration();
+        let mut actual_defs = map!();
+        <core::ops::Range<u64>>::add_definitions_recursively(&mut actual_defs);
+        assert_eq!("Range<u64>", actual_name);
+        assert_eq!(
+            map! {
+                "Range<u64>" => Definition::Struct {
+                    fields: Fields::NamedFields(vec![
+                        ("start".into(), "u64".into()),
+                        ("end".into(), "u64".into()),
+                    ])
+                }
+            },
+            actual_defs
+        );
+
+        let actual_name = <core::ops::RangeTo<u64>>::declaration();
+        let mut actual_defs = map!();
+        <core::ops::RangeTo<u64>>::add_definitions_recursively(&mut actual_defs);
+        assert_eq!("RangeTo<u64>", actual_name);
+        assert_eq!(
+            map! {
+                "RangeTo<u64>" => Definition::Struct {
+                    fields: Fields::NamedFields(vec![
+                        ("end".into(), "u64".into()),
+                    ])
+                }
+            },
+            actual_defs
+        );
     }
 }
