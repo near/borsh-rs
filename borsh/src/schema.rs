@@ -265,7 +265,7 @@ impl BorshSchema for () {
 }
 
 macro_rules! impl_for_renamed_primitives {
-    ($($type: ident : $name: ident)+) => {
+    ($($type: ty : $name: ident)+) => {
     $(
         impl BorshSchema for $type {
             fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
@@ -288,6 +288,19 @@ impl_for_renamed_primitives!(String: string);
 impl_for_renamed_primitives!(str: string);
 impl_for_renamed_primitives!(isize: i64);
 impl_for_renamed_primitives!(usize: u64);
+
+impl_for_renamed_primitives!(core::num::NonZeroI8: nonzero_i8);
+impl_for_renamed_primitives!(core::num::NonZeroI16: nonzero_i16);
+impl_for_renamed_primitives!(core::num::NonZeroI32: nonzero_i32);
+impl_for_renamed_primitives!(core::num::NonZeroI64: nonzero_i64);
+impl_for_renamed_primitives!(core::num::NonZeroI128: nonzero_i128);
+impl_for_renamed_primitives!(core::num::NonZeroU8: nonzero_u8);
+impl_for_renamed_primitives!(core::num::NonZeroU16: nonzero_u16);
+impl_for_renamed_primitives!(core::num::NonZeroU32: nonzero_u32);
+impl_for_renamed_primitives!(core::num::NonZeroU64: nonzero_u64);
+impl_for_renamed_primitives!(core::num::NonZeroU128: nonzero_u128);
+// see 12 lines above
+impl_for_renamed_primitives!(core::num::NonZeroUsize: nonzero_u64);
 
 impl<T, const N: usize> BorshSchema for [T; N]
 where
@@ -625,13 +638,19 @@ mod tests {
 
     #[test]
     fn simple_tuple() {
-        let actual_name = <(u64, String)>::declaration();
+        let actual_name = <(u64, core::num::NonZeroU16, String)>::declaration();
         let mut actual_defs = map!();
-        <(u64, String)>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("Tuple<u64, string>", actual_name);
+        <(u64, core::num::NonZeroU16, String)>::add_definitions_recursively(&mut actual_defs);
+        assert_eq!("Tuple<u64, nonzero_u16, string>", actual_name);
         assert_eq!(
             map! {
-                "Tuple<u64, string>" => Definition::Tuple { elements: vec![ "u64".to_string(), "string".to_string()]}
+                "Tuple<u64, nonzero_u16, string>" => Definition::Tuple {
+                    elements: vec![
+                        "u64".to_string(),
+                        "nonzero_u16".to_string(),
+                        "string".to_string()
+                    ]
+                }
             },
             actual_defs
         );
