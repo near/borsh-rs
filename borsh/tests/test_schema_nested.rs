@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(hash_collections)]
 #![allow(dead_code)] // Local structures do not have their fields used.
-#![cfg(feature = "schema")]
+#![cfg(feature = "unstable__schema")]
 
 use borsh::schema::*;
 #[cfg(feature = "hashbrown")]

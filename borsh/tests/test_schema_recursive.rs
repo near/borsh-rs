@@ -1,4 +1,4 @@
-#![cfg(feature = "schema")]
+#![cfg(feature = "unstable__schema")]
 
 #[cfg(feature = "std")]
 use std::collections::BTreeMap;
