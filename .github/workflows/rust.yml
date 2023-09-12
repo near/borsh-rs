@@ -63,7 +63,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Run clippy
-      run: cargo clippy --features schema --benches -- -D clippy::all
+      run: cargo clippy --features unstable__schema --benches -- -D clippy::all
 
   cargo-fmt:
     runs-on: ubuntu-20.04
@@ -82,7 +82,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: run cargo doc
-      run: RUSTDOCFLAGS="-D warnings" cargo doc --features derive,schema
+      run: RUSTDOCFLAGS="-D warnings" cargo doc --features derive,unstable__schema
 
   release-plz:
     runs-on: ubuntu-latest

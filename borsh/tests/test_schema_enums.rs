@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(dead_code)] // Local structures do not have their fields used.
-#![cfg(feature = "schema")]
+#![cfg(feature = "unstable__schema")]
 
 use core::fmt::{Debug, Display};
 #[cfg(feature = "std")]

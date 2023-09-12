@@ -27,7 +27,7 @@
 * **derive** -
   Gates derive macros of [BorshSerialize](crate::ser::BorshSerialize) and
   [BorshDeserialize](crate::de::BorshDeserialize) traits.
-* **schema** -
+* **unstable__schema** -
   Gates [BorshSchema](crate::schema::BorshSchema) trait and its derive macro.
   Gates [schema](crate::schema) module.
   This feature requires **derive** to be enabled too.
@@ -67,8 +67,8 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-/// Derive macro available if borsh is built with `features = ["derive", "schema"]`.
-#[cfg(feature = "schema")]
+/// Derive macro available if borsh is built with `features = ["unstable__schema"]`.
+#[cfg(feature = "unstable__schema")]
 pub use borsh_derive::BorshSchema;
 
 /// Derive macro available if borsh is built with `features = ["derive"]`.
@@ -78,19 +78,18 @@ pub use borsh_derive::{BorshDeserialize, BorshSerialize};
 pub mod de;
 
 // See `hash_collections` alias definition in build.rs
-/// Module is available if borsh is built with `features = ["derive", "schema"]`.
-#[cfg(feature = "schema")]
+/// Module is available if borsh is built with `features = ["unstable__schema"]`.
+#[cfg(feature = "unstable__schema")]
 pub mod schema;
-/// Module is available if borsh is built with `features = ["derive", "schema"]`.
-#[cfg(feature = "schema")]
+#[cfg(feature = "unstable__schema")]
 pub(crate) mod schema_helpers;
 pub mod ser;
 
 pub use de::BorshDeserialize;
 pub use de::{from_reader, from_slice};
-#[cfg(feature = "schema")]
+#[cfg(feature = "unstable__schema")]
 pub use schema::BorshSchema;
-#[cfg(feature = "schema")]
+#[cfg(feature = "unstable__schema")]
 pub use schema_helpers::{
     max_serialized_size, schema_container_of, try_from_slice_with_schema, try_to_vec_with_schema,
     MaxSizeError,

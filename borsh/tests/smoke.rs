@@ -8,10 +8,10 @@ extern crate alloc;
 use alloc::vec;
 
 use borsh::{self, from_slice};
-#[cfg(feature = "schema")]
+#[cfg(feature = "unstable__schema")]
 use borsh::{schema_container_of, try_from_slice_with_schema};
 
-#[cfg(feature = "schema")]
+#[cfg(feature = "unstable__schema")]
 #[test]
 fn test_to_vec() {
     let value = 42u8;

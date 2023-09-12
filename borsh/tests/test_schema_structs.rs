@@ -1,5 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg(feature = "schema")]
+#![cfg(feature = "unstable__schema")]
 
 use borsh::schema::*;
 
