@@ -27,6 +27,10 @@ use core::borrow::Borrow;
 use core::cmp::Ord;
 use core::marker::PhantomData;
 
+mod container_ext;
+
+pub use container_ext::MaxSizeError;
+
 /// The type that we use to represent the declaration of the Borsh type.
 pub type Declaration = String;
 /// The type that we use for the name of the variant.
