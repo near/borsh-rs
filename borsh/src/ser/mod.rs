@@ -54,14 +54,6 @@ const FLOAT_NAN_ERR: &str = "For portability reasons we do not allow to serializ
 pub trait BorshSerialize {
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()>;
 
-    /// Serialize this instance into a vector of bytes.
-    #[deprecated = "use `borsh::to_vec(&object)` instead"]
-    fn try_to_vec(&self) -> Result<Vec<u8>> {
-        let mut result = Vec::with_capacity(helpers::DEFAULT_SERIALIZER_CAPACITY);
-        self.serialize(&mut result)?;
-        Ok(result)
-    }
-
     #[inline]
     #[doc(hidden)]
     fn u8_slice(slice: &[Self]) -> Option<&[u8]>
