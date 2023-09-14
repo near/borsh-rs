@@ -29,7 +29,7 @@ use core::marker::PhantomData;
 
 mod container_ext;
 
-pub use container_ext::MaxSizeError;
+pub use container_ext::{MaxSizeError, ValidateError};
 
 /// The type that we use to represent the declaration of the Borsh type.
 pub type Declaration = String;

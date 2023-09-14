@@ -60,10 +60,6 @@ pub enum MaxSizeError {
     /// Some of the declared types were lacking definition making it impossible
     /// to calculate the size.
     MissingDefinition,
-
-    /// sequences of zero sized types of dynamic length are forbidden by definition
-    /// see <https://github.com/near/borsh-rs/pull/202> and related ones
-    ZSTSequenceNotArray,
 }
 
 /// Implementation of [`BorshSchema::max_serialized_size`].
@@ -125,9 +121,6 @@ fn max_serialized_size_impl<'a>(
             }
         }
         Ok(Definition::Sequence { elements }) => {
-            if is_zero_size(elements, schema).map_err(|_err| MaxSizeError::Recursive)? {
-                return Err(MaxSizeError::ZSTSequenceNotArray);
-            }
             // Assume that sequence has MAX_LEN elements since that’s the most
             // it can have.
             let sz = max_serialized_size_impl(MAX_LEN, elements, schema, stack)?;
@@ -176,14 +169,17 @@ fn max_serialized_size_impl<'a>(
 }
 /// Checks whether given declaration schema serialises to an empty string.
 ///
-/// Certain types always serialise to an empty string (most notably `()`).  This
-/// function checks whether `declaration` is one of such types.
+/// Zero-sized types should follow the convention of either providing a [Definition] or
+/// specifying `"nil"` as their [Declaration] for this method to work correctly.
 ///
-/// This is used by [`BorshSchema::max_serialized_size()`] to handle weird types
+/// This is used by [`BorshSchemaContainer::max_serialized_size`] to handle weird types
 /// such as `[[[(); u32::MAX]; u32::MAX]; u32::MAX]` which serialises to an
 /// empty string even though its number of elements overflows `usize`.
 ///
 /// Error value means that the method has been called recursively.
+/// A recursive type either has no exit, so it cannot be instantiated
+/// or it uses `Definiotion::Enum` or `Definition::Sequence` to exit from recursion
+/// which make it non-zero size
 pub(super) fn is_zero_size(
     declaration: &Declaration,
     schema: &BorshSchemaContainer,
@@ -198,7 +194,6 @@ fn is_zero_size_impl<'a>(
     schema: &'a BorshSchemaContainer,
     stack: &mut Vec<Declaration>,
 ) -> Result<bool, ()> {
-    println!("is_zero_size_impl :{}", declaration);
     fn all<T>(
         iter: impl Iterator<Item = T>,
         f_key: impl Fn(&T) -> &Declaration,
@@ -302,7 +297,7 @@ mod tests {
     }
 
     #[test]
-    fn test_is_zero_size_no_recursive_check_err() {
+    fn test_is_zero_size_recursive_check_err() {
         use crate as borsh;
 
         #[derive(::borsh_derive::BorshSchema)]
@@ -340,7 +335,7 @@ mod tests {
         test_ok::<String>(4 + MAX_LEN);
 
         test_err::<Vec<Vec<u8>>>(MaxSizeError::Overflow);
-        test_err::<Vec<Vec<()>>>(MaxSizeError::ZSTSequenceNotArray);
+        test_ok::<Vec<Vec<()>>>(4 + MAX_LEN * 4);
         test_ok::<[[[(); MAX_LEN]; MAX_LEN]; MAX_LEN]>(0);
     }
 
