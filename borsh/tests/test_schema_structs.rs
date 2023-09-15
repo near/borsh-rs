@@ -64,7 +64,8 @@ pub fn simple_struct() {
         "A" => Definition::Struct{ fields: Fields::NamedFields(vec![
         ("_f1".to_string(), "u64".to_string()),
         ("_f2".to_string(), "string".to_string())
-        ])}
+        ])},
+        "u64" => Definition::Primitive(8)
         },
         defs
     );
@@ -88,7 +89,9 @@ pub fn boxed() {
         ("_f1".to_string(), "u64".to_string()),
         ("_f2".to_string(), "string".to_string()),
         ("_f3".to_string(), "Vec<u8>".to_string())
-        ])}
+        ])},
+        "u64" => Definition::Primitive(8),
+        "u8" => Definition::Primitive(1)
         },
         defs
     );
@@ -103,7 +106,8 @@ pub fn wrapper_struct() {
     <A<u64>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-        "A<u64>" => Definition::Struct {fields: Fields::UnnamedFields(vec!["u64".to_string()])}
+        "A<u64>" => Definition::Struct {fields: Fields::UnnamedFields(vec!["u64".to_string()])},
+        "u64" => Definition::Primitive(8)
         },
         defs
     );
@@ -120,7 +124,8 @@ pub fn tuple_struct() {
         map! {
         "A" => Definition::Struct {fields: Fields::UnnamedFields(vec![
          "u64".to_string(), "string".to_string()
-        ])}
+        ])},
+        "u64" => Definition::Primitive(8)
         },
         defs
     );
@@ -140,7 +145,8 @@ pub fn tuple_struct_params() {
         map! {
         "A<u64, string>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
             "u64".to_string(), "string".to_string()
-        ])}
+        ])},
+        "u64" => Definition::Primitive(8)
         },
         defs
     );
@@ -169,7 +175,8 @@ pub fn simple_generics() {
         ])
         },
         "HashMap<u64, string>" => Definition::Sequence {elements: "Tuple<u64, string>".to_string()},
-        "Tuple<u64, string>" => Definition::Tuple{elements: vec!["u64".to_string(), "string".to_string()]}
+        "Tuple<u64, string>" => Definition::Tuple{elements: vec!["u64".to_string(), "string".to_string()]},
+        "u64" => Definition::Primitive(8)
         },
         defs
     );
@@ -183,7 +190,8 @@ fn common_map() -> BTreeMap<String, Definition> {
                 ("field".to_string(), "i8".to_string()),
                 ("another".to_string(), "string".to_string())
             ])
-        }
+        },
+        "i8" => Definition::Primitive(1)
     }
 }
 
@@ -292,7 +300,9 @@ pub fn generic_associated_item3() {
             },
             "Tuple<i8, u32>" => Definition::Tuple {
                 elements: vec!["i8".to_string(), "u32".to_string()]
-            }
+            },
+            "i8" => Definition::Primitive(1),
+            "u32" => Definition::Primitive(4)
         },
         defs
     );
@@ -321,7 +331,8 @@ pub fn with_phantom_data() {
                     ("field".to_string(), "string".to_string()),
                     ("another".to_string(), "nil".to_string())
                 ])
-            }
+            },
+            "nil" => Definition::Primitive(0)
         },
         defs
     );

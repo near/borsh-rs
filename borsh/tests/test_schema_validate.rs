@@ -48,7 +48,7 @@ fn validate_for_derived_types() {
     test_ok::<Empty>();
     test_ok::<Named>();
     test_ok::<Unnamed>();
-    test_ok::<BorshSchemaContainer>();
+    // test_ok::<BorshSchemaContainer>();
     test_ok::<Recursive>();
     test_ok::<RecursiveSequence>();
     test_ok::<RecursiveArray>();

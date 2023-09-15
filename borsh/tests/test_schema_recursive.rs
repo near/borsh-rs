@@ -99,7 +99,9 @@ pub fn recursive_enum_schema() {
             "Vec<ERecD>" => Definition::Sequence {
                 elements: "ERecD".to_string(),
 
-            }
+            },
+            "i32" => Definition::Primitive(4),
+            "u8" => Definition::Primitive(1)
         },
         defs
     );

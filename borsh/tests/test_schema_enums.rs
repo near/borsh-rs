@@ -284,7 +284,10 @@ fn common_map() -> BTreeMap<String, Definition> {
         ])},
         "EnumParametrizedC<string>" => Definition::Struct{ fields: Fields::UnnamedFields(vec!["string".to_string(), "u16".to_string()])},
         "BTreeMap<u32, u16>" => Definition::Sequence { elements: "Tuple<u32, u16>".to_string()},
-        "Tuple<u32, u16>" => Definition::Tuple { elements: vec!["u32".to_string(), "u16".to_string()]}
+        "Tuple<u32, u16>" => Definition::Tuple { elements: vec!["u32".to_string(), "u16".to_string()]},
+        "u32" => Definition::Primitive(4),
+        "i8" => Definition::Primitive(1),
+        "u16" => Definition::Primitive(2)
     }
 }
 
