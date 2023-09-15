@@ -34,18 +34,18 @@ impl BorshSchemaContainer {
     /// assert_eq!(Ok(4 + 4294967295), schema.max_serialized_size());
     ///
     /// let schema = BorshSchemaContainer::for_type::<Vec<String>>();
-    /// assert_eq!(Err(borsh::schema::MaxSizeError::Overflow),
+    /// assert_eq!(Err(borsh::schema::SchemaMaxSerializedSizeError::Overflow),
     ///            schema.max_serialized_size());
     /// ```
-    pub fn max_serialized_size(&self) -> core::result::Result<usize, MaxSizeError> {
+    pub fn max_serialized_size(&self) -> core::result::Result<usize, SchemaMaxSerializedSizeError> {
         let mut stack = Vec::new();
         max_serialized_size_impl(1, self.declaration(), self, &mut stack)
     }
 }
 
-/// Possible error when calculating theoretical maximum size of encoded type.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum MaxSizeError {
+/// Possible error when calculating theoretical maximum size of encoded type `T`.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum SchemaMaxSerializedSizeError {
     /// The theoretical maximum size of the encoded value overflows `usize`.
     ///
     /// This may happen for nested dynamically-sized types such as
@@ -59,7 +59,7 @@ pub enum MaxSizeError {
 
     /// Some of the declared types were lacking definition making it impossible
     /// to calculate the size.
-    MissingDefinition,
+    MissingDefinition(Declaration),
 }
 
 /// Implementation of [`BorshSchema::max_serialized_size`].
@@ -68,19 +68,21 @@ fn max_serialized_size_impl<'a>(
     declaration: &'a str,
     schema: &'a BorshSchemaContainer,
     stack: &mut Vec<&'a str>,
-) -> core::result::Result<usize, MaxSizeError> {
+) -> core::result::Result<usize, SchemaMaxSerializedSizeError> {
     use core::convert::TryFrom;
 
     /// Maximum number of elements in a vector or length of a string which can
     /// be serialised.
     const MAX_LEN: usize = u32::MAX as usize;
 
-    fn add(x: usize, y: usize) -> core::result::Result<usize, MaxSizeError> {
-        x.checked_add(y).ok_or(MaxSizeError::Overflow)
+    fn add(x: usize, y: usize) -> core::result::Result<usize, SchemaMaxSerializedSizeError> {
+        x.checked_add(y)
+            .ok_or(SchemaMaxSerializedSizeError::Overflow)
     }
 
-    fn mul(x: usize, y: usize) -> core::result::Result<usize, MaxSizeError> {
-        x.checked_mul(y).ok_or(MaxSizeError::Overflow)
+    fn mul(x: usize, y: usize) -> core::result::Result<usize, SchemaMaxSerializedSizeError> {
+        x.checked_mul(y)
+            .ok_or(SchemaMaxSerializedSizeError::Overflow)
     }
 
     /// Calculates max serialised size of a tuple with given members.
@@ -89,7 +91,7 @@ fn max_serialized_size_impl<'a>(
         elements: impl core::iter::IntoIterator<Item = &'a Declaration>,
         schema: &'a BorshSchemaContainer,
         stack: &mut Vec<&'a str>,
-    ) -> ::core::result::Result<usize, MaxSizeError> {
+    ) -> ::core::result::Result<usize, SchemaMaxSerializedSizeError> {
         let mut sum: usize = 0;
         for el in elements {
             sum = add(sum, max_serialized_size_impl(1, el, schema, stack)?)?;
@@ -98,7 +100,7 @@ fn max_serialized_size_impl<'a>(
     }
 
     if stack.iter().any(|dec| *dec == declaration) {
-        return Err(MaxSizeError::Recursive);
+        return Err(SchemaMaxSerializedSizeError::Recursive);
     }
     stack.push(declaration);
 
@@ -113,11 +115,11 @@ fn max_serialized_size_impl<'a>(
                 Some(0) => Ok(0),
                 Some(count) => max_serialized_size_impl(count, elements, schema, stack),
                 None if is_zero_size(elements, schema)
-                    .map_err(|_err| MaxSizeError::Recursive)? =>
+                    .map_err(|_err| SchemaMaxSerializedSizeError::Recursive)? =>
                 {
                     Ok(0)
                 }
-                None => Err(MaxSizeError::Overflow),
+                None => Err(SchemaMaxSerializedSizeError::Overflow),
             }
         }
         Ok(Definition::Sequence { elements }) => {
@@ -137,7 +139,7 @@ fn max_serialized_size_impl<'a>(
                 max = max.max(sz);
             }
             max.checked_add(usize::from(*tag_width))
-                .ok_or(MaxSizeError::Overflow)
+                .ok_or(SchemaMaxSerializedSizeError::Overflow)
         }
 
         // Tuples and structs sum sizes of all the members.
@@ -161,7 +163,9 @@ fn max_serialized_size_impl<'a>(
         // string is just Vec<u8>
         Err("string") => mul(count, add(MAX_LEN, 4)?),
 
-        Err(_) => Err(MaxSizeError::MissingDefinition),
+        Err(declaration) => Err(SchemaMaxSerializedSizeError::MissingDefinition(
+            declaration.to_string(),
+        )),
     }?;
 
     stack.pop();
@@ -278,7 +282,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn test_err<T: BorshSchema>(err: MaxSizeError) {
+    fn test_err<T: BorshSchema>(err: SchemaMaxSerializedSizeError) {
         let schema = BorshSchemaContainer::for_type::<T>();
         assert_eq!(Err(err), schema.max_serialized_size());
     }
@@ -334,7 +338,7 @@ mod tests {
         test_ok::<Vec<u8>>(4 + MAX_LEN);
         test_ok::<String>(4 + MAX_LEN);
 
-        test_err::<Vec<Vec<u8>>>(MaxSizeError::Overflow);
+        test_err::<Vec<Vec<u8>>>(SchemaMaxSerializedSizeError::Overflow);
         test_ok::<Vec<Vec<()>>>(4 + MAX_LEN * 4);
         test_ok::<[[[(); MAX_LEN]; MAX_LEN]; MAX_LEN]>(0);
     }
@@ -371,8 +375,8 @@ mod tests {
         test_ok::<Named>(23);
         test_ok::<Unnamed>(23);
         test_ok::<Multiple>(3 * 8 + 2 * (4 + MAX_LEN * 8));
-        test_err::<BorshSchemaContainer>(MaxSizeError::Overflow);
-        test_err::<Recursive>(MaxSizeError::Recursive);
+        test_err::<BorshSchemaContainer>(SchemaMaxSerializedSizeError::Overflow);
+        test_err::<Recursive>(SchemaMaxSerializedSizeError::Recursive);
     }
 
     #[test]

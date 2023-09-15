@@ -9,14 +9,24 @@ impl BorshSchemaContainer {
     /// Zero-sized types should follow the convention of either providing a [Definition] or
     /// specifying `"nil"` as their [Declaration] for this method to work correctly.
     ///
-    pub fn validate(&self) -> core::result::Result<(), ValidateError> {
+    /// # Example
+    ///
+    /// ```
+    /// use borsh::schema::BorshSchemaContainer;
+    ///
+    /// let schema = BorshSchemaContainer::for_type::<usize>();
+    /// assert_eq!(Ok(()), schema.validate());
+    ///
+    pub fn validate(&self) -> core::result::Result<(), SchemaContainerValidateError> {
         let mut stack = Vec::new();
         validate_impl(self.declaration(), self, &mut stack)
     }
 }
 
+/// Possible error when validating a [`BorshSchemaContainer`], generated for some type `T`,
+/// for violation of any well-known rules with respect to `borsh` serialization.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum ValidateError {
+pub enum SchemaContainerValidateError {
     /// sequences of zero-sized types of dynamic length are forbidden by definition
     /// see <https://github.com/near/borsh-rs/pull/202> and related ones
     ZSTSequence,
@@ -26,7 +36,7 @@ fn validate_impl<'a>(
     declaration: &'a Declaration,
     schema: &'a BorshSchemaContainer,
     stack: &mut Vec<&'a Declaration>,
-) -> core::result::Result<(), ValidateError> {
+) -> core::result::Result<(), SchemaContainerValidateError> {
     let definition = match schema.get_definition(declaration) {
         Some(definition) => definition,
         // it's not an error for a type to not contain any definition
@@ -46,7 +56,7 @@ fn validate_impl<'a>(
             // or it uses `Definiotion::Enum` or `Definition::Sequence` to exit from recursion
             // which make it non-zero size
             if is_zero_size(elements, schema).unwrap_or(false) {
-                return Err(ValidateError::ZSTSequence);
+                return Err(SchemaContainerValidateError::ZSTSequence);
             }
             validate_impl(elements, schema, stack)?;
         }

@@ -16,7 +16,7 @@ fn test_ok<T: BorshSchema>() {
 }
 
 #[track_caller]
-fn test_err<T: BorshSchema>(err: ValidateError) {
+fn test_err<T: BorshSchema>(err: SchemaContainerValidateError) {
     let schema = BorshSchemaContainer::for_type::<T>();
     assert_eq!(Err(err), schema.validate());
 }
@@ -56,6 +56,6 @@ fn validate_for_derived_types() {
 
 #[test]
 fn validate_for_zst_sequences() {
-    test_err::<Vec<Vec<()>>>(ValidateError::ZSTSequence);
-    test_err::<Vec<core::ops::RangeFull>>(ValidateError::ZSTSequence);
+    test_err::<Vec<Vec<()>>>(SchemaContainerValidateError::ZSTSequence);
+    test_err::<Vec<core::ops::RangeFull>>(SchemaContainerValidateError::ZSTSequence);
 }

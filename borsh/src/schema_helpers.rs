@@ -1,7 +1,7 @@
 use crate::__private::maybestd::vec::Vec;
 use crate::from_slice;
 use crate::io::{Error, ErrorKind, Result};
-use crate::schema::{BorshSchemaContainer, MaxSizeError};
+use crate::schema::{BorshSchemaContainer, SchemaMaxSerializedSizeError};
 use crate::{BorshDeserialize, BorshSchema, BorshSerialize};
 
 /// Deserialize this instance from a slice of bytes, but assume that at the beginning we have
@@ -37,7 +37,15 @@ pub fn schema_container_of<T: BorshSchema>() -> BorshSchemaContainer {
 /// Returns the largest possible size of a serialised object based solely on its type `T`.
 ///
 /// this is a shortcut for using [BorshSchemaContainer::max_serialized_size]
-pub fn max_size_of<T: BorshSchema>() -> core::result::Result<usize, MaxSizeError> {
+/// # Example
+///
+/// ```
+/// use borsh::schema::BorshSchemaContainer;
+///
+/// assert_eq!(Ok(8), borsh::max_serialized_size::<usize>());
+/// ```
+pub fn max_serialized_size<T: BorshSchema>(
+) -> core::result::Result<usize, SchemaMaxSerializedSizeError> {
     let schema = BorshSchemaContainer::for_type::<T>();
     schema.max_serialized_size()
 }
