@@ -16,7 +16,7 @@ impl BorshSchemaContainer {
     ///
     /// let schema = BorshSchemaContainer::for_type::<usize>();
     /// assert_eq!(Ok(()), schema.validate());
-    ///
+    /// ```
     pub fn validate(&self) -> core::result::Result<(), SchemaContainerValidateError> {
         let mut stack = Vec::new();
         validate_impl(self.declaration(), self, &mut stack)
