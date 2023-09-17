@@ -30,6 +30,8 @@ pub enum SchemaContainerValidateError {
     /// sequences of zero-sized types of dynamic length are forbidden by definition
     /// see <https://github.com/near/borsh-rs/pull/202> and related ones
     ZSTSequence,
+    /// Declared tag width is too large.  Tags may be at most eight bytes.
+    TagTooWide,
 }
 
 fn validate_impl<'a>(
@@ -60,7 +62,13 @@ fn validate_impl<'a>(
             }
             validate_impl(elements, schema, stack)?;
         }
-        Definition::Enum { variants, .. } => {
+        Definition::Enum {
+            tag_width,
+            variants,
+        } => {
+            if *tag_width > 8 {
+                return Err(SchemaContainerValidateError::TagTooWide);
+            }
             for (_, variant) in variants {
                 validate_impl(variant, schema, stack)?;
             }
