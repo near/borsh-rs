@@ -112,7 +112,9 @@ pub fn duplicated_instantiations() {
             },
         "Tomatoes" => Definition::Struct {fields: Fields::Empty},
         "Tuple<u64, string>" => Definition::Tuple {elements: vec!["u64".to_string(), "string".to_string()]},
-        "Wrapper<string>" => Definition::Struct{ fields: Fields::NamedFields(vec![("foo".to_string(), "Option<string>".to_string()), ("bar".to_string(), "A<string, string>".to_string())])}
+        "Wrapper<string>" => Definition::Struct{ fields: Fields::NamedFields(vec![("foo".to_string(), "Option<string>".to_string()), ("bar".to_string(), "A<string, string>".to_string())])},
+        "u64" => Definition::Primitive(8),
+        "nil" => Definition::Primitive(0)
         },
         defs
     );

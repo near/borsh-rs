@@ -2,12 +2,28 @@
 #![cfg(hash_collections)]
 #![cfg(feature = "unstable__schema")]
 
+#[cfg(feature = "std")]
+use std::collections::BTreeMap;
+
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::string::ToString;
+use alloc::{collections::BTreeMap, string::ToString};
 
 use borsh::{schema::*, schema_container_of};
+
+macro_rules! map(
+    () => { BTreeMap::new() };
+    { $($key:expr => $value:expr),+ } => {
+        {
+            let mut m = BTreeMap::new();
+            $(
+                m.insert($key.to_string(), $value);
+            )+
+            m
+        }
+     };
+);
 
 #[test]
 fn isize_schema() {
@@ -15,7 +31,13 @@ fn isize_schema() {
 
     assert_eq!(
         schema,
-        BorshSchemaContainer::new("i64".to_string(), Default::default())
+        BorshSchemaContainer::new(
+            "i64".to_string(),
+            map! {
+                "i64" => Definition::Primitive(8)
+
+            }
+        )
     )
 }
 
@@ -25,6 +47,12 @@ fn usize_schema() {
 
     assert_eq!(
         schema,
-        BorshSchemaContainer::new("u64".to_string(), Default::default())
+        BorshSchemaContainer::new(
+            "u64".to_string(),
+            map! {
+                "u64" => Definition::Primitive(8)
+
+            }
+        )
     )
 }

@@ -31,7 +31,8 @@ fn test_unary_tuple_schema() {
     <(bool,)>::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-        "Tuple<bool>" => Definition::Tuple { elements: vec!["bool".to_string()] }
+        "Tuple<bool>" => Definition::Tuple { elements: vec!["bool".to_string()] },
+        "bool" => Definition::Primitive(1)
         },
         defs
     );

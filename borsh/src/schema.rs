@@ -51,6 +51,8 @@ pub type FieldName = String;
 /// [varint]: https://en.wikipedia.org/wiki/Variable-length_quantity#Variants
 #[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
 pub enum Definition {
+    /// A fixed-size type, which is considered undivisible
+    Primitive(u8),
     /// A fixed-size array with the length known at the compile time and the same-type elements.
     Array { length: u32, elements: Declaration },
     /// A sequence of elements of length known at the run time and the same-type elements.
@@ -261,11 +263,14 @@ where
 }
 
 macro_rules! impl_for_renamed_primitives {
-    ($($type: ty : $name: ident)+) => {
+    ($($ty: ty : $name: ident => $size: expr);+) => {
     $(
-        impl BorshSchema for $type {
+        impl BorshSchema for $ty {
             #[inline]
-            fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
+            fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+                let definition = Definition::Primitive($size);
+                add_definition(Self::declaration(), definition, definitions);
+            }
             #[inline]
             fn declaration() -> Declaration { stringify!($name).into() }
         }
@@ -274,31 +279,47 @@ macro_rules! impl_for_renamed_primitives {
 }
 
 macro_rules! impl_for_primitives {
-    ($($type: ident)+) => {
-        impl_for_renamed_primitives!{$($type : $type)+}
+    ($($ty: ident => $size: expr);+) => {
+        impl_for_renamed_primitives!{$($ty : $ty => $size);+}
     };
 }
 
-impl_for_primitives!(bool f32 f64 i8 i16 i32 i64 i128 u8 u16 u32 u64 u128);
-impl_for_renamed_primitives!(String: string);
-impl_for_renamed_primitives!(str: string);
-impl_for_renamed_primitives!(isize: i64);
-impl_for_renamed_primitives!(usize: u64);
+impl_for_primitives!(bool => 1; f32 => 4; f64 => 8; i8 => 1; i16 => 2; i32 => 4; i64 => 8; i128 => 16);
+impl_for_primitives!(u8 => 1; u16 => 2; u32 => 4; u64 => 8; u128 => 16);
+impl_for_renamed_primitives!(isize: i64 => 8);
+impl_for_renamed_primitives!(usize: u64 => 8);
 
-impl_for_renamed_primitives!(core::num::NonZeroI8: nonzero_i8);
-impl_for_renamed_primitives!(core::num::NonZeroI16: nonzero_i16);
-impl_for_renamed_primitives!(core::num::NonZeroI32: nonzero_i32);
-impl_for_renamed_primitives!(core::num::NonZeroI64: nonzero_i64);
-impl_for_renamed_primitives!(core::num::NonZeroI128: nonzero_i128);
-impl_for_renamed_primitives!(core::num::NonZeroU8: nonzero_u8);
-impl_for_renamed_primitives!(core::num::NonZeroU16: nonzero_u16);
-impl_for_renamed_primitives!(core::num::NonZeroU32: nonzero_u32);
-impl_for_renamed_primitives!(core::num::NonZeroU64: nonzero_u64);
-impl_for_renamed_primitives!(core::num::NonZeroU128: nonzero_u128);
+impl_for_renamed_primitives!(core::num::NonZeroI8: nonzero_i8 => 1);
+impl_for_renamed_primitives!(core::num::NonZeroI16: nonzero_i16 => 2);
+impl_for_renamed_primitives!(core::num::NonZeroI32: nonzero_i32 => 4);
+impl_for_renamed_primitives!(core::num::NonZeroI64: nonzero_i64 => 8);
+impl_for_renamed_primitives!(core::num::NonZeroI128: nonzero_i128 => 16);
+impl_for_renamed_primitives!(core::num::NonZeroU8: nonzero_u8 => 1);
+impl_for_renamed_primitives!(core::num::NonZeroU16: nonzero_u16 => 2);
+impl_for_renamed_primitives!(core::num::NonZeroU32: nonzero_u32 => 4);
+impl_for_renamed_primitives!(core::num::NonZeroU64: nonzero_u64 => 8);
+impl_for_renamed_primitives!(core::num::NonZeroU128: nonzero_u128 => 16);
 // see 12 lines above
-impl_for_renamed_primitives!(core::num::NonZeroUsize: nonzero_u64);
+impl_for_renamed_primitives!(core::num::NonZeroUsize: nonzero_u64 => 8);
 
-impl_for_renamed_primitives!((): nil);
+impl_for_renamed_primitives!((): nil => 0);
+
+impl BorshSchema for String {
+    #[inline]
+    fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
+    #[inline]
+    fn declaration() -> Declaration {
+        "string".into()
+    }
+}
+impl BorshSchema for str {
+    #[inline]
+    fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
+    #[inline]
+    fn declaration() -> Declaration {
+        "string".into()
+    }
+}
 
 impl BorshSchema for core::ops::RangeFull {
     #[inline]
@@ -369,6 +390,7 @@ where
         };
         add_definition(Self::declaration(), definition, definitions);
         T::add_definitions_recursively(definitions);
+        <()>::add_definitions_recursively(definitions);
     }
 
     fn declaration() -> Declaration {
@@ -391,6 +413,7 @@ where
         };
         add_definition(Self::declaration(), definition, definitions);
         T::add_definitions_recursively(definitions);
+        E::add_definitions_recursively(definitions);
     }
 
     fn declaration() -> Declaration {
@@ -520,7 +543,9 @@ where
 // Because it's a zero-sized marker, its type parameter doesn't need to be
 // included in the schema and so it's not bound to `BorshSchema`
 impl<T> BorshSchema for PhantomData<T> {
-    fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        <()>::add_definitions_recursively(definitions);
+    }
 
     fn declaration() -> Declaration {
         <()>::declaration()
@@ -610,7 +635,9 @@ mod tests {
                         ("None".to_string(), "nil".to_string()),
                         ("Some".to_string(), "u64".to_string()),
                     ]
-                }
+                },
+                "u64" => Definition::Primitive(8),
+                "nil" => Definition::Primitive(0)
             },
             actual_defs
         );
@@ -637,7 +664,9 @@ mod tests {
                         ("None".to_string(), "nil".to_string()),
                         ("Some".to_string(), "Option<u64>".to_string()),
                     ]
-                }
+                },
+                "u64" => Definition::Primitive(8),
+                "nil" => Definition::Primitive(0)
             },
             actual_defs
         );
@@ -651,7 +680,8 @@ mod tests {
         assert_eq!("Vec<u64>", actual_name);
         assert_eq!(
             map! {
-            "Vec<u64>" => Definition::Sequence { elements: "u64".to_string() }
+            "Vec<u64>" => Definition::Sequence { elements: "u64".to_string() },
+            "u64" => Definition::Primitive(8)
             },
             actual_defs
         );
@@ -666,7 +696,8 @@ mod tests {
         assert_eq!(
             map! {
             "Vec<u64>" => Definition::Sequence { elements: "u64".to_string() },
-            "Vec<Vec<u64>>" => Definition::Sequence { elements: "Vec<u64>".to_string() }
+            "Vec<Vec<u64>>" => Definition::Sequence { elements: "Vec<u64>".to_string() },
+            "u64" => Definition::Primitive(8)
             },
             actual_defs
         );
@@ -686,7 +717,9 @@ mod tests {
                         "nonzero_u16".to_string(),
                         "string".to_string()
                     ]
-                }
+                },
+                "u64" => Definition::Primitive(8),
+                "nonzero_u16" => Definition::Primitive(2)
             },
             actual_defs
         );
@@ -705,7 +738,10 @@ mod tests {
                     "Tuple<u8, bool>".to_string(),
                     "string".to_string(),
                 ]},
-                "Tuple<u8, bool>" => Definition::Tuple { elements: vec![ "u8".to_string(), "bool".to_string()]}
+                "Tuple<u8, bool>" => Definition::Tuple { elements: vec![ "u8".to_string(), "bool".to_string()]},
+                "u64" => Definition::Primitive(8),
+                "u8" => Definition::Primitive(1),
+                "bool" => Definition::Primitive(1)
             },
             actual_defs
         );
@@ -721,7 +757,8 @@ mod tests {
         assert_eq!(
             map! {
                 "HashMap<u64, string>" => Definition::Sequence { elements: "Tuple<u64, string>".to_string()} ,
-                "Tuple<u64, string>" => Definition::Tuple { elements: vec![ "u64".to_string(), "string".to_string()]}
+                "Tuple<u64, string>" => Definition::Tuple { elements: vec![ "u64".to_string(), "string".to_string()]},
+                "u64" => Definition::Primitive(8)
             },
             actual_defs
         );
@@ -751,7 +788,8 @@ mod tests {
         assert_eq!(
             map! {
                 "BTreeMap<u64, string>" => Definition::Sequence { elements: "Tuple<u64, string>".to_string()} ,
-                "Tuple<u64, string>" => Definition::Tuple { elements: vec![ "u64".to_string(), "string".to_string()]}
+                "Tuple<u64, string>" => Definition::Tuple { elements: vec![ "u64".to_string(), "string".to_string()]},
+                "u64" => Definition::Primitive(8)
             },
             actual_defs
         );
@@ -778,7 +816,9 @@ mod tests {
         <[u64; 32]>::add_definitions_recursively(&mut actual_defs);
         assert_eq!("Array<u64, 32>", actual_name);
         assert_eq!(
-            map! {"Array<u64, 32>" => Definition::Array { length: 32, elements: "u64".to_string()}},
+            map! {"Array<u64, 32>" => Definition::Array { length: 32, elements: "u64".to_string()},
+                "u64" => Definition::Primitive(8)
+            },
             actual_defs
         );
     }
@@ -796,7 +836,8 @@ mod tests {
             "Array<Array<u64, 9>, 10>" =>
                 Definition::Array { length: 10, elements: "Array<u64, 9>".to_string() },
             "Array<Array<Array<u64, 9>, 10>, 32>" =>
-                Definition::Array { length: 32, elements: "Array<Array<u64, 9>, 10>".to_string() }
+                Definition::Array { length: 32, elements: "Array<Array<u64, 9>, 10>".to_string() },
+            "u64" => Definition::Primitive(8)
             },
             actual_defs
         );
@@ -854,7 +895,8 @@ mod tests {
                         ("start".into(), "u64".into()),
                         ("end".into(), "u64".into()),
                     ])
-                }
+                },
+                "u64" => Definition::Primitive(8)
             },
             actual_defs
         );
@@ -869,7 +911,8 @@ mod tests {
                     fields: Fields::NamedFields(vec![
                         ("end".into(), "u64".into()),
                     ])
-                }
+                },
+                "u64" => Definition::Primitive(8)
             },
             actual_defs
         );

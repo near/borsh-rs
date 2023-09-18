@@ -1,8 +1,8 @@
 use super::{BorshSchemaContainer, Declaration, Definition, Fields};
 
-use max_size::is_zero_size;
-pub use max_size::SchemaMaxSerializedSizeError;
-pub use validate::SchemaContainerValidateError;
+pub use max_size::Error as SchemaMaxSerializedSizeError;
+use max_size::{is_zero_size, ZeroSizeError};
+pub use validate::Error as SchemaContainerValidateError;
 
 mod max_size;
 mod validate;
