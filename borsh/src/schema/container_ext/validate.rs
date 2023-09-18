@@ -1,6 +1,6 @@
 use super::is_zero_size;
 use super::{BorshSchemaContainer, Declaration, Definition, Fields};
-use crate::__private::maybestd::vec::Vec;
+use crate::__private::maybestd::{string::ToString, vec::Vec};
 
 impl BorshSchemaContainer {
     /// Validates container for violation of any well-known rules with
@@ -25,11 +25,13 @@ impl BorshSchemaContainer {
 
 /// Possible error when validating a [`BorshSchemaContainer`], generated for some type `T`,
 /// for violation of any well-known rules with respect to `borsh` serialization.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum SchemaContainerValidateError {
     /// sequences of zero-sized types of dynamic length are forbidden by definition
     /// see <https://github.com/near/borsh-rs/pull/202> and related ones
-    ZSTSequence,
+    ZSTSequence(Declaration),
+    /// Declared tag width is too large.  Tags may be at most eight bytes.
+    TagTooWide(Declaration),
 }
 
 fn validate_impl<'a>(
@@ -56,11 +58,21 @@ fn validate_impl<'a>(
             // or it uses `Definiotion::Enum` or `Definition::Sequence` to exit from recursion
             // which make it non-zero size
             if is_zero_size(elements, schema).unwrap_or(false) {
-                return Err(SchemaContainerValidateError::ZSTSequence);
+                return Err(SchemaContainerValidateError::ZSTSequence(
+                    declaration.to_string(),
+                ));
             }
             validate_impl(elements, schema, stack)?;
         }
-        Definition::Enum { variants, .. } => {
+        Definition::Enum {
+            tag_width,
+            variants,
+        } => {
+            if *tag_width > 8 {
+                return Err(SchemaContainerValidateError::TagTooWide(
+                    declaration.to_string(),
+                ));
+            }
             for (_, variant) in variants {
                 validate_impl(variant, schema, stack)?;
             }
