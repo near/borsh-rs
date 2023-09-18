@@ -115,15 +115,25 @@ fn max_serialized_size_impl<'a>(
         Ok(Definition::Array { length, elements }) => {
             // Aggregate `count` and `length` to a single number.  If this
             // overflows, check if array’s element is zero-sized.
-            let count = usize::try_from(*length)
+            let count_lengths = usize::try_from(*length)
                 .ok()
-                .and_then(|len| len.checked_mul(count.get()))
-                .map(NonZeroUsize::new);
-            match count {
-                Some(None) => Ok(0),
-                Some(Some(count)) => max_serialized_size_impl(count, elements, schema, stack),
-                None if is_zero_size_impl(elements.as_str(), schema, stack)? => Ok(0),
-                None => Err(SchemaMaxSerializedSizeError::Overflow),
+                .and_then(|len| len.checked_mul(count.get()));
+            let count_lengths = match count_lengths {
+                Some(count_lengths) => count_lengths,
+                None if is_zero_size_impl(elements.as_str(), schema, stack)? => {
+                    return Ok(0);
+                }
+                None => {
+                    return Err(SchemaMaxSerializedSizeError::Overflow);
+                }
+            };
+            let count_lengths = NonZeroUsize::new(count_lengths);
+
+            match count_lengths {
+                None => Ok(0),
+                Some(count_lengths) => {
+                    max_serialized_size_impl(count_lengths, elements, schema, stack)
+                }
             }
         }
         Ok(Definition::Sequence { elements }) => {
