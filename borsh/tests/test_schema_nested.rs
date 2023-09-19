@@ -94,7 +94,10 @@ pub fn duplicated_instantiations() {
         "ASausage<string>" => Definition::Struct{ fields: Fields::NamedFields(vec![("wrapper".to_string(), "string".to_string()), ("filling".to_string(), "Filling".to_string())])},
         "Cucumber" => Definition::Struct {fields: Fields::Empty},
         "Filling" => Definition::Struct {fields: Fields::Empty},
-        "HashMap<u64, string>" => Definition::Sequence { elements: "Tuple<u64, string>".to_string()},
+            "HashMap<u64, string>" => Definition::Sequence {
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: "Tuple<u64, string>".to_string(),
+            },
         "Oil<u64, string>" => Definition::Struct { fields: Fields::NamedFields(vec![("seeds".to_string(), "HashMap<u64, string>".to_string()), ("liquid".to_string(), "Option<u64>".to_string())])},
             "Option<string>" => Definition::Enum {
                 tag_width: 1,

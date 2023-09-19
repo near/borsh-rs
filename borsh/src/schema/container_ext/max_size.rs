@@ -139,10 +139,17 @@ fn max_serialized_size_impl<'a>(
                 }
             }
         }
-        Ok(Definition::Sequence { elements }) => {
-            // Assume that sequence has MAX_LEN elements since that’s the most
-            // it can have.
-            let sz = max_serialized_size_impl(MAX_LEN, elements, schema, stack)?;
+        Ok(Definition::Sequence {
+            length_range,
+            elements,
+        }) => {
+            let max_len = *length_range.end();
+            let sz = match usize::try_from(max_len).map(NonZeroUsize::new) {
+                Ok(Some(max_len)) => max_serialized_size_impl(max_len, elements, schema, stack)?,
+                Ok(None) => 0,
+                Err(_) if is_zero_size_impl(elements, schema, stack)? => 0,
+                Err(_) => return Err(Error::Overflow),
+            };
             mul(count, add(sz, 4)?)
         }
 
@@ -442,19 +449,19 @@ mod tests {
     #[test]
     fn max_serialized_size_custom_enum() {
         #[allow(dead_code)]
-        enum Maybe<const N: usize, T> {
+        enum Maybe<const N: u8, T> {
             Just(T),
             Nothing,
         }
 
-        impl<const N: usize, T: BorshSchema> BorshSchema for Maybe<N, T> {
+        impl<const N: u8, T: BorshSchema> BorshSchema for Maybe<N, T> {
             fn declaration() -> Declaration {
-                let res = format!(r#"Maybe<{}>"#, T::declaration());
+                let res = format!(r#"Maybe<{}, {}>"#, N, T::declaration());
                 res
             }
             fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
                 let definition = Definition::Enum {
-                    tag_width: N as u8,
+                    tag_width: N,
                     variants: vec![
                         ("Just".into(), T::declaration()),
                         ("Nothing".into(), "nil".into()),
@@ -477,5 +484,29 @@ mod tests {
         test_ok::<Maybe<4, ()>>(4);
         test_ok::<Maybe<4, u16>>(6);
         test_ok::<Maybe<4, u64>>(12);
+    }
+
+    #[test]
+    fn max_serialized_size_custom_sequence() {
+        #[allow(dead_code)]
+        struct BoundVec<const N: u32>;
+
+        impl<const N: u32> BorshSchema for BoundVec<N> {
+            fn declaration() -> Declaration {
+                format!("BoundVec<{}>", N)
+            }
+            fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+                let definition = Definition::Sequence {
+                    length_range: 0..=N,
+                    elements: "u8".to_string(),
+                };
+                crate::schema::add_definition(Self::declaration(), definition, definitions);
+                u8::add_definitions_recursively(definitions);
+            }
+        }
+
+        test_ok::<BoundVec<0>>(4);
+        test_ok::<BoundVec<{ u32::MAX }>>(4 + u32::MAX as usize);
+        test_ok::<BoundVec<20>>(24);
     }
 }

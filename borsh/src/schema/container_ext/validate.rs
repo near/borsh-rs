@@ -32,6 +32,8 @@ pub enum Error {
     /// Some of the declared types were lacking definition, which is considered
     /// a container's validation error
     MissingDefinition(Declaration),
+    /// A Sequence defined with an empty length range.
+    EmptyLengthRange(Declaration),
 }
 
 fn validate_impl<'a>(
@@ -52,19 +54,23 @@ fn validate_impl<'a>(
     match definition {
         Definition::Primitive(_size) => {}
         Definition::Array { elements, .. } => validate_impl(elements, schema, stack)?,
-        Definition::Sequence { elements } => {
-            let is_zst = match is_zero_size(elements, schema) {
-                Ok(is_zst) => is_zst,
+        Definition::Sequence {
+            length_range,
+            elements,
+        } => {
+            if length_range.is_empty() {
+                return Err(Error::EmptyLengthRange(declaration.clone()));
+            }
+            match is_zero_size(elements, schema) {
+                Ok(true) => return Err(Error::ZSTSequence(declaration.clone())),
+                Ok(false) => (),
                 // a recursive type either has no exit, so it cannot be instantiated
                 // or it uses `Definiotion::Enum` or `Definition::Sequence` to exit from recursion
                 // which make it non-zero size
-                Err(ZeroSizeError::Recursive) => false,
+                Err(ZeroSizeError::Recursive) => (),
                 Err(ZeroSizeError::MissingDefinition(declaration)) => {
                     return Err(Error::MissingDefinition(declaration));
                 }
-            };
-            if is_zst {
-                return Err(Error::ZSTSequence(declaration.to_string()));
             }
             validate_impl(elements, schema, stack)?;
         }
