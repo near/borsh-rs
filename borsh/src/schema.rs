@@ -110,8 +110,7 @@ impl Definition {
     /// Convenience constant representing the length range of a standard borsh
     /// sequence.
     ///
-    /// It equals `0..=u32::MAX`.  Can be used for `Definition::Array::length`
-    /// and `Definition::Sequence::length`.
+    /// It equals `0..=u32::MAX`.  Can be used for `Definition::Sequence::length`.
     pub const DEFAULT_LENGTH_RANGE: core::ops::RangeInclusive<u32> = 0..=u32::MAX;
 }
 
