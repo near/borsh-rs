@@ -331,7 +331,9 @@ impl_for_renamed_primitives!((): nil => 0);
 
 impl BorshSchema for String {
     #[inline]
-    fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        str::add_definitions_recursively(definitions);
+    }
     #[inline]
     fn declaration() -> Declaration {
         "string".into()
@@ -339,7 +341,14 @@ impl BorshSchema for String {
 }
 impl BorshSchema for str {
     #[inline]
-    fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        let definition = Definition::Sequence {
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
+            elements: u8::declaration(),
+        };
+        add_definition(Self::declaration(), definition, definitions);
+        u8::add_definitions_recursively(definitions);
+    }
     #[inline]
     fn declaration() -> Declaration {
         "string".into()
@@ -759,7 +768,12 @@ mod tests {
                     ]
                 },
                 "u64" => Definition::Primitive(8),
-                "nonzero_u16" => Definition::Primitive(2)
+                "nonzero_u16" => Definition::Primitive(2),
+                "string" => Definition::Sequence {
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                },
+                "u8" => Definition::Primitive(1)
             },
             actual_defs
         );
@@ -781,7 +795,11 @@ mod tests {
                 "Tuple<u8, bool>" => Definition::Tuple { elements: vec![ "u8".to_string(), "bool".to_string()]},
                 "u64" => Definition::Primitive(8),
                 "u8" => Definition::Primitive(1),
-                "bool" => Definition::Primitive(1)
+                "bool" => Definition::Primitive(1),
+                "string" => Definition::Sequence {
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                }
             },
             actual_defs
         );
@@ -803,7 +821,13 @@ mod tests {
                 "Tuple<u64, string>" => Definition::Tuple {
                     elements: vec![ "u64".to_string(), "string".to_string()],
                 },
-                "u64" => Definition::Primitive(8)
+                "u64" => Definition::Primitive(8),
+                "string" => Definition::Sequence {
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                },
+                "u8" => Definition::Primitive(1)
+
             },
             actual_defs
         );
@@ -821,7 +845,12 @@ mod tests {
                 "HashSet<string>" => Definition::Sequence {
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "string".to_string(),
-                }
+                },
+                "string" => Definition::Sequence {
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                },
+                "u8" => Definition::Primitive(1)
             },
             actual_defs
         );
@@ -840,7 +869,12 @@ mod tests {
                     elements: "Tuple<u64, string>".to_string(),
                 } ,
                 "Tuple<u64, string>" => Definition::Tuple { elements: vec![ "u64".to_string(), "string".to_string()]},
-                "u64" => Definition::Primitive(8)
+                "u64" => Definition::Primitive(8),
+                "string" => Definition::Sequence {
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                },
+                "u8" => Definition::Primitive(1)
             },
             actual_defs
         );
@@ -857,7 +891,12 @@ mod tests {
                 "BTreeSet<string>" => Definition::Sequence {
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "string".to_string(),
-                }
+                },
+                "string" => Definition::Sequence {
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                },
+                "u8" => Definition::Primitive(1)
             },
             actual_defs
         );
@@ -905,7 +944,29 @@ mod tests {
         assert_eq!("string", actual_name);
         let mut actual_defs = map!();
         String::add_definitions_recursively(&mut actual_defs);
-        assert_eq!(map! {}, actual_defs);
+        assert_eq!(
+            map! {
+                "string" => Definition::Sequence {
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                },
+                "u8" => Definition::Primitive(1)
+            },
+            actual_defs
+        );
+
+        let mut actual_defs = map!();
+        str::add_definitions_recursively(&mut actual_defs);
+        assert_eq!(
+            map! {
+                "string" => Definition::Sequence {
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                 },
+                "u8" => Definition::Primitive(1)
+            },
+            actual_defs
+        );
     }
 
     #[test]

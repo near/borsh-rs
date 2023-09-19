@@ -65,7 +65,12 @@ pub fn simple_struct() {
         ("_f1".to_string(), "u64".to_string()),
         ("_f2".to_string(), "string".to_string())
         ])},
-        "u64" => Definition::Primitive(8)
+        "u64" => Definition::Primitive(8),
+        "string" => Definition::Sequence {
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
+            elements: "u8".to_string()
+        },
+        "u8" => Definition::Primitive(1)
         },
         defs
     );
@@ -94,7 +99,11 @@ pub fn boxed() {
         ("_f3".to_string(), "Vec<u8>".to_string())
         ])},
         "u64" => Definition::Primitive(8),
-        "u8" => Definition::Primitive(1)
+        "u8" => Definition::Primitive(1),
+        "string" => Definition::Sequence {
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
+            elements: "u8".to_string()
+        }
         },
         defs
     );
@@ -128,7 +137,12 @@ pub fn tuple_struct() {
         "A" => Definition::Struct {fields: Fields::UnnamedFields(vec![
          "u64".to_string(), "string".to_string()
         ])},
-        "u64" => Definition::Primitive(8)
+        "u64" => Definition::Primitive(8),
+        "string" => Definition::Sequence {
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
+            elements: "u8".to_string()
+        },
+        "u8" => Definition::Primitive(1)
         },
         defs
     );
@@ -149,7 +163,12 @@ pub fn tuple_struct_params() {
         "A<u64, string>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
             "u64".to_string(), "string".to_string()
         ])},
-        "u64" => Definition::Primitive(8)
+        "u64" => Definition::Primitive(8),
+        "string" => Definition::Sequence {
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
+            elements: "u8".to_string()
+        },
+        "u8" => Definition::Primitive(1)
         },
         defs
     );
@@ -182,7 +201,12 @@ pub fn simple_generics() {
                 elements: "Tuple<u64, string>".to_string(),
             },
         "Tuple<u64, string>" => Definition::Tuple{elements: vec!["u64".to_string(), "string".to_string()]},
-        "u64" => Definition::Primitive(8)
+        "u64" => Definition::Primitive(8),
+        "string" => Definition::Sequence {
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
+            elements: "u8".to_string()
+        },
+        "u8" => Definition::Primitive(1)
         },
         defs
     );
@@ -197,7 +221,12 @@ fn common_map() -> BTreeMap<String, Definition> {
                 ("another".to_string(), "string".to_string())
             ])
         },
-        "i8" => Definition::Primitive(1)
+        "i8" => Definition::Primitive(1),
+        "string" => Definition::Sequence {
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
+            elements: "u8".to_string()
+        },
+        "u8" => Definition::Primitive(1)
     }
 }
 
@@ -308,7 +337,12 @@ pub fn generic_associated_item3() {
                 elements: vec!["i8".to_string(), "u32".to_string()]
             },
             "i8" => Definition::Primitive(1),
-            "u32" => Definition::Primitive(4)
+            "u32" => Definition::Primitive(4),
+            "string" => Definition::Sequence {
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: "u8".to_string()
+            },
+            "u8" => Definition::Primitive(1)
         },
         defs
     );
@@ -338,7 +372,12 @@ pub fn with_phantom_data() {
                     ("another".to_string(), "nil".to_string())
                 ])
             },
-            "nil" => Definition::Primitive(0)
+            "nil" => Definition::Primitive(0),
+            "string" => Definition::Sequence {
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: "u8".to_string()
+            },
+            "u8" => Definition::Primitive(1)
         },
         defs
     );

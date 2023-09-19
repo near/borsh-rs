@@ -118,7 +118,12 @@ pub fn struct_overriden() {
                 elements: "Tuple<u64, string>".to_string(),
             },
             "Tuple<u64, string>" => Definition::Tuple { elements: vec!["u64".to_string(), "string".to_string()]},
-            "u64" => Definition::Primitive(8)
+            "u64" => Definition::Primitive(8),
+            "string" => Definition::Sequence {
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: "u8".to_string()
+            },
+            "u8" => Definition::Primitive(1)
         },
         defs
     );
@@ -153,7 +158,12 @@ pub fn enum_overriden() {
                 elements: "Tuple<u64, string>".to_string(),
             },
             "Tuple<u64, string>" => Definition::Tuple { elements: vec!["u64".to_string(), "string".to_string()]},
-            "u64" => Definition::Primitive(8)
+            "u64" => Definition::Primitive(8),
+            "string" => Definition::Sequence {
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: "u8".to_string()
+            },
+            "u8" => Definition::Primitive(1)
         },
         defs
     );
