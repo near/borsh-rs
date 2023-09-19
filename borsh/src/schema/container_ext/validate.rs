@@ -29,11 +29,24 @@ pub enum Error {
     ZSTSequence(Declaration),
     /// Declared tag width is too large.  Tags may be at most eight bytes.
     TagTooWide(Declaration),
+    /// Declared tag width is too small.  Tags must be large enough to represent
+    /// possible length of sequence.
+    TagTooNarrow(Declaration),
     /// Some of the declared types were lacking definition, which is considered
     /// a container's validation error
     MissingDefinition(Declaration),
     /// A Sequence defined with an empty length range.
     EmptyLengthRange(Declaration),
+}
+
+fn check_tag_width(declaration: &Declaration, width: u8, max: u64) -> Result<(), Error> {
+    match width {
+        0 => Ok(()),
+        1..=7 if max < 1 << (width * 8) => Ok(()),
+        1..=7 => Err(Error::TagTooNarrow(declaration.clone())),
+        8 => Ok(()),
+        _ => Err(Error::TagTooWide(declaration.clone())),
+    }
 }
 
 fn validate_impl<'a>(
@@ -53,14 +66,15 @@ fn validate_impl<'a>(
     stack.push(declaration);
     match definition {
         Definition::Primitive(_size) => {}
-        Definition::Array { elements, .. } => validate_impl(elements, schema, stack)?,
         Definition::Sequence {
+            length_width,
             length_range,
             elements,
         } => {
             if length_range.is_empty() {
                 return Err(Error::EmptyLengthRange(declaration.clone()));
             }
+            check_tag_width(declaration, *length_width, *length_range.end())?;
             match is_zero_size(elements, schema) {
                 Ok(true) => return Err(Error::ZSTSequence(declaration.clone())),
                 Ok(false) => (),
@@ -78,9 +92,7 @@ fn validate_impl<'a>(
             tag_width,
             variants,
         } => {
-            if *tag_width > 8 {
-                return Err(Error::TagTooWide(declaration.to_string()));
-            }
+            check_tag_width(declaration, *tag_width, variants.len() as u64)?;
             for (_, variant) in variants {
                 validate_impl(variant, schema, stack)?;
             }

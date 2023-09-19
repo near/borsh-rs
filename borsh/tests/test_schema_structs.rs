@@ -67,6 +67,7 @@ pub fn simple_struct() {
         ])},
         "u64" => Definition::Primitive(8),
         "string" => Definition::Sequence {
+            length_width: 4,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: "u8".to_string()
         },
@@ -90,6 +91,7 @@ pub fn boxed() {
     assert_eq!(
         map! {
             "Vec<u8>" => Definition::Sequence {
+                length_width: 4,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "u8".to_string(),
             },
@@ -101,6 +103,7 @@ pub fn boxed() {
         "u64" => Definition::Primitive(8),
         "u8" => Definition::Primitive(1),
         "string" => Definition::Sequence {
+            length_width: 4,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: "u8".to_string()
         }
@@ -139,6 +142,7 @@ pub fn tuple_struct() {
         ])},
         "u64" => Definition::Primitive(8),
         "string" => Definition::Sequence {
+            length_width: 4,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: "u8".to_string()
         },
@@ -165,6 +169,7 @@ pub fn tuple_struct_params() {
         ])},
         "u64" => Definition::Primitive(8),
         "string" => Definition::Sequence {
+            length_width: 4,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: "u8".to_string()
         },
@@ -197,12 +202,14 @@ pub fn simple_generics() {
         ])
         },
             "HashMap<u64, string>" => Definition::Sequence {
+                length_width: 4,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "Tuple<u64, string>".to_string(),
             },
         "Tuple<u64, string>" => Definition::Tuple{elements: vec!["u64".to_string(), "string".to_string()]},
         "u64" => Definition::Primitive(8),
         "string" => Definition::Sequence {
+            length_width: 4,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: "u8".to_string()
         },
@@ -223,6 +230,7 @@ fn common_map() -> BTreeMap<String, Definition> {
         },
         "i8" => Definition::Primitive(1),
         "string" => Definition::Sequence {
+            length_width: 4,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: "u8".to_string()
         },
@@ -339,6 +347,7 @@ pub fn generic_associated_item3() {
             "i8" => Definition::Primitive(1),
             "u32" => Definition::Primitive(4),
             "string" => Definition::Sequence {
+                length_width: 4,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "u8".to_string()
             },
@@ -374,6 +383,7 @@ pub fn with_phantom_data() {
             },
             "nil" => Definition::Primitive(0),
             "string" => Definition::Sequence {
+                length_width: 4,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "u8".to_string()
             },

@@ -115,34 +115,33 @@ fn max_serialized_size_impl<'a>(
                 count_sizes.ok_or(Error::Overflow)
             }
         },
-        Ok(Definition::Array { length, elements }) => {
-            // Aggregate `count` and `length` to a single number.  If this
-            // overflows, check if array’s element is zero-sized.
-            let count_lengths = usize::try_from(*length)
-                .ok()
-                .and_then(|len| len.checked_mul(count.get()));
-            let count_lengths = match count_lengths {
-                Some(count_lengths) => count_lengths,
-                None if is_zero_size_impl(elements.as_str(), schema, stack)? => {
-                    return Ok(0);
-                }
-                None => {
-                    return Err(Error::Overflow);
-                }
-            };
-            let count_lengths = NonZeroUsize::new(count_lengths);
-
-            match count_lengths {
-                None => Ok(0),
-                Some(count_lengths) => {
-                    max_serialized_size_impl(count_lengths, elements, schema, stack)
-                }
-            }
-        }
         Ok(Definition::Sequence {
+            length_width: 0,
             length_range,
             elements,
         }) => {
+            // Aggregate `count` and max length to a single number.  If this
+            // overflows, check if array’s element is zero-sized.  If it is, the
+            // overall size is zero even if count overflowed.
+            let count_lengths = usize::try_from(*length_range.end())
+                .ok()
+                .and_then(|len| len.checked_mul(count.get()))
+                .map(NonZeroUsize::new);
+            match count_lengths {
+                Some(None) => Ok(0),
+                Some(Some(count_lengths)) => {
+                    max_serialized_size_impl(count_lengths, elements, schema, stack)
+                }
+                None if is_zero_size_impl(elements, schema, stack)? => Ok(0),
+                None => Err(Error::Overflow),
+            }
+        }
+        Ok(Definition::Sequence {
+            length_width,
+            length_range,
+            elements,
+        }) => {
+            // Assume sequence has the maximum number of elements.
             let max_len = *length_range.end();
             let sz = match usize::try_from(max_len).map(NonZeroUsize::new) {
                 Ok(Some(max_len)) => max_serialized_size_impl(max_len, elements, schema, stack)?,
@@ -150,7 +149,7 @@ fn max_serialized_size_impl<'a>(
                 Err(_) if is_zero_size_impl(elements, schema, stack)? => 0,
                 Err(_) => return Err(Error::Overflow),
             };
-            mul(count, add(sz, 4)?)
+            mul(count, add(sz, usize::from(*length_width))?)
         }
 
         Ok(Definition::Enum {
@@ -162,8 +161,7 @@ fn max_serialized_size_impl<'a>(
                 let sz = max_serialized_size_impl(ONE, variant, schema, stack)?;
                 max = max.max(sz);
             }
-            max.checked_add(usize::from(*tag_width))
-                .ok_or(Error::Overflow)
+            add(max, usize::from(*tag_width))
         }
 
         // Tuples and structs sum sizes of all the members.
@@ -243,9 +241,11 @@ fn is_zero_size_impl<'a>(
 
     let res = match schema.get_definition(declaration).ok_or(declaration) {
         Ok(Definition::Primitive(size)) => *size == 0,
-        Ok(Definition::Array { length, elements }) => {
-            *length == 0 || is_zero_size_impl(elements.as_str(), schema, stack)?
-        }
+        Ok(Definition::Sequence {
+            length_width: 0,
+            length_range,
+            elements,
+        }) => *length_range.end() == 0 || is_zero_size_impl(elements.as_str(), schema, stack)?,
         Ok(Definition::Sequence { .. }) => false,
         Ok(Definition::Tuple { elements }) => all(elements.iter(), |key| *key, schema, stack)?,
         Ok(Definition::Enum {
@@ -482,14 +482,15 @@ mod tests {
     #[test]
     fn max_serialized_size_custom_sequence() {
         #[allow(dead_code)]
-        struct BoundVec<const N: u32>;
+        struct BoundVec<const W: u8, const N: u64>;
 
-        impl<const N: u32> BorshSchema for BoundVec<N> {
+        impl<const W: u8, const N: u64> BorshSchema for BoundVec<W, N> {
             fn declaration() -> Declaration {
-                format!("BoundVec<{}>", N)
+                format!("BoundVec<{}, {}>", W, N)
             }
             fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
                 let definition = Definition::Sequence {
+                    length_width: W,
                     length_range: 0..=N,
                     elements: "u8".to_string(),
                 };
@@ -498,8 +499,16 @@ mod tests {
             }
         }
 
-        test_ok::<BoundVec<0>>(4);
-        test_ok::<BoundVec<{ u32::MAX }>>(4 + u32::MAX as usize);
-        test_ok::<BoundVec<20>>(24);
+        test_ok::<BoundVec<4, 0>>(4);
+        test_ok::<BoundVec<4, { u16::MAX as u64 }>>(4 + u16::MAX as usize);
+        test_ok::<BoundVec<4, 20>>(24);
+
+        test_ok::<BoundVec<1, 0>>(1);
+        test_ok::<BoundVec<1, { u16::MAX as u64 }>>(1 + u16::MAX as usize);
+        test_ok::<BoundVec<1, 20>>(21);
+
+        test_ok::<BoundVec<0, 0>>(0);
+        test_ok::<BoundVec<0, { u16::MAX as u64 }>>(u16::MAX as usize);
+        test_ok::<BoundVec<0, 20>>(20);
     }
 }

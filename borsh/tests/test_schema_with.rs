@@ -114,12 +114,14 @@ pub fn struct_overriden() {
                 "BTreeMap<u64, string>".to_string(),
             ]) },
             "BTreeMap<u64, string>"=> Definition::Sequence {
+                length_width: 4,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "Tuple<u64, string>".to_string(),
             },
             "Tuple<u64, string>" => Definition::Tuple { elements: vec!["u64".to_string(), "string".to_string()]},
             "u64" => Definition::Primitive(8),
             "string" => Definition::Sequence {
+                length_width: 4,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "u8".to_string()
             },
@@ -154,12 +156,14 @@ pub fn enum_overriden() {
                 "BTreeMap<u64, string>".to_string(),
             ]) },
             "BTreeMap<u64, string>"=> Definition::Sequence {
+                length_width: 4,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "Tuple<u64, string>".to_string(),
             },
             "Tuple<u64, string>" => Definition::Tuple { elements: vec!["u64".to_string(), "string".to_string()]},
             "u64" => Definition::Primitive(8),
             "string" => Definition::Sequence {
+                length_width: 4,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "u8".to_string()
             },
