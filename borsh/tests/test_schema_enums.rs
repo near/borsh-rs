@@ -290,7 +290,12 @@ fn common_map() -> BTreeMap<String, Definition> {
         "Tuple<u32, u16>" => Definition::Tuple { elements: vec!["u32".to_string(), "u16".to_string()]},
         "u32" => Definition::Primitive(4),
         "i8" => Definition::Primitive(1),
-        "u16" => Definition::Primitive(2)
+        "u16" => Definition::Primitive(2),
+        "string" => Definition::Sequence {
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
+            elements: "u8".to_string()
+        },
+        "u8" => Definition::Primitive(1)
     }
 }
 

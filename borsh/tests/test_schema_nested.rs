@@ -117,7 +117,12 @@ pub fn duplicated_instantiations() {
         "Tuple<u64, string>" => Definition::Tuple {elements: vec!["u64".to_string(), "string".to_string()]},
         "Wrapper<string>" => Definition::Struct{ fields: Fields::NamedFields(vec![("foo".to_string(), "Option<string>".to_string()), ("bar".to_string(), "A<string, string>".to_string())])},
         "u64" => Definition::Primitive(8),
-        "nil" => Definition::Primitive(0)
+        "nil" => Definition::Primitive(0),
+        "string" => Definition::Sequence {
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
+            elements: "u8".to_string()
+        },
+        "u8" => Definition::Primitive(1)
         },
         defs
     );

@@ -176,10 +176,6 @@ fn max_serialized_size_impl<'a>(
             Fields::Empty => Ok(0),
         },
 
-        // string is just Vec<u8>
-        // "string" definition is added in another pr
-        Err("string") => mul(count, add(MAX_LEN.get(), 4)?),
-
         Err(declaration) => Err(Error::MissingDefinition(declaration.to_string())),
     }?;
 
@@ -274,9 +270,6 @@ fn is_zero_size_impl<'a>(
             }
             Fields::Empty => true,
         },
-
-        // another pr removes this exclusion rule
-        Err("string") => false,
 
         Err(declaration) => {
             return Err(ZeroSizeError::MissingDefinition(declaration.into()));
