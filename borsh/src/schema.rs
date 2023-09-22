@@ -412,7 +412,8 @@ where
     T: BorshSchema,
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        let n = N as u64;
+        use core::convert::TryFrom;
+        let n = u64::try_from(N).unwrap();
         let definition = Definition::Sequence {
             length_width: Definition::ARRAY_LENGTH_WIDTH,
             length_range: n..=n,

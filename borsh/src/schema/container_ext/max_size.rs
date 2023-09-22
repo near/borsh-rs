@@ -2,7 +2,6 @@ use super::{BorshSchemaContainer, Declaration, Definition, Fields};
 use crate::__private::maybestd::{string::ToString, vec::Vec};
 
 use core::num::NonZeroUsize;
-// use core::iter::Iterator;
 
 /// NonZeroUsize of value one.
 // TODO: Replace usage by NonZeroUsize::MIN once MSRV is 1.70+.
@@ -478,16 +477,16 @@ mod tests {
     #[test]
     fn max_serialized_size_bound_vec() {
         #[allow(dead_code)]
-        struct BoundVec<const N: u32>;
+        struct BoundVec<const W: u8, const N: u64>;
 
-        impl<const N: u32> BorshSchema for BoundVec<N> {
+        impl<const W: u8, const N: u64> BorshSchema for BoundVec<W, N> {
             fn declaration() -> Declaration {
-                format!("BoundVec<{}>", N)
+                format!("BoundVec<{}, {}>", W, N)
             }
             fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
                 let definition = Definition::Sequence {
-                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
-                    length_range: 0..=N as u64,
+                    length_width: W,
+                    length_range: 0..=N,
                     elements: "u8".to_string(),
                 };
                 crate::schema::add_definition(Self::declaration(), definition, definitions);
@@ -495,9 +494,17 @@ mod tests {
             }
         }
 
-        test_ok::<BoundVec<0>>(4);
-        test_ok::<BoundVec<{ u32::MAX }>>(4 + u32::MAX as usize);
-        test_ok::<BoundVec<20>>(24);
+        test_ok::<BoundVec<4, 0>>(4);
+        test_ok::<BoundVec<4, { u16::MAX as u64 }>>(4 + u16::MAX as usize);
+        test_ok::<BoundVec<4, 20>>(24);
+
+        test_ok::<BoundVec<1, 0>>(1);
+        test_ok::<BoundVec<1, { u16::MAX as u64 }>>(1 + u16::MAX as usize);
+        test_ok::<BoundVec<1, 20>>(21);
+
+        test_ok::<BoundVec<0, 0>>(0);
+        test_ok::<BoundVec<0, { u16::MAX as u64 }>>(u16::MAX as usize);
+        test_ok::<BoundVec<0, 20>>(20);
     }
 
     #[test]

@@ -1,10 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(feature = "unstable__schema")]
 
+#[cfg(feature = "std")]
+use std::collections::BTreeMap;
+
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{boxed::Box, string::ToString, vec::Vec};
+use alloc::{boxed::Box, collections::BTreeMap, format, string::ToString, vec::Vec};
 
 use borsh::schema::*;
 use borsh::BorshSchema;
@@ -62,4 +65,33 @@ fn validate_for_zst_sequences() {
     test_err::<Vec<core::ops::RangeFull>>(SchemaContainerValidateError::ZSTSequence(
         "Vec<RangeFull>".to_string(),
     ));
+}
+
+#[test]
+fn max_serialized_size_bound_vec() {
+    #[allow(dead_code)]
+    struct BoundVec<const W: u8, const N: u64>;
+
+    impl<const W: u8, const N: u64> BorshSchema for BoundVec<W, N> {
+        fn declaration() -> Declaration {
+            format!("BoundVec<{}, {}>", W, N)
+        }
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+            let definition = Definition::Sequence {
+                length_width: W,
+                length_range: 0..=N,
+                elements: "u8".to_string(),
+            };
+            add_definition(Self::declaration(), definition, definitions);
+            u8::add_definitions_recursively(definitions);
+        }
+    }
+
+    test_ok::<BoundVec<4, { u16::MAX as u64 }>>();
+    test_err::<BoundVec<1, { u16::MAX as u64 }>>(SchemaContainerValidateError::TagTooNarrow(
+        "BoundVec<1, 65535>".to_string(),
+    ));
+
+    test_ok::<BoundVec<1, { u8::MAX as u64 }>>();
+    test_ok::<BoundVec<0, { u16::MAX as u64 }>>();
 }

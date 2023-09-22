@@ -29,6 +29,11 @@ pub enum Error {
     ZSTSequence(Declaration),
     /// Declared tag width is too large.  Tags may be at most eight bytes.
     TagTooWide(Declaration),
+    /// Declared tag width is too small.  Tags must be large enough to represent
+    /// possible length of sequence.
+    TagTooNarrow(Declaration),
+    /// only 0, 1, 2, 4 and 8 bytes long enum tags and sequences' `length_width` are alowed
+    TagNotPowerOfTwo(Declaration),
     /// Some of the declared types were lacking definition, which is considered
     /// a container's validation error
     MissingDefinition(Declaration),
@@ -36,7 +41,18 @@ pub enum Error {
     EmptyLengthRange(Declaration),
 }
 
-const U64_WIDTH: u8 = 8;
+fn check_length_width(declaration: &Declaration, width: u8, max: u64) -> Result<(), Error> {
+    match width {
+        0 => Ok(()),
+        3 | 5 | 6 | 7 => Err(Error::TagNotPowerOfTwo(declaration.clone())),
+        1..=7 if max < 1 << (width * 8) => Ok(()),
+        1..=7 => Err(Error::TagTooNarrow(declaration.clone())),
+        8 => Ok(()),
+        _ => Err(Error::TagTooWide(declaration.clone())),
+    }
+}
+
+const U64_LEN: u8 = 8;
 
 fn validate_impl<'a>(
     declaration: &'a Declaration,
@@ -55,6 +71,7 @@ fn validate_impl<'a>(
     stack.push(declaration);
     match definition {
         Definition::Primitive(_size) => {}
+        // arrays branch
         Definition::Sequence {
             length_width,
             length_range,
@@ -69,12 +86,10 @@ fn validate_impl<'a>(
             length_range,
             elements,
         } => {
-            if *length_width > U64_WIDTH {
-                return Err(Error::TagTooWide(declaration.to_string()));
-            }
             if length_range.is_empty() {
                 return Err(Error::EmptyLengthRange(declaration.clone()));
             }
+            check_length_width(declaration, *length_width, *length_range.end())?;
             match is_zero_size(elements, schema) {
                 Ok(true) => return Err(Error::ZSTSequence(declaration.clone())),
                 Ok(false) => (),
@@ -92,7 +107,7 @@ fn validate_impl<'a>(
             tag_width,
             variants,
         } => {
-            if *tag_width > U64_WIDTH {
+            if *tag_width > U64_LEN {
                 return Err(Error::TagTooWide(declaration.to_string()));
             }
             for (_, variant) in variants {
@@ -120,4 +135,63 @@ fn validate_impl<'a>(
     };
     stack.pop();
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{check_length_width, Error};
+    use crate::__private::maybestd::string::ToString;
+
+    #[test]
+    fn test_check_tag_width() {
+        assert_eq!(check_length_width(&"test".to_string(), 0, u64::MAX), Ok(()));
+        assert_eq!(
+            check_length_width(&"test".to_string(), 1, u8::MAX as u64),
+            Ok(())
+        );
+        assert_eq!(
+            check_length_width(&"test".to_string(), 1, u8::MAX as u64 + 1),
+            Err(Error::TagTooNarrow("test".to_string()))
+        );
+
+        assert_eq!(
+            check_length_width(&"test".to_string(), 2, u16::MAX as u64),
+            Ok(())
+        );
+        assert_eq!(
+            check_length_width(&"test".to_string(), 2, u16::MAX as u64 + 1),
+            Err(Error::TagTooNarrow("test".to_string()))
+        );
+
+        assert_eq!(
+            check_length_width(&"test".to_string(), 3, 100),
+            Err(Error::TagNotPowerOfTwo("test".to_string()))
+        );
+
+        assert_eq!(
+            check_length_width(&"test".to_string(), 4, u32::MAX as u64),
+            Ok(())
+        );
+
+        assert_eq!(
+            check_length_width(&"test".to_string(), 4, u32::MAX as u64 + 1),
+            Err(Error::TagTooNarrow("test".to_string()))
+        );
+        assert_eq!(
+            check_length_width(&"test".to_string(), 5, 100),
+            Err(Error::TagNotPowerOfTwo("test".to_string()))
+        );
+
+        assert_eq!(
+            check_length_width(&"test".to_string(), 6, 100),
+            Err(Error::TagNotPowerOfTwo("test".to_string()))
+        );
+
+        assert_eq!(
+            check_length_width(&"test".to_string(), 7, 100),
+            Err(Error::TagNotPowerOfTwo("test".to_string()))
+        );
+
+        assert_eq!(check_length_width(&"test".to_string(), 8, u64::MAX), Ok(()));
+    }
 }
