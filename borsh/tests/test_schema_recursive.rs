@@ -60,13 +60,13 @@ pub fn recursive_struct_schema() {
 
             },
             "BTreeMap<string, CRecC>" => Definition::Sequence {
-                length_width: 4,
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "Tuple<string, CRecC>".to_string(),
             },
             "Tuple<string, CRecC>" => Definition::Tuple {elements: vec!["string".to_string(), "CRecC".to_string()]},
             "string" => Definition::Sequence {
-                length_width: 4,
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "u8".to_string()
             },
@@ -104,13 +104,13 @@ pub fn recursive_enum_schema() {
                 ])
             },
             "Vec<ERecD>" => Definition::Sequence {
-                length_width: 4,
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "ERecD".to_string(),
             },
             "i32" => Definition::Primitive(4),
             "string" => Definition::Sequence {
-                length_width: 4,
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "u8".to_string()
             },

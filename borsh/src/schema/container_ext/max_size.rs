@@ -242,11 +242,14 @@ fn is_zero_size_impl<'a>(
     let res = match schema.get_definition(declaration).ok_or(declaration) {
         Ok(Definition::Primitive(size)) => *size == 0,
         Ok(Definition::Sequence {
-            length_width: 0,
+            length_width,
             length_range,
             elements,
-        }) => *length_range.end() == 0 || is_zero_size_impl(elements.as_str(), schema, stack)?,
-        Ok(Definition::Sequence { .. }) => false,
+        }) => {
+            *length_width == 0
+                && (*length_range.end() == 0
+                    || is_zero_size_impl(elements.as_str(), schema, stack)?)
+        }
         Ok(Definition::Tuple { elements }) => all(elements.iter(), |key| *key, schema, stack)?,
         Ok(Definition::Enum {
             tag_width: 0,
@@ -395,6 +398,10 @@ mod tests {
         test_ok::<[u8; 16]>(16);
         test_ok::<[[u8; 4]; 4]>(16);
 
+        test_ok::<[u16; 0]>(0);
+        test_ok::<[u16; 16]>(32);
+        test_ok::<[[u16; 4]; 4]>(32);
+
         test_ok::<Vec<u8>>(4 + MAX_LEN);
         test_ok::<String>(4 + MAX_LEN);
 
@@ -480,7 +487,7 @@ mod tests {
     }
 
     #[test]
-    fn max_serialized_size_custom_sequence() {
+    fn max_serialized_size_bound_vec() {
         #[allow(dead_code)]
         struct BoundVec<const W: u8, const N: u64>;
 
@@ -510,5 +517,29 @@ mod tests {
         test_ok::<BoundVec<0, 0>>(0);
         test_ok::<BoundVec<0, { u16::MAX as u64 }>>(u16::MAX as usize);
         test_ok::<BoundVec<0, 20>>(20);
+    }
+
+    #[test]
+    fn max_serialized_size_small_vec() {
+        #[allow(dead_code)]
+        struct SmallVec<T>(core::marker::PhantomData<T>);
+
+        impl<T: BorshSchema> BorshSchema for SmallVec<T> {
+            fn declaration() -> Declaration {
+                format!(r#"SmallVec<{}>"#, T::declaration())
+            }
+            fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+                let definition = Definition::Sequence {
+                    length_width: 1,
+                    length_range: 0..=u8::MAX as u64,
+                    elements: T::declaration(),
+                };
+                crate::schema::add_definition(Self::declaration(), definition, definitions);
+                T::add_definitions_recursively(definitions);
+            }
+        }
+
+        test_ok::<SmallVec<u8>>(u8::MAX as usize + 1);
+        test_ok::<SmallVec<u16>>(u8::MAX as usize * 2 + 1);
     }
 }

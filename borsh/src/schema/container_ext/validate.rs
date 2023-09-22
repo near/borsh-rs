@@ -92,7 +92,13 @@ fn validate_impl<'a>(
             tag_width,
             variants,
         } => {
-            check_tag_width(declaration, *tag_width, variants.len() as u64)?;
+            // TODO(#230): variants.len() is actually incorrect here.  Since
+            // arbitrary discriminant can be used for variants, an actual
+            // largest discriminant may be larger than the number of variants.
+            // For the time being we’re using variants.len() as a proxy but
+            // eventually variant discriminants should be added to the schema.
+            let max_discriminant = variants.len().saturating_sub(1) as u64;
+            check_tag_width(declaration, *tag_width, max_discriminant)?;
             for (_, variant) in variants {
                 validate_impl(variant, schema, stack)?;
             }
@@ -118,4 +124,33 @@ fn validate_impl<'a>(
     };
     stack.pop();
     Ok(())
+}
+
+#[test]
+fn test_check_tag_width() {
+    for (width, max, want) in [
+        (0, u64::MAX, Ok(())),
+        (1, 255, Ok(())),
+        (1, 256, Err(Error::TagTooNarrow("test".into()))),
+        (2, (1 << 16) - 1, Ok(())),
+        (2, 1 << 16, Err(Error::TagTooNarrow("test".into()))),
+        (3, (1 << 24) - 1, Ok(())),
+        (3, 1 << 24, Err(Error::TagTooNarrow("test".into()))),
+        (4, (1 << 32) - 1, Ok(())),
+        (4, 1 << 32, Err(Error::TagTooNarrow("test".into()))),
+        (5, (1 << 40) - 1, Ok(())),
+        (5, 1 << 40, Err(Error::TagTooNarrow("test".into()))),
+        (6, (1 << 48) - 1, Ok(())),
+        (6, 1 << 48, Err(Error::TagTooNarrow("test".into()))),
+        (7, (1 << 56) - 1, Ok(())),
+        (7, 1 << 56, Err(Error::TagTooNarrow("test".into()))),
+        (8, u64::MAX, Ok(())),
+        (9, 0, Err(Error::TagTooWide("test".into()))),
+    ] {
+        assert_eq!(
+            want,
+            check_tag_width(&"test".into(), width, max),
+            "width={width}; max={max}"
+        );
+    }
 }

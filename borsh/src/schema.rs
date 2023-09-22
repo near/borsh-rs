@@ -130,6 +130,16 @@ pub enum Definition {
 }
 
 impl Definition {
+    /// Array length isn't present in payload, it's determined by type of data
+    /// serialized.
+    pub const ARRAY_LENGTH_WIDTH: u8 = 0;
+
+    /// Convenience constant representing the length width of a standard borsh
+    /// sequence.
+    ///
+    /// Can be used for `Definition::Sequence::length_width`.
+    pub const DEFAULT_LENGTH_WIDTH: u8 = 4;
+
     /// Convenience constant representing the length range of a standard borsh
     /// sequence.
     ///
@@ -367,7 +377,7 @@ impl BorshSchema for str {
     #[inline]
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Sequence {
-            length_width: 4,
+            length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: u8::declaration(),
         };
@@ -426,7 +436,7 @@ where
         use core::convert::TryFrom;
         let length = u64::try_from(N).unwrap();
         let definition = Definition::Sequence {
-            length_width: 0,
+            length_width: Definition::ARRAY_LENGTH_WIDTH,
             length_range: length..=length,
             elements: T::declaration(),
         };
@@ -489,7 +499,7 @@ where
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Sequence {
-            length_width: 4,
+            length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: T::declaration(),
         };
@@ -508,7 +518,7 @@ where
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Sequence {
-            length_width: 4,
+            length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: T::declaration(),
         };
@@ -543,7 +553,7 @@ pub mod hashes {
     {
         fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
             let definition = Definition::Sequence {
-                length_width: 4,
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: <(K, V)>::declaration(),
             };
@@ -561,7 +571,7 @@ pub mod hashes {
     {
         fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
             let definition = Definition::Sequence {
-                length_width: 4,
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: <T>::declaration(),
             };
@@ -582,7 +592,7 @@ where
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Sequence {
-            length_width: 4,
+            length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: <(K, V)>::declaration(),
         };
@@ -601,7 +611,7 @@ where
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Sequence {
-            length_width: 4,
+            length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: <T>::declaration(),
         };
@@ -755,7 +765,7 @@ mod tests {
         assert_eq!(
             map! {
                 "Vec<u64>" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "u64".to_string(),
                 },
@@ -774,12 +784,12 @@ mod tests {
         assert_eq!(
             map! {
                 "Vec<u64>" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "u64".to_string(),
                 },
                 "Vec<Vec<u64>>" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "Vec<u64>".to_string(),
                 },
@@ -807,7 +817,7 @@ mod tests {
                 "u64" => Definition::Primitive(8),
                 "nonzero_u16" => Definition::Primitive(2),
                 "string" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "u8".to_string()
                 },
@@ -835,7 +845,7 @@ mod tests {
                 "u8" => Definition::Primitive(1),
                 "bool" => Definition::Primitive(1),
                 "string" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "u8".to_string()
                 }
@@ -854,7 +864,7 @@ mod tests {
         assert_eq!(
             map! {
                 "HashMap<u64, string>" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "Tuple<u64, string>".to_string(),
                 } ,
@@ -863,7 +873,7 @@ mod tests {
                 },
                 "u64" => Definition::Primitive(8),
                 "string" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "u8".to_string()
                 },
@@ -884,12 +894,12 @@ mod tests {
         assert_eq!(
             map! {
                 "HashSet<string>" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "string".to_string(),
                 },
                 "string" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "u8".to_string()
                 },
@@ -908,14 +918,14 @@ mod tests {
         assert_eq!(
             map! {
                 "BTreeMap<u64, string>" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "Tuple<u64, string>".to_string(),
                 } ,
                 "Tuple<u64, string>" => Definition::Tuple { elements: vec![ "u64".to_string(), "string".to_string()]},
                 "u64" => Definition::Primitive(8),
                 "string" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "u8".to_string()
                 },
@@ -934,12 +944,12 @@ mod tests {
         assert_eq!(
             map! {
                 "BTreeSet<string>" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "string".to_string(),
                 },
                 "string" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "u8".to_string()
                 },
@@ -958,7 +968,7 @@ mod tests {
         assert_eq!(
             map! {
                 "Array<u64, 32>" => Definition::Sequence {
-                    length_width: 0,
+                    length_width: Definition::ARRAY_LENGTH_WIDTH,
                     length_range: 32..=32,
                     elements: "u64".to_string()
                 },
@@ -977,17 +987,17 @@ mod tests {
         assert_eq!(
             map! {
                 "Array<u64, 9>" => Definition::Sequence {
-                    length_width: 0,
+                    length_width: Definition::ARRAY_LENGTH_WIDTH,
                     length_range: 9..=9,
                     elements: "u64".to_string()
                 },
                 "Array<Array<u64, 9>, 10>" => Definition::Sequence {
-                    length_width: 0,
+                    length_width: Definition::ARRAY_LENGTH_WIDTH,
                     length_range: 10..=10,
                     elements: "Array<u64, 9>".to_string()
                 },
                 "Array<Array<Array<u64, 9>, 10>, 32>" => Definition::Sequence {
-                    length_width: 0,
+                    length_width: Definition::ARRAY_LENGTH_WIDTH,
                     length_range: 32..=32,
                     elements: "Array<Array<u64, 9>, 10>".to_string()
                 },
@@ -1008,7 +1018,7 @@ mod tests {
         assert_eq!(
             map! {
                 "string" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "u8".to_string()
                 },
@@ -1022,7 +1032,7 @@ mod tests {
         assert_eq!(
             map! {
                 "string" => Definition::Sequence {
-                    length_width: 4,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
                     elements: "u8".to_string()
                  },
