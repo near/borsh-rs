@@ -55,7 +55,15 @@ fn validate_impl<'a>(
     stack.push(declaration);
     match definition {
         Definition::Primitive(_size) => {}
-        Definition::Array { elements, .. } => validate_impl(elements, schema, stack)?,
+        Definition::Sequence {
+            length_width,
+            length_range,
+            elements,
+        } if *length_width == Definition::ARRAY_LENGTH_WIDTH
+            && length_range.clone().count() == 1 =>
+        {
+            validate_impl(elements, schema, stack)?
+        }
         Definition::Sequence {
             length_width,
             length_range,

@@ -2,6 +2,7 @@ use super::{BorshSchemaContainer, Declaration, Definition, Fields};
 use crate::__private::maybestd::{string::ToString, vec::Vec};
 
 use core::num::NonZeroUsize;
+// use core::iter::Iterator;
 
 /// NonZeroUsize of value one.
 // TODO: Replace usage by NonZeroUsize::MIN once MSRV is 1.70+.
@@ -115,30 +116,6 @@ fn max_serialized_size_impl<'a>(
                 count_sizes.ok_or(Error::Overflow)
             }
         },
-        Ok(Definition::Array { length, elements }) => {
-            // Aggregate `count` and `length` to a single number.  If this
-            // overflows, check if array’s element is zero-sized.
-            let count_lengths = usize::try_from(*length)
-                .ok()
-                .and_then(|len| len.checked_mul(count.get()));
-            let count_lengths = match count_lengths {
-                Some(count_lengths) => count_lengths,
-                None if is_zero_size_impl(elements.as_str(), schema, stack)? => {
-                    return Ok(0);
-                }
-                None => {
-                    return Err(Error::Overflow);
-                }
-            };
-            let count_lengths = NonZeroUsize::new(count_lengths);
-
-            match count_lengths {
-                None => Ok(0),
-                Some(count_lengths) => {
-                    max_serialized_size_impl(count_lengths, elements, schema, stack)
-                }
-            }
-        }
         Ok(Definition::Sequence {
             length_width,
             length_range,
@@ -244,14 +221,12 @@ fn is_zero_size_impl<'a>(
 
     let res = match schema.get_definition(declaration).ok_or(declaration) {
         Ok(Definition::Primitive(size)) => *size == 0,
-        Ok(Definition::Array { length, elements }) => {
-            *length == 0 || is_zero_size_impl(elements.as_str(), schema, stack)?
-        }
-        Ok(Definition::Sequence { length_width, length_range, elements }) => {
+        Ok(Definition::Sequence {
+            length_width,
+            length_range,
+            elements,
+        }) => {
             if *length_width == 0 {
-                if length_range.is_empty() {
-                    return Ok(true);
-                }
                 // zero-sized array
                 if length_range.clone().count() == 1 && *length_range.start() == 0 {
                     return Ok(true);
@@ -261,7 +236,7 @@ fn is_zero_size_impl<'a>(
                 }
             }
             false
-        },
+        }
         Ok(Definition::Tuple { elements }) => all(elements.iter(), |key| *key, schema, stack)?,
         Ok(Definition::Enum {
             tag_width: 0,
@@ -411,6 +386,10 @@ mod tests {
         test_ok::<[u8; 0]>(0);
         test_ok::<[u8; 16]>(16);
         test_ok::<[[u8; 4]; 4]>(16);
+
+        test_ok::<[u16; 0]>(0);
+        test_ok::<[u16; 16]>(32);
+        test_ok::<[[u16; 4]; 4]>(32);
 
         test_ok::<Vec<u8>>(4 + MAX_LEN);
         test_ok::<String>(4 + MAX_LEN);

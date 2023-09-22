@@ -53,8 +53,6 @@ pub type FieldName = String;
 pub enum Definition {
     /// A fixed-size type, which is considered undivisible
     Primitive(u8),
-    /// A fixed-size array with the length known at the compile time and the same-type elements.
-    Array { length: u32, elements: Declaration },
     /// A dynamically-sized sequence of homogeneous elements.
     ///
     /// The sequence is encoded with a 4-byte length followed by the elements of
@@ -114,6 +112,9 @@ pub enum Definition {
 }
 
 impl Definition {
+    /// Array length isn't present in payload, it's determined by type of data
+    /// serialized.
+    pub const ARRAY_LENGTH_WIDTH: u8 = 0;
     /// Convenience constant representing the length width of a standard borsh
     /// sequence.
     ///
@@ -411,8 +412,10 @@ where
     T: BorshSchema,
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        let definition = Definition::Array {
-            length: N as u32,
+        let n = N as u64;
+        let definition = Definition::Sequence {
+            length_width: Definition::ARRAY_LENGTH_WIDTH,
+            length_range: n..=n,
             elements: T::declaration(),
         };
         add_definition(Self::declaration(), definition, definitions);
@@ -941,7 +944,11 @@ mod tests {
         <[u64; 32]>::add_definitions_recursively(&mut actual_defs);
         assert_eq!("Array<u64, 32>", actual_name);
         assert_eq!(
-            map! {"Array<u64, 32>" => Definition::Array { length: 32, elements: "u64".to_string()},
+            map! {"Array<u64, 32>" => Definition::Sequence {
+                length_width: Definition::ARRAY_LENGTH_WIDTH,
+                length_range: 32..=32,
+                elements: "u64".to_string()
+            },
                 "u64" => Definition::Primitive(8)
             },
             actual_defs
@@ -957,11 +964,23 @@ mod tests {
         assert_eq!(
             map! {
             "Array<u64, 9>" =>
-                Definition::Array { length: 9, elements: "u64".to_string() },
+                Definition::Sequence {
+                    length_width: Definition::ARRAY_LENGTH_WIDTH,
+                    length_range: 9..=9,
+                    elements: "u64".to_string()
+                },
             "Array<Array<u64, 9>, 10>" =>
-                Definition::Array { length: 10, elements: "Array<u64, 9>".to_string() },
+                Definition::Sequence {
+                    length_width: Definition::ARRAY_LENGTH_WIDTH,
+                    length_range: 10..=10,
+                    elements: "Array<u64, 9>".to_string()
+                },
             "Array<Array<Array<u64, 9>, 10>, 32>" =>
-                Definition::Array { length: 32, elements: "Array<Array<u64, 9>, 10>".to_string() },
+                Definition::Sequence {
+                    length_width: Definition::ARRAY_LENGTH_WIDTH,
+                    length_range: 32..=32,
+                    elements: "Array<Array<u64, 9>, 10>".to_string()
+                },
             "u64" => Definition::Primitive(8)
             },
             actual_defs
