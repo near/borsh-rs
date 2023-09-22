@@ -140,6 +140,7 @@ fn max_serialized_size_impl<'a>(
             }
         }
         Ok(Definition::Sequence {
+            length_width,
             length_range,
             elements,
         }) => {
@@ -150,7 +151,7 @@ fn max_serialized_size_impl<'a>(
                 Err(_) if is_zero_size_impl(elements, schema, stack)? => 0,
                 Err(_) => return Err(Error::Overflow),
             };
-            mul(count, add(sz, 4)?)
+            mul(count, add(sz, *length_width as usize)?)
         }
 
         Ok(Definition::Enum {
@@ -246,7 +247,21 @@ fn is_zero_size_impl<'a>(
         Ok(Definition::Array { length, elements }) => {
             *length == 0 || is_zero_size_impl(elements.as_str(), schema, stack)?
         }
-        Ok(Definition::Sequence { .. }) => false,
+        Ok(Definition::Sequence { length_width, length_range, elements }) => {
+            if *length_width == 0 {
+                if length_range.is_empty() {
+                    return Ok(true);
+                }
+                // zero-sized array
+                if length_range.clone().count() == 1 && *length_range.start() == 0 {
+                    return Ok(true);
+                }
+                if is_zero_size_impl(elements.as_str(), schema, stack)? {
+                    return Ok(true);
+                }
+            }
+            false
+        },
         Ok(Definition::Tuple { elements }) => all(elements.iter(), |key| *key, schema, stack)?,
         Ok(Definition::Enum {
             tag_width: 0,
@@ -281,6 +296,8 @@ fn is_zero_size_impl<'a>(
 
 #[cfg(test)]
 mod tests {
+    use core::marker::PhantomData;
+
     use super::*;
 
     // this is not integration test module, so can use __private for ease of imports;
@@ -480,7 +497,7 @@ mod tests {
     }
 
     #[test]
-    fn max_serialized_size_custom_sequence() {
+    fn max_serialized_size_bound_vec() {
         #[allow(dead_code)]
         struct BoundVec<const N: u32>;
 
@@ -490,7 +507,8 @@ mod tests {
             }
             fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
                 let definition = Definition::Sequence {
-                    length_range: 0..=N,
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: 0..=N as u64,
                     elements: "u8".to_string(),
                 };
                 crate::schema::add_definition(Self::declaration(), definition, definitions);
@@ -501,5 +519,32 @@ mod tests {
         test_ok::<BoundVec<0>>(4);
         test_ok::<BoundVec<{ u32::MAX }>>(4 + u32::MAX as usize);
         test_ok::<BoundVec<20>>(24);
+    }
+
+    #[test]
+    fn max_serialized_size_small_vec() {
+        #[allow(dead_code)]
+        struct SmallVec<T>(PhantomData<T>);
+
+        impl<T> BorshSchema for SmallVec<T>
+        where
+            T: BorshSchema,
+        {
+            fn declaration() -> Declaration {
+                format!(r#"SmallVec<{}>"#, T::declaration())
+            }
+            fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+                let definition = Definition::Sequence {
+                    length_width: 1,
+                    length_range: 0..=u8::MAX as u64,
+                    elements: T::declaration(),
+                };
+                crate::schema::add_definition(Self::declaration(), definition, definitions);
+                T::add_definitions_recursively(definitions);
+            }
+        }
+
+        test_ok::<SmallVec<u8>>(u8::MAX as usize + 1);
+        test_ok::<SmallVec<u16>>(u8::MAX as usize * 2 + 1);
     }
 }

@@ -36,6 +36,8 @@ pub enum Error {
     EmptyLengthRange(Declaration),
 }
 
+const U64_WIDTH: u8 = 8;
+
 fn validate_impl<'a>(
     declaration: &'a Declaration,
     schema: &'a BorshSchemaContainer,
@@ -55,9 +57,13 @@ fn validate_impl<'a>(
         Definition::Primitive(_size) => {}
         Definition::Array { elements, .. } => validate_impl(elements, schema, stack)?,
         Definition::Sequence {
+            length_width,
             length_range,
             elements,
         } => {
+            if *length_width > U64_WIDTH {
+                return Err(Error::TagTooWide(declaration.to_string()));
+            }
             if length_range.is_empty() {
                 return Err(Error::EmptyLengthRange(declaration.clone()));
             }
@@ -78,7 +84,7 @@ fn validate_impl<'a>(
             tag_width,
             variants,
         } => {
-            if *tag_width > 8 {
+            if *tag_width > U64_WIDTH {
                 return Err(Error::TagTooWide(declaration.to_string()));
             }
             for (_, variant) in variants {
