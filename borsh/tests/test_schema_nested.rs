@@ -95,6 +95,7 @@ pub fn duplicated_instantiations() {
         "Cucumber" => Definition::Struct {fields: Fields::Empty},
         "Filling" => Definition::Struct {fields: Fields::Empty},
             "HashMap<u64, string>" => Definition::Sequence {
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "Tuple<u64, string>".to_string(),
             },
@@ -119,6 +120,7 @@ pub fn duplicated_instantiations() {
         "u64" => Definition::Primitive(8),
         "nil" => Definition::Primitive(0),
         "string" => Definition::Sequence {
+            length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: "u8".to_string()
         },
