@@ -32,6 +32,8 @@ pub enum Error {
     /// Declared tag width is too small.  Tags must be large enough to represent
     /// possible length of sequence.
     TagTooNarrow(Declaration),
+    /// only 0, 1, 2, 4 and 8 bytes long enum tags and sequences' `length_width` are alowed
+    TagNotPowerOfTwo(Declaration),
     /// Some of the declared types were lacking definition, which is considered
     /// a container's validation error
     MissingDefinition(Declaration),
@@ -39,15 +41,18 @@ pub enum Error {
     EmptyLengthRange(Declaration),
 }
 
-fn check_tag_width(declaration: &Declaration, width: u8, max: u64) -> Result<(), Error> {
+fn check_length_width(declaration: &Declaration, width: u8, max: u64) -> Result<(), Error> {
     match width {
         0 => Ok(()),
+        3 | 5 | 6 | 7 => Err(Error::TagNotPowerOfTwo(declaration.clone())),
         1..=7 if max < 1 << (width * 8) => Ok(()),
         1..=7 => Err(Error::TagTooNarrow(declaration.clone())),
         8 => Ok(()),
         _ => Err(Error::TagTooWide(declaration.clone())),
     }
 }
+
+const U64_LEN: u8 = 8;
 
 fn validate_impl<'a>(
     declaration: &'a Declaration,
@@ -66,6 +71,16 @@ fn validate_impl<'a>(
     stack.push(declaration);
     match definition {
         Definition::Primitive(_size) => {}
+        // arrays branch
+        Definition::Sequence {
+            length_width,
+            length_range,
+            elements,
+        } if *length_width == Definition::ARRAY_LENGTH_WIDTH
+            && length_range.clone().count() == 1 =>
+        {
+            validate_impl(elements, schema, stack)?
+        }
         Definition::Sequence {
             length_width,
             length_range,
@@ -74,7 +89,7 @@ fn validate_impl<'a>(
             if length_range.is_empty() {
                 return Err(Error::EmptyLengthRange(declaration.clone()));
             }
-            check_tag_width(declaration, *length_width, *length_range.end())?;
+            check_length_width(declaration, *length_width, *length_range.end())?;
             match is_zero_size(elements, schema) {
                 Ok(true) => return Err(Error::ZSTSequence(declaration.clone())),
                 Ok(false) => (),
@@ -92,13 +107,9 @@ fn validate_impl<'a>(
             tag_width,
             variants,
         } => {
-            // TODO(#230): variants.len() is actually incorrect here.  Since
-            // arbitrary discriminant can be used for variants, an actual
-            // largest discriminant may be larger than the number of variants.
-            // For the time being we’re using variants.len() as a proxy but
-            // eventually variant discriminants should be added to the schema.
-            let max_discriminant = variants.len().saturating_sub(1) as u64;
-            check_tag_width(declaration, *tag_width, max_discriminant)?;
+            if *tag_width > U64_LEN {
+                return Err(Error::TagTooWide(declaration.to_string()));
+            }
             for (_, variant) in variants {
                 validate_impl(variant, schema, stack)?;
             }
@@ -126,31 +137,35 @@ fn validate_impl<'a>(
     Ok(())
 }
 
-#[test]
-fn test_check_tag_width() {
-    for (width, max, want) in [
-        (0, u64::MAX, Ok(())),
-        (1, 255, Ok(())),
-        (1, 256, Err(Error::TagTooNarrow("test".into()))),
-        (2, (1 << 16) - 1, Ok(())),
-        (2, 1 << 16, Err(Error::TagTooNarrow("test".into()))),
-        (3, (1 << 24) - 1, Ok(())),
-        (3, 1 << 24, Err(Error::TagTooNarrow("test".into()))),
-        (4, (1 << 32) - 1, Ok(())),
-        (4, 1 << 32, Err(Error::TagTooNarrow("test".into()))),
-        (5, (1 << 40) - 1, Ok(())),
-        (5, 1 << 40, Err(Error::TagTooNarrow("test".into()))),
-        (6, (1 << 48) - 1, Ok(())),
-        (6, 1 << 48, Err(Error::TagTooNarrow("test".into()))),
-        (7, (1 << 56) - 1, Ok(())),
-        (7, 1 << 56, Err(Error::TagTooNarrow("test".into()))),
-        (8, u64::MAX, Ok(())),
-        (9, 0, Err(Error::TagTooWide("test".into()))),
-    ] {
-        assert_eq!(
-            want,
-            check_tag_width(&"test".into(), width, max),
-            "width={width}; max={max}"
-        );
+#[cfg(test)]
+mod tests {
+    use super::{check_length_width, Error};
+    use crate::__private::maybestd::string::ToString;
+
+    #[test]
+    fn test_check_tag_width() {
+        let narrow_err: Result<(), Error> = Err(Error::TagTooNarrow("test".to_string()));
+        let power_of_two_err: Result<(), Error> = Err(Error::TagNotPowerOfTwo("test".to_string()));
+
+        for (width, max, want) in [
+            (0, u64::MAX, Ok(())),
+            (1, u8::MAX as u64, Ok(())),
+            (1, u8::MAX as u64 + 1, narrow_err.clone()),
+            (2, u16::MAX as u64, Ok(())),
+            (2, u16::MAX as u64 + 1, narrow_err.clone()),
+            (3, 100, power_of_two_err.clone()),
+            (4, u32::MAX as u64, Ok(())),
+            (4, u32::MAX as u64 + 1, narrow_err),
+            (5, 100, power_of_two_err.clone()),
+            (6, 100, power_of_two_err.clone()),
+            (7, 100, power_of_two_err),
+            (8, u64::MAX, Ok(())),
+        ] {
+            assert_eq!(
+                want,
+                check_length_width(&"test".into(), width, max),
+                "width={width}; max={max}"
+            );
+        }
     }
 }

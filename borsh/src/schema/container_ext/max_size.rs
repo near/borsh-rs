@@ -116,27 +116,6 @@ fn max_serialized_size_impl<'a>(
             }
         },
         Ok(Definition::Sequence {
-            length_width: 0,
-            length_range,
-            elements,
-        }) => {
-            // Aggregate `count` and max length to a single number.  If this
-            // overflows, check if array’s element is zero-sized.  If it is, the
-            // overall size is zero even if count overflowed.
-            let count_lengths = usize::try_from(*length_range.end())
-                .ok()
-                .and_then(|len| len.checked_mul(count.get()))
-                .map(NonZeroUsize::new);
-            match count_lengths {
-                Some(None) => Ok(0),
-                Some(Some(count_lengths)) => {
-                    max_serialized_size_impl(count_lengths, elements, schema, stack)
-                }
-                None if is_zero_size_impl(elements, schema, stack)? => Ok(0),
-                None => Err(Error::Overflow),
-            }
-        }
-        Ok(Definition::Sequence {
             length_width,
             length_range,
             elements,
@@ -246,9 +225,16 @@ fn is_zero_size_impl<'a>(
             length_range,
             elements,
         }) => {
-            *length_width == 0
-                && (*length_range.end() == 0
-                    || is_zero_size_impl(elements.as_str(), schema, stack)?)
+            if *length_width == 0 {
+                // zero-sized array
+                if length_range.clone().count() == 1 && *length_range.start() == 0 {
+                    return Ok(true);
+                }
+                if is_zero_size_impl(elements.as_str(), schema, stack)? {
+                    return Ok(true);
+                }
+            }
+            false
         }
         Ok(Definition::Tuple { elements }) => all(elements.iter(), |key| *key, schema, stack)?,
         Ok(Definition::Enum {
