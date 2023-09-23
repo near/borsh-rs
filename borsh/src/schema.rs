@@ -56,17 +56,14 @@ pub enum Definition {
 
     /// A sequence of homogeneous elements.
     ///
-    /// Depending on value of `length_with`, the sequence is prefixed by the
-    /// number of elements (if `length_with` is non-zero) or it’s not
-    /// (otherwise).
+    /// If `length_width` is non-zero, the sequence is tagged, i.e. prefixed by
+    /// the number of elements in the sequence.  In that case, the length is
+    /// encoded as a `length_width`-byte wide little-endian unsigned integer.
     ///
-    /// In the former case, the length is encoded as a `length_with`-byte wide
-    /// little-endian unsigned integer.
-    ///
-    /// In the latter case, if `length_range` contains a single number, the
-    /// sequence is fixed-sized with the range determining number of elements.
-    /// Otherwise, knowledge of the type is necessary to be able to decode the
-    /// number of elements.
+    /// If `length_width` is zero, the sequence is untagged.  In that case, if
+    /// `length_range` contains a single number, the sequence is fixed-sized
+    /// with the range determining number of elements.  Otherwise, knowledge of
+    /// the type is necessary to be able to decode the number of elements.
     ///
     /// Prototypical examples of the use of this definitions are:
     /// * `[T; N]` → `length_width: 0, length_range: N..=N, elements: "T"` and
@@ -76,14 +73,15 @@ pub enum Definition {
     /// With `length_width` and `length_range` other custom encoding formats can
     /// also be expressed.  For example:
     /// * `BoundedVec<LO, HI, T>` → `length_width: 4, length_range: LO..=HI`;
-    /// * `PascelString` → `length_width: 1, length_range: 0..=255`;
+    /// * `PascalString` → `length_width: 1, length_range: 0..=255`;
     /// * `Ipv4Packet` → `length_width: 0, length_range: 20..=65536` or
     /// * `VarInt<u32>` → `length_width: 0, length_range: 1..=5`.
     Sequence {
-        /// How many bytes does the length prefix occupy.
+        /// How many bytes does the length tag occupy.
         ///
         /// Zero if this is fixed-length array or the length must be determined
-        /// by means not specified in the schema.
+        /// by means not specified in the schema.  The schema is invalid if the
+        /// value is greater than eight.
         length_width: u8,
 
         /// Bounds on the possible lengths of the sequence.
@@ -104,7 +102,8 @@ pub enum Definition {
     /// A possibly tagged union, a.k.a enum.
     ///
     /// Tagged unions are prefixed by a tag identifying encoded variant followed
-    /// by encoding of that variant.
+    /// by encoding of that variant.  The tag is `tag_width`-byte wide
+    /// little-endian number.
     ///
     /// Untagged unions don’t have a separate tag which means that knowledge of
     /// the type is necessary to fully analyse the binary.  Variants may still
@@ -114,11 +113,9 @@ pub enum Definition {
         /// Width in bytes of the discriminant tag.
         ///
         /// Zero indicates this is an untagged union.  In standard borsh
-        /// encoding this is one. However custom encoding formats may use larger
-        /// width if they need to encode more than 256 variants.
-        ///
-        /// Note: This definition must not be used if the tag is not encoded
-        /// using little-endian format.
+        /// encoding this is one.  Custom encoding formats may use larger width
+        /// if they need to encode more than 256 variants.  The schema is
+        /// invalid if the value is greater than eight.
         tag_width: u8,
 
         /// Possible variants of the enumeration.
