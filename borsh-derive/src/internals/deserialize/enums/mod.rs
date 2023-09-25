@@ -18,8 +18,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
         let variant_body = process_variant(variant, &cratename, &mut generics_output)?;
         let variant_ident = &variant.ident;
 
-        let discriminant_value =
-            discriminants.get(variant_ident, use_discriminant, variant_idx, false)?;
+        let discriminant_value = discriminants.get(variant_ident, use_discriminant, variant_idx)?;
         variant_arms.extend(quote! {
             if variant_tag == #discriminant_value { #name::#variant_ident #variant_body } else
         });

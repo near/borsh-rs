@@ -43,13 +43,18 @@ where
         <AEggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <ASalad<C> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <ASausage<W> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        let discriminant_0: u8 = 0u8;
+        let discriminant_1: u8 = 1u8;
+        let discriminant_2: u8 = 2u8;
+        let discriminant_3: u8 = 3u8;
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (0u8 as i64, "Bacon".to_string(), < ABacon > ::declaration()), (1u8 as
-                i64, "Eggs".to_string(), < AEggs > ::declaration()), (2u8 as i64, "Salad"
-                .to_string(), < ASalad < C > > ::declaration()), (3u8 as i64, "Sausage"
-                .to_string(), < ASausage < W > > ::declaration())
+                (discriminant_0 as i64, "Bacon".to_string(), < ABacon > ::declaration()),
+                (discriminant_1 as i64, "Eggs".to_string(), < AEggs > ::declaration()),
+                (discriminant_2 as i64, "Salad".to_string(), < ASalad < C > >
+                ::declaration()), (discriminant_3 as i64, "Sausage".to_string(), <
+                ASausage < W > > ::declaration())
             ],
         };
         borsh::schema::add_definition(Self::declaration(), definition, definitions);

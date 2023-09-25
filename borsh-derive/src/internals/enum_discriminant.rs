@@ -31,7 +31,6 @@ impl Discriminants {
         variant_ident: &Ident,
         use_discriminant: bool,
         variant_idx: usize,
-        cast_to_i64: bool,
     ) -> syn::Result<TokenStream> {
         let variant_idx = u8::try_from(variant_idx).map_err(|err| {
             syn::Error::new(
@@ -42,8 +41,6 @@ impl Discriminants {
         let result = if use_discriminant {
             let discriminant_value = self.0.get(variant_ident).unwrap();
             quote! { #discriminant_value }
-        } else if cast_to_i64 {
-            quote! { #variant_idx as i64 }
         } else {
             quote! { #variant_idx }
         };
