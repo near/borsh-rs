@@ -35,6 +35,8 @@ pub use container_ext::{SchemaContainerValidateError, SchemaMaxSerializedSizeErr
 pub type Declaration = String;
 /// The type that we use for the name of the variant.
 pub type VariantName = String;
+/// The type that we use for value of discriminant.
+pub type DiscriminantValue = i64;
 /// The name of the field in the struct (can be used to convert JSON to Borsh using the schema).
 pub type FieldName = String;
 /// The type that we use to represent the definition of the Borsh type.
@@ -119,7 +121,7 @@ pub enum Definition {
         tag_width: u8,
 
         /// Possible variants of the enumeration.
-        variants: Vec<(VariantName, Declaration)>,
+        variants: Vec<(DiscriminantValue, VariantName, Declaration)>,
     },
 
     /// A structure, structurally similar to a tuple.
@@ -453,8 +455,8 @@ where
         let definition = Definition::Enum {
             tag_width: 1,
             variants: vec![
-                ("None".to_string(), <()>::declaration()),
-                ("Some".to_string(), T::declaration()),
+                (0u8 as i64, "None".to_string(), <()>::declaration()),
+                (1u8 as i64, "Some".to_string(), T::declaration()),
             ],
         };
         add_definition(Self::declaration(), definition, definitions);
@@ -476,8 +478,8 @@ where
         let definition = Definition::Enum {
             tag_width: 1,
             variants: vec![
-                ("Ok".to_string(), T::declaration()),
-                ("Err".to_string(), E::declaration()),
+                (1u8 as i64, "Ok".to_string(), T::declaration()),
+                (0u8 as i64, "Err".to_string(), E::declaration()),
             ],
         };
         add_definition(Self::declaration(), definition, definitions);
@@ -713,8 +715,8 @@ mod tests {
                 "Option<u64>" => Definition::Enum {
                     tag_width: 1,
                     variants: vec![
-                        ("None".to_string(), "nil".to_string()),
-                        ("Some".to_string(), "u64".to_string()),
+                        (0, "None".to_string(), "nil".to_string()),
+                        (1, "Some".to_string(), "u64".to_string()),
                     ]
                 },
                 "u64" => Definition::Primitive(8),
@@ -735,15 +737,15 @@ mod tests {
                 "Option<u64>" => Definition::Enum {
                     tag_width: 1,
                     variants: vec![
-                        ("None".to_string(), "nil".to_string()),
-                        ("Some".to_string(), "u64".to_string()),
+                        (0, "None".to_string(), "nil".to_string()),
+                        (1, "Some".to_string(), "u64".to_string()),
                     ]
                 },
                 "Option<Option<u64>>" => Definition::Enum {
                     tag_width: 1,
                     variants: vec![
-                        ("None".to_string(), "nil".to_string()),
-                        ("Some".to_string(), "Option<u64>".to_string()),
+                        (0, "None".to_string(), "nil".to_string()),
+                        (1, "Some".to_string(), "Option<u64>".to_string()),
                     ]
                 },
                 "u64" => Definition::Primitive(8),

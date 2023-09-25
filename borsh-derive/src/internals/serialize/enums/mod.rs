@@ -21,7 +21,8 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
 
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_ident = &variant.ident;
-        let discriminant_value = discriminants.get(variant_ident, use_discriminant, variant_idx)?;
+        let discriminant_value =
+            discriminants.get(variant_ident, use_discriminant, variant_idx, false)?;
         let variant_output = process_variant(
             variant,
             enum_ident,

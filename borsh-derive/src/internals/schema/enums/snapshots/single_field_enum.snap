@@ -20,7 +20,7 @@ impl borsh::BorshSchema for A {
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                ("Bacon".to_string(), < ABacon > ::declaration())
+                (0u8 as i64, "Bacon".to_string(), < ABacon > ::declaration())
             ],
         };
         borsh::schema::add_definition(Self::declaration(), definition, definitions);

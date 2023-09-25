@@ -3,7 +3,11 @@ use quote::{quote, ToTokens};
 use std::collections::HashSet;
 use syn::{Fields, Generics, Ident, ItemEnum, ItemStruct, Path, Variant, Visibility};
 
-use crate::internals::{attributes::field, generics, schema};
+use crate::internals::{
+    attributes::{field, item},
+    enum_discriminant::Discriminants,
+    generics, schema,
+};
 
 fn transform_variant_fields(mut input: Fields) -> Fields {
     match input {
@@ -31,14 +35,20 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let mut where_clause = generics::default_where(where_clause);
     let mut generics_output = schema::GenericsOutput::new(&generics);
+    let use_discriminant = item::contains_use_discriminant(input)?;
+    let discriminants = Discriminants::new(&input.variants);
 
     // Generate functions that return the schema for variants.
     let mut variants_defs = vec![];
     let mut inner_defs = TokenStream2::new();
     let mut add_recursive_defs = TokenStream2::new();
-    for variant in &input.variants {
+    for (variant_idx, variant) in input.variants.iter().enumerate() {
+        let variant_ident = &variant.ident;
+        let discriminant_value =
+            discriminants.get(variant_ident, use_discriminant, variant_idx, true)?;
         let variant_output = process_variant(
             variant,
+            discriminant_value,
             &cratename,
             &enum_name,
             &generics,
@@ -84,6 +94,7 @@ struct VariantOutput {
 
 fn process_variant(
     variant: &Variant,
+    discriminant_value: TokenStream2,
     cratename: &Path,
     enum_name: &str,
     enum_generics: &Generics,
@@ -102,7 +113,7 @@ fn process_variant(
         <#full_variant_ident #inner_struct_ty_generics as #cratename::BorshSchema>::add_definitions_recursively(definitions);
     };
     let variant_entry = quote! {
-        (#variant_name.to_string(), <#full_variant_ident #inner_struct_ty_generics>::declaration())
+        (#discriminant_value, #variant_name.to_string(), <#full_variant_ident #inner_struct_ty_generics>::declaration())
     };
     Ok(VariantOutput {
         inner_struct,

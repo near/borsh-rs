@@ -32,8 +32,8 @@ impl borsh::BorshSchema for A {
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                ("B".to_string(), < AB > ::declaration()), ("Negative".to_string(), <
-                ANegative > ::declaration())
+                (0u8 as i64, "B".to_string(), < AB > ::declaration()), (1u8 as i64,
+                "Negative".to_string(), < ANegative > ::declaration())
             ],
         };
         borsh::schema::add_definition(Self::declaration(), definition, definitions);

@@ -39,8 +39,8 @@ where
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                ("B".to_string(), < AB < K, V > > ::declaration()), ("C".to_string(), <
-                AC < K > > ::declaration())
+                (0u8 as i64, "B".to_string(), < AB < K, V > > ::declaration()), (1u8 as
+                i64, "C".to_string(), < AC < K > > ::declaration())
             ],
         };
         borsh::schema::add_definition(Self::declaration(), definition, definitions);

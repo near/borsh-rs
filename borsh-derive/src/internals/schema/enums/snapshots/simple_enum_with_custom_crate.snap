@@ -29,8 +29,8 @@ impl reexporter::borsh::BorshSchema for A {
         let definition = reexporter::borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: reexporter::borsh::__private::maybestd::vec![
-                ("Bacon".to_string(), < ABacon > ::declaration()), ("Eggs".to_string(), <
-                AEggs > ::declaration())
+                (0u8 as i64, "Bacon".to_string(), < ABacon > ::declaration()), (1u8 as
+                i64, "Eggs".to_string(), < AEggs > ::declaration())
             ],
         };
         reexporter::borsh::schema::add_definition(
