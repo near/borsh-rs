@@ -1,0 +1,58 @@
+---
+source: borsh-derive/src/internals/schema/enums/mod.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+impl borsh::BorshSchema for X {
+    fn declaration() -> borsh::schema::Declaration {
+        "X".to_string()
+    }
+    fn add_definitions_recursively(
+        definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
+            borsh::schema::Declaration,
+            borsh::schema::Definition,
+        >,
+    ) {
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct XA;
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct XB;
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct XC;
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct XD;
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct XE;
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct XF;
+        <XA as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <XB as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <XC as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <XD as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <XE as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <XF as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        let definition = borsh::schema::Definition::Enum {
+            tag_width: 1,
+            variants: borsh::__private::maybestd::vec![
+                (0u8 as i64, "A".to_string(), < XA > ::declaration()), (1u8 as i64, "B"
+                .to_string(), < XB > ::declaration()), (2u8 as i64, "C".to_string(), < XC
+                > ::declaration()), (3u8 as i64, "D".to_string(), < XD >
+                ::declaration()), (4u8 as i64, "E".to_string(), < XE > ::declaration()),
+                (5u8 as i64, "F".to_string(), < XF > ::declaration())
+            ],
+        };
+        borsh::schema::add_definition(Self::declaration(), definition, definitions);
+    }
+}
+
