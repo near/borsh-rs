@@ -85,8 +85,8 @@ pub fn recursive_enum_schema() {
            "ERecD" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
-                    ("B".to_string(), "ERecDB".to_string()),
-                    ("C".to_string(), "ERecDC".to_string()),
+                    (0, "B".to_string(), "ERecDB".to_string()),
+                    (1, "C".to_string(), "ERecDC".to_string()),
                 ]
             },
             "ERecDB" => Definition::Struct {
