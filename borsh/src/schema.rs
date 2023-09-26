@@ -361,18 +361,18 @@ impl_for_primitives!(u8 => 1; u16 => 2; u32 => 4; u64 => 8; u128 => 16);
 impl_for_renamed_primitives!(isize: i64 => 8);
 impl_for_renamed_primitives!(usize: u64 => 8);
 
-impl_for_renamed_primitives!(core::num::NonZeroI8: nonzero_i8 => 1);
-impl_for_renamed_primitives!(core::num::NonZeroI16: nonzero_i16 => 2);
-impl_for_renamed_primitives!(core::num::NonZeroI32: nonzero_i32 => 4);
-impl_for_renamed_primitives!(core::num::NonZeroI64: nonzero_i64 => 8);
-impl_for_renamed_primitives!(core::num::NonZeroI128: nonzero_i128 => 16);
-impl_for_renamed_primitives!(core::num::NonZeroU8: nonzero_u8 => 1);
-impl_for_renamed_primitives!(core::num::NonZeroU16: nonzero_u16 => 2);
-impl_for_renamed_primitives!(core::num::NonZeroU32: nonzero_u32 => 4);
-impl_for_renamed_primitives!(core::num::NonZeroU64: nonzero_u64 => 8);
-impl_for_renamed_primitives!(core::num::NonZeroU128: nonzero_u128 => 16);
+impl_for_renamed_primitives!(core::num::NonZeroI8: NonZeroI8 => 1);
+impl_for_renamed_primitives!(core::num::NonZeroI16: NonZeroI16 => 2);
+impl_for_renamed_primitives!(core::num::NonZeroI32: NonZeroI32 => 4);
+impl_for_renamed_primitives!(core::num::NonZeroI64: NonZeroI64 => 8);
+impl_for_renamed_primitives!(core::num::NonZeroI128: NonZeroI128 => 16);
+impl_for_renamed_primitives!(core::num::NonZeroU8: NonZeroU8 => 1);
+impl_for_renamed_primitives!(core::num::NonZeroU16: NonZeroU16 => 2);
+impl_for_renamed_primitives!(core::num::NonZeroU32: NonZeroU32 => 4);
+impl_for_renamed_primitives!(core::num::NonZeroU64: NonZeroU64 => 8);
+impl_for_renamed_primitives!(core::num::NonZeroU128: NonZeroU128 => 16);
 // see 12 lines above
-impl_for_renamed_primitives!(core::num::NonZeroUsize: nonzero_u64 => 8);
+impl_for_renamed_primitives!(core::num::NonZeroUsize: NonZeroUsize => 8);
 
 impl_for_renamed_primitives!((): "()", 0);
 
@@ -817,18 +817,18 @@ mod tests {
         let actual_name = <(u64, core::num::NonZeroU16, String)>::declaration();
         let mut actual_defs = map!();
         <(u64, core::num::NonZeroU16, String)>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("Tuple<u64, nonzero_u16, String>", actual_name);
+        assert_eq!("Tuple<u64, NonZeroU16, String>", actual_name);
         assert_eq!(
             map! {
-                "Tuple<u64, nonzero_u16, String>" => Definition::Tuple {
+                "Tuple<u64, NonZeroU16, String>" => Definition::Tuple {
                     elements: vec![
                         "u64".to_string(),
-                        "nonzero_u16".to_string(),
+                        "NonZeroU16".to_string(),
                         "String".to_string()
                     ]
                 },
                 "u64" => Definition::Primitive(8),
-                "nonzero_u16" => Definition::Primitive(2),
+                "NonZeroU16" => Definition::Primitive(2),
                 "String" => Definition::Sequence {
                     length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
