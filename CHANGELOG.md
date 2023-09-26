@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-alpha.5](https://github.com/near/borsh-rs/compare/borsh-v1.0.0-alpha.4...borsh-v1.0.0-alpha.5) - 2023-09-26
+
+### Added
+- [**breaking**] add `DiscriminantValue` to `Definition::Enum::variants` tuples ([#232](https://github.com/near/borsh-rs/pull/232))
+- [**breaking**] add `length_width` to `schema::Definition::Sequence` ([#229](https://github.com/near/borsh-rs/pull/229))
+- add definition of `String`/`str` ([#226](https://github.com/near/borsh-rs/pull/226))
+- [**breaking**] add `Definition::Sequence::length_range` field ([#220](https://github.com/near/borsh-rs/pull/220))
+- [**breaking**] add `Definition::Primitive` ([#222](https://github.com/near/borsh-rs/pull/222))
+- max_size: various small refactoring ([#223](https://github.com/near/borsh-rs/pull/223))
+- check `Definition::Enum`’s `tag_width` when validating schema ([#224](https://github.com/near/borsh-rs/pull/224))
+- add (de)serialisation + schema for more `core::ops::Range...` types (full, open-ended, inclusive) ([#213](https://github.com/near/borsh-rs/pull/213))
+- add `BorshSchema` implementation for `core::num::NonZero...` integers ([#214](https://github.com/near/borsh-rs/pull/214))
+- [**breaking**] introduce `borsh::io` with either items of `std:io` or private `borsh::nostd_io` module reexported (`std` or `no_std`) ([#212](https://github.com/near/borsh-rs/pull/212))
+- Introduce `borsh::max_serialized_size` function, `borsh::schema::BorshSchemaContainer::for_type` method ([#209](https://github.com/near/borsh-rs/pull/209))
+
+### Other
+- [**breaking**] rename `"Tuple<T0, T1, T2...>"` -> `"(T0, T1, T2...)"` (`schema::Declaration`) ([#234](https://github.com/near/borsh-rs/pull/234))
+- [**breaking**] rename `"nil"` -> `"()"`, `"string"` -> `"String"`, `"nonzero_u16"` -> `"NonZeroU16"` (`schema::Declaration`) ([#233](https://github.com/near/borsh-rs/pull/233))
+- [**breaking**] rename `"Array<T0, N>"` -> `"[T0; N]"` (`schema::Declaration`) ([#235](https://github.com/near/borsh-rs/pull/235))
+- [**breaking**] split `ValidationError` from `MaxSizeError`; `validate` and `max_serialized_size` made `BorshSchemaContainer`'s methods ([#219](https://github.com/near/borsh-rs/pull/219))
+- [**breaking**] declare and rename schema feature to be unstable__ (may break in 1.x versions)
+- Add Definition::Enum::tag_width field ([#215](https://github.com/near/borsh-rs/pull/215))
+
 ## [1.0.0-alpha.4](https://github.com/near/borsh-rs/compare/borsh-v1.0.0-alpha.3...borsh-v1.0.0-alpha.4) - 2023-09-04
 
 ### Added

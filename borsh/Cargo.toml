@@ -27,7 +27,7 @@ required-features = ["std", "unstable__schema"]
 cfg_aliases = "0.1.0"
 
 [dependencies]
-borsh-derive = { path = "../borsh-derive", version = "1.0.0-alpha.4", optional = true }
+borsh-derive = { path = "../borsh-derive", version = "1.0.0-alpha.5", optional = true }
 
 # hashbrown can be used in no-std context.
 # NOTE: There is no reason to restrict use of older versions, but we don't want to get 
