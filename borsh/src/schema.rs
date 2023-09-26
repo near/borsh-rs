@@ -334,6 +334,20 @@ macro_rules! impl_for_renamed_primitives {
         }
     )+
     };
+
+    ($($ty: ty : $name: expr, $size: expr);+) => {
+    $(
+        impl BorshSchema for $ty {
+            #[inline]
+            fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+                let definition = Definition::Primitive($size);
+                add_definition(Self::declaration(), definition, definitions);
+            }
+            #[inline]
+            fn declaration() -> Declaration { $name.into() }
+        }
+    )+
+    };
 }
 
 macro_rules! impl_for_primitives {
@@ -360,7 +374,7 @@ impl_for_renamed_primitives!(core::num::NonZeroU128: nonzero_u128 => 16);
 // see 12 lines above
 impl_for_renamed_primitives!(core::num::NonZeroUsize: nonzero_u64 => 8);
 
-impl_for_renamed_primitives!((): nil => 0);
+impl_for_renamed_primitives!((): "()", 0);
 
 impl BorshSchema for String {
     #[inline]
@@ -715,12 +729,12 @@ mod tests {
                 "Option<u64>" => Definition::Enum {
                     tag_width: 1,
                     variants: vec![
-                        (0, "None".to_string(), "nil".to_string()),
+                        (0, "None".to_string(), "()".to_string()),
                         (1, "Some".to_string(), "u64".to_string()),
                     ]
                 },
                 "u64" => Definition::Primitive(8),
-                "nil" => Definition::Primitive(0)
+                "()" => Definition::Primitive(0)
             },
             actual_defs
         );
@@ -737,19 +751,19 @@ mod tests {
                 "Option<u64>" => Definition::Enum {
                     tag_width: 1,
                     variants: vec![
-                        (0, "None".to_string(), "nil".to_string()),
+                        (0, "None".to_string(), "()".to_string()),
                         (1, "Some".to_string(), "u64".to_string()),
                     ]
                 },
                 "Option<Option<u64>>" => Definition::Enum {
                     tag_width: 1,
                     variants: vec![
-                        (0, "None".to_string(), "nil".to_string()),
+                        (0, "None".to_string(), "()".to_string()),
                         (1, "Some".to_string(), "Option<u64>".to_string()),
                     ]
                 },
                 "u64" => Definition::Primitive(8),
-                "nil" => Definition::Primitive(0)
+                "()" => Definition::Primitive(0)
             },
             actual_defs
         );
@@ -1052,9 +1066,9 @@ mod tests {
     #[test]
     fn phantom_data_schema() {
         let phantom_declaration = PhantomData::<String>::declaration();
-        assert_eq!("nil", phantom_declaration);
+        assert_eq!("()", phantom_declaration);
         let phantom_declaration = PhantomData::<Vec<u8>>::declaration();
-        assert_eq!("nil", phantom_declaration);
+        assert_eq!("()", phantom_declaration);
     }
 
     #[test]

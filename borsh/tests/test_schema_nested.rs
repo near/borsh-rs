@@ -103,14 +103,14 @@ pub fn duplicated_instantiations() {
             "Option<string>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
-                    (0, "None".to_string(), "nil".to_string()),
+                    (0, "None".to_string(), "()".to_string()),
                     (1, "Some".to_string(), "string".to_string())
                 ]
             },
             "Option<u64>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
-                    (0, "None".to_string(), "nil".to_string()),
+                    (0, "None".to_string(), "()".to_string()),
                     (1, "Some".to_string(), "u64".to_string())
                 ]
             },
@@ -118,7 +118,7 @@ pub fn duplicated_instantiations() {
         "Tuple<u64, string>" => Definition::Tuple {elements: vec!["u64".to_string(), "string".to_string()]},
         "Wrapper<string>" => Definition::Struct{ fields: Fields::NamedFields(vec![("foo".to_string(), "Option<string>".to_string()), ("bar".to_string(), "A<string, string>".to_string())])},
         "u64" => Definition::Primitive(8),
-        "nil" => Definition::Primitive(0),
+        "()" => Definition::Primitive(0),
         "string" => Definition::Sequence {
             length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,

@@ -378,10 +378,10 @@ pub fn with_phantom_data() {
             "Parametrized<string>" => Definition::Struct {
                 fields: Fields::NamedFields(vec![
                     ("field".to_string(), "string".to_string()),
-                    ("another".to_string(), "nil".to_string())
+                    ("another".to_string(), "()".to_string())
                 ])
             },
-            "nil" => Definition::Primitive(0),
+            "()" => Definition::Primitive(0),
             "string" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
