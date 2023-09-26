@@ -63,10 +63,10 @@ pub fn simple_struct() {
         map! {
         "A" => Definition::Struct{ fields: Fields::NamedFields(vec![
         ("_f1".to_string(), "u64".to_string()),
-        ("_f2".to_string(), "string".to_string())
+        ("_f2".to_string(), "String".to_string())
         ])},
         "u64" => Definition::Primitive(8),
-        "string" => Definition::Sequence {
+        "String" => Definition::Sequence {
             length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: "u8".to_string()
@@ -97,12 +97,12 @@ pub fn boxed() {
             },
         "A" => Definition::Struct{ fields: Fields::NamedFields(vec![
         ("_f1".to_string(), "u64".to_string()),
-        ("_f2".to_string(), "string".to_string()),
+        ("_f2".to_string(), "String".to_string()),
         ("_f3".to_string(), "Vec<u8>".to_string())
         ])},
         "u64" => Definition::Primitive(8),
         "u8" => Definition::Primitive(1),
-        "string" => Definition::Sequence {
+        "String" => Definition::Sequence {
             length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: "u8".to_string()
@@ -138,10 +138,10 @@ pub fn tuple_struct() {
     assert_eq!(
         map! {
         "A" => Definition::Struct {fields: Fields::UnnamedFields(vec![
-         "u64".to_string(), "string".to_string()
+         "u64".to_string(), "String".to_string()
         ])},
         "u64" => Definition::Primitive(8),
-        "string" => Definition::Sequence {
+        "String" => Definition::Sequence {
             length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: "u8".to_string()
@@ -157,18 +157,18 @@ pub fn tuple_struct_params() {
     #[derive(borsh::BorshSchema)]
     struct A<K, V>(K, V);
     assert_eq!(
-        "A<u64, string>".to_string(),
+        "A<u64, String>".to_string(),
         <A<u64, String>>::declaration()
     );
     let mut defs = Default::default();
     <A<u64, String>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-        "A<u64, string>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
-            "u64".to_string(), "string".to_string()
+        "A<u64, String>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
+            "u64".to_string(), "String".to_string()
         ])},
         "u64" => Definition::Primitive(8),
-        "string" => Definition::Sequence {
+        "String" => Definition::Sequence {
             length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: "u8".to_string()
@@ -188,27 +188,27 @@ pub fn simple_generics() {
         _f2: String,
     }
     assert_eq!(
-        "A<u64, string>".to_string(),
+        "A<u64, String>".to_string(),
         <A<u64, String>>::declaration()
     );
     let mut defs = Default::default();
     <A<u64, String>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-        "A<u64, string>" => Definition::Struct {
+        "A<u64, String>" => Definition::Struct {
         fields: Fields::NamedFields(vec![
-        ("_f1".to_string(), "HashMap<u64, string>".to_string()),
-        ("_f2".to_string(), "string".to_string())
+        ("_f1".to_string(), "HashMap<u64, String>".to_string()),
+        ("_f2".to_string(), "String".to_string())
         ])
         },
-            "HashMap<u64, string>" => Definition::Sequence {
+            "HashMap<u64, String>" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
-                elements: "Tuple<u64, string>".to_string(),
+                elements: "Tuple<u64, String>".to_string(),
             },
-        "Tuple<u64, string>" => Definition::Tuple{elements: vec!["u64".to_string(), "string".to_string()]},
+        "Tuple<u64, String>" => Definition::Tuple{elements: vec!["u64".to_string(), "String".to_string()]},
         "u64" => Definition::Primitive(8),
-        "string" => Definition::Sequence {
+        "String" => Definition::Sequence {
             length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: "u8".to_string()
@@ -222,14 +222,14 @@ pub fn simple_generics() {
 fn common_map() -> BTreeMap<String, Definition> {
     map! {
 
-        "Parametrized<string, i8>" => Definition::Struct {
+        "Parametrized<String, i8>" => Definition::Struct {
             fields: Fields::NamedFields(vec![
                 ("field".to_string(), "i8".to_string()),
-                ("another".to_string(), "string".to_string())
+                ("another".to_string(), "String".to_string())
             ])
         },
         "i8" => Definition::Primitive(1),
-        "string" => Definition::Sequence {
+        "String" => Definition::Sequence {
             length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: "u8".to_string()
@@ -261,7 +261,7 @@ pub fn generic_associated_item() {
     }
 
     assert_eq!(
-        "Parametrized<string, i8>".to_string(),
+        "Parametrized<String, i8>".to_string(),
         <Parametrized<String, u32>>::declaration()
     );
 
@@ -294,7 +294,7 @@ pub fn generic_associated_item2() {
     }
 
     assert_eq!(
-        "Parametrized<string, i8>".to_string(),
+        "Parametrized<String, i8>".to_string(),
         <Parametrized<String, u32>>::declaration()
     );
 
@@ -327,7 +327,7 @@ pub fn generic_associated_item3() {
     }
 
     assert_eq!(
-        "Parametrized<string, u32, i8>".to_string(),
+        "Parametrized<String, u32, i8>".to_string(),
         <Parametrized<String, u32>>::declaration()
     );
 
@@ -335,10 +335,10 @@ pub fn generic_associated_item3() {
     <Parametrized<String, u32>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-            "Parametrized<string, u32, i8>" => Definition::Struct {
+            "Parametrized<String, u32, i8>" => Definition::Struct {
                 fields: Fields::NamedFields(vec![
                     ("field".to_string(), "Tuple<i8, u32>".to_string()),
-                    ("another".to_string(), "string".to_string())
+                    ("another".to_string(), "String".to_string())
                 ])
             },
             "Tuple<i8, u32>" => Definition::Tuple {
@@ -346,7 +346,7 @@ pub fn generic_associated_item3() {
             },
             "i8" => Definition::Primitive(1),
             "u32" => Definition::Primitive(4),
-            "string" => Definition::Sequence {
+            "String" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "u8".to_string()
@@ -367,7 +367,7 @@ pub fn with_phantom_data() {
     }
 
     assert_eq!(
-        "Parametrized<string>".to_string(),
+        "Parametrized<String>".to_string(),
         <Parametrized<String, u32>>::declaration()
     );
 
@@ -375,14 +375,14 @@ pub fn with_phantom_data() {
     <Parametrized<String, u32>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-            "Parametrized<string>" => Definition::Struct {
+            "Parametrized<String>" => Definition::Struct {
                 fields: Fields::NamedFields(vec![
-                    ("field".to_string(), "string".to_string()),
+                    ("field".to_string(), "String".to_string()),
                     ("another".to_string(), "()".to_string())
                 ])
             },
             "()" => Definition::Primitive(0),
-            "string" => Definition::Sequence {
+            "String" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "u8".to_string()

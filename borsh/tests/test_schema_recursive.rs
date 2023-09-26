@@ -48,24 +48,24 @@ pub fn recursive_struct_schema() {
                     vec![
                         (
                             "a".to_string(),
-                            "string".to_string(),
+                            "String".to_string(),
                         ),
                         (
                             "b".to_string(),
-                            "BTreeMap<string, CRecC>".to_string(),
+                            "BTreeMap<String, CRecC>".to_string(),
                         ),
                     ]
 
                 )
 
             },
-            "BTreeMap<string, CRecC>" => Definition::Sequence {
+            "BTreeMap<String, CRecC>" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
-                elements: "Tuple<string, CRecC>".to_string(),
+                elements: "Tuple<String, CRecC>".to_string(),
             },
-            "Tuple<string, CRecC>" => Definition::Tuple {elements: vec!["string".to_string(), "CRecC".to_string()]},
-            "string" => Definition::Sequence {
+            "Tuple<String, CRecC>" => Definition::Tuple {elements: vec!["String".to_string(), "CRecC".to_string()]},
+            "String" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "u8".to_string()
@@ -92,7 +92,7 @@ pub fn recursive_enum_schema() {
             "ERecDB" => Definition::Struct {
                 fields: Fields::NamedFields (
                     vec![
-                        ("x".to_string(), "string".to_string()),
+                        ("x".to_string(), "String".to_string()),
                         ("y".to_string(), "i32".to_string()),
                     ]
                 )
@@ -109,7 +109,7 @@ pub fn recursive_enum_schema() {
                 elements: "ERecD".to_string(),
             },
             "i32" => Definition::Primitive(4),
-            "string" => Definition::Sequence {
+            "String" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "u8".to_string()

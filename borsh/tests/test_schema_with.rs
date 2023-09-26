@@ -99,28 +99,28 @@ enum C<K, V> {
 #[test]
 pub fn struct_overriden() {
     assert_eq!(
-        "A<u64, string>".to_string(),
+        "A<u64, String>".to_string(),
         <A<u64, String>>::declaration()
     );
     let mut defs = Default::default();
     <A<u64, String>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-            "A<u64, string>" => Definition::Struct { fields: Fields::NamedFields(vec![
-                ("x".to_string(), "ThirdParty<u64, string>".to_string()),
+            "A<u64, String>" => Definition::Struct { fields: Fields::NamedFields(vec![
+                ("x".to_string(), "ThirdParty<u64, String>".to_string()),
                 ("y".to_string(), "u64".to_string())]
             )},
-            "ThirdParty<u64, string>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
-                "BTreeMap<u64, string>".to_string(),
+            "ThirdParty<u64, String>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
+                "BTreeMap<u64, String>".to_string(),
             ]) },
-            "BTreeMap<u64, string>"=> Definition::Sequence {
+            "BTreeMap<u64, String>"=> Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
-                elements: "Tuple<u64, string>".to_string(),
+                elements: "Tuple<u64, String>".to_string(),
             },
-            "Tuple<u64, string>" => Definition::Tuple { elements: vec!["u64".to_string(), "string".to_string()]},
+            "Tuple<u64, String>" => Definition::Tuple { elements: vec!["u64".to_string(), "String".to_string()]},
             "u64" => Definition::Primitive(8),
-            "string" => Definition::Sequence {
+            "String" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "u8".to_string()
@@ -134,35 +134,35 @@ pub fn struct_overriden() {
 #[test]
 pub fn enum_overriden() {
     assert_eq!(
-        "C<u64, string>".to_string(),
+        "C<u64, String>".to_string(),
         <C<u64, String>>::declaration()
     );
     let mut defs = Default::default();
     <C<u64, String>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-            "C<u64, string>" => Definition::Enum {
+            "C<u64, String>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
                     (0, "C3".to_string(), "CC3".to_string()),
-                    (1, "C4".to_string(), "CC4<u64, string>".to_string())
+                    (1, "C4".to_string(), "CC4<u64, String>".to_string())
                 ]
             },
             "CC3" => Definition::Struct { fields: Fields::UnnamedFields(vec!["u64".to_string(), "u64".to_string()]) },
-            "CC4<u64, string>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
-                "u64".to_string(), "ThirdParty<u64, string>".to_string()
+            "CC4<u64, String>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
+                "u64".to_string(), "ThirdParty<u64, String>".to_string()
             ]) },
-            "ThirdParty<u64, string>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
-                "BTreeMap<u64, string>".to_string(),
+            "ThirdParty<u64, String>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
+                "BTreeMap<u64, String>".to_string(),
             ]) },
-            "BTreeMap<u64, string>"=> Definition::Sequence {
+            "BTreeMap<u64, String>"=> Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
-                elements: "Tuple<u64, string>".to_string(),
+                elements: "Tuple<u64, String>".to_string(),
             },
-            "Tuple<u64, string>" => Definition::Tuple { elements: vec!["u64".to_string(), "string".to_string()]},
+            "Tuple<u64, String>" => Definition::Tuple { elements: vec!["u64".to_string(), "String".to_string()]},
             "u64" => Definition::Primitive(8),
-            "string" => Definition::Sequence {
+            "String" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: "u8".to_string()
