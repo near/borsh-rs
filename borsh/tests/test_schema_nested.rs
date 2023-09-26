@@ -61,65 +61,65 @@ pub fn duplicated_instantiations() {
         Sausage { wrapper: W, filling: Filling },
     }
     assert_eq!(
-        "A<Cucumber, Wrapper<string>>".to_string(),
+        "A<Cucumber, Wrapper<String>>".to_string(),
         <A<Cucumber, Wrapper<String>>>::declaration()
     );
     let mut defs = Default::default();
     <A<Cucumber, Wrapper<String>>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-            "A<Cucumber, Wrapper<string>>" => Definition::Enum {
+            "A<Cucumber, Wrapper<String>>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
                     (0, "Bacon".to_string(), "ABacon".to_string()),
                     (1, "Eggs".to_string(), "AEggs".to_string()),
                     (2, "Salad".to_string(), "ASalad<Cucumber>".to_string()),
-                    (3, "Sausage".to_string(), "ASausage<Wrapper<string>>".to_string())
+                    (3, "Sausage".to_string(), "ASausage<Wrapper<String>>".to_string())
                 ]
             },
-            "A<string, string>" => Definition::Enum {
+            "A<String, String>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
                     (0, "Bacon".to_string(), "ABacon".to_string()),
                     (1, "Eggs".to_string(), "AEggs".to_string()),
-                    (2, "Salad".to_string(), "ASalad<string>".to_string()),
-                    (3, "Sausage".to_string(), "ASausage<string>".to_string())
+                    (2, "Salad".to_string(), "ASalad<String>".to_string()),
+                    (3, "Sausage".to_string(), "ASausage<String>".to_string())
                 ]
             },
         "ABacon" => Definition::Struct {fields: Fields::Empty},
         "AEggs" => Definition::Struct {fields: Fields::Empty},
-        "ASalad<Cucumber>" => Definition::Struct {fields: Fields::UnnamedFields(vec!["Tomatoes".to_string(), "Cucumber".to_string(), "Oil<u64, string>".to_string()])},
-        "ASalad<string>" => Definition::Struct { fields: Fields::UnnamedFields( vec!["Tomatoes".to_string(), "string".to_string(), "Oil<u64, string>".to_string() ])},
-        "ASausage<Wrapper<string>>" => Definition::Struct {fields: Fields::NamedFields(vec![("wrapper".to_string(), "Wrapper<string>".to_string()), ("filling".to_string(), "Filling".to_string())])},
-        "ASausage<string>" => Definition::Struct{ fields: Fields::NamedFields(vec![("wrapper".to_string(), "string".to_string()), ("filling".to_string(), "Filling".to_string())])},
+        "ASalad<Cucumber>" => Definition::Struct {fields: Fields::UnnamedFields(vec!["Tomatoes".to_string(), "Cucumber".to_string(), "Oil<u64, String>".to_string()])},
+        "ASalad<String>" => Definition::Struct { fields: Fields::UnnamedFields( vec!["Tomatoes".to_string(), "String".to_string(), "Oil<u64, String>".to_string() ])},
+        "ASausage<Wrapper<String>>" => Definition::Struct {fields: Fields::NamedFields(vec![("wrapper".to_string(), "Wrapper<String>".to_string()), ("filling".to_string(), "Filling".to_string())])},
+        "ASausage<String>" => Definition::Struct{ fields: Fields::NamedFields(vec![("wrapper".to_string(), "String".to_string()), ("filling".to_string(), "Filling".to_string())])},
         "Cucumber" => Definition::Struct {fields: Fields::Empty},
         "Filling" => Definition::Struct {fields: Fields::Empty},
-            "HashMap<u64, string>" => Definition::Sequence {
+            "HashMap<u64, String>" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
-                elements: "Tuple<u64, string>".to_string(),
+                elements: "Tuple<u64, String>".to_string(),
             },
-        "Oil<u64, string>" => Definition::Struct { fields: Fields::NamedFields(vec![("seeds".to_string(), "HashMap<u64, string>".to_string()), ("liquid".to_string(), "Option<u64>".to_string())])},
-            "Option<string>" => Definition::Enum {
+        "Oil<u64, String>" => Definition::Struct { fields: Fields::NamedFields(vec![("seeds".to_string(), "HashMap<u64, String>".to_string()), ("liquid".to_string(), "Option<u64>".to_string())])},
+            "Option<String>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
-                    (0, "None".to_string(), "nil".to_string()),
-                    (1, "Some".to_string(), "string".to_string())
+                    (0, "None".to_string(), "()".to_string()),
+                    (1, "Some".to_string(), "String".to_string())
                 ]
             },
             "Option<u64>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
-                    (0, "None".to_string(), "nil".to_string()),
+                    (0, "None".to_string(), "()".to_string()),
                     (1, "Some".to_string(), "u64".to_string())
                 ]
             },
         "Tomatoes" => Definition::Struct {fields: Fields::Empty},
-        "Tuple<u64, string>" => Definition::Tuple {elements: vec!["u64".to_string(), "string".to_string()]},
-        "Wrapper<string>" => Definition::Struct{ fields: Fields::NamedFields(vec![("foo".to_string(), "Option<string>".to_string()), ("bar".to_string(), "A<string, string>".to_string())])},
+        "Tuple<u64, String>" => Definition::Tuple {elements: vec!["u64".to_string(), "String".to_string()]},
+        "Wrapper<String>" => Definition::Struct{ fields: Fields::NamedFields(vec![("foo".to_string(), "Option<String>".to_string()), ("bar".to_string(), "A<String, String>".to_string())])},
         "u64" => Definition::Primitive(8),
-        "nil" => Definition::Primitive(0),
-        "string" => Definition::Sequence {
+        "()" => Definition::Primitive(0),
+        "String" => Definition::Sequence {
             length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: "u8".to_string()

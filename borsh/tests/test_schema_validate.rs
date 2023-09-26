@@ -62,7 +62,7 @@ fn validate_for_derived_types() {
 #[test]
 fn validate_for_zst_sequences() {
     test_err::<Vec<Vec<()>>>(SchemaContainerValidateError::ZSTSequence(
-        "Vec<nil>".to_string(),
+        "Vec<()>".to_string(),
     ));
     test_err::<Vec<core::ops::RangeFull>>(SchemaContainerValidateError::ZSTSequence(
         "Vec<RangeFull>".to_string(),
