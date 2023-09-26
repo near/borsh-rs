@@ -71,19 +71,19 @@ pub fn duplicated_instantiations() {
             "A<Cucumber, Wrapper<string>>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
-                    ("Bacon".to_string(), "ABacon".to_string()),
-                    ("Eggs".to_string(), "AEggs".to_string()),
-                    ("Salad".to_string(), "ASalad<Cucumber>".to_string()),
-                    ("Sausage".to_string(), "ASausage<Wrapper<string>>".to_string())
+                    (0, "Bacon".to_string(), "ABacon".to_string()),
+                    (1, "Eggs".to_string(), "AEggs".to_string()),
+                    (2, "Salad".to_string(), "ASalad<Cucumber>".to_string()),
+                    (3, "Sausage".to_string(), "ASausage<Wrapper<string>>".to_string())
                 ]
             },
             "A<string, string>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
-                    ("Bacon".to_string(), "ABacon".to_string()),
-                    ("Eggs".to_string(), "AEggs".to_string()),
-                    ("Salad".to_string(), "ASalad<string>".to_string()),
-                    ("Sausage".to_string(), "ASausage<string>".to_string())
+                    (0, "Bacon".to_string(), "ABacon".to_string()),
+                    (1, "Eggs".to_string(), "AEggs".to_string()),
+                    (2, "Salad".to_string(), "ASalad<string>".to_string()),
+                    (3, "Sausage".to_string(), "ASausage<string>".to_string())
                 ]
             },
         "ABacon" => Definition::Struct {fields: Fields::Empty},
@@ -103,15 +103,15 @@ pub fn duplicated_instantiations() {
             "Option<string>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
-                    ("None".to_string(), "nil".to_string()),
-                    ("Some".to_string(), "string".to_string())
+                    (0, "None".to_string(), "nil".to_string()),
+                    (1, "Some".to_string(), "string".to_string())
                 ]
             },
             "Option<u64>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
-                    ("None".to_string(), "nil".to_string()),
-                    ("Some".to_string(), "u64".to_string())
+                    (0, "None".to_string(), "nil".to_string()),
+                    (1, "Some".to_string(), "u64".to_string())
                 ]
             },
         "Tomatoes" => Definition::Struct {fields: Fields::Empty},

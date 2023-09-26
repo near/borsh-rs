@@ -134,7 +134,7 @@ enum A {
 
 To have explicit discriminant value serialized as is, you must specify `borsh(use_discriminant=true)` for enum.
 ```ignore
-#[derive(BorsSerialize)]
+#[derive(BorshSerialize)]
 #[borsh(use_discriminant = true)]
 enum B {
     A
@@ -739,7 +739,67 @@ struct B {
 }
 ```
 
-### 2. `#[borsh(skip)]` (field level attribute)
+### 2. `borsh(use_discriminant=<bool>)` (item level attribute)
+This attribute is only applicable to enums.
+`use_discriminant` allows to override the default behavior of serialization of enums with explicit discriminant.
+`use_discriminant` is `false` behaves like version of borsh of 0.10.3.
+You must specify `use_discriminant` for all enums with explicit discriminants in your project.
+
+This is equivalent of borsh version 0.10.3 (explicit discriminant is ignored and this enum is equivalent to `A` without explicit discriminant):
+```ignore
+#[derive(BorshSchema)]
+#[borsh(use_discriminant = false)]
+enum A {
+    A
+    B = 10,
+}
+```
+
+To have explicit discriminant value serialized as is, you must specify `borsh(use_discriminant=true)` for enum.
+```ignore
+#[derive(BorshSchema)]
+#[borsh(use_discriminant = true)]
+enum B {
+    A
+    B = 10,
+}
+```
+
+###### borsh, expressions, evaluating to `isize`, as discriminant
+This case is not supported:
+```ignore
+const fn discrim() -> isize {
+    0x14
+}
+
+#[derive(BorshSchema)]
+#[borsh(use_discriminant = true)]
+enum X {
+    A,
+    B = discrim(), // expressions, evaluating to `isize`, which are allowed outside of `borsh` context
+    C,
+    D,
+    E = 10,
+    F,
+}
+```
+
+###### borsh explicit discriminant does not support literal values outside of u8 range
+This is not supported:
+```ignore
+#[derive(BorshSchema)]
+#[borsh(use_discriminant = true)]
+enum X {
+    A,
+    B = 0x100, // literal values outside of `u8` range
+    C,
+    D,
+    E = 10,
+    F,
+}
+```
+
+### 3. `#[borsh(skip)]` (field level attribute)
 
 `#[borsh(skip)]` makes derive skip including schema from annotated field into schema's implementation.
 
@@ -754,7 +814,7 @@ struct A {
 }
 ```
 
-### 3. `#[borsh(schema(params = ...))]` (field level attribute)
+### 4. `#[borsh(schema(params = ...))]` (field level attribute)
 
 ###### syntax
 
@@ -825,7 +885,7 @@ where
 
 `#[borsh(schema(params = ...))]` is not allowed to be used simultaneously with `#[borsh(skip)]`.
 
-### 4. `#[borsh(schema(with_funcs(declaration = ..., definitions = ...)))]` (field level attribute)
+### 5. `#[borsh(schema(with_funcs(declaration = ..., definitions = ...)))]` (field level attribute)
 
 ###### syntax
 

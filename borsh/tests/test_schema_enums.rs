@@ -48,7 +48,7 @@ pub fn simple_enum() {
         "AEggs" => Definition::Struct{ fields: Fields::Empty },
             "A" => Definition::Enum {
                 tag_width: 1,
-                variants: vec![("Bacon".to_string(), "ABacon".to_string()), ("Eggs".to_string(), "AEggs".to_string())]
+                variants: vec![(0, "Bacon".to_string(), "ABacon".to_string()), (1, "Eggs".to_string(), "AEggs".to_string())]
             }
         },
         defs
@@ -69,7 +69,7 @@ pub fn single_field_enum() {
             "ABacon" => Definition::Struct {fields: Fields::Empty},
             "A" => Definition::Enum {
                 tag_width: 1,
-                variants: vec![("Bacon".to_string(), "ABacon".to_string())]
+                variants: vec![(0, "Bacon".to_string(), "ABacon".to_string())]
             }
         },
         defs
@@ -185,10 +185,10 @@ pub fn complex_enum_with_schema() {
             "A" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
-                    ("Bacon".to_string(), "ABacon".to_string()),
-                    ("Eggs".to_string(), "AEggs".to_string()),
-                    ("Salad".to_string(), "ASalad".to_string()),
-                    ("Sausage".to_string(), "ASausage".to_string())
+                    (0, "Bacon".to_string(), "ABacon".to_string()),
+                    (1, "Eggs".to_string(), "AEggs".to_string()),
+                    (2, "Salad".to_string(), "ASalad".to_string()),
+                    (3, "Sausage".to_string(), "ASausage".to_string())
                 ]
             },
         "Wrapper" => Definition::Struct {fields: Fields::Empty},
@@ -247,10 +247,10 @@ pub fn complex_enum_generics() {
         "A<Cucumber, Wrapper>" => Definition::Enum {
             tag_width: 1,
             variants: vec![
-                ("Bacon".to_string(), "ABacon".to_string()),
-                ("Eggs".to_string(), "AEggs".to_string()),
-                ("Salad".to_string(), "ASalad<Cucumber>".to_string()),
-                ("Sausage".to_string(), "ASausage<Wrapper>".to_string())
+                (0, "Bacon".to_string(), "ABacon".to_string()),
+                (1, "Eggs".to_string(), "AEggs".to_string()),
+                (2, "Salad".to_string(), "ASalad<Cucumber>".to_string()),
+                (3, "Sausage".to_string(), "ASausage<Wrapper>".to_string())
             ]
         },
         "Wrapper" => Definition::Struct {fields: Fields::Empty},
@@ -273,8 +273,8 @@ fn common_map() -> BTreeMap<String, Definition> {
         "EnumParametrized<string, u32, i8, u16>" => Definition::Enum {
             tag_width: 1,
             variants: vec![
-                ("B".to_string(), "EnumParametrizedB<u32, i8, u16>".to_string()),
-                ("C".to_string(), "EnumParametrizedC<string>".to_string())
+                (0, "B".to_string(), "EnumParametrizedB<u32, i8, u16>".to_string()),
+                (1, "C".to_string(), "EnumParametrizedC<string>".to_string())
             ]
         },
         "EnumParametrizedB<u32, i8, u16>" => Definition::Struct { fields: Fields::NamedFields(vec![

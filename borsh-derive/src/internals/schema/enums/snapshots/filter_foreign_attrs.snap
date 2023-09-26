@@ -29,11 +29,14 @@ impl borsh::BorshSchema for A {
         }
         <AB as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <ANegative as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        let discriminant_0: u8 = 0u8;
+        let discriminant_1: u8 = 1u8;
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                ("B".to_string(), < AB > ::declaration()), ("Negative".to_string(), <
-                ANegative > ::declaration())
+                (discriminant_0 as i64, "B".to_string(), < AB > ::declaration()),
+                (discriminant_1 as i64, "Negative".to_string(), < ANegative >
+                ::declaration())
             ],
         };
         borsh::schema::add_definition(Self::declaration(), definition, definitions);

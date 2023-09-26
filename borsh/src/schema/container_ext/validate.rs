@@ -110,7 +110,7 @@ fn validate_impl<'a>(
             if *tag_width > U64_LEN {
                 return Err(Error::TagTooWide(declaration.to_string()));
             }
-            for (_, variant) in variants {
+            for (_, _, variant) in variants {
                 validate_impl(variant, schema, stack)?;
             }
         }

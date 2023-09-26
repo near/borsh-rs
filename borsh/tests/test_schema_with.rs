@@ -144,8 +144,8 @@ pub fn enum_overriden() {
             "C<u64, string>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
-                    ("C3".to_string(), "CC3".to_string()),
-                    ("C4".to_string(), "CC4<u64, string>".to_string())
+                    (0, "C3".to_string(), "CC3".to_string()),
+                    (1, "C4".to_string(), "CC4<u64, string>".to_string())
                 ]
             },
             "CC3" => Definition::Struct { fields: Fields::UnnamedFields(vec!["u64".to_string(), "u64".to_string()]) },

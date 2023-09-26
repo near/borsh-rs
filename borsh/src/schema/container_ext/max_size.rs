@@ -136,7 +136,7 @@ fn max_serialized_size_impl<'a>(
             variants,
         }) => {
             let mut max = 0;
-            for (_, variant) in variants {
+            for (_, _, variant) in variants {
                 let sz = max_serialized_size_impl(ONE, variant, schema, stack)?;
                 max = max.max(sz);
             }
@@ -242,7 +242,7 @@ fn is_zero_size_impl<'a>(
             variants,
         }) => all(
             variants.iter(),
-            |(_variant_name, declaration)| declaration,
+            |(_variant_discrim, _variant_name, declaration)| declaration,
             schema,
             stack,
         )?,
@@ -449,8 +449,8 @@ mod tests {
                 let definition = Definition::Enum {
                     tag_width: N,
                     variants: vec![
-                        ("Just".into(), T::declaration()),
-                        ("Nothing".into(), "nil".into()),
+                        (0, "Just".into(), T::declaration()),
+                        (1, "Nothing".into(), "nil".into()),
                     ],
                 };
                 crate::schema::add_definition(Self::declaration(), definition, definitions);
