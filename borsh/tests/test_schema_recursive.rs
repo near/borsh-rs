@@ -62,9 +62,9 @@ pub fn recursive_struct_schema() {
             "BTreeMap<String, CRecC>" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
-                elements: "Tuple<String, CRecC>".to_string(),
+                elements: "(String, CRecC)".to_string(),
             },
-            "Tuple<String, CRecC>" => Definition::Tuple {elements: vec!["String".to_string(), "CRecC".to_string()]},
+            "(String, CRecC)" => Definition::Tuple {elements: vec!["String".to_string(), "CRecC".to_string()]},
             "String" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,

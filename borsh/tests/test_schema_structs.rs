@@ -204,9 +204,9 @@ pub fn simple_generics() {
             "HashMap<u64, String>" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
-                elements: "Tuple<u64, String>".to_string(),
+                elements: "(u64, String)".to_string(),
             },
-        "Tuple<u64, String>" => Definition::Tuple{elements: vec!["u64".to_string(), "String".to_string()]},
+        "(u64, String)" => Definition::Tuple{elements: vec!["u64".to_string(), "String".to_string()]},
         "u64" => Definition::Primitive(8),
         "String" => Definition::Sequence {
             length_width: Definition::DEFAULT_LENGTH_WIDTH,
@@ -337,11 +337,11 @@ pub fn generic_associated_item3() {
         map! {
             "Parametrized<String, u32, i8>" => Definition::Struct {
                 fields: Fields::NamedFields(vec![
-                    ("field".to_string(), "Tuple<i8, u32>".to_string()),
+                    ("field".to_string(), "(i8, u32)".to_string()),
                     ("another".to_string(), "String".to_string())
                 ])
             },
-            "Tuple<i8, u32>" => Definition::Tuple {
+            "(i8, u32)" => Definition::Tuple {
                 elements: vec!["i8".to_string(), "u32".to_string()]
             },
             "i8" => Definition::Primitive(1),

@@ -667,7 +667,11 @@ macro_rules! impl_tuple {
 
         fn declaration() -> Declaration {
             let params = vec![$($name::declaration()),+];
-            format!(r#"Tuple<{}>"#, params.join(", "))
+            if params.len() == 1 {
+                format!(r#"({},)"#, params[0])
+            } else {
+                format!(r#"({})"#, params.join(", "))
+            }
         }
     }
     };
@@ -817,10 +821,10 @@ mod tests {
         let actual_name = <(u64, core::num::NonZeroU16, String)>::declaration();
         let mut actual_defs = map!();
         <(u64, core::num::NonZeroU16, String)>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("Tuple<u64, NonZeroU16, String>", actual_name);
+        assert_eq!("(u64, NonZeroU16, String)", actual_name);
         assert_eq!(
             map! {
-                "Tuple<u64, NonZeroU16, String>" => Definition::Tuple {
+                "(u64, NonZeroU16, String)" => Definition::Tuple {
                     elements: vec![
                         "u64".to_string(),
                         "NonZeroU16".to_string(),
@@ -845,15 +849,15 @@ mod tests {
         let actual_name = <(u64, (u8, bool), String)>::declaration();
         let mut actual_defs = map!();
         <(u64, (u8, bool), String)>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("Tuple<u64, Tuple<u8, bool>, String>", actual_name);
+        assert_eq!("(u64, (u8, bool), String)", actual_name);
         assert_eq!(
             map! {
-                "Tuple<u64, Tuple<u8, bool>, String>" => Definition::Tuple { elements: vec![
+                "(u64, (u8, bool), String)" => Definition::Tuple { elements: vec![
                     "u64".to_string(),
-                    "Tuple<u8, bool>".to_string(),
+                    "(u8, bool)".to_string(),
                     "String".to_string(),
                 ]},
-                "Tuple<u8, bool>" => Definition::Tuple { elements: vec![ "u8".to_string(), "bool".to_string()]},
+                "(u8, bool)" => Definition::Tuple { elements: vec![ "u8".to_string(), "bool".to_string()]},
                 "u64" => Definition::Primitive(8),
                 "u8" => Definition::Primitive(1),
                 "bool" => Definition::Primitive(1),
@@ -879,9 +883,9 @@ mod tests {
                 "HashMap<u64, String>" => Definition::Sequence {
                     length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
-                    elements: "Tuple<u64, String>".to_string(),
+                    elements: "(u64, String)".to_string(),
                 } ,
-                "Tuple<u64, String>" => Definition::Tuple {
+                "(u64, String)" => Definition::Tuple {
                     elements: vec![ "u64".to_string(), "String".to_string()],
                 },
                 "u64" => Definition::Primitive(8),
@@ -933,9 +937,9 @@ mod tests {
                 "BTreeMap<u64, String>" => Definition::Sequence {
                     length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
-                    elements: "Tuple<u64, String>".to_string(),
+                    elements: "(u64, String)".to_string(),
                 } ,
-                "Tuple<u64, String>" => Definition::Tuple { elements: vec![ "u64".to_string(), "String".to_string()]},
+                "(u64, String)" => Definition::Tuple { elements: vec![ "u64".to_string(), "String".to_string()]},
                 "u64" => Definition::Primitive(8),
                 "String" => Definition::Sequence {
                     length_width: Definition::DEFAULT_LENGTH_WIDTH,

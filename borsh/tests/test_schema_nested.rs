@@ -97,7 +97,7 @@ pub fn duplicated_instantiations() {
             "HashMap<u64, String>" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
-                elements: "Tuple<u64, String>".to_string(),
+                elements: "(u64, String)".to_string(),
             },
         "Oil<u64, String>" => Definition::Struct { fields: Fields::NamedFields(vec![("seeds".to_string(), "HashMap<u64, String>".to_string()), ("liquid".to_string(), "Option<u64>".to_string())])},
             "Option<String>" => Definition::Enum {
@@ -115,7 +115,7 @@ pub fn duplicated_instantiations() {
                 ]
             },
         "Tomatoes" => Definition::Struct {fields: Fields::Empty},
-        "Tuple<u64, String>" => Definition::Tuple {elements: vec!["u64".to_string(), "String".to_string()]},
+        "(u64, String)" => Definition::Tuple {elements: vec!["u64".to_string(), "String".to_string()]},
         "Wrapper<String>" => Definition::Struct{ fields: Fields::NamedFields(vec![("foo".to_string(), "Option<String>".to_string()), ("bar".to_string(), "A<String, String>".to_string())])},
         "u64" => Definition::Primitive(8),
         "()" => Definition::Primitive(0),
