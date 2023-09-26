@@ -26,12 +26,12 @@ macro_rules! map(
 
 #[test]
 fn test_unary_tuple_schema() {
-    assert_eq!("Tuple<bool>", <(bool,)>::declaration());
+    assert_eq!("(bool,)", <(bool,)>::declaration());
     let mut defs = Default::default();
     <(bool,)>::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-        "Tuple<bool>" => Definition::Tuple { elements: vec!["bool".to_string()] },
+        "(bool,)" => Definition::Tuple { elements: vec!["bool".to_string()] },
         "bool" => Definition::Primitive(1)
         },
         defs
