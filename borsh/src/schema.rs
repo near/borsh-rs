@@ -443,7 +443,7 @@ where
         T::add_definitions_recursively(definitions);
     }
     fn declaration() -> Declaration {
-        format!(r#"Array<{}, {}>"#, T::declaration(), N)
+        format!(r#"[{}; {}]"#, T::declaration(), N)
     }
 }
 
@@ -963,10 +963,10 @@ mod tests {
         let actual_name = <[u64; 32]>::declaration();
         let mut actual_defs = map!();
         <[u64; 32]>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("Array<u64, 32>", actual_name);
+        assert_eq!("[u64; 32]", actual_name);
         assert_eq!(
             map! {
-                "Array<u64, 32>" => Definition::Sequence {
+                "[u64; 32]" => Definition::Sequence {
                     length_width: Definition::ARRAY_LENGTH_WIDTH,
                     length_range: 32..=32,
                     elements: "u64".to_string()
@@ -982,23 +982,23 @@ mod tests {
         let actual_name = <[[[u64; 9]; 10]; 32]>::declaration();
         let mut actual_defs = map!();
         <[[[u64; 9]; 10]; 32]>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("Array<Array<Array<u64, 9>, 10>, 32>", actual_name);
+        assert_eq!("[[[u64; 9]; 10]; 32]", actual_name);
         assert_eq!(
             map! {
-                "Array<u64, 9>" => Definition::Sequence {
+                "[u64; 9]" => Definition::Sequence {
                     length_width: Definition::ARRAY_LENGTH_WIDTH,
                     length_range: 9..=9,
                     elements: "u64".to_string()
                 },
-                "Array<Array<u64, 9>, 10>" => Definition::Sequence {
+                "[[u64; 9]; 10]" => Definition::Sequence {
                     length_width: Definition::ARRAY_LENGTH_WIDTH,
                     length_range: 10..=10,
-                    elements: "Array<u64, 9>".to_string()
+                    elements: "[u64; 9]".to_string()
                 },
-                "Array<Array<Array<u64, 9>, 10>, 32>" => Definition::Sequence {
+                "[[[u64; 9]; 10]; 32]" => Definition::Sequence {
                     length_width: Definition::ARRAY_LENGTH_WIDTH,
                     length_range: 32..=32,
-                    elements: "Array<Array<u64, 9>, 10>".to_string()
+                    elements: "[[u64; 9]; 10]".to_string()
                 },
                 "u64" => Definition::Primitive(8)
             },
