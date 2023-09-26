@@ -39,7 +39,6 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let discriminants = Discriminants::new(&input.variants);
 
     // Generate functions that return the schema for variants.
-    let mut discriminant_variables = vec![];
     let mut variants_defs = vec![];
     let mut inner_defs = TokenStream2::new();
     let mut add_recursive_defs = TokenStream2::new();
@@ -60,14 +59,12 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
         inner_defs.extend(variant_output.inner_struct);
         add_recursive_defs.extend(variant_output.add_definitions_recursively_call);
         variants_defs.push(variant_output.variant_entry);
-        discriminant_variables.push(variant_output.discriminant_variable_assignment);
     }
 
     let type_definitions = quote! {
         fn add_definitions_recursively(definitions: &mut #cratename::__private::maybestd::collections::BTreeMap<#cratename::schema::Declaration, #cratename::schema::Definition>) {
             #inner_defs
             #add_recursive_defs
-            #(#discriminant_variables)*
             let definition = #cratename::schema::Definition::Enum {
                 tag_width: 1,
                 variants: #cratename::__private::maybestd::vec![#(#variants_defs),*],
@@ -93,8 +90,6 @@ struct VariantOutput {
     inner_struct: TokenStream2,
     /// call to `add_definitions_recursively`.
     add_definitions_recursively_call: TokenStream2,
-    /// declaration of `u8` variable, holding the value for discriminant of a variant
-    discriminant_variable_assignment: TokenStream2,
     /// entry with a variant's declaration, element in vector of whole enum's definition
     variant_entry: TokenStream2,
 }
@@ -108,18 +103,9 @@ struct DiscriminantInfo<'a> {
 fn process_discriminant(
     variant_ident: &Ident,
     info: DiscriminantInfo<'_>,
-) -> syn::Result<(Ident, TokenStream2)> {
-    let discriminant_value =
-        info.discriminants
-            .get(variant_ident, info.use_discriminant, info.variant_idx)?;
-
-    let discriminant_variable_name = format!("discriminant_{}", info.variant_idx);
-    let discriminant_variable = Ident::new(&discriminant_variable_name, Span::call_site());
-
-    let discriminant_variable_assignment = quote! {
-        let #discriminant_variable: u8 = #discriminant_value;
-    };
-    Ok((discriminant_variable, discriminant_variable_assignment))
+) -> syn::Result<TokenStream2> {
+    info.discriminants
+        .get(variant_ident, info.use_discriminant, info.variant_idx)
 }
 
 fn process_variant(
@@ -139,21 +125,21 @@ fn process_variant(
         inner_struct_definition(variant, cratename, &full_variant_ident, enum_generics);
     let (_ig, inner_struct_ty_generics, _wc) = inner_struct_generics.split_for_impl();
 
-    let add_definitions_recursively_call = quote! {
-        <#full_variant_ident #inner_struct_ty_generics as #cratename::BorshSchema>::add_definitions_recursively(definitions);
+    let variant_type = quote! {
+        <#full_variant_ident #inner_struct_ty_generics as #cratename::BorshSchema>
     };
+    let discriminant_value = process_discriminant(&variant.ident, discriminant_info)?;
 
-    let (discriminant_variable, discriminant_variable_assignment) =
-        process_discriminant(&variant.ident, discriminant_info)?;
-
-    let variant_entry = quote! {
-        (#discriminant_variable as i64, #variant_name.to_string(), <#full_variant_ident #inner_struct_ty_generics as #cratename::BorshSchema>::declaration())
-    };
     Ok(VariantOutput {
         inner_struct,
-        add_definitions_recursively_call,
-        variant_entry,
-        discriminant_variable_assignment,
+        add_definitions_recursively_call: quote! {
+            #variant_type::add_definitions_recursively(definitions);
+        },
+        variant_entry: quote! {
+            (u8::from(#discriminant_value) as i64,
+             #variant_name.into(),
+             #variant_type::declaration())
+        },
     })
 }
 

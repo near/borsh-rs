@@ -40,14 +40,12 @@ where
             B: Display + Debug;
         <SideLeft<A> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <SideRight<B> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        let discriminant_0: u8 = 0u8;
-        let discriminant_1: u8 = 1u8;
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (discriminant_0 as i64, "Left".to_string(), < SideLeft < A > as
-                borsh::BorshSchema > ::declaration()), (discriminant_1 as i64, "Right"
-                .to_string(), < SideRight < B > as borsh::BorshSchema > ::declaration())
+                (u8::from(0u8) as i64, "Left".into(), < SideLeft < A > as
+                borsh::BorshSchema > ::declaration()), (u8::from(1u8) as i64, "Right"
+                .into(), < SideRight < B > as borsh::BorshSchema > ::declaration())
             ],
         };
         borsh::schema::add_definition(
