@@ -1,6 +1,6 @@
 use crate::BorshSerialize;
 use crate::__private::maybestd::vec::Vec;
-use crate::io::{Result, Write};
+use crate::io::{ErrorKind, Result, Write};
 
 pub(super) const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;
 
@@ -20,4 +20,36 @@ where
     T: BorshSerialize + ?Sized,
 {
     value.serialize(&mut writer)
+}
+
+/// Serializes an object without allocation to compute and return its length
+pub fn object_length<T>(value: &T) -> Result<usize>
+where
+    T: BorshSerialize + ?Sized,
+{
+    // copy-paste of solution provided by @matklad
+    // in https://github.com/near/borsh-rs/issues/23#issuecomment-816633365
+    struct LengthWriter {
+        len: usize,
+    }
+    impl Write for LengthWriter {
+        #[inline]
+        fn write(&mut self, buf: &[u8]) -> Result<usize> {
+            let res = self.len.checked_add(buf.len());
+            self.len = match res {
+                Some(res) => res,
+                None => {
+                    return Err(ErrorKind::OutOfMemory.into());
+                }
+            };
+            Ok(buf.len())
+        }
+        #[inline]
+        fn flush(&mut self) -> Result<()> {
+            Ok(())
+        }
+    }
+    let mut w = LengthWriter { len: 0 };
+    value.serialize(&mut w)?;
+    Ok(w.len)
 }

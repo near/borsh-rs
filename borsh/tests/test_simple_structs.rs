@@ -176,3 +176,50 @@ fn test_ultimate_combined_all_features() {
     assert_eq!(decoded_f2.aa.len(), 2);
     assert!(decoded_f2.aa.iter().all(|f2_a| f2_a == &expected_a));
 }
+
+#[test]
+fn test_object_length() {
+    let mut map: BTreeMap<String, String> = BTreeMap::new();
+    map.insert("test".into(), "test".into());
+    let mut set: BTreeSet<u64> = BTreeSet::new();
+    set.insert(u64::MAX);
+    set.insert(100);
+    set.insert(103);
+    set.insert(109);
+    let cow_arr = [
+        borrow::Cow::Borrowed("Hello1"),
+        borrow::Cow::Owned("Hello2".to_string()),
+    ];
+    let a = A {
+        x: 1,
+        b: B {
+            x: 2,
+            y: 3,
+            c: C::C5(D { x: 1 }),
+        },
+        y: 4.0,
+        z: "123".to_string(),
+        t: ("Hello".to_string(), 10),
+        btree_map_string: map.clone(),
+        btree_set_u64: set.clone(),
+        linked_list_string: vec!["a".to_string(), "b".to_string()].into_iter().collect(),
+        vec_deque_u64: vec![1, 2, 3].into_iter().collect(),
+        bytes: vec![5, 4, 3, 2, 1].into(),
+        bytes_mut: BytesMut::from(&[1, 2, 3, 4, 5][..]),
+        v: vec!["qwe".to_string(), "zxc".to_string()],
+        w: vec![0].into_boxed_slice(),
+        box_str: Box::from("asd"),
+        i: [4u8; 32],
+        u: Ok("Hello".to_string()),
+        lazy: Some(5),
+        c: borrow::Cow::Borrowed("Hello"),
+        cow_arr: borrow::Cow::Borrowed(&cow_arr),
+        range_u32: 12..71,
+        skipped: Some(6),
+    };
+    let encoded_a_len = to_vec(&a).unwrap().len();
+
+    let len_helper_result = borsh::object_length(&a).unwrap();
+
+    assert_eq!(encoded_a_len, len_helper_result);
+}
