@@ -36,5 +36,9 @@ harness = false
 name = "maps_sets_inner_de"
 harness = false
 
+[[bench]]
+name = "object_length"
+harness = false
+
 [features]
 default = ["borsh/std", "borsh/derive"]

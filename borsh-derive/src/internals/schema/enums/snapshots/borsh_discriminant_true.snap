@@ -1,0 +1,65 @@
+---
+source: borsh-derive/src/internals/schema/enums/mod.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+impl borsh::BorshSchema for X {
+    fn declaration() -> borsh::schema::Declaration {
+        "X".to_string()
+    }
+    fn add_definitions_recursively(
+        definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
+            borsh::schema::Declaration,
+            borsh::schema::Definition,
+        >,
+    ) {
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct XA;
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct XB;
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct XC;
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct XD;
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct XE;
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct XF;
+        <XA as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <XB as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <XC as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <XD as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <XE as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <XF as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        let discriminant_0: u8 = 0;
+        let discriminant_1: u8 = 20;
+        let discriminant_2: u8 = 20 + 1;
+        let discriminant_3: u8 = 20 + 1 + 1;
+        let discriminant_4: u8 = 10;
+        let discriminant_5: u8 = 10 + 1;
+        let definition = borsh::schema::Definition::Enum {
+            tag_width: 1,
+            variants: borsh::__private::maybestd::vec![
+                (discriminant_0 as i64, "A".to_string(), < XA > ::declaration()),
+                (discriminant_1 as i64, "B".to_string(), < XB > ::declaration()),
+                (discriminant_2 as i64, "C".to_string(), < XC > ::declaration()),
+                (discriminant_3 as i64, "D".to_string(), < XD > ::declaration()),
+                (discriminant_4 as i64, "E".to_string(), < XE > ::declaration()),
+                (discriminant_5 as i64, "F".to_string(), < XF > ::declaration())
+            ],
+        };
+        borsh::schema::add_definition(Self::declaration(), definition, definitions);
+    }
+}
+

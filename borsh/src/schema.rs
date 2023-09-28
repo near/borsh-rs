@@ -27,10 +27,16 @@ use core::borrow::Borrow;
 use core::cmp::Ord;
 use core::marker::PhantomData;
 
+mod container_ext;
+
+pub use container_ext::{SchemaContainerValidateError, SchemaMaxSerializedSizeError};
+
 /// The type that we use to represent the declaration of the Borsh type.
 pub type Declaration = String;
 /// The type that we use for the name of the variant.
 pub type VariantName = String;
+/// The type that we use for value of discriminant.
+pub type DiscriminantValue = i64;
 /// The name of the field in the struct (can be used to convert JSON to Borsh using the schema).
 pub type FieldName = String;
 /// The type that we use to represent the definition of the Borsh type.
@@ -47,10 +53,50 @@ pub type FieldName = String;
 /// [varint]: https://en.wikipedia.org/wiki/Variable-length_quantity#Variants
 #[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
 pub enum Definition {
-    /// A fixed-size array with the length known at the compile time and the same-type elements.
-    Array { length: u32, elements: Declaration },
-    /// A sequence of elements of length known at the run time and the same-type elements.
-    Sequence { elements: Declaration },
+    /// A fixed-size type, which is considered undivisible
+    Primitive(u8),
+
+    /// A sequence of homogeneous elements.
+    ///
+    /// If `length_width` is non-zero, the sequence is tagged, i.e. prefixed by
+    /// the number of elements in the sequence.  In that case, the length is
+    /// encoded as a `length_width`-byte wide little-endian unsigned integer.
+    ///
+    /// If `length_width` is zero, the sequence is untagged.  In that case, if
+    /// `length_range` contains a single number, the sequence is fixed-sized
+    /// with the range determining number of elements.  Otherwise, knowledge of
+    /// the type is necessary to be able to decode the number of elements.
+    ///
+    /// Prototypical examples of the use of this definitions are:
+    /// * `[T; N]` → `length_width: 0, length_range: N..=N, elements: "T"` and
+    /// * `Vec<T>` → `length_width: 4, length_range: 0..=u32::MAX,
+    ///   elements: "T"`.
+    ///
+    /// With `length_width` and `length_range` other custom encoding formats can
+    /// also be expressed.  For example:
+    /// * `BoundedVec<LO, HI, T>` → `length_width: 4, length_range: LO..=HI`;
+    /// * `PascalString` → `length_width: 1, length_range: 0..=255`;
+    /// * `Ipv4Packet` → `length_width: 0, length_range: 20..=65536` or
+    /// * `VarInt<u32>` → `length_width: 0, length_range: 1..=5`.
+    Sequence {
+        /// How many bytes does the length tag occupy.
+        ///
+        /// Zero if this is fixed-length array or the length must be determined
+        /// by means not specified in the schema.  The schema is invalid if the
+        /// value is greater than eight.
+        length_width: u8,
+
+        /// Bounds on the possible lengths of the sequence.
+        ///
+        /// Note: The schema is invalid if the range is empty or `length_width`
+        /// is non-zero and either bound of the range cannot be represented as
+        /// `length_width`-byte-wide unsigned integer.
+        length_range: core::ops::RangeInclusive<u64>,
+
+        /// Type of each element of the sequence.
+        elements: Declaration,
+    },
+
     /// A fixed-size tuple with the length known at the compile time and the elements of different
     /// types.
     Tuple { elements: Vec<Declaration> },
@@ -58,7 +104,8 @@ pub enum Definition {
     /// A possibly tagged union, a.k.a enum.
     ///
     /// Tagged unions are prefixed by a tag identifying encoded variant followed
-    /// by encoding of that variant.
+    /// by encoding of that variant.  The tag is `tag_width`-byte wide
+    /// little-endian number.
     ///
     /// Untagged unions don’t have a separate tag which means that knowledge of
     /// the type is necessary to fully analyse the binary.  Variants may still
@@ -68,19 +115,36 @@ pub enum Definition {
         /// Width in bytes of the discriminant tag.
         ///
         /// Zero indicates this is an untagged union.  In standard borsh
-        /// encoding this is one. However custom encoding formats may use larger
-        /// width if they need to encode more than 256 variants.
-        ///
-        /// Note: This definition must not be used if the tag is not encoded
-        /// using little-endian format.
+        /// encoding this is one.  Custom encoding formats may use larger width
+        /// if they need to encode more than 256 variants.  The schema is
+        /// invalid if the value is greater than eight.
         tag_width: u8,
 
         /// Possible variants of the enumeration.
-        variants: Vec<(VariantName, Declaration)>,
+        variants: Vec<(DiscriminantValue, VariantName, Declaration)>,
     },
 
     /// A structure, structurally similar to a tuple.
     Struct { fields: Fields },
+}
+
+impl Definition {
+    /// Array length isn't present in payload, it's determined by type of data
+    /// serialized.
+    pub const ARRAY_LENGTH_WIDTH: u8 = 0;
+
+    /// Convenience constant representing the length width of a standard borsh
+    /// sequence.
+    ///
+    /// Can be used for `Definition::Sequence::length_width`.
+    pub const DEFAULT_LENGTH_WIDTH: u8 = 4;
+
+    /// Convenience constant representing the length range of a standard borsh
+    /// sequence.
+    ///
+    /// It equals `0..=u32::MAX`.  Can be used with
+    /// `Definition::Sequence::length_range`.
+    pub const DEFAULT_LENGTH_RANGE: core::ops::RangeInclusive<u64> = 0..=(u32::MAX as u64);
 }
 
 /// The collection representing the fields of a struct.
@@ -257,44 +321,87 @@ where
 }
 
 macro_rules! impl_for_renamed_primitives {
-    ($($type: ty : $name: ident)+) => {
+    ($($ty: ty : $name: ident => $size: expr);+) => {
     $(
-        impl BorshSchema for $type {
+        impl BorshSchema for $ty {
             #[inline]
-            fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
+            fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+                let definition = Definition::Primitive($size);
+                add_definition(Self::declaration(), definition, definitions);
+            }
             #[inline]
             fn declaration() -> Declaration { stringify!($name).into() }
+        }
+    )+
+    };
+
+    ($($ty: ty : $name: expr, $size: expr);+) => {
+    $(
+        impl BorshSchema for $ty {
+            #[inline]
+            fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+                let definition = Definition::Primitive($size);
+                add_definition(Self::declaration(), definition, definitions);
+            }
+            #[inline]
+            fn declaration() -> Declaration { $name.into() }
         }
     )+
     };
 }
 
 macro_rules! impl_for_primitives {
-    ($($type: ident)+) => {
-        impl_for_renamed_primitives!{$($type : $type)+}
+    ($($ty: ident => $size: expr);+) => {
+        impl_for_renamed_primitives!{$($ty : $ty => $size);+}
     };
 }
 
-impl_for_primitives!(bool f32 f64 i8 i16 i32 i64 i128 u8 u16 u32 u64 u128);
-impl_for_renamed_primitives!(String: string);
-impl_for_renamed_primitives!(str: string);
-impl_for_renamed_primitives!(isize: i64);
-impl_for_renamed_primitives!(usize: u64);
+impl_for_primitives!(bool => 1; f32 => 4; f64 => 8; i8 => 1; i16 => 2; i32 => 4; i64 => 8; i128 => 16);
+impl_for_primitives!(u8 => 1; u16 => 2; u32 => 4; u64 => 8; u128 => 16);
+impl_for_renamed_primitives!(isize: i64 => 8);
+impl_for_renamed_primitives!(usize: u64 => 8);
 
-impl_for_renamed_primitives!(core::num::NonZeroI8: nonzero_i8);
-impl_for_renamed_primitives!(core::num::NonZeroI16: nonzero_i16);
-impl_for_renamed_primitives!(core::num::NonZeroI32: nonzero_i32);
-impl_for_renamed_primitives!(core::num::NonZeroI64: nonzero_i64);
-impl_for_renamed_primitives!(core::num::NonZeroI128: nonzero_i128);
-impl_for_renamed_primitives!(core::num::NonZeroU8: nonzero_u8);
-impl_for_renamed_primitives!(core::num::NonZeroU16: nonzero_u16);
-impl_for_renamed_primitives!(core::num::NonZeroU32: nonzero_u32);
-impl_for_renamed_primitives!(core::num::NonZeroU64: nonzero_u64);
-impl_for_renamed_primitives!(core::num::NonZeroU128: nonzero_u128);
+impl_for_renamed_primitives!(core::num::NonZeroI8: NonZeroI8 => 1);
+impl_for_renamed_primitives!(core::num::NonZeroI16: NonZeroI16 => 2);
+impl_for_renamed_primitives!(core::num::NonZeroI32: NonZeroI32 => 4);
+impl_for_renamed_primitives!(core::num::NonZeroI64: NonZeroI64 => 8);
+impl_for_renamed_primitives!(core::num::NonZeroI128: NonZeroI128 => 16);
+impl_for_renamed_primitives!(core::num::NonZeroU8: NonZeroU8 => 1);
+impl_for_renamed_primitives!(core::num::NonZeroU16: NonZeroU16 => 2);
+impl_for_renamed_primitives!(core::num::NonZeroU32: NonZeroU32 => 4);
+impl_for_renamed_primitives!(core::num::NonZeroU64: NonZeroU64 => 8);
+impl_for_renamed_primitives!(core::num::NonZeroU128: NonZeroU128 => 16);
 // see 12 lines above
-impl_for_renamed_primitives!(core::num::NonZeroUsize: nonzero_u64);
+impl_for_renamed_primitives!(core::num::NonZeroUsize: NonZeroUsize => 8);
 
-impl_for_renamed_primitives!((): nil);
+impl_for_renamed_primitives!((): "()", 0);
+
+impl BorshSchema for String {
+    #[inline]
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        str::add_definitions_recursively(definitions);
+    }
+    #[inline]
+    fn declaration() -> Declaration {
+        str::declaration()
+    }
+}
+impl BorshSchema for str {
+    #[inline]
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        let definition = Definition::Sequence {
+            length_width: Definition::DEFAULT_LENGTH_WIDTH,
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
+            elements: u8::declaration(),
+        };
+        add_definition(Self::declaration(), definition, definitions);
+        u8::add_definitions_recursively(definitions);
+    }
+    #[inline]
+    fn declaration() -> Declaration {
+        "String".into()
+    }
+}
 
 impl BorshSchema for core::ops::RangeFull {
     #[inline]
@@ -339,15 +446,18 @@ where
     T: BorshSchema,
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        let definition = Definition::Array {
-            length: N as u32,
+        use core::convert::TryFrom;
+        let length = u64::try_from(N).unwrap();
+        let definition = Definition::Sequence {
+            length_width: Definition::ARRAY_LENGTH_WIDTH,
+            length_range: length..=length,
             elements: T::declaration(),
         };
         add_definition(Self::declaration(), definition, definitions);
         T::add_definitions_recursively(definitions);
     }
     fn declaration() -> Declaration {
-        format!(r#"Array<{}, {}>"#, T::declaration(), N)
+        format!(r#"[{}; {}]"#, T::declaration(), N)
     }
 }
 
@@ -359,12 +469,13 @@ where
         let definition = Definition::Enum {
             tag_width: 1,
             variants: vec![
-                ("None".to_string(), <()>::declaration()),
-                ("Some".to_string(), T::declaration()),
+                (0u8 as i64, "None".to_string(), <()>::declaration()),
+                (1u8 as i64, "Some".to_string(), T::declaration()),
             ],
         };
         add_definition(Self::declaration(), definition, definitions);
         T::add_definitions_recursively(definitions);
+        <()>::add_definitions_recursively(definitions);
     }
 
     fn declaration() -> Declaration {
@@ -381,12 +492,13 @@ where
         let definition = Definition::Enum {
             tag_width: 1,
             variants: vec![
-                ("Ok".to_string(), T::declaration()),
-                ("Err".to_string(), E::declaration()),
+                (1u8 as i64, "Ok".to_string(), T::declaration()),
+                (0u8 as i64, "Err".to_string(), E::declaration()),
             ],
         };
         add_definition(Self::declaration(), definition, definitions);
         T::add_definitions_recursively(definitions);
+        E::add_definitions_recursively(definitions);
     }
 
     fn declaration() -> Declaration {
@@ -400,6 +512,8 @@ where
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Sequence {
+            length_width: Definition::DEFAULT_LENGTH_WIDTH,
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: T::declaration(),
         };
         add_definition(Self::declaration(), definition, definitions);
@@ -417,6 +531,8 @@ where
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Sequence {
+            length_width: Definition::DEFAULT_LENGTH_WIDTH,
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: T::declaration(),
         };
         add_definition(Self::declaration(), definition, definitions);
@@ -450,6 +566,8 @@ pub mod hashes {
     {
         fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
             let definition = Definition::Sequence {
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: <(K, V)>::declaration(),
             };
             add_definition(Self::declaration(), definition, definitions);
@@ -466,6 +584,8 @@ pub mod hashes {
     {
         fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
             let definition = Definition::Sequence {
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: <T>::declaration(),
             };
             add_definition(Self::declaration(), definition, definitions);
@@ -485,6 +605,8 @@ where
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Sequence {
+            length_width: Definition::DEFAULT_LENGTH_WIDTH,
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: <(K, V)>::declaration(),
         };
         add_definition(Self::declaration(), definition, definitions);
@@ -502,6 +624,8 @@ where
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         let definition = Definition::Sequence {
+            length_width: Definition::DEFAULT_LENGTH_WIDTH,
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: <T>::declaration(),
         };
         add_definition(Self::declaration(), definition, definitions);
@@ -516,7 +640,9 @@ where
 // Because it's a zero-sized marker, its type parameter doesn't need to be
 // included in the schema and so it's not bound to `BorshSchema`
 impl<T> BorshSchema for PhantomData<T> {
-    fn add_definitions_recursively(_definitions: &mut BTreeMap<Declaration, Definition>) {}
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        <()>::add_definitions_recursively(definitions);
+    }
 
     fn declaration() -> Declaration {
         <()>::declaration()
@@ -541,7 +667,11 @@ macro_rules! impl_tuple {
 
         fn declaration() -> Declaration {
             let params = vec![$($name::declaration()),+];
-            format!(r#"Tuple<{}>"#, params.join(", "))
+            if params.len() == 1 {
+                format!(r#"({},)"#, params[0])
+            } else {
+                format!(r#"({})"#, params.join(", "))
+            }
         }
     }
     };
@@ -603,10 +733,12 @@ mod tests {
                 "Option<u64>" => Definition::Enum {
                     tag_width: 1,
                     variants: vec![
-                        ("None".to_string(), "nil".to_string()),
-                        ("Some".to_string(), "u64".to_string()),
+                        (0, "None".to_string(), "()".to_string()),
+                        (1, "Some".to_string(), "u64".to_string()),
                     ]
-                }
+                },
+                "u64" => Definition::Primitive(8),
+                "()" => Definition::Primitive(0)
             },
             actual_defs
         );
@@ -623,17 +755,19 @@ mod tests {
                 "Option<u64>" => Definition::Enum {
                     tag_width: 1,
                     variants: vec![
-                        ("None".to_string(), "nil".to_string()),
-                        ("Some".to_string(), "u64".to_string()),
+                        (0, "None".to_string(), "()".to_string()),
+                        (1, "Some".to_string(), "u64".to_string()),
                     ]
                 },
                 "Option<Option<u64>>" => Definition::Enum {
                     tag_width: 1,
                     variants: vec![
-                        ("None".to_string(), "nil".to_string()),
-                        ("Some".to_string(), "Option<u64>".to_string()),
+                        (0, "None".to_string(), "()".to_string()),
+                        (1, "Some".to_string(), "Option<u64>".to_string()),
                     ]
-                }
+                },
+                "u64" => Definition::Primitive(8),
+                "()" => Definition::Primitive(0)
             },
             actual_defs
         );
@@ -647,7 +781,12 @@ mod tests {
         assert_eq!("Vec<u64>", actual_name);
         assert_eq!(
             map! {
-            "Vec<u64>" => Definition::Sequence { elements: "u64".to_string() }
+                "Vec<u64>" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u64".to_string(),
+                },
+                "u64" => Definition::Primitive(8)
             },
             actual_defs
         );
@@ -661,8 +800,17 @@ mod tests {
         assert_eq!("Vec<Vec<u64>>", actual_name);
         assert_eq!(
             map! {
-            "Vec<u64>" => Definition::Sequence { elements: "u64".to_string() },
-            "Vec<Vec<u64>>" => Definition::Sequence { elements: "Vec<u64>".to_string() }
+                "Vec<u64>" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u64".to_string(),
+                },
+                "Vec<Vec<u64>>" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "Vec<u64>".to_string(),
+                },
+                "u64" => Definition::Primitive(8)
             },
             actual_defs
         );
@@ -673,16 +821,24 @@ mod tests {
         let actual_name = <(u64, core::num::NonZeroU16, String)>::declaration();
         let mut actual_defs = map!();
         <(u64, core::num::NonZeroU16, String)>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("Tuple<u64, nonzero_u16, string>", actual_name);
+        assert_eq!("(u64, NonZeroU16, String)", actual_name);
         assert_eq!(
             map! {
-                "Tuple<u64, nonzero_u16, string>" => Definition::Tuple {
+                "(u64, NonZeroU16, String)" => Definition::Tuple {
                     elements: vec![
                         "u64".to_string(),
-                        "nonzero_u16".to_string(),
-                        "string".to_string()
+                        "NonZeroU16".to_string(),
+                        "String".to_string()
                     ]
-                }
+                },
+                "u64" => Definition::Primitive(8),
+                "NonZeroU16" => Definition::Primitive(2),
+                "String" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                },
+                "u8" => Definition::Primitive(1)
             },
             actual_defs
         );
@@ -693,15 +849,23 @@ mod tests {
         let actual_name = <(u64, (u8, bool), String)>::declaration();
         let mut actual_defs = map!();
         <(u64, (u8, bool), String)>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("Tuple<u64, Tuple<u8, bool>, string>", actual_name);
+        assert_eq!("(u64, (u8, bool), String)", actual_name);
         assert_eq!(
             map! {
-                "Tuple<u64, Tuple<u8, bool>, string>" => Definition::Tuple { elements: vec![
+                "(u64, (u8, bool), String)" => Definition::Tuple { elements: vec![
                     "u64".to_string(),
-                    "Tuple<u8, bool>".to_string(),
-                    "string".to_string(),
+                    "(u8, bool)".to_string(),
+                    "String".to_string(),
                 ]},
-                "Tuple<u8, bool>" => Definition::Tuple { elements: vec![ "u8".to_string(), "bool".to_string()]}
+                "(u8, bool)" => Definition::Tuple { elements: vec![ "u8".to_string(), "bool".to_string()]},
+                "u64" => Definition::Primitive(8),
+                "u8" => Definition::Primitive(1),
+                "bool" => Definition::Primitive(1),
+                "String" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                }
             },
             actual_defs
         );
@@ -713,11 +877,25 @@ mod tests {
         let actual_name = HashMap::<u64, String>::declaration();
         let mut actual_defs = map!();
         HashMap::<u64, String>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("HashMap<u64, string>", actual_name);
+        assert_eq!("HashMap<u64, String>", actual_name);
         assert_eq!(
             map! {
-                "HashMap<u64, string>" => Definition::Sequence { elements: "Tuple<u64, string>".to_string()} ,
-                "Tuple<u64, string>" => Definition::Tuple { elements: vec![ "u64".to_string(), "string".to_string()]}
+                "HashMap<u64, String>" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "(u64, String)".to_string(),
+                } ,
+                "(u64, String)" => Definition::Tuple {
+                    elements: vec![ "u64".to_string(), "String".to_string()],
+                },
+                "u64" => Definition::Primitive(8),
+                "String" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                },
+                "u8" => Definition::Primitive(1)
+
             },
             actual_defs
         );
@@ -729,10 +907,20 @@ mod tests {
         let actual_name = HashSet::<String>::declaration();
         let mut actual_defs = map!();
         HashSet::<String>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("HashSet<string>", actual_name);
+        assert_eq!("HashSet<String>", actual_name);
         assert_eq!(
             map! {
-                "HashSet<string>" => Definition::Sequence { elements: "string".to_string()}
+                "HashSet<String>" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "String".to_string(),
+                },
+                "String" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                },
+                "u8" => Definition::Primitive(1)
             },
             actual_defs
         );
@@ -743,11 +931,22 @@ mod tests {
         let actual_name = BTreeMap::<u64, String>::declaration();
         let mut actual_defs = map!();
         BTreeMap::<u64, String>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("BTreeMap<u64, string>", actual_name);
+        assert_eq!("BTreeMap<u64, String>", actual_name);
         assert_eq!(
             map! {
-                "BTreeMap<u64, string>" => Definition::Sequence { elements: "Tuple<u64, string>".to_string()} ,
-                "Tuple<u64, string>" => Definition::Tuple { elements: vec![ "u64".to_string(), "string".to_string()]}
+                "BTreeMap<u64, String>" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "(u64, String)".to_string(),
+                } ,
+                "(u64, String)" => Definition::Tuple { elements: vec![ "u64".to_string(), "String".to_string()]},
+                "u64" => Definition::Primitive(8),
+                "String" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                },
+                "u8" => Definition::Primitive(1)
             },
             actual_defs
         );
@@ -758,10 +957,20 @@ mod tests {
         let actual_name = BTreeSet::<String>::declaration();
         let mut actual_defs = map!();
         BTreeSet::<String>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("BTreeSet<string>", actual_name);
+        assert_eq!("BTreeSet<String>", actual_name);
         assert_eq!(
             map! {
-                "BTreeSet<string>" => Definition::Sequence { elements: "string".to_string()}
+                "BTreeSet<String>" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "String".to_string(),
+                },
+                "String" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                },
+                "u8" => Definition::Primitive(1)
             },
             actual_defs
         );
@@ -772,9 +981,16 @@ mod tests {
         let actual_name = <[u64; 32]>::declaration();
         let mut actual_defs = map!();
         <[u64; 32]>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("Array<u64, 32>", actual_name);
+        assert_eq!("[u64; 32]", actual_name);
         assert_eq!(
-            map! {"Array<u64, 32>" => Definition::Array { length: 32, elements: "u64".to_string()}},
+            map! {
+                "[u64; 32]" => Definition::Sequence {
+                    length_width: Definition::ARRAY_LENGTH_WIDTH,
+                    length_range: 32..=32,
+                    elements: "u64".to_string()
+                },
+                "u64" => Definition::Primitive(8)
+            },
             actual_defs
         );
     }
@@ -784,15 +1000,25 @@ mod tests {
         let actual_name = <[[[u64; 9]; 10]; 32]>::declaration();
         let mut actual_defs = map!();
         <[[[u64; 9]; 10]; 32]>::add_definitions_recursively(&mut actual_defs);
-        assert_eq!("Array<Array<Array<u64, 9>, 10>, 32>", actual_name);
+        assert_eq!("[[[u64; 9]; 10]; 32]", actual_name);
         assert_eq!(
             map! {
-            "Array<u64, 9>" =>
-                Definition::Array { length: 9, elements: "u64".to_string() },
-            "Array<Array<u64, 9>, 10>" =>
-                Definition::Array { length: 10, elements: "Array<u64, 9>".to_string() },
-            "Array<Array<Array<u64, 9>, 10>, 32>" =>
-                Definition::Array { length: 32, elements: "Array<Array<u64, 9>, 10>".to_string() }
+                "[u64; 9]" => Definition::Sequence {
+                    length_width: Definition::ARRAY_LENGTH_WIDTH,
+                    length_range: 9..=9,
+                    elements: "u64".to_string()
+                },
+                "[[u64; 9]; 10]" => Definition::Sequence {
+                    length_width: Definition::ARRAY_LENGTH_WIDTH,
+                    length_range: 10..=10,
+                    elements: "[u64; 9]".to_string()
+                },
+                "[[[u64; 9]; 10]; 32]" => Definition::Sequence {
+                    length_width: Definition::ARRAY_LENGTH_WIDTH,
+                    length_range: 32..=32,
+                    elements: "[[u64; 9]; 10]".to_string()
+                },
+                "u64" => Definition::Primitive(8)
             },
             actual_defs
         );
@@ -801,18 +1027,42 @@ mod tests {
     #[test]
     fn string() {
         let actual_name = str::declaration();
-        assert_eq!("string", actual_name);
+        assert_eq!("String", actual_name);
         let actual_name = String::declaration();
-        assert_eq!("string", actual_name);
+        assert_eq!("String", actual_name);
         let mut actual_defs = map!();
         String::add_definitions_recursively(&mut actual_defs);
-        assert_eq!(map! {}, actual_defs);
+        assert_eq!(
+            map! {
+                "String" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                },
+                "u8" => Definition::Primitive(1)
+            },
+            actual_defs
+        );
+
+        let mut actual_defs = map!();
+        str::add_definitions_recursively(&mut actual_defs);
+        assert_eq!(
+            map! {
+                "String" => Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: "u8".to_string()
+                 },
+                "u8" => Definition::Primitive(1)
+            },
+            actual_defs
+        );
     }
 
     #[test]
     fn boxed_schema() {
         let boxed_declaration = Box::<str>::declaration();
-        assert_eq!("string", boxed_declaration);
+        assert_eq!("String", boxed_declaration);
         let boxed_declaration = Box::<[u8]>::declaration();
         assert_eq!("Vec<u8>", boxed_declaration);
     }
@@ -820,9 +1070,9 @@ mod tests {
     #[test]
     fn phantom_data_schema() {
         let phantom_declaration = PhantomData::<String>::declaration();
-        assert_eq!("nil", phantom_declaration);
+        assert_eq!("()", phantom_declaration);
         let phantom_declaration = PhantomData::<Vec<u8>>::declaration();
-        assert_eq!("nil", phantom_declaration);
+        assert_eq!("()", phantom_declaration);
     }
 
     #[test]
@@ -850,7 +1100,8 @@ mod tests {
                         ("start".into(), "u64".into()),
                         ("end".into(), "u64".into()),
                     ])
-                }
+                },
+                "u64" => Definition::Primitive(8)
             },
             actual_defs
         );
@@ -865,7 +1116,8 @@ mod tests {
                     fields: Fields::NamedFields(vec![
                         ("end".into(), "u64".into()),
                     ])
-                }
+                },
+                "u64" => Definition::Primitive(8)
             },
             actual_defs
         );

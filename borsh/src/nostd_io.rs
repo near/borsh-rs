@@ -151,6 +151,10 @@ pub enum ErrorKind {
     /// particular number of bytes but only a smaller number of bytes could be
     /// read.
     UnexpectedEof,
+
+    /// An operation could not be completed, because it failed
+    /// to allocate enough memory.
+    OutOfMemory,
 }
 
 impl ErrorKind {
@@ -174,6 +178,7 @@ impl ErrorKind {
             ErrorKind::Interrupted => "operation interrupted",
             ErrorKind::Other => "other os error",
             ErrorKind::UnexpectedEof => "unexpected end of file",
+            ErrorKind::OutOfMemory => "out of memory",
         }
     }
 }

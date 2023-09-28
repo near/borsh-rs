@@ -92,9 +92,8 @@ pub use schema::BorshSchema;
 #[cfg(feature = "unstable__schema")]
 pub use schema_helpers::{
     max_serialized_size, schema_container_of, try_from_slice_with_schema, try_to_vec_with_schema,
-    MaxSizeError,
 };
-pub use ser::helpers::{to_vec, to_writer};
+pub use ser::helpers::{object_length, to_vec, to_writer};
 pub use ser::BorshSerialize;
 pub mod error;
 
