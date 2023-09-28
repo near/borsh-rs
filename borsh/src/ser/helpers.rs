@@ -21,3 +21,29 @@ where
 {
     value.serialize(&mut writer)
 }
+
+/// Serializes an object without allocation to compute and return its length
+pub fn object_length<T>(value: &T) -> Result<usize>
+where
+    T: BorshSerialize + ?Sized,
+{
+    // copy-paste of solution provided by @matklad
+    // in https://github.com/near/borsh-rs/issues/23#issuecomment-816633365
+    struct LengthWriter {
+        len: usize,
+    }
+    impl Write for LengthWriter {
+        #[inline]
+        fn write(&mut self, buf: &[u8]) -> Result<usize> {
+            self.len += buf.len();
+            Ok(buf.len())
+        }
+        #[inline]
+        fn flush(&mut self) -> Result<()> {
+            Ok(())
+        }
+    }
+    let mut w = LengthWriter { len: 0 };
+    value.serialize(&mut w)?;
+    Ok(w.len)
+}
