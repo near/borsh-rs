@@ -1,11 +1,11 @@
 use benchmarks::{Generate, ValidatorStake};
-use borsh::{to_vec, BorshDeserialize, BorshSerialize};
+use borsh::{to_vec, BorshSerialize};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rand::SeedableRng;
 
 fn ser_obj_length<T>(group_name: &str, num_samples: usize, c: &mut Criterion)
 where
-    for<'a> T: Generate + BorshSerialize + BorshDeserialize + 'static,
+    for<'a> T: Generate + BorshSerialize + 'static,
 {
     let mut rng = rand_xorshift::XorShiftRng::from_seed([0u8; 16]);
     let mut group = c.benchmark_group(group_name);

@@ -1,6 +1,6 @@
 use crate::BorshSerialize;
 use crate::__private::maybestd::vec::Vec;
-use crate::io::{Result, Write};
+use crate::io::{ErrorKind, Result, Write};
 
 pub(super) const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;
 
@@ -35,7 +35,13 @@ where
     impl Write for LengthWriter {
         #[inline]
         fn write(&mut self, buf: &[u8]) -> Result<usize> {
-            self.len += buf.len();
+            let res = self.len.checked_add(buf.len());
+            self.len = match res {
+                Some(res) => res,
+                None => {
+                    return Err(ErrorKind::OutOfMemory.into());
+                }
+            };
             Ok(buf.len())
         }
         #[inline]
