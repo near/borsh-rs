@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-alpha.6](https://github.com/near/borsh-rs/compare/borsh-v1.0.0-alpha.5...borsh-v1.0.0-alpha.6) - 2023-10-02
+
+### Added
+- add `borsh::object_length` helper ([#236](https://github.com/near/borsh-rs/pull/236))
+
+### Other
+- add examples for `borsh::to_vec`, `borsh::to_writer`, `borsh::object_length` ([#238](https://github.com/near/borsh-rs/pull/238))
+- [**breaking**] completely remove deprecated `BorshSerialize::try_to_vec` ([#221](https://github.com/near/borsh-rs/pull/221))
+
 ## [1.0.0-alpha.5](https://github.com/near/borsh-rs/compare/borsh-v1.0.0-alpha.4...borsh-v1.0.0-alpha.5) - 2023-09-26
 
 ### Added
