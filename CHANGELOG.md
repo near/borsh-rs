@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0-alpha.6](https://github.com/near/borsh-rs/compare/borsh-v1.0.0-alpha.5...borsh-v1.0.0-alpha.6) - 2023-10-02
+## [1.0.0](https://github.com/near/borsh-rs/compare/borsh-v1.0.0-alpha.5...borsh-v1.0.0) - 2023-10-02
 
 ### Added
 - add `borsh::object_length` helper ([#236](https://github.com/near/borsh-rs/pull/236))
