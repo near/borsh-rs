@@ -7,6 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0](https://github.com/near/borsh-rs/compare/borsh-v0.10.3...borsh-v1.0.0) - 2023-10-03
+
+### [Thanks]
+
+`borsh-rs` `1.0.0` release was first conceived and then brought into existence by minds of:
+
+- Amirhossein Akhlaghpour @Mehrbod2002
+- Benji Smith @Benjins
+- dj8yf0μl @dj8yfo
+- iho @iho
+- Jacob Lindahl @encody
+- Pavel Lazureykis @lazureykis
+- Tomas Zemanovic @tzemanovic
+
+Contributors, who imposed powerful impact on the past, present and future of this library are specially recognized:
+
+- Michal Nazarewicz @mina86 - for revisiting `BorshSchema` feature, rethinking it, bringing up great ideas and coming up with the
+  fairly involved algorithm of `max_serialized_size` implementation.
+- Alex Kladov @matklad - for maintaining a superhuman ability of context switching in under 2 minutes and scanning through 15k lines of code
+  in under 10 minutes, while leaving out under 1% relevant details.   
+- Marco Ieni @MarcoIeni - for developing [release-plz](https://github.com/MarcoIeni/release-plz) automation.
+- Vlad Frolov @frol - for keeping an eye on the big picture and striking just the right balance between 
+  performance and versatility, ease of use and extensibility and tons of other such hard to reconcile pairs.   
+
+### [Migration guides]
+
+This section contains links to short documents, describing problems encountered during update of `borsh`
+version to `v1.0.0` for related repositories.
+
+- [v0.10.2 -> v1.0.0 for `nearcore`](./docs/migration_guides/v0.10.2_to_v1.0.0_nearcore.md)
+- [v0.9.3 -> v1.0.0 for `near-sdk-rs`](./docs/migration_guides/v0.9_to_v1.0.0_near_sdk_rs.md)
+
+### [Summary of changes]
+
+- Library's structure was made more modular and optimized with respect to visibility
+  of its public/private constituents and ease of access to them.
+- `borsh`'s traits derives and their attributes had their capabilities extended and unified,
+  both with respect to external interfaces and internal implementation. Please visit [borsh_derive](https://docs.rs/borsh-derive/1.0.0/borsh_derive/)
+  documentation pages if you're interested in more of the details.
+- The consistency property of deserialization, declared in [Borsh Specification](https://borsh.io/), became an
+  opt-in feature for hash collections.
+- `BorshSchema` was extended with `max_serialized_size` implementation, which now unlocks support of `borsh`
+  by a plethora of bounded types to express statically defined size limits of serialized representation of these types.  
+- schema `BorshSchemaContainer` api was made future-proof.
+- schema `Definition` was extended with more variants, fields and details to uncover some of the 
+  implied details of serialization format.
+  `BorshSchema` can now express a wider range of types. All types, which have `BorshSchema` defined by the library,
+  now have a `Definition`.
+- schema `Declaration`-s were renamed to follow Rust-first rule and not be a mix of Rust types naming/syntax and syntax
+  from other languages.
+
+  ```rust
+  use borsh::schema::BorshSchema;
+
+  <<<<<<< borsh-v0.10.3
+  assert_eq!("nil", <()>::declaration());
+  assert_eq!("string", <String>::declaration());
+  assert_eq!("Array<u64, 42>", <[u64; 42]>::declaration());
+  assert_eq!("Tuple<u8, bool, f32>", <(u8, bool, f32)>::declaration());
+  =======
+  assert_eq!("()", <()>::declaration());
+  assert_eq!("String", <String>::declaration());
+  assert_eq!("[u64; 42]", <[u64; 42]>::declaration());
+  assert_eq!("(u8, bool, f32)", <(u8, bool, f32)>::declaration());
+  >>>>>>> borsh-v1.0.0
+  ```
+
+### [Stability guarantee]
+
+- `borsh`'s serialization format is guaranteed to NOT change throughout 1.x releases.
+- `borsh`'s public APIs not gated by `unstable__schema` feature are guaranteed to NOT break
+ throughout 1.x releases.
+- It's perceived, that new feature requests may potentially come for `BorshSchema` from outside of `near` ecosystem,
+thus `borsh`'s public APIs gated by `unstable__schema` MAY break throughout 1.x releases.
+
+ 
 ## [1.0.0-alpha.6](https://github.com/near/borsh-rs/compare/borsh-v1.0.0-alpha.5...borsh-v1.0.0-alpha.6) - 2023-10-02
 
 ### Added
