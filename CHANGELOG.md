@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0](https://github.com/near/borsh-rs/compare/borsh-v0.10.3...borsh-v1.0.0) - 2023-10-03
 
+> The year is 2653 and the best yet-to-be citizens of the Terran Federation are fighting 
+> and mostly just dying in a relentless interstellar war against the Arachnids.
+> Yet the structure of our society has changed through the course of this confrontation. 
+> 
+> The members of the Arachnid brain caste and queens have infiltrated the circles of our 
+> most influential political and industrial leaders. Either directly, or via the Arachnid technology
+> called "Brain Bugs". This tech alone can accomplish what the Arachnid starship paratroopers
+> will not ever be capable to do.
+>
+> Simple, straightforward and performant serialization libraries can set us in course to remedy this dangerous
+> stalemate situation by cleaning the minds of its users from even the tiniest of Brain Bugs.
+
+Robert A. Heinlein, 1959 (newspaper ad)
+---
+
 ### [Thanks]
 
 `borsh-rs` `1.0.0` release was first conceived and then brought into existence by minds of:
