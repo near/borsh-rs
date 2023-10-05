@@ -59,10 +59,10 @@ version to `v1.0.0` for related repositories.
 - Library's structure was made more modular and optimized with respect to visibility
   of its public/private constituents and ease of access to them.
 - `borsh`'s traits derives and their attributes had their capabilities extended and unified,
-  both with respect to external interfaces and internal implementation. Please visit [borsh_derive](https://docs.rs/borsh-derive/1.0.0/borsh_derive/)
+  both with respect to external interfaces and internal implementation. Please visit [borsh_derive](https://docs.rs/borsh-derive/1.0.0-alpha.6/borsh_derive/)
   documentation pages if you're interested in more of the details.
 - The consistency property of deserialization, declared in [Borsh Specification](https://borsh.io/), became an
-  opt-in feature for hash collections.
+  opt-in feature `de_strict_order` for hash collections.
 - Support of explicit enum discriminants was added to derives of `borsh` traits. 
   It has been added in somewhat limited form, only allowing the values of `u8` range literals.
 
@@ -97,9 +97,9 @@ version to `v1.0.0` for related repositories.
   Arrays with non-`Copy` and non-`Clone` ZST singletons of length > 1 gracefully panic on deserialization,
   not causing memory faults. 
   
-  Using collections with dynamic runtime length for containing ZSTs was also deemed
+  Using collections with dynamic runtime length ([tagged sequences](https://docs.rs/borsh/1.0.0-alpha.6/borsh/schema/enum.Definition.html#variant.Sequence)) for containing ZSTs was also deemed
   wasteful of CPU cycles and a way to perform dos attacks.
-  Such a case is now flagged as error when using new `BorshSchemaContainer::validate` method for user-defined
+  Such a case is now flagged as error when using new [`BorshSchemaContainer::validate`](https://docs.rs/borsh/1.0.0-alpha.6/borsh/schema/struct.BorshSchemaContainer.html#method.validate) method for user-defined
   types or instantiations of `BorshSchema`-supporting types with inappropriate parameters, defined by the library:
 
   ```rust
@@ -111,10 +111,10 @@ version to `v1.0.0` for related repositories.
       schema.validate()
   );
   ```
-- `BorshSchema` was extended with `max_serialized_size` implementation, which now unlocks support of `borsh`
+- `BorshSchema` was extended with [`max_serialized_size`](https://docs.rs/borsh/1.0.0-alpha.6/borsh/fn.max_serialized_size.html) implementation, which now unlocks support of `borsh`
   by a plethora of bounded types to express statically defined size limits of serialized representation of these types.  
-- schema `BorshSchemaContainer` api was made future-proof.
-- schema `Definition` was extended with more variants, fields and details to uncover some of the 
+- schema [`BorshSchemaContainer`](https://docs.rs/borsh/1.0.0-alpha.6/borsh/schema/struct.BorshSchemaContainer.html#impl-BorshSchemaContainer-2) api was made future-proof.
+- schema [`Definition`](https://docs.rs/borsh/1.0.0-alpha.6/borsh/schema/enum.Definition.html#) was extended with more variants, fields and details to uncover some of the 
   implied details of serialization format.
   `BorshSchema` can now express a wider range of types. All types, which have `BorshSchema` defined by the library,
   now have a `Definition`.
