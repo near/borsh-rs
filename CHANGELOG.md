@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Simple, straightforward and performant serialization libraries can set us in course to remedy this dangerous
 > stalemate situation by cleaning the minds of its users from even the tiniest of Brain Bugs.
 
-Robert A. Heinlein, 1959 (newspaper ad)
+Robert A. Heinlein, 1959 (a newspaper ad)
 ---
 
 ### [Thanks]
@@ -63,6 +63,54 @@ version to `v1.0.0` for related repositories.
   documentation pages if you're interested in more of the details.
 - The consistency property of deserialization, declared in [Borsh Specification](https://borsh.io/), became an
   opt-in feature for hash collections.
+- Support of explicit enum discriminants was added to derives of `borsh` traits. 
+  It has been added in somewhat limited form, only allowing the values of `u8` range literals.
+
+  ```rust
+  use borsh::{BorshSerialize, BorshDeserialize, BorshSchema};
+
+  <<<<<<< borsh-v0.10.3
+  #[derive(BorshDeserialize, BorshSerialize, BorshSchema)]
+  pub enum CurveType {
+      ED25519 = 0, // 0 as u8 in enum tag
+      SECP256K1 = 2, // 1 as u8 in enum tag
+  }
+  =======
+  #[derive(BorshDeserialize, BorshSerialize, BorshSchema)]
+  #[borsh(use_discriminant=false)]
+  pub enum CurveType {
+      ED25519 = 0, // 0 as u8 in enum tag
+      SECP256K1 = 2, // 1 as u8 in enum tag
+  }
+  // vs
+  #[derive(BorshDeserialize, BorshSerialize, BorshSchema)]
+  #[borsh(use_discriminant=true)]
+  pub enum CurveType {
+      ED25519 = 0, // 0 as u8 in enum tag
+      SECP256K1 = 2, // 2 as u8 in enum tag
+  }
+  >>>>>>> borsh-v1.0.0
+  ```
+- [RUSTSEC-2023-0033](https://rustsec.org/advisories/RUSTSEC-2023-0033.html) has been resolved.
+  It has been resolved by forbidding collections with dynamic runtime length to contain zero-sized types
+  with runtime errors, happening on serialization or deserialization.
+  Arrays with non-`Copy` and non-`Clone` ZST singletons of length > 1 gracefully panic on deserialization,
+  not causing memory faults. 
+  
+  Using collections with dynamic runtime length for containing ZSTs was also deemed
+  wasteful of CPU cycles and a way to perform dos attacks.
+  Such a case is now flagged as error when using new `BorshSchemaContainer::validate` method for user-defined
+  types or instantiations of `BorshSchema`-supporting types with inappropriate parameters, defined by the library:
+
+  ```rust
+  let schema = BorshSchemaContainer::for_type::<Vec<core::ops::RangeFull>>();
+  assert_eq!(
+      Err(
+        SchemaContainerValidateError::ZSTSequence("Vec<RangeFull>".to_string())
+      ), 
+      schema.validate()
+  );
+  ```
 - `BorshSchema` was extended with `max_serialized_size` implementation, which now unlocks support of `borsh`
   by a plethora of bounded types to express statically defined size limits of serialized representation of these types.  
 - schema `BorshSchemaContainer` api was made future-proof.
