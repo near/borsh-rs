@@ -9,7 +9,7 @@
 //! * `BorshSchema` trait allows any type that implements it to be self-descriptive, i.e. generate it's own schema;
 //! * `Declaration` is used to describe the type identifier, e.g. `HashMap<u64, String>`;
 //! * `Definition` is used to describe the structure of the type;
-//! * `BorshSchemaContainer` is used to store all declarations and defintions that are needed to work with a single type.
+//! * `BorshSchemaContainer` is used to store all declarations and definitions that are needed to work with a single type.
 
 #![allow(dead_code)] // Unclear why rust check complains on fields of `Definition` variants.
 use crate as borsh; // For `#[derive(BorshSerialize, BorshDeserialize)]`.
