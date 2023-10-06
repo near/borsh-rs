@@ -10,16 +10,10 @@ const ONE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(1) };
 impl BorshSchemaContainer {
     /// Returns the largest possible size of a serialised object based solely on its type.
     ///
-    /// The function has limitations which may lead it to overestimate the size.
-    /// For example, hypothetical `IPv4Packet` would be encoded as at most ~64 KiB.
-    /// However, if it uses sequence schema, this function will claim that the
-    /// maximum size is ~4 GiB.
-    ///
     /// Even when if returned upper bound is correct, the theoretical value may be
     /// *much* larger than any practical length.  For example, maximum encoded
     /// length of `String` is 4 GiB while in practice one may encounter strings of
-    /// at most dozen of characters.  Depending on usage, caller should apply upper
-    /// bound on the result.
+    /// at most dozen of characters.
     ///
     /// # Example
     ///

@@ -9,7 +9,7 @@
 //! * `BorshSchema` trait allows any type that implements it to be self-descriptive, i.e. generate it's own schema;
 //! * `Declaration` is used to describe the type identifier, e.g. `HashMap<u64, String>`;
 //! * `Definition` is used to describe the structure of the type;
-//! * `BorshSchemaContainer` is used to store all declarations and defintions that are needed to work with a single type.
+//! * `BorshSchemaContainer` is used to store all declarations and definitions that are needed to work with a single type.
 
 #![allow(dead_code)] // Unclear why rust check complains on fields of `Definition` variants.
 use crate as borsh; // For `#[derive(BorshSerialize, BorshDeserialize)]`.
@@ -42,15 +42,6 @@ pub type FieldName = String;
 /// The type that we use to represent the definition of the Borsh type.
 
 /// Description of data encoding on the wire.
-///
-/// Note: Since at the end of the day users can define arbitrary serialisation,
-/// it’s not always possible to express using definitions how a type is encoded.
-/// For example, let’s say programmer uses [varint] encoding for their data.
-/// Such type cannot be fully expressed using `BorshSchema` (or at least not
-/// easily).  As a consequence, a tool which validates whether binary data
-/// matches a schema wouldn’t be able to validate data including such types.
-///
-/// [varint]: https://en.wikipedia.org/wiki/Variable-length_quantity#Variants
 #[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
 pub enum Definition {
     /// A fixed-size type, which is considered undivisible
@@ -121,6 +112,7 @@ pub enum Definition {
         tag_width: u8,
 
         /// Possible variants of the enumeration.
+        /// `VariantName` is metadata, not present in a type's serialized representation.
         variants: Vec<(DiscriminantValue, VariantName, Declaration)>,
     },
 
@@ -150,11 +142,12 @@ impl Definition {
 /// The collection representing the fields of a struct.
 #[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
 pub enum Fields {
-    /// The struct with named fields.
+    /// The struct with named fields, structurally identical to a tuple.
+    /// `FieldName` is metadata, not present in a type's serialized representation.
     NamedFields(Vec<(FieldName, Declaration)>),
     /// The struct with unnamed fields, structurally identical to a tuple.
     UnnamedFields(Vec<Declaration>),
-    /// The struct with no fields.
+    /// The struct with no fields, structurally identical to an empty tuple.
     Empty,
 }
 
@@ -268,8 +261,8 @@ pub fn add_definition(
 /// The declaration and the definition of the type that can be used to (de)serialize Borsh without
 /// the Rust type that produced it.
 pub trait BorshSchema {
-    /// Recursively, using DFS, add type definitions required for this type. For primitive types
-    /// this is an empty map. Type definition explains how to serialize/deserialize a type.
+    /// Recursively, using DFS, add type definitions required for this type.
+    /// Type definition partially explains how to serialize/deserialize a type.
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>);
 
     /// Get the name of the type without brackets.

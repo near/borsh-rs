@@ -891,7 +891,7 @@ where
 
 Each of `declaration` and `definitions` nested sub-attributes takes literal string value, which is a syn's [ExprPath](syn::ExprPath).
 
-Currently both `declaration` and `definitions` are required to be specifed at the same time.
+Currently both `declaration` and `definitions` are required to be specified at the same time.
 
 ###### usage
 

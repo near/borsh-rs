@@ -32,7 +32,7 @@ pub enum Error {
     /// Declared tag width is too small.  Tags must be large enough to represent
     /// possible length of sequence.
     TagTooNarrow(Declaration),
-    /// only 0, 1, 2, 4 and 8 bytes long enum tags and sequences' `length_width` are alowed
+    /// only 0, 1, 2, 4 and 8 bytes long sequences' `length_width` are allowed
     TagNotPowerOfTwo(Declaration),
     /// Some of the declared types were lacking definition, which is considered
     /// a container's validation error

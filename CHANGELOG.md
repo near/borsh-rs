@@ -7,6 +7,145 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0](https://github.com/near/borsh-rs/compare/borsh-v0.10.3...borsh-v1.0.0) - 2023-10-03
+
+> The year is 2653 and the best yet-to-be citizens of the Terran Federation are fighting 
+> and mostly just dying in a relentless interstellar war against the Arachnids.
+> Yet the structure of our society has changed through the course of this confrontation. 
+> 
+> The members of the Arachnid brain caste and queens have infiltrated the circles of our 
+> most influential political and industrial leaders. Either directly, or via the Arachnid technology
+> called "Brain Bugs". This tech alone can accomplish what the Arachnid starship paratroopers
+> will not ever be capable to do.
+>
+> Simple, straightforward and performant serialization libraries can set us in course to remedy this dangerous
+> stalemate situation by cleaning the minds of its users from even the tiniest of Brain Bugs.
+
+Robert A. Heinlein, 1959 (a newspaper ad)
+---
+
+### [Thanks]
+
+`borsh-rs` `1.0.0` release was first conceived and then brought into existence by minds of:
+
+- Amirhossein Akhlaghpour @Mehrbod2002
+- Benji Smith @Benjins
+- dj8yf0μl @dj8yfo
+- iho @iho
+- Jacob Lindahl @encody
+- Pavel Lazureykis @lazureykis
+- Tomas Zemanovic @tzemanovic
+
+Contributors, who imposed powerful impact on the past, present and future of this library are specially recognized:
+
+- Michal Nazarewicz @mina86 - for revisiting `BorshSchema` feature, rethinking it, bringing up great ideas and coming up with the
+  fairly involved algorithm of `max_serialized_size` implementation.
+- Alex Kladov @matklad - for maintaining a superhuman ability of context switching in under 2 minutes and scanning through 15k lines of code
+  in under 10 minutes, while leaving out under 1% relevant details.   
+- Marco Ieni @MarcoIeni - for developing [release-plz](https://github.com/MarcoIeni/release-plz) automation.
+- Vlad Frolov @frol - for keeping an eye on the big picture and striking just the right balance between 
+  performance and versatility, ease of use and extensibility and tons of other such hard to reconcile pairs.   
+
+### [Migration guides]
+
+This section contains links to short documents, describing problems encountered during update of `borsh`
+version to `v1.0.0` for related repositories.
+
+- [v0.10.2 -> v1.0.0 for `nearcore`](./docs/migration_guides/v0.10.2_to_v1.0.0_nearcore.md)
+- [v0.9.3 -> v1.0.0 for `near-sdk-rs`](./docs/migration_guides/v0.9_to_v1.0.0_near_sdk_rs.md)
+
+### [Summary of changes]
+
+- Library's structure was made more modular and optimized with respect to visibility
+  of its public/private constituents and ease of access to them.
+- `borsh`'s traits derives and their attributes had their capabilities extended and unified,
+  both with respect to external interfaces and internal implementation. Please visit [borsh_derive](https://docs.rs/borsh-derive/1.0.0/borsh_derive/)
+  documentation pages if you're interested in more of the details.
+- The consistency property of deserialization, declared in [Borsh Specification](https://borsh.io/), became an
+  opt-in feature `de_strict_order` for hash collections.
+- Support of explicit enum discriminants was added to derives of `borsh` traits. 
+  It has been added in somewhat limited form, only allowing the values of `u8` range literals.
+
+  ```rust
+  use borsh::{BorshSerialize, BorshDeserialize, BorshSchema};
+
+  <<<<<<< borsh-v0.10.3
+  #[derive(BorshDeserialize, BorshSerialize, BorshSchema)]
+  pub enum CurveType {
+      ED25519 = 0, // 0 as u8 in enum tag
+      SECP256K1 = 2, // 1 as u8 in enum tag
+  }
+  =======
+  #[derive(BorshDeserialize, BorshSerialize, BorshSchema)]
+  #[borsh(use_discriminant=false)]
+  pub enum CurveType {
+      ED25519 = 0, // 0 as u8 in enum tag
+      SECP256K1 = 2, // 1 as u8 in enum tag
+  }
+  // vs
+  #[derive(BorshDeserialize, BorshSerialize, BorshSchema)]
+  #[borsh(use_discriminant=true)]
+  pub enum CurveType {
+      ED25519 = 0, // 0 as u8 in enum tag
+      SECP256K1 = 2, // 2 as u8 in enum tag
+  }
+  >>>>>>> borsh-v1.0.0
+  ```
+- [RUSTSEC-2023-0033](https://rustsec.org/advisories/RUSTSEC-2023-0033.html) has been resolved.
+  It has been resolved by forbidding collections with dynamic runtime length to contain zero-sized types
+  with runtime errors, happening on serialization or deserialization.
+  Arrays with non-`Copy` and non-`Clone` ZST singletons of length > 1 gracefully panic on deserialization,
+  not causing memory faults. 
+  
+  Using collections with dynamic runtime length ([tagged sequences](https://docs.rs/borsh/1.0.0/borsh/schema/enum.Definition.html#variant.Sequence)) for containing ZSTs was also deemed
+  wasteful of CPU cycles and a way to perform dos attacks.
+  Such a case is now flagged as error when using new [`BorshSchemaContainer::validate`](https://docs.rs/borsh/1.0.0/borsh/schema/struct.BorshSchemaContainer.html#method.validate) method for user-defined
+  types or instantiations of `BorshSchema`-supporting types with inappropriate parameters, defined by the library:
+
+  ```rust
+  let schema = BorshSchemaContainer::for_type::<Vec<core::ops::RangeFull>>();
+  assert_eq!(
+      Err(
+        SchemaContainerValidateError::ZSTSequence("Vec<RangeFull>".to_string())
+      ), 
+      schema.validate()
+  );
+  ```
+- `BorshSchema` was extended with [`max_serialized_size`](https://docs.rs/borsh/1.0.0/borsh/fn.max_serialized_size.html) implementation, which now unlocks support of `borsh`
+  by a plethora of bounded types to express statically defined size limits of serialized representation of these types.  
+- schema [`BorshSchemaContainer`](https://docs.rs/borsh/1.0.0/borsh/schema/struct.BorshSchemaContainer.html#impl-BorshSchemaContainer-2) api was made future-proof.
+- schema [`Definition`](https://docs.rs/borsh/1.0.0/borsh/schema/enum.Definition.html#) was extended with more variants, fields and details to uncover some of the 
+  implied details of serialization format.
+  `BorshSchema` can now express a wider range of types. All types, which have `BorshSchema` defined by the library,
+  now have a `Definition`.
+- schema `Declaration`-s were renamed to follow Rust-first rule and not be a mix of Rust types naming/syntax and syntax
+  from other languages.
+
+  ```rust
+  use borsh::schema::BorshSchema;
+
+  <<<<<<< borsh-v0.10.3
+  assert_eq!("nil", <()>::declaration());
+  assert_eq!("string", <String>::declaration());
+  assert_eq!("Array<u64, 42>", <[u64; 42]>::declaration());
+  assert_eq!("Tuple<u8, bool, f32>", <(u8, bool, f32)>::declaration());
+  =======
+  assert_eq!("()", <()>::declaration());
+  assert_eq!("String", <String>::declaration());
+  assert_eq!("[u64; 42]", <[u64; 42]>::declaration());
+  assert_eq!("(u8, bool, f32)", <(u8, bool, f32)>::declaration());
+  >>>>>>> borsh-v1.0.0
+  ```
+
+### [Stability guarantee]
+
+- `borsh`'s serialization format is guaranteed to NOT change throughout 1.x releases.
+- `borsh`'s public APIs not gated by `unstable__schema` feature are guaranteed to NOT break
+ throughout 1.x releases.
+- It's perceived, that new feature requests may potentially come for `BorshSchema` from outside of `near` ecosystem,
+thus `borsh`'s public APIs gated by `unstable__schema` MAY break throughout 1.x releases.
+
+ 
 ## [1.0.0-alpha.6](https://github.com/near/borsh-rs/compare/borsh-v1.0.0-alpha.5...borsh-v1.0.0-alpha.6) - 2023-10-02
 
 ### Added
