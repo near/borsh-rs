@@ -52,6 +52,8 @@ const FLOAT_NAN_ERR: &str = "For portability reasons we do not allow to serializ
 /// x.serialize(&mut buffer_slice_enough_for_the_data).unwrap();
 /// ```
 pub trait BorshSerialize {
+    const ALLOCATION_HINT: usize = 1024;
+
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()>;
 
     #[inline]
@@ -66,6 +68,8 @@ pub trait BorshSerialize {
 }
 
 impl BorshSerialize for u8 {
+    const ALLOCATION_HINT: usize = 1;
+
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         writer.write_all(core::slice::from_ref(self))
@@ -78,8 +82,11 @@ impl BorshSerialize for u8 {
 }
 
 macro_rules! impl_for_integer {
-    ($type: ident) => {
+    ($type: ident, $size: expr) => {
         impl BorshSerialize for $type {
+
+            const ALLOCATION_HINT: usize = $size;
+
             #[inline]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
                 let bytes = self.to_le_bytes();
@@ -89,15 +96,15 @@ macro_rules! impl_for_integer {
     };
 }
 
-impl_for_integer!(i8);
-impl_for_integer!(i16);
-impl_for_integer!(i32);
-impl_for_integer!(i64);
-impl_for_integer!(i128);
-impl_for_integer!(u16);
-impl_for_integer!(u32);
-impl_for_integer!(u64);
-impl_for_integer!(u128);
+impl_for_integer!(i8, 1);
+impl_for_integer!(i16, 2);
+impl_for_integer!(i32, 4);
+impl_for_integer!(i64, 8);
+impl_for_integer!(i128, 16);
+impl_for_integer!(u16, 2);
+impl_for_integer!(u32, 4);
+impl_for_integer!(u64, 8);
+impl_for_integer!(u128, 16);
 
 macro_rules! impl_for_nonzero_integer {
     ($type: ty) => {

@@ -18,6 +18,9 @@ fn test_to_vec() {
 
     let seriazeble = (schema_container_of::<u8>(), value);
     let serialized = borsh::to_vec(&seriazeble).unwrap();
+
+    let _other = borsh::to_vec(&value).unwrap();
+    let _other = borsh::to_vec(&16u16).unwrap();
     #[cfg(feature = "std")]
     println!("serialized: {:?}", serialized);
     let deserialized = try_from_slice_with_schema::<u8>(&serialized).unwrap();
