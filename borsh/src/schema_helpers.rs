@@ -20,7 +20,9 @@ pub fn try_from_slice_with_schema<T: BorshDeserialize + BorshSchema>(v: &[u8]) -
 
 /// Serialize object into a vector of bytes and prefix with the schema serialized as vector of
 /// bytes in Borsh format.
-pub fn try_to_vec_with_schema<T: BorshSerialize + BorshSchema>(value: &T) -> Result<Vec<u8>> {
+pub fn try_to_vec_with_schema<T: BorshSerialize + BorshSchema + ?Sized>(
+    value: &T,
+) -> Result<Vec<u8>> {
     let schema = schema_container_of::<T>();
     let mut res = crate::to_vec(&schema)?;
     value.serialize(&mut res)?;
@@ -30,7 +32,7 @@ pub fn try_to_vec_with_schema<T: BorshSerialize + BorshSchema>(value: &T) -> Res
 /// generate [BorshSchemaContainer] for type `T`
 ///
 /// this is an alias of [BorshSchemaContainer::for_type]
-pub fn schema_container_of<T: BorshSchema>() -> BorshSchemaContainer {
+pub fn schema_container_of<T: BorshSchema + ?Sized>() -> BorshSchemaContainer {
     BorshSchemaContainer::for_type::<T>()
 }
 
@@ -44,7 +46,7 @@ pub fn schema_container_of<T: BorshSchema>() -> BorshSchemaContainer {
 ///
 /// assert_eq!(Ok(8), borsh::max_serialized_size::<usize>());
 /// ```
-pub fn max_serialized_size<T: BorshSchema>(
+pub fn max_serialized_size<T: BorshSchema + ?Sized>(
 ) -> core::result::Result<usize, SchemaMaxSerializedSizeError> {
     let schema = BorshSchemaContainer::for_type::<T>();
     schema.max_serialized_size()

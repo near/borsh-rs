@@ -178,7 +178,7 @@ impl Attributes {
     }
     pub(crate) fn collect_bounds(&self, ty: BoundType) -> Vec<WherePredicate> {
         let predicates = self.get_bounds(ty);
-        predicates.unwrap_or(vec![])
+        predicates.unwrap_or_default()
     }
 }
 
