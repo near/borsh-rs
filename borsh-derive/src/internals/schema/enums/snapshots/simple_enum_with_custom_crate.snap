@@ -31,12 +31,14 @@ impl reexporter::borsh::BorshSchema for A {
         let definition = reexporter::borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: reexporter::borsh::__private::maybestd::vec![
-                (discriminant_0 as i64, "Bacon".to_string(), < ABacon > ::declaration()),
-                (discriminant_1 as i64, "Eggs".to_string(), < AEggs > ::declaration())
+                (discriminant_0 as i64, "Bacon".to_string(), < ABacon as
+                reexporter::borsh::BorshSchema > ::declaration()), (discriminant_1 as
+                i64, "Eggs".to_string(), < AEggs as reexporter::borsh::BorshSchema >
+                ::declaration())
             ],
         };
         reexporter::borsh::schema::add_definition(
-            Self::declaration(),
+            <Self as reexporter::borsh::BorshSchema>::declaration(),
             definition,
             definitions,
         );

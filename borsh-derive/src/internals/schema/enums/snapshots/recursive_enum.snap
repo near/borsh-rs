@@ -10,7 +10,8 @@ where
 {
     fn declaration() -> borsh::schema::Declaration {
         let params = borsh::__private::maybestd::vec![
-            < K > ::declaration(), < V > ::declaration()
+            < K as borsh::BorshSchema > ::declaration(), < V as borsh::BorshSchema >
+            ::declaration()
         ];
         format!(r#"{}<{}>"#, "A", params.join(", "))
     }
@@ -41,12 +42,16 @@ where
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (discriminant_0 as i64, "B".to_string(), < AB < K, V > >
-                ::declaration()), (discriminant_1 as i64, "C".to_string(), < AC < K > >
-                ::declaration())
+                (discriminant_0 as i64, "B".to_string(), < AB < K, V > as
+                borsh::BorshSchema > ::declaration()), (discriminant_1 as i64, "C"
+                .to_string(), < AC < K > as borsh::BorshSchema > ::declaration())
             ],
         };
-        borsh::schema::add_definition(Self::declaration(), definition, definitions);
+        borsh::schema::add_definition(
+            <Self as borsh::BorshSchema>::declaration(),
+            definition,
+            definitions,
+        );
     }
 }
 

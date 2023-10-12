@@ -15,8 +15,9 @@ where
 {
     fn declaration() -> borsh::schema::Declaration {
         let params = borsh::__private::maybestd::vec![
-            < T > ::declaration(), < K > ::declaration(), < < K as TraitName >
-            ::Associated > ::declaration(), < V > ::declaration()
+            < T as borsh::BorshSchema > ::declaration(), < K as borsh::BorshSchema >
+            ::declaration(), < < K as TraitName > ::Associated as borsh::BorshSchema >
+            ::declaration(), < V as borsh::BorshSchema > ::declaration()
         ];
         format!(r#"{}<{}>"#, "EnumParametrized", params.join(", "))
     }
@@ -61,12 +62,17 @@ where
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (discriminant_0 as i64, "B".to_string(), < EnumParametrizedB < K, V > >
-                ::declaration()), (discriminant_1 as i64, "C".to_string(), <
-                EnumParametrizedC < T > > ::declaration())
+                (discriminant_0 as i64, "B".to_string(), < EnumParametrizedB < K, V > as
+                borsh::BorshSchema > ::declaration()), (discriminant_1 as i64, "C"
+                .to_string(), < EnumParametrizedC < T > as borsh::BorshSchema >
+                ::declaration())
             ],
         };
-        borsh::schema::add_definition(Self::declaration(), definition, definitions);
+        borsh::schema::add_definition(
+            <Self as borsh::BorshSchema>::declaration(),
+            definition,
+            definitions,
+        );
     }
 }
 

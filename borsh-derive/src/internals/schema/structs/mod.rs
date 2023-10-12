@@ -63,8 +63,8 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
             #struct_fields
             let definition = #cratename::schema::Definition::Struct { fields };
 
-            let no_recursion_flag = definitions.get(&Self::declaration()).is_none();
-            #cratename::schema::add_definition(Self::declaration(), definition, definitions);
+            let no_recursion_flag = definitions.get(&<Self as #cratename::BorshSchema>::declaration()).is_none();
+            #cratename::schema::add_definition(<Self as #cratename::BorshSchema>::declaration(), definition, definitions);
             if no_recursion_flag {
                 #add_definitions_recursively
             }

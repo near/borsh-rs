@@ -27,11 +27,16 @@ impl borsh::BorshSchema for A {
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (discriminant_0 as i64, "Bacon".to_string(), < ABacon > ::declaration()),
-                (discriminant_1 as i64, "Eggs".to_string(), < AEggs > ::declaration())
+                (discriminant_0 as i64, "Bacon".to_string(), < ABacon as
+                borsh::BorshSchema > ::declaration()), (discriminant_1 as i64, "Eggs"
+                .to_string(), < AEggs as borsh::BorshSchema > ::declaration())
             ],
         };
-        borsh::schema::add_definition(Self::declaration(), definition, definitions);
+        borsh::schema::add_definition(
+            <Self as borsh::BorshSchema>::declaration(),
+            definition,
+            definitions,
+        );
     }
 }
 

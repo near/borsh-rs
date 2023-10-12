@@ -39,7 +39,14 @@ pub fn simple_enum() {
         Bacon,
         Eggs,
     }
-    assert_eq!("A".to_string(), A::declaration());
+    // https://github.com/near/borsh-rs/issues/112
+    #[allow(unused)]
+    impl A {
+        pub fn declaration() -> usize {
+            42
+        }
+    }
+    assert_eq!("A".to_string(), <A as borsh::BorshSchema>::declaration());
     let mut defs = Default::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(

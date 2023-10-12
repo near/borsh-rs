@@ -72,7 +72,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
                 tag_width: 1,
                 variants: #cratename::__private::maybestd::vec![#(#variants_defs),*],
             };
-            #cratename::schema::add_definition(Self::declaration(), definition, definitions);
+            #cratename::schema::add_definition(<Self as #cratename::BorshSchema>::declaration(), definition, definitions);
         }
     };
 
@@ -147,7 +147,7 @@ fn process_variant(
         process_discriminant(&variant.ident, discriminant_info)?;
 
     let variant_entry = quote! {
-        (#discriminant_variable as i64, #variant_name.to_string(), <#full_variant_ident #inner_struct_ty_generics>::declaration())
+        (#discriminant_variable as i64, #variant_name.to_string(), <#full_variant_ident #inner_struct_ty_generics as #cratename::BorshSchema>::declaration())
     };
     Ok(VariantOutput {
         inner_struct,
