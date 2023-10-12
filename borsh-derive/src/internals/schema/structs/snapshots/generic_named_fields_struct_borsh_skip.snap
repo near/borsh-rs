@@ -7,7 +7,9 @@ where
     U: borsh::BorshSchema,
 {
     fn declaration() -> borsh::schema::Declaration {
-        let params = borsh::__private::maybestd::vec![< U > ::declaration()];
+        let params = borsh::__private::maybestd::vec![
+            < U as borsh::BorshSchema > ::declaration()
+        ];
         format!(r#"{}<{}>"#, "G", params.join(", "))
     }
     fn add_definitions_recursively(
@@ -24,8 +26,14 @@ where
         let definition = borsh::schema::Definition::Struct {
             fields,
         };
-        let no_recursion_flag = definitions.get(&Self::declaration()).is_none();
-        borsh::schema::add_definition(Self::declaration(), definition, definitions);
+        let no_recursion_flag = definitions
+            .get(&<Self as borsh::BorshSchema>::declaration())
+            .is_none();
+        borsh::schema::add_definition(
+            <Self as borsh::BorshSchema>::declaration(),
+            definition,
+            definitions,
+        );
         if no_recursion_flag {
             <U as borsh::BorshSchema>::add_definitions_recursively(definitions);
         }

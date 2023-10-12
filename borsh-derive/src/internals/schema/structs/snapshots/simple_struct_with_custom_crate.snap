@@ -22,9 +22,11 @@ impl reexporter::borsh::BorshSchema for A {
         let definition = reexporter::borsh::schema::Definition::Struct {
             fields,
         };
-        let no_recursion_flag = definitions.get(&Self::declaration()).is_none();
+        let no_recursion_flag = definitions
+            .get(&<Self as reexporter::borsh::BorshSchema>::declaration())
+            .is_none();
         reexporter::borsh::schema::add_definition(
-            Self::declaration(),
+            <Self as reexporter::borsh::BorshSchema>::declaration(),
             definition,
             definitions,
         );

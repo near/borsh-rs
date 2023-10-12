@@ -44,7 +44,7 @@ fn declaration(ident_str: &str, cratename: Path, params_for_bounds: Vec<Type>) -
     let mut declaration_params = vec![];
     for type_param in params_for_bounds {
         declaration_params.push(quote! {
-            <#type_param>::declaration()
+            <#type_param as #cratename::BorshSchema>::declaration()
         });
     }
     if declaration_params.is_empty() {
