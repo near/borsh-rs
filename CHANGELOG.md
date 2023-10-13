@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0](https://github.com/near/borsh-rs/compare/borsh-v1.0.0...borsh-v1.1.0) - 2023-10-13
+
+### Added
+- relax `schema_container_of` target requirement with `?Sized` to allow slices ([#245](https://github.com/near/borsh-rs/pull/245))
+
+### Fixed
+- fully qualify `#cratename::BorshSchema` in derive-generated code to void function name collisions leading to compilation errors ([#244](https://github.com/near/borsh-rs/pull/244))
+
 ## [1.0.0](https://github.com/near/borsh-rs/compare/borsh-v0.10.3...borsh-v1.0.0) - 2023-10-03
 
 > The year is 2653 and the best yet-to-be citizens of the Terran Federation are fighting 
