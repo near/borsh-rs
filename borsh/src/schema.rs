@@ -169,7 +169,7 @@ impl BorshSchemaContainer {
     }
 
     /// generate [BorshSchemaContainer] for type `T`
-    pub fn for_type<T: BorshSchema>() -> Self {
+    pub fn for_type<T: BorshSchema + ?Sized>() -> Self {
         let mut definitions = Default::default();
         T::add_definitions_recursively(&mut definitions);
         Self::new(T::declaration(), definitions)
