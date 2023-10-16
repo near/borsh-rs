@@ -160,6 +160,13 @@ impl BorshSerialize for bool {
     }
 }
 
+impl BorshSerialize for char {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        (*self as u32).serialize(writer)
+    }
+}
+
 impl<T> BorshSerialize for Option<T>
 where
     T: BorshSerialize,

@@ -1,5 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+
 use borsh::{from_slice, to_vec};
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 
 macro_rules! test_primitive {
     ($test_name: ident, $v: expr, $t: ty) => {
@@ -24,3 +30,18 @@ test_primitive!(test_isize_max, isize::max_value(), isize);
 test_primitive!(test_usize, 100usize, usize);
 test_primitive!(test_usize_min, usize::min_value(), usize);
 test_primitive!(test_usize_max, usize::max_value(), usize);
+
+test_primitive!(test_char, 'a', char);
+
+#[test]
+fn test_char_vec() {
+    let initial = "h❤️llo 运用影响以达目的";
+    let expected = initial.chars().collect::<Vec<_>>();
+
+    let buf = to_vec(&expected).unwrap();
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(buf);
+    let actual = from_slice::<Vec<char>>(&buf).expect("failed to deserialize");
+
+    assert_eq!(actual, expected);
+}

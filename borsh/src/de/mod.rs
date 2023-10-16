@@ -315,6 +315,20 @@ impl BorshDeserialize for bool {
     }
 }
 
+impl BorshDeserialize for char {
+    #[inline]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let int: u32 = BorshDeserialize::deserialize_reader(reader)?;
+
+        char::from_u32(int).ok_or_else(|| {
+            let msg = format!(
+                "to `char` conversion: u32 is not a valid Unicode Scalar Value: {}",
+                int
+            );
+            Error::new(ErrorKind::InvalidData, msg)
+        })
+    }
+}
 impl<T> BorshDeserialize for Option<T>
 where
     T: BorshDeserialize,
