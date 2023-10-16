@@ -350,6 +350,7 @@ macro_rules! impl_for_primitives {
 }
 
 impl_for_primitives!(bool => 1; f32 => 4; f64 => 8; i8 => 1; i16 => 2; i32 => 4; i64 => 8; i128 => 16);
+impl_for_primitives!(char => 4);
 impl_for_primitives!(u8 => 1; u16 => 2; u32 => 4; u64 => 8; u128 => 16);
 impl_for_renamed_primitives!(isize: i64 => 8);
 impl_for_renamed_primitives!(usize: u64 => 8);
@@ -732,6 +733,20 @@ mod tests {
                 },
                 "u64" => Definition::Primitive(8),
                 "()" => Definition::Primitive(0)
+            },
+            actual_defs
+        );
+    }
+
+    #[test]
+    fn char() {
+        let actual_name = char::declaration();
+        let mut actual_defs = map!();
+        char::add_definitions_recursively(&mut actual_defs);
+        assert_eq!("char", actual_name);
+        assert_eq!(
+            map! {
+                "char" => Definition::Primitive(4)
             },
             actual_defs
         );

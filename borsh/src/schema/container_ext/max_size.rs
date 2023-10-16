@@ -326,6 +326,7 @@ mod tests {
     fn max_serialized_size_primitives() {
         test_ok::<()>(0);
         test_ok::<bool>(1);
+        test_ok::<char>(4);
 
         test_ok::<f32>(4);
         test_ok::<f64>(8);
