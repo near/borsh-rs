@@ -322,7 +322,7 @@ impl BorshDeserialize for char {
 
         char::from_u32(int).ok_or_else(|| {
             let msg = format!(
-                "to `char` conversion: u32 is not a valid Unicode Scalar Value: {}",
+                "to `char` conversion: u32 is not a valid Unicode Scalar Value: {:#x}",
                 int
             );
             Error::new(ErrorKind::InvalidData, msg)

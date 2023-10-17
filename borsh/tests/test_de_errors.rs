@@ -208,7 +208,7 @@ fn test_invalid_char_1() {
     let bytes = &[0u8, 0u8, 17, 0u8];
     assert_eq!(
         from_slice::<char>(bytes).unwrap_err().to_string(),
-        "to `char` conversion: u32 is not a valid Unicode Scalar Value: 1114112"
+        "to `char` conversion: u32 is not a valid Unicode Scalar Value: 0x110000"
     );
 }
 
@@ -217,7 +217,7 @@ fn test_invalid_char_2() {
     let bytes = &[1u8, 222u8, 0u8, 0u8];
     assert_eq!(
         from_slice::<char>(bytes).unwrap_err().to_string(),
-        "to `char` conversion: u32 is not a valid Unicode Scalar Value: 56833"
+        "to `char` conversion: u32 is not a valid Unicode Scalar Value: 0xde01"
     );
 }
 
