@@ -12,29 +12,17 @@ impl reexporter::borsh::BorshSchema for A {
             reexporter::borsh::schema::Definition,
         >,
     ) {
-        #[allow(dead_code)]
-        #[derive(reexporter::borsh::BorshSchema)]
-        #[borsh(crate = "reexporter :: borsh")]
-        struct ABacon;
-        #[allow(dead_code)]
-        #[derive(reexporter::borsh::BorshSchema)]
-        #[borsh(crate = "reexporter :: borsh")]
-        struct AEggs;
-        <ABacon as reexporter::borsh::BorshSchema>::add_definitions_recursively(
-            definitions,
-        );
-        <AEggs as reexporter::borsh::BorshSchema>::add_definitions_recursively(
-            definitions,
-        );
+        <() as reexporter::borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <() as reexporter::borsh::BorshSchema>::add_definitions_recursively(definitions);
         let discriminant_0: u8 = 0u8;
         let discriminant_1: u8 = 1u8;
         let definition = reexporter::borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: reexporter::borsh::__private::maybestd::vec![
-                (discriminant_0 as i64, "Bacon".to_string(), < ABacon as
-                reexporter::borsh::BorshSchema > ::declaration()), (discriminant_1 as
-                i64, "Eggs".to_string(), < AEggs as reexporter::borsh::BorshSchema >
-                ::declaration())
+                (discriminant_0 as i64, "Bacon".into(), < () as
+                reexporter::borsh::BorshSchema > ::declaration(),), (discriminant_1 as
+                i64, "Eggs".into(), < () as reexporter::borsh::BorshSchema >
+                ::declaration(),)
             ],
         };
         reexporter::borsh::schema::add_definition(

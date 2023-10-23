@@ -15,14 +15,6 @@ impl borsh::BorshSchema for A {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct ABacon;
-        #[allow(dead_code)]
-        #[derive(borsh::BorshSchema)]
-        #[borsh(crate = "borsh")]
-        struct AEggs;
-        #[allow(dead_code)]
-        #[derive(borsh::BorshSchema)]
-        #[borsh(crate = "borsh")]
         struct ASalad(Tomatoes, Cucumber, Oil);
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
@@ -31,8 +23,8 @@ impl borsh::BorshSchema for A {
             wrapper: Wrapper,
             filling: Filling,
         }
-        <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <AEggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <() as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <() as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <ASalad as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <ASausage as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let discriminant_0: u8 = 0u8;
@@ -42,12 +34,12 @@ impl borsh::BorshSchema for A {
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (discriminant_0 as i64, "Bacon".to_string(), < ABacon as
-                borsh::BorshSchema > ::declaration()), (discriminant_1 as i64, "Eggs"
-                .to_string(), < AEggs as borsh::BorshSchema > ::declaration()),
-                (discriminant_2 as i64, "Salad".to_string(), < ASalad as
-                borsh::BorshSchema > ::declaration()), (discriminant_3 as i64, "Sausage"
-                .to_string(), < ASausage as borsh::BorshSchema > ::declaration())
+                (discriminant_0 as i64, "Bacon".into(), < () as borsh::BorshSchema >
+                ::declaration(),), (discriminant_1 as i64, "Eggs".into(), < () as
+                borsh::BorshSchema > ::declaration(),), (discriminant_2 as i64, "Salad"
+                .into(), < ASalad as borsh::BorshSchema > ::declaration(),),
+                (discriminant_3 as i64, "Sausage".into(), < ASausage as
+                borsh::BorshSchema > ::declaration(),)
             ],
         };
         borsh::schema::add_definition(
