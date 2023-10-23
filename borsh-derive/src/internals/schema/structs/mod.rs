@@ -6,7 +6,7 @@ use crate::internals::{attributes::field, generics, schema};
 
 /// function which computes derive output [proc_macro2::TokenStream]
 /// of code, which computes declaration of a single field, which is later added to
-/// the struct's definition as a whole  
+/// the struct's definition as a whole
 fn field_declaration_output(
     field_name: Option<&Ident>,
     field_type: &Type,
@@ -62,10 +62,7 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
         fn add_definitions_recursively(definitions: &mut #cratename::__private::maybestd::collections::BTreeMap<#cratename::schema::Declaration, #cratename::schema::Definition>) {
             #struct_fields
             let definition = #cratename::schema::Definition::Struct { fields };
-
-            let no_recursion_flag = definitions.get(&<Self as #cratename::BorshSchema>::declaration()).is_none();
-            #cratename::schema::add_definition(<Self as #cratename::BorshSchema>::declaration(), definition, definitions);
-            if no_recursion_flag {
+            if #cratename::schema::add_definition(<Self as #cratename::BorshSchema>::declaration(), definition, definitions) {
                 #add_definitions_recursively
             }
         }

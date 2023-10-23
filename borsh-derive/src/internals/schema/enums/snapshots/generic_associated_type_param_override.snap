@@ -50,13 +50,6 @@ where
         )
         where
             T: Eq + Hash;
-        <EnumParametrizedB<
-            K,
-            V,
-        > as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <EnumParametrizedC<
-            T,
-        > as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let discriminant_0: u8 = 0u8;
         let discriminant_1: u8 = 1u8;
         let definition = borsh::schema::Definition::Enum {
@@ -68,11 +61,19 @@ where
                 ::declaration())
             ],
         };
-        borsh::schema::add_definition(
+        if borsh::schema::add_definition(
             <Self as borsh::BorshSchema>::declaration(),
             definition,
             definitions,
-        );
+        ) {
+            <EnumParametrizedB<
+                K,
+                V,
+            > as borsh::BorshSchema>::add_definitions_recursively(definitions);
+            <EnumParametrizedC<
+                T,
+            > as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        }
     }
 }
 

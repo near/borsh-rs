@@ -38,8 +38,6 @@ where
         )
         where
             B: Display + Debug;
-        <SideLeft<A> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <SideRight<B> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let discriminant_0: u8 = 0u8;
         let discriminant_1: u8 = 1u8;
         let definition = borsh::schema::Definition::Enum {
@@ -50,11 +48,18 @@ where
                 .to_string(), < SideRight < B > as borsh::BorshSchema > ::declaration())
             ],
         };
-        borsh::schema::add_definition(
+        if borsh::schema::add_definition(
             <Self as borsh::BorshSchema>::declaration(),
             definition,
             definitions,
-        );
+        ) {
+            <SideLeft<
+                A,
+            > as borsh::BorshSchema>::add_definitions_recursively(definitions);
+            <SideRight<
+                B,
+            > as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        }
     }
 }
 

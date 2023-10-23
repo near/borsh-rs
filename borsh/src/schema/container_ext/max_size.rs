@@ -447,9 +447,10 @@ mod tests {
                         (1, "Nothing".into(), <()>::declaration()),
                     ],
                 };
-                crate::schema::add_definition(Self::declaration(), definition, definitions);
-                T::add_definitions_recursively(definitions);
-                <()>::add_definitions_recursively(definitions);
+                if crate::schema::add_definition(Self::declaration(), definition, definitions) {
+                    T::add_definitions_recursively(definitions);
+                    <()>::add_definitions_recursively(definitions);
+                }
             }
         }
 
@@ -481,8 +482,9 @@ mod tests {
                     length_range: 0..=N,
                     elements: "u8".to_string(),
                 };
-                crate::schema::add_definition(Self::declaration(), definition, definitions);
-                u8::add_definitions_recursively(definitions);
+                if crate::schema::add_definition(Self::declaration(), definition, definitions) {
+                    u8::add_definitions_recursively(definitions);
+                }
             }
         }
 
@@ -514,8 +516,9 @@ mod tests {
                     length_range: 0..=u8::MAX as u64,
                     elements: T::declaration(),
                 };
-                crate::schema::add_definition(Self::declaration(), definition, definitions);
-                T::add_definitions_recursively(definitions);
+                if crate::schema::add_definition(Self::declaration(), definition, definitions) {
+                    T::add_definitions_recursively(definitions);
+                }
             }
         }
 

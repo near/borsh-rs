@@ -31,15 +31,11 @@ where
         let definition = borsh::schema::Definition::Struct {
             fields,
         };
-        let no_recursion_flag = definitions
-            .get(&<Self as borsh::BorshSchema>::declaration())
-            .is_none();
-        borsh::schema::add_definition(
+        if borsh::schema::add_definition(
             <Self as borsh::BorshSchema>::declaration(),
             definition,
             definitions,
-        );
-        if no_recursion_flag {
+        ) {
             <T::Associated as borsh::BorshSchema>::add_definitions_recursively(
                 definitions,
             );

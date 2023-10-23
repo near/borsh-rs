@@ -242,18 +242,31 @@ where
 }
 
 /// Helper method to add a single type definition to the map.
+///
+/// Returns whether the definition has been added.
+///
+/// # Panics
+///
+/// Panics if definition for the declaration already exists but is different
+/// from the provided definition.
 pub fn add_definition(
     declaration: Declaration,
     definition: Definition,
     definitions: &mut BTreeMap<Declaration, Definition>,
-) {
+) -> bool {
     match definitions.entry(declaration) {
         Entry::Occupied(occ) => {
-            let existing_def = occ.get();
-            assert_eq!(existing_def, &definition, "Redefining type schema for the same type name. Types with the same names are not supported.");
+            assert_eq!(
+                occ.get(),
+                &definition,
+                "Redefining type schema for {}. Types with the same names are not supported.",
+                occ.key()
+            );
+            false
         }
         Entry::Vacant(vac) => {
             vac.insert(definition);
+            true
         }
     }
 }
@@ -289,15 +302,16 @@ where
             ),
         ])));
         let definition = Definition::Struct { fields };
-        add_definition(
+        if add_definition(
             <Self as BorshSchema>::declaration(),
             definition,
             definitions,
-        );
-        <Declaration as BorshSchema>::add_definitions_recursively(definitions);
-        <BTreeMap<Declaration, Definition> as BorshSchema>::add_definitions_recursively(
-            definitions,
-        );
+        ) {
+            <Declaration as BorshSchema>::add_definitions_recursively(definitions);
+            <BTreeMap<Declaration, Definition> as BorshSchema>::add_definitions_recursively(
+                definitions,
+            );
+        }
     }
 }
 impl<T> BorshSchema for Box<T>
@@ -387,8 +401,9 @@ impl BorshSchema for str {
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: u8::declaration(),
         };
-        add_definition(Self::declaration(), definition, definitions);
-        u8::add_definitions_recursively(definitions);
+        if add_definition(Self::declaration(), definition, definitions) {
+            u8::add_definitions_recursively(definitions);
+        }
     }
     #[inline]
     fn declaration() -> Declaration {
@@ -418,8 +433,9 @@ macro_rules! impl_for_range {
                     (FieldName::from(stringify!($name)), decl.clone())
                 ),*]);
                 let def = Definition::Struct { fields };
-                add_definition(Self::declaration(), def, definitions);
-                T::add_definitions_recursively(definitions);
+                if add_definition(Self::declaration(), def, definitions) {
+                    T::add_definitions_recursively(definitions);
+                }
             }
             fn declaration() -> Declaration {
                 format!("{}<{}>", stringify!($type), T::declaration())
@@ -446,8 +462,9 @@ where
             length_range: length..=length,
             elements: T::declaration(),
         };
-        add_definition(Self::declaration(), definition, definitions);
-        T::add_definitions_recursively(definitions);
+        if add_definition(Self::declaration(), definition, definitions) {
+            T::add_definitions_recursively(definitions);
+        }
     }
     fn declaration() -> Declaration {
         format!(r#"[{}; {}]"#, T::declaration(), N)
@@ -466,9 +483,10 @@ where
                 (1u8 as i64, "Some".to_string(), T::declaration()),
             ],
         };
-        add_definition(Self::declaration(), definition, definitions);
-        T::add_definitions_recursively(definitions);
-        <()>::add_definitions_recursively(definitions);
+        if add_definition(Self::declaration(), definition, definitions) {
+            T::add_definitions_recursively(definitions);
+            <()>::add_definitions_recursively(definitions);
+        }
     }
 
     fn declaration() -> Declaration {
@@ -489,9 +507,10 @@ where
                 (0u8 as i64, "Err".to_string(), E::declaration()),
             ],
         };
-        add_definition(Self::declaration(), definition, definitions);
-        T::add_definitions_recursively(definitions);
-        E::add_definitions_recursively(definitions);
+        if add_definition(Self::declaration(), definition, definitions) {
+            T::add_definitions_recursively(definitions);
+            E::add_definitions_recursively(definitions);
+        }
     }
 
     fn declaration() -> Declaration {
@@ -509,8 +528,9 @@ where
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: T::declaration(),
         };
-        add_definition(Self::declaration(), definition, definitions);
-        T::add_definitions_recursively(definitions);
+        if add_definition(Self::declaration(), definition, definitions) {
+            T::add_definitions_recursively(definitions);
+        }
     }
 
     fn declaration() -> Declaration {
@@ -528,8 +548,9 @@ where
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: T::declaration(),
         };
-        add_definition(Self::declaration(), definition, definitions);
-        T::add_definitions_recursively(definitions);
+        if add_definition(Self::declaration(), definition, definitions) {
+            T::add_definitions_recursively(definitions);
+        }
     }
 
     fn declaration() -> Declaration {
@@ -563,8 +584,9 @@ pub mod hashes {
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: <(K, V)>::declaration(),
             };
-            add_definition(Self::declaration(), definition, definitions);
-            <(K, V)>::add_definitions_recursively(definitions);
+            if add_definition(Self::declaration(), definition, definitions) {
+                <(K, V)>::add_definitions_recursively(definitions);
+            }
         }
 
         fn declaration() -> Declaration {
@@ -581,8 +603,9 @@ pub mod hashes {
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
                 elements: <T>::declaration(),
             };
-            add_definition(Self::declaration(), definition, definitions);
-            <T>::add_definitions_recursively(definitions);
+            if add_definition(Self::declaration(), definition, definitions) {
+                <T>::add_definitions_recursively(definitions);
+            }
         }
 
         fn declaration() -> Declaration {
@@ -602,8 +625,9 @@ where
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: <(K, V)>::declaration(),
         };
-        add_definition(Self::declaration(), definition, definitions);
-        <(K, V)>::add_definitions_recursively(definitions);
+        if add_definition(Self::declaration(), definition, definitions) {
+            <(K, V)>::add_definitions_recursively(definitions);
+        }
     }
 
     fn declaration() -> Declaration {
@@ -621,8 +645,9 @@ where
             length_range: Definition::DEFAULT_LENGTH_RANGE,
             elements: <T>::declaration(),
         };
-        add_definition(Self::declaration(), definition, definitions);
-        <T>::add_definitions_recursively(definitions);
+        if add_definition(Self::declaration(), definition, definitions) {
+            <T>::add_definitions_recursively(definitions);
+        }
     }
 
     fn declaration() -> Declaration {
@@ -652,10 +677,11 @@ macro_rules! impl_tuple {
             let elements = vec![$($name::declaration()),+];
 
             let definition = Definition::Tuple { elements };
-            add_definition(Self::declaration(), definition, definitions);
-            $(
-                $name::add_definitions_recursively(definitions);
-            )+
+            if add_definition(Self::declaration(), definition, definitions) {
+                $(
+                    $name::add_definitions_recursively(definitions);
+                )+
+            }
         }
 
         fn declaration() -> Declaration {

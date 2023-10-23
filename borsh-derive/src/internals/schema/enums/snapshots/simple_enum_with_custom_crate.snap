@@ -20,12 +20,6 @@ impl reexporter::borsh::BorshSchema for A {
         #[derive(reexporter::borsh::BorshSchema)]
         #[borsh(crate = "reexporter :: borsh")]
         struct AEggs;
-        <ABacon as reexporter::borsh::BorshSchema>::add_definitions_recursively(
-            definitions,
-        );
-        <AEggs as reexporter::borsh::BorshSchema>::add_definitions_recursively(
-            definitions,
-        );
         let discriminant_0: u8 = 0u8;
         let discriminant_1: u8 = 1u8;
         let definition = reexporter::borsh::schema::Definition::Enum {
@@ -37,11 +31,18 @@ impl reexporter::borsh::BorshSchema for A {
                 ::declaration())
             ],
         };
-        reexporter::borsh::schema::add_definition(
+        if reexporter::borsh::schema::add_definition(
             <Self as reexporter::borsh::BorshSchema>::declaration(),
             definition,
             definitions,
-        );
+        ) {
+            <ABacon as reexporter::borsh::BorshSchema>::add_definitions_recursively(
+                definitions,
+            );
+            <AEggs as reexporter::borsh::BorshSchema>::add_definitions_recursively(
+                definitions,
+            );
+        }
     }
 }
 

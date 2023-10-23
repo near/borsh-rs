@@ -36,12 +36,6 @@ impl borsh::BorshSchema for X {
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
         struct XF;
-        <XA as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <XB as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <XC as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <XD as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <XE as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <XF as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let discriminant_0: u8 = 0u8;
         let discriminant_1: u8 = 1u8;
         let discriminant_2: u8 = 2u8;
@@ -61,11 +55,18 @@ impl borsh::BorshSchema for X {
                 .to_string(), < XF as borsh::BorshSchema > ::declaration())
             ],
         };
-        borsh::schema::add_definition(
+        if borsh::schema::add_definition(
             <Self as borsh::BorshSchema>::declaration(),
             definition,
             definitions,
-        );
+        ) {
+            <XA as borsh::BorshSchema>::add_definitions_recursively(definitions);
+            <XB as borsh::BorshSchema>::add_definitions_recursively(definitions);
+            <XC as borsh::BorshSchema>::add_definitions_recursively(definitions);
+            <XD as borsh::BorshSchema>::add_definitions_recursively(definitions);
+            <XE as borsh::BorshSchema>::add_definitions_recursively(definitions);
+            <XF as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        }
     }
 }
 

@@ -84,8 +84,9 @@ fn max_serialized_size_bound_vec() {
                 length_range: 0..=N,
                 elements: "u8".to_string(),
             };
-            add_definition(Self::declaration(), definition, definitions);
-            u8::add_definitions_recursively(definitions);
+            if add_definition(Self::declaration(), definition, definitions) {
+                u8::add_definitions_recursively(definitions);
+            }
         }
     }
 

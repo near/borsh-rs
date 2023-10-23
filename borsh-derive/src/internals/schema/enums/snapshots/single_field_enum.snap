@@ -16,7 +16,6 @@ impl borsh::BorshSchema for A {
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
         struct ABacon;
-        <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let discriminant_0: u8 = 0u8;
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
@@ -25,11 +24,13 @@ impl borsh::BorshSchema for A {
                 borsh::BorshSchema > ::declaration())
             ],
         };
-        borsh::schema::add_definition(
+        if borsh::schema::add_definition(
             <Self as borsh::BorshSchema>::declaration(),
             definition,
             definitions,
-        );
+        ) {
+            <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        }
     }
 }
 

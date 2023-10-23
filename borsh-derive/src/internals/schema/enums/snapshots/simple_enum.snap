@@ -20,8 +20,6 @@ impl borsh::BorshSchema for A {
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
         struct AEggs;
-        <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <AEggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let discriminant_0: u8 = 0u8;
         let discriminant_1: u8 = 1u8;
         let definition = borsh::schema::Definition::Enum {
@@ -32,11 +30,14 @@ impl borsh::BorshSchema for A {
                 .to_string(), < AEggs as borsh::BorshSchema > ::declaration())
             ],
         };
-        borsh::schema::add_definition(
+        if borsh::schema::add_definition(
             <Self as borsh::BorshSchema>::declaration(),
             definition,
             definitions,
-        );
+        ) {
+            <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
+            <AEggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        }
     }
 }
 

@@ -63,9 +63,7 @@ mod third_party_impl {
             <BTreeMap<K, V> as borsh::BorshSchema>::declaration(),
         ]);
         let definition = borsh::schema::Definition::Struct { fields };
-        let no_recursion_flag = definitions.get(&declaration::<K, V>()).is_none();
-        borsh::schema::add_definition(declaration::<K, V>(), definition, definitions);
-        if no_recursion_flag {
+        if borsh::schema::add_definition(declaration::<K, V>(), definition, definitions) {
             <BTreeMap<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         }
     }

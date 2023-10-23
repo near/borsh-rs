@@ -925,9 +925,7 @@ mod index_map_impl {
             let definition = Definition::Sequence {
                 elements: <(K, V)>::declaration(),
             };
-            let no_recursion_flag = definitions.get(&declaration::<K, V>()).is_none();
-            <() as BorshSchema>::add_definition(declaration::<K, V>(), definition, definitions);
-            if no_recursion_flag {
+            if <() as BorshSchema>::add_definition(declaration::<K, V>(), definition, definitions) {
                 <(K, V)>::add_definitions_recursively(definitions);
             }
         }
