@@ -67,7 +67,7 @@ struct A<U, V> {
 
 ###### syntax
 
-Attribute takes literal string value, which is the [Path](syn::Path) to `borsh` crate used.
+Attribute takes literal string value, which is the syn's [Path] to `borsh` crate used.
 
 ###### usage
 
@@ -354,7 +354,7 @@ struct A<U, V> {
 
 ###### syntax
 
-Attribute takes literal string value, which is the [Path](syn::Path) to `borsh` crate used.
+Attribute takes literal string value, which is the syn's [Path] to `borsh` crate used.
 
 ###### usage
 
@@ -407,7 +407,7 @@ struct B {
 
 ###### syntax
 
-Attribute's value is syn's [Path](syn::Path)-s, passed to borsh top level meta attribute as value of `init` argument.
+Attribute's value is syn's [Path]-s, passed to borsh top level meta attribute as value of `init` argument.
 
 ###### usage
 
@@ -690,7 +690,7 @@ struct A<U, V> {
 
 ###### syntax
 
-Attribute takes literal string value, which is the [Path](syn::Path) to `borsh` crate used.
+Attribute takes literal string value, which is the syn's [Path] to `borsh` crate used.
 
 ###### usage
 
