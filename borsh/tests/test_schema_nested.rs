@@ -71,8 +71,8 @@ pub fn duplicated_instantiations() {
             "A<Cucumber, Wrapper<String>>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
-                    (0, "Bacon".to_string(), "ABacon".to_string()),
-                    (1, "Eggs".to_string(), "AEggs".to_string()),
+                    (0, "Bacon".to_string(), "()".to_string()),
+                    (1, "Eggs".to_string(), "()".to_string()),
                     (2, "Salad".to_string(), "ASalad<Cucumber>".to_string()),
                     (3, "Sausage".to_string(), "ASausage<Wrapper<String>>".to_string())
                 ]
@@ -80,14 +80,12 @@ pub fn duplicated_instantiations() {
             "A<String, String>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
-                    (0, "Bacon".to_string(), "ABacon".to_string()),
-                    (1, "Eggs".to_string(), "AEggs".to_string()),
+                    (0, "Bacon".to_string(), "()".to_string()),
+                    (1, "Eggs".to_string(), "()".to_string()),
                     (2, "Salad".to_string(), "ASalad<String>".to_string()),
                     (3, "Sausage".to_string(), "ASausage<String>".to_string())
                 ]
             },
-        "ABacon" => Definition::Struct {fields: Fields::Empty},
-        "AEggs" => Definition::Struct {fields: Fields::Empty},
         "ASalad<Cucumber>" => Definition::Struct {fields: Fields::UnnamedFields(vec!["Tomatoes".to_string(), "Cucumber".to_string(), "Oil<u64, String>".to_string()])},
         "ASalad<String>" => Definition::Struct { fields: Fields::UnnamedFields( vec!["Tomatoes".to_string(), "String".to_string(), "Oil<u64, String>".to_string() ])},
         "ASausage<Wrapper<String>>" => Definition::Struct {fields: Fields::NamedFields(vec![("wrapper".to_string(), "Wrapper<String>".to_string()), ("filling".to_string(), "Filling".to_string())])},

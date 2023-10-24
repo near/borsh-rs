@@ -46,9 +46,9 @@ where
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (discriminant_0 as i64, "C3".to_string(), < CC3 as borsh::BorshSchema >
-                ::declaration()), (discriminant_1 as i64, "C4".to_string(), < CC4 < K, V
-                > as borsh::BorshSchema > ::declaration())
+                (discriminant_0 as i64, "C3".into(), < CC3 as borsh::BorshSchema >
+                ::declaration(),), (discriminant_1 as i64, "C4".into(), < CC4 < K, V > as
+                borsh::BorshSchema > ::declaration(),)
             ],
         };
         borsh::schema::add_definition(

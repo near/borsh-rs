@@ -12,17 +12,13 @@ impl borsh::BorshSchema for A {
             borsh::schema::Definition,
         >,
     ) {
-        #[allow(dead_code)]
-        #[derive(borsh::BorshSchema)]
-        #[borsh(crate = "borsh")]
-        struct ABacon;
-        <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <() as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let discriminant_0: u8 = 0u8;
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (discriminant_0 as i64, "Bacon".to_string(), < ABacon as
-                borsh::BorshSchema > ::declaration())
+                (discriminant_0 as i64, "Bacon".into(), < () as borsh::BorshSchema >
+                ::declaration(),)
             ],
         };
         borsh::schema::add_definition(

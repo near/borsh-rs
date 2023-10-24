@@ -51,12 +51,14 @@ pub fn simple_enum() {
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-        "ABacon" => Definition::Struct{ fields: Fields::Empty },
-        "AEggs" => Definition::Struct{ fields: Fields::Empty },
             "A" => Definition::Enum {
                 tag_width: 1,
-                variants: vec![(0, "Bacon".to_string(), "ABacon".to_string()), (1, "Eggs".to_string(), "AEggs".to_string())]
-            }
+                variants: vec![
+                    (0, "Bacon".to_string(), "()".to_string()),
+                    (1, "Eggs".to_string(), "()".to_string())
+                ]
+            },
+            "()" => Definition::Primitive(0)
         },
         defs
     );
@@ -73,11 +75,11 @@ pub fn single_field_enum() {
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
         map! {
-            "ABacon" => Definition::Struct {fields: Fields::Empty},
             "A" => Definition::Enum {
                 tag_width: 1,
-                variants: vec![(0, "Bacon".to_string(), "ABacon".to_string())]
-            }
+                variants: vec![(0, "Bacon".to_string(), "()".to_string())]
+            },
+            "()" => Definition::Primitive(0)
         },
         defs
     );
@@ -187,13 +189,12 @@ pub fn complex_enum_with_schema() {
         map! {
         "Cucumber" => Definition::Struct {fields: Fields::Empty},
         "ASalad" => Definition::Struct{ fields: Fields::UnnamedFields(vec!["Tomatoes".to_string(), "Cucumber".to_string(), "Oil".to_string()])},
-        "ABacon" => Definition::Struct {fields: Fields::Empty},
         "Oil" => Definition::Struct {fields: Fields::Empty},
             "A" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![
-                    (0, "Bacon".to_string(), "ABacon".to_string()),
-                    (1, "Eggs".to_string(), "AEggs".to_string()),
+                    (0, "Bacon".to_string(), "()".to_string()),
+                    (1, "Eggs".to_string(), "()".to_string()),
                     (2, "Salad".to_string(), "ASalad".to_string()),
                     (3, "Sausage".to_string(), "ASausage".to_string())
                 ]
@@ -204,8 +205,8 @@ pub fn complex_enum_with_schema() {
         ("wrapper".to_string(), "Wrapper".to_string()),
         ("filling".to_string(), "Filling".to_string())
         ])},
-        "AEggs" => Definition::Struct {fields: Fields::Empty},
-        "Filling" => Definition::Struct {fields: Fields::Empty}
+        "Filling" => Definition::Struct {fields: Fields::Empty},
+            "()" => Definition::Primitive(0)
         },
         defs
     );
@@ -249,13 +250,12 @@ pub fn complex_enum_generics() {
         "ASalad<Cucumber>" => Definition::Struct{
             fields: Fields::UnnamedFields(vec!["Tomatoes".to_string(), "Cucumber".to_string(), "Oil".to_string()])
         },
-        "ABacon" => Definition::Struct {fields: Fields::Empty},
         "Oil" => Definition::Struct {fields: Fields::Empty},
         "A<Cucumber, Wrapper>" => Definition::Enum {
             tag_width: 1,
             variants: vec![
-                (0, "Bacon".to_string(), "ABacon".to_string()),
-                (1, "Eggs".to_string(), "AEggs".to_string()),
+                (0, "Bacon".to_string(), "()".to_string()),
+                (1, "Eggs".to_string(), "()".to_string()),
                 (2, "Salad".to_string(), "ASalad<Cucumber>".to_string()),
                 (3, "Sausage".to_string(), "ASausage<Wrapper>".to_string())
             ]
@@ -268,8 +268,8 @@ pub fn complex_enum_generics() {
             ("filling".to_string(), "Filling".to_string())
             ])
         },
-        "AEggs" => Definition::Struct {fields: Fields::Empty},
-        "Filling" => Definition::Struct {fields: Fields::Empty}
+        "Filling" => Definition::Struct {fields: Fields::Empty},
+            "()" => Definition::Primitive(0)
         },
         defs
     );

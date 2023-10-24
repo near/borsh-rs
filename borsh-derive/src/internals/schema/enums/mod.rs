@@ -131,28 +131,41 @@ fn process_variant(
     generics_output: &mut schema::GenericsOutput,
 ) -> syn::Result<VariantOutput> {
     let variant_name = variant.ident.to_token_stream().to_string();
-    let full_variant_name = format!("{}{}", enum_name, variant_name);
-    let full_variant_ident = Ident::new(&full_variant_name, Span::call_site());
+    let variant_type;
+    let inner_struct;
 
-    schema::visit_struct_fields(&variant.fields, &mut generics_output.params_visitor)?;
-    let (inner_struct, inner_struct_generics) =
-        inner_struct_definition(variant, cratename, &full_variant_ident, enum_generics);
-    let (_ig, inner_struct_ty_generics, _wc) = inner_struct_generics.split_for_impl();
+    if variant.fields.is_empty() {
+        inner_struct = TokenStream2::new();
+        variant_type = quote! { () };
+    } else {
+        let variant_ident =
+            Ident::new(&format!("{}{}", enum_name, variant_name), Span::call_site());
 
-    let add_definitions_recursively_call = quote! {
-        <#full_variant_ident #inner_struct_ty_generics as #cratename::BorshSchema>::add_definitions_recursively(definitions);
+        schema::visit_struct_fields(&variant.fields, &mut generics_output.params_visitor)?;
+        let (is, inner_struct_generics) =
+            inner_struct_definition(variant, cratename, &variant_ident, enum_generics);
+        let (_ig, inner_struct_ty_generics, _wc) = inner_struct_generics.split_for_impl();
+
+        inner_struct = is;
+        variant_type = quote! { #variant_ident #inner_struct_ty_generics };
     };
 
     let (discriminant_variable, discriminant_variable_assignment) =
         process_discriminant(&variant.ident, discriminant_info)?;
 
-    let variant_entry = quote! {
-        (#discriminant_variable as i64, #variant_name.to_string(), <#full_variant_ident #inner_struct_ty_generics as #cratename::BorshSchema>::declaration())
-    };
+    let variant_type = quote! { <#variant_type as #cratename::BorshSchema> };
     Ok(VariantOutput {
         inner_struct,
-        add_definitions_recursively_call,
-        variant_entry,
+        add_definitions_recursively_call: quote! {
+            #variant_type::add_definitions_recursively(definitions);
+        },
+        variant_entry: quote! {
+            (
+                #discriminant_variable as i64,
+                #variant_name.into(),
+                #variant_type::declaration(),
+            )
+        },
         discriminant_variable_assignment,
     })
 }
