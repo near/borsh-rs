@@ -541,7 +541,7 @@ where
 #[cfg(hash_collections)]
 pub mod hashes {
     //!
-    //! Module defines [BorshSchema](crate::schema::BorshSchema) implementation for
+    //! Module defines [BorshSchema] implementation for
     //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use crate::BorshSchema;
 
