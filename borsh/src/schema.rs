@@ -250,7 +250,12 @@ pub fn add_definition(
     match definitions.entry(declaration) {
         Entry::Occupied(occ) => {
             let existing_def = occ.get();
-            assert_eq!(existing_def, &definition, "Redefining type schema for the same type name. Types with the same names are not supported.");
+            assert_eq!(
+                existing_def,
+                &definition,
+                "Redefining type schema for {}. Types with the same names are not supported.",
+                occ.key()
+            );
         }
         Entry::Vacant(vac) => {
             vac.insert(definition);
