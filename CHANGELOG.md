@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1](https://github.com/near/borsh-rs/compare/borsh-v1.1.0...borsh-v1.1.1) - 2023-10-25
+
+### Other
+- add `test_schema_conflicts` ([#254](https://github.com/near/borsh-rs/pull/254))
+- addressed warnings in docs generation ([#252](https://github.com/near/borsh-rs/pull/252))
+- simplify discriminants handling in schema derives ([#241](https://github.com/near/borsh-rs/pull/241))
+
 ## [1.1.0](https://github.com/near/borsh-rs/compare/borsh-v1.0.0...borsh-v1.1.0) - 2023-10-13
 
 ### Added
