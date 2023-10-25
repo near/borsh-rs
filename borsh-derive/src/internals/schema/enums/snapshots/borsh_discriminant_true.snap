@@ -42,23 +42,17 @@ impl borsh::BorshSchema for X {
         <XD as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <XE as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <XF as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        let discriminant_0: u8 = 0;
-        let discriminant_1: u8 = 20;
-        let discriminant_2: u8 = 20 + 1;
-        let discriminant_3: u8 = 20 + 1 + 1;
-        let discriminant_4: u8 = 10;
-        let discriminant_5: u8 = 10 + 1;
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (discriminant_0 as i64, "A".to_string(), < XA as borsh::BorshSchema >
-                ::declaration()), (discriminant_1 as i64, "B".to_string(), < XB as
-                borsh::BorshSchema > ::declaration()), (discriminant_2 as i64, "C"
-                .to_string(), < XC as borsh::BorshSchema > ::declaration()),
-                (discriminant_3 as i64, "D".to_string(), < XD as borsh::BorshSchema >
-                ::declaration()), (discriminant_4 as i64, "E".to_string(), < XE as
-                borsh::BorshSchema > ::declaration()), (discriminant_5 as i64, "F"
-                .to_string(), < XF as borsh::BorshSchema > ::declaration())
+                (u8::from(0) as i64, "A".into(), < XA as borsh::BorshSchema >
+                ::declaration()), (u8::from(20) as i64, "B".into(), < XB as
+                borsh::BorshSchema > ::declaration()), (u8::from(20 + 1) as i64, "C"
+                .into(), < XC as borsh::BorshSchema > ::declaration()), (u8::from(20 + 1
+                + 1) as i64, "D".into(), < XD as borsh::BorshSchema > ::declaration()),
+                (u8::from(10) as i64, "E".into(), < XE as borsh::BorshSchema >
+                ::declaration()), (u8::from(10 + 1) as i64, "F".into(), < XF as
+                borsh::BorshSchema > ::declaration())
             ],
         };
         borsh::schema::add_definition(
