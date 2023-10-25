@@ -25,31 +25,31 @@
 ### Other features
 
 * **derive** -
-  Gates derive macros of [BorshSerialize](crate::ser::BorshSerialize) and
-  [BorshDeserialize](crate::de::BorshDeserialize) traits.
+  Gates derive macros of [BorshSerialize] and
+  [BorshDeserialize] traits.
 * **unstable__schema** -
-  Gates [BorshSchema](crate::schema::BorshSchema) trait and its derive macro.
-  Gates [schema](crate::schema) module.
+  Gates [BorshSchema] trait and its derive macro.
+  Gates [schema] module.
   This feature requires **derive** to be enabled too.
 * **rc** -
-  Gates implementation of [BorshSerialize](crate::ser::BorshSerialize) and [BorshDeserialize](crate::de::BorshDeserialize)
+  Gates implementation of [BorshSerialize] and [BorshDeserialize]
   for [`Rc<T>`](std::rc::Rc)/[`Arc<T>`](std::sync::Arc) respectively.
   In `no_std` setting `Rc`/`Arc` are pulled from `alloc` crate.
 * **hashbrown** -
   Pulls in [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet) when no `std` is available.
   This feature is set to be mutually exclusive with **std** feature.
 * **bytes** -
-  Gates implementation of [BorshSerialize](crate::ser::BorshSerialize) and [BorshDeserialize](crate::de::BorshDeserialize)
+  Gates implementation of [BorshSerialize] and [BorshDeserialize]
   for [Bytes](bytes::Bytes) and [BytesMut](bytes::BytesMut).
 * **bson** -
-  Gates implementation of [BorshSerialize](crate::ser::BorshSerialize) and [BorshDeserialize](crate::de::BorshDeserialize)
+  Gates implementation of [BorshSerialize] and [BorshDeserialize]
   for [ObjectId](bson::oid::ObjectId).
 * **de_strict_order** -
   Enables check that keys, parsed during deserialization of
   [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet) and
   [BTreeSet](std::collections::BTreeSet)/[BTreeMap](std::collections::BTreeMap)
-  are encountered in ascending order with respect to [PartialOrd](core::cmp::PartialOrd) for hash collections,
-  and [Ord](core::cmp::Ord) for btree ones. Deserialization emits error otherwise.
+  are encountered in ascending order with respect to [PartialOrd] for hash collections,
+  and [Ord] for btree ones. Deserialization emits error otherwise.
 
   If this feature is not enabled, it is possible that two different byte slices could deserialize into the same `HashMap`/`HashSet` object.
 
@@ -57,8 +57,8 @@
 
 * **hash_collections** -
   This is a feature alias, set up in `build.rs` to be equivalent to (**std** OR **hashbrown**).
-  Gates implementation of [BorshSerialize](crate::ser::BorshSerialize), [BorshDeserialize](crate::de::BorshDeserialize)
-  and [BorshSchema](crate::schema::BorshSchema)
+  Gates implementation of [BorshSerialize], [BorshDeserialize]
+  and [BorshSchema]
   for [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
 
 

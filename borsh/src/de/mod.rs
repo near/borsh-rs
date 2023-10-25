@@ -463,7 +463,7 @@ where
 #[cfg(hash_collections)]
 pub mod hashes {
     //!
-    //! Module defines [BorshDeserialize](crate::de::BorshDeserialize) implementation for
+    //! Module defines [BorshDeserialize] implementation for
     //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use core::hash::{BuildHasher, Hash};
 
