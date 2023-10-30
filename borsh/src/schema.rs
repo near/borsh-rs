@@ -384,6 +384,19 @@ impl BorshSchema for String {
         str::declaration()
     }
 }
+
+#[cfg(feature = "ascii")]
+impl BorshSchema for ascii::AsciiString {
+    #[inline]
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        str::add_definitions_recursively(definitions);
+    }
+    #[inline]
+    fn declaration() -> Declaration {
+        str::declaration()
+    }
+}
+
 impl BorshSchema for str {
     #[inline]
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
@@ -398,6 +411,18 @@ impl BorshSchema for str {
     #[inline]
     fn declaration() -> Declaration {
         "String".into()
+    }
+}
+
+#[cfg(feature = "ascii")]
+impl BorshSchema for ascii::AsciiStr {
+    #[inline]
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        str::add_definitions_recursively(definitions);
+    }
+    #[inline]
+    fn declaration() -> Declaration {
+        str::declaration()
     }
 }
 

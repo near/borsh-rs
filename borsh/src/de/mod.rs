@@ -370,6 +370,28 @@ impl BorshDeserialize for String {
     }
 }
 
+#[cfg(feature = "ascii")]
+impl BorshDeserialize for ascii::AsciiString {
+    #[inline]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let bytes = Vec::<u8>::deserialize_reader(reader)?;
+        ascii::AsciiString::from_ascii(bytes)
+            .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string()))
+    }
+}
+
+#[cfg(feature = "ascii")]
+#[test]
+fn test_ascii() {
+    let encoded = borsh::to_vec("foo").unwrap();
+
+    let got = ascii::AsciiString::deserialize_reader(&mut &encoded[..]).unwrap();
+    assert_eq!("foo", got.as_str());
+
+    let encoded = borsh::to_vec("żółw").unwrap();
+    ascii::AsciiString::deserialize_reader(&mut &encoded[..]).unwrap_err();
+}
+
 impl<T> BorshDeserialize for Vec<T>
 where
     T: BorshDeserialize,

@@ -210,6 +210,32 @@ impl BorshSerialize for String {
     }
 }
 
+#[cfg(feature = "ascii")]
+impl BorshSerialize for ascii::AsciiStr {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.as_bytes().serialize(writer)
+    }
+}
+
+#[cfg(feature = "ascii")]
+impl BorshSerialize for ascii::AsciiString {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.as_bytes().serialize(writer)
+    }
+}
+
+#[cfg(feature = "ascii")]
+#[test]
+fn test_ascii() {
+    let val = ascii::AsciiStr::from_ascii("foo").unwrap();
+    let encoded = borsh::to_vec(val).unwrap();
+
+    let got: String = borsh::BorshDeserialize::deserialize_reader(&mut &encoded[..]).unwrap();
+    assert_eq!("foo", got);
+}
+
 /// Helper method that is used to serialize a slice of data (without the length marker).
 #[inline]
 fn serialize_slice<T: BorshSerialize, W: Write>(data: &[T], writer: &mut W) -> Result<()> {
