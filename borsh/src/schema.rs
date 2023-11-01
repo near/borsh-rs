@@ -385,18 +385,6 @@ impl BorshSchema for String {
     }
 }
 
-#[cfg(feature = "ascii")]
-impl BorshSchema for ascii::AsciiString {
-    #[inline]
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        str::add_definitions_recursively(definitions);
-    }
-    #[inline]
-    fn declaration() -> Declaration {
-        str::declaration()
-    }
-}
-
 impl BorshSchema for str {
     #[inline]
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
@@ -415,14 +403,44 @@ impl BorshSchema for str {
 }
 
 #[cfg(feature = "ascii")]
-impl BorshSchema for ascii::AsciiStr {
+impl BorshSchema for ascii::AsciiString {
     #[inline]
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        str::add_definitions_recursively(definitions);
+        ascii::AsciiStr::add_definitions_recursively(definitions);
     }
     #[inline]
     fn declaration() -> Declaration {
-        str::declaration()
+        ascii::AsciiStr::declaration()
+    }
+}
+
+#[cfg(feature = "ascii")]
+impl BorshSchema for ascii::AsciiStr {
+    #[inline]
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        let definition = Definition::Sequence {
+            length_width: Definition::DEFAULT_LENGTH_WIDTH,
+            length_range: Definition::DEFAULT_LENGTH_RANGE,
+            elements: u8::declaration(),
+        };
+        add_definition(Self::declaration(), definition, definitions);
+        u8::add_definitions_recursively(definitions);
+    }
+    #[inline]
+    fn declaration() -> Declaration {
+        "AsciiString".into()
+    }
+}
+
+#[cfg(feature = "ascii")]
+impl BorshSchema for ascii::AsciiChar {
+    #[inline]
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        add_definition(Self::declaration(), Definition::Primitive(1), definitions);
+    }
+    #[inline]
+    fn declaration() -> Declaration {
+        "AsciiChar".into()
     }
 }
 
