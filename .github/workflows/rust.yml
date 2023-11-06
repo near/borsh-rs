@@ -20,7 +20,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        rust_version: [1.66.0, stable]
+        rust_version: [1.67.0, stable]
     runs-on: ubuntu-20.04
 
     steps:
@@ -36,12 +36,6 @@ jobs:
       run: rustup default ${{ matrix.rust_version }}
     - name: print rustc version
       run: rustc --version
-    # remove this step when MSRV >= 1.67.0
-    - name: downgrade `time`, `toml_datetime` crate to support older Rust toolchain
-      if: matrix.rust_version == '1.66.0' 
-      run: |
-        cargo update -p time --precise 0.3.23
-        cargo update -p toml_datetime --precise 0.6.3
     - name: Run tests
       run: ./.github/test.sh
 

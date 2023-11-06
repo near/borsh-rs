@@ -18,7 +18,7 @@ proc-macro = true
 
 [dependencies]
 syn = { version = "2", features = ["full", "fold"] }
-proc-macro-crate = "1"
+proc-macro-crate = "2"
 proc-macro2 = "1"
 quote = "1"
 once_cell = "1.18.0"
