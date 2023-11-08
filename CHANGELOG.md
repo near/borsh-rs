@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2](https://github.com/near/borsh-rs/compare/borsh-v1.1.1...borsh-v1.1.2) - 2023-11-08
+
+### Other
+- bump `proc-macro-crate` to 2.0.0 in `borsh-derive` ([#256](https://github.com/near/borsh-rs/pull/256))
+
 ## [1.1.1](https://github.com/near/borsh-rs/compare/borsh-v1.1.0...borsh-v1.1.1) - 2023-10-25
 
 ### Other
