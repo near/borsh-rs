@@ -19,7 +19,7 @@ macro_rules! test_string {
             #[cfg(feature = "ascii")]
             $assert_ascii(&value, buf)
         }
-    }
+    };
 }
 
 /// Verifies serialisation and deserialisation of the given string.
@@ -62,7 +62,12 @@ test_string!(test_x_1024, "x".repeat(1024), check_ascii, true);
 test_string!(test_x_4096, "x".repeat(4096), check_ascii, false);
 test_string!(test_x_65535, "x".repeat(65535), check_ascii, false);
 test_string!(test_hello_10, "hello world!".repeat(30), check_ascii, true);
-test_string!(test_hello_1000, "hello world!".repeat(1000), check_ascii, false);
+test_string!(
+    test_hello_1000,
+    "hello world!".repeat(1000),
+    check_ascii,
+    false
+);
 test_string!(test_non_ascii, "💩", check_non_ascii, true);
 
 #[test]
