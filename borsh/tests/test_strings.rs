@@ -1,16 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[cfg(not(feature = "std"))]
 use alloc::string::String;
 use borsh::{from_slice, to_vec};
 
 /// Verifies serialisation and deserialisation of the given string.
 ///
 /// Returns serialised representation of the string.
-fn check_string(value: &str) -> Vec<u8> {
+fn check_string(value: &str) -> alloc::vec::Vec<u8> {
     // Encoding is the same as Vec<u8> with UTF-8 encoded string.
     let buf = to_vec(value.as_bytes()).unwrap();
     assert_eq!(buf, to_vec(value).unwrap());
@@ -22,7 +20,7 @@ fn check_string(value: &str) -> Vec<u8> {
 
 /// Verifies serialisation and deserialisation of an ASCII string `value`.
 #[cfg(feature = "ascii")]
-fn check_ascii(value: &str, buf: Vec<u8>) {
+fn check_ascii(value: &str, buf: alloc::vec::Vec<u8>) {
     // Caller promises value is ASCII.
     let ascii_str = ascii::AsciiStr::from_ascii(&value).unwrap();
     // AsciiStr and AsciiString serialise the same way String does.
@@ -36,7 +34,7 @@ fn check_ascii(value: &str, buf: Vec<u8>) {
 /// Verifies that deserialisation of a non-ASCII string serialised in `buf`
 /// fails.
 #[cfg(feature = "ascii")]
-fn check_non_ascii(_value: &str, buf: Vec<u8>) {
+fn check_non_ascii(_value: &str, buf: alloc::vec::Vec<u8>) {
     from_slice::<ascii::AsciiString>(&buf).unwrap_err();
 }
 
