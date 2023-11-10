@@ -12,7 +12,7 @@ fn check_string(value: &str) -> alloc::vec::Vec<u8> {
     // Encoding is the same as Vec<u8> with UTF-8 encoded string.
     let buf = to_vec(value.as_bytes()).unwrap();
     assert_eq!(buf, to_vec(value).unwrap());
-    assert_eq!(buf, to_vec(&value.to_string()).unwrap());
+    assert_eq!(buf, to_vec(&String::from(value)).unwrap());
     // Check round trip.
     assert_eq!(value, from_slice::<String>(&buf).unwrap());
     buf
