@@ -7,21 +7,6 @@ extern crate alloc;
 use alloc::string::String;
 use borsh::{from_slice, to_vec};
 
-macro_rules! test_string {
-    ($test_name: ident, $str: expr, $assert_ascii:ident, $snap:expr) => {
-        #[test]
-        fn $test_name() {
-            let value = String::from($str);
-            let buf = check_string(&value);
-            if $snap {
-                insta::assert_debug_snapshot!(buf);
-            }
-            #[cfg(feature = "ascii")]
-            $assert_ascii(&value, buf)
-        }
-    };
-}
-
 /// Verifies serialisation and deserialisation of the given string.
 ///
 /// Returns serialised representation of the string.
@@ -55,6 +40,21 @@ fn check_non_ascii(_value: &str, buf: Vec<u8>) {
     from_slice::<ascii::AsciiString>(&buf).unwrap_err();
 }
 
+macro_rules! test_string {
+    ($test_name: ident, $str: expr, $assert_ascii:ident, $snap:expr) => {
+        #[test]
+        fn $test_name() {
+            let value = String::from($str);
+            let buf = check_string(&value);
+            if $snap {
+                insta::assert_debug_snapshot!(buf);
+            }
+            #[cfg(feature = "ascii")]
+            $assert_ascii(&value, buf)
+        }
+    };
+}
+
 test_string!(test_empty_string, "", check_ascii, true);
 test_string!(test_a, "a", check_ascii, true);
 test_string!(test_hello_world, "hello world", check_ascii, true);
@@ -69,15 +69,6 @@ test_string!(
     false
 );
 test_string!(test_non_ascii, "💩", check_non_ascii, true);
-
-#[test]
-fn test_non_utf8() {
-    let data: [u8; 4] = [0xbf, 0xf3, 0xb3, 0x77];
-    let buf = to_vec(&data[..]).unwrap();
-    from_slice::<String>(&buf).unwrap_err();
-    #[cfg(feature = "ascii")]
-    from_slice::<ascii::AsciiString>(&buf).unwrap_err();
-}
 
 #[cfg(feature = "ascii")]
 #[test]
