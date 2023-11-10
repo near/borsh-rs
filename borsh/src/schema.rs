@@ -421,10 +421,10 @@ impl BorshSchema for ascii::AsciiStr {
         let definition = Definition::Sequence {
             length_width: Definition::DEFAULT_LENGTH_WIDTH,
             length_range: Definition::DEFAULT_LENGTH_RANGE,
-            elements: u8::declaration(),
+            elements: ascii::AsciiChar::declaration(),
         };
         add_definition(Self::declaration(), definition, definitions);
-        u8::add_definitions_recursively(definitions);
+        ascii::AsciiChar::add_definitions_recursively(definitions);
     }
     #[inline]
     fn declaration() -> Declaration {
@@ -1098,6 +1098,31 @@ mod tests {
             },
             actual_defs
         );
+    }
+
+    #[test]
+    #[cfg(feature = "ascii")]
+    fn ascii_string() {
+        assert_eq!("AsciiString", ascii::AsciiStr::declaration());
+        assert_eq!("AsciiString", ascii::AsciiString::declaration());
+        assert_eq!("AsciiChar", ascii::AsciiChar::declaration());
+
+        let want = map! {
+            "AsciiString" => Definition::Sequence {
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: "AsciiChar".to_string()
+            },
+            "AsciiChar" => Definition::Primitive(1)
+        };
+
+        let mut actual_defs = map!();
+        ascii::AsciiStr::add_definitions_recursively(&mut actual_defs);
+        assert_eq!(want, actual_defs);
+
+        let mut actual_defs = map!();
+        ascii::AsciiString::add_definitions_recursively(&mut actual_defs);
+        assert_eq!(want, actual_defs);
     }
 
     #[test]
