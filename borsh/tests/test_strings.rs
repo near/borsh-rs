@@ -43,6 +43,7 @@ macro_rules! test_string {
         #[test]
         fn $test_name() {
             let value = String::from($str);
+            #[allow(unused_variables)]
             let buf = check_string(&value);
             #[cfg(feature = "std")]
             if $snap {
