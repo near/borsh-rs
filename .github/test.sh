@@ -5,7 +5,7 @@ export INSTA_UPDATE=no
 pushd borsh
 cargo test --no-run
 cargo test
-cargo test --features ascii
+cargo test --features ascii,unstable__schema
 cargo test --features derive
 cargo test --features unstable__schema
 cargo test --test test_rc --features rc
