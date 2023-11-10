@@ -46,6 +46,7 @@ macro_rules! test_string {
         fn $test_name() {
             let value = String::from($str);
             let buf = check_string(&value);
+            #[cfg(feature = "std")]
             if $snap {
                 insta::assert_debug_snapshot!(buf);
             }
