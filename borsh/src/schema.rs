@@ -1107,6 +1107,13 @@ mod tests {
         assert_eq!("AsciiString", ascii::AsciiString::declaration());
         assert_eq!("AsciiChar", ascii::AsciiChar::declaration());
 
+        let want_char = map! {
+            "AsciiChar" => Definition::Primitive(1)
+        };
+        let mut actual_defs = map!();
+        ascii::AsciiChar::add_definitions_recursively(&mut actual_defs);
+        assert_eq!(want_char, actual_defs);
+
         let want = map! {
             "AsciiString" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
