@@ -44,6 +44,9 @@
 * **bson** -
   Gates implementation of [BorshSerialize] and [BorshDeserialize]
   for [ObjectId](bson::oid::ObjectId).
+* **ascii** -
+  Gates implementation of [BorshSerialize], [BorshDeserialize], [BorshSchema] for
+  types from [ascii](https://docs.rs/ascii/1.1.0/ascii/) crate.
 * **de_strict_order** -
   Enables check that keys, parsed during deserialization of
   [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet) and

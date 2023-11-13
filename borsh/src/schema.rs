@@ -402,45 +402,54 @@ impl BorshSchema for str {
     }
 }
 
+/// Module is available if borsh is built with `features = ["ascii"]`.
 #[cfg(feature = "ascii")]
-impl BorshSchema for ascii::AsciiString {
-    #[inline]
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        ascii::AsciiStr::add_definitions_recursively(definitions);
-    }
-    #[inline]
-    fn declaration() -> Declaration {
-        ascii::AsciiStr::declaration()
-    }
-}
+pub mod ascii {
+    //!
+    //! Module defines [BorshSchema] implementation for
+    //! some types from [ascii](::ascii) crate.
+    use crate::BorshSchema;
 
-#[cfg(feature = "ascii")]
-impl BorshSchema for ascii::AsciiStr {
-    #[inline]
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        let definition = Definition::Sequence {
-            length_width: Definition::DEFAULT_LENGTH_WIDTH,
-            length_range: Definition::DEFAULT_LENGTH_RANGE,
-            elements: ascii::AsciiChar::declaration(),
-        };
-        add_definition(Self::declaration(), definition, definitions);
-        ascii::AsciiChar::add_definitions_recursively(definitions);
-    }
-    #[inline]
-    fn declaration() -> Declaration {
-        "AsciiString".into()
-    }
-}
+    use super::{add_definition, Declaration, Definition};
+    use crate::__private::maybestd::collections::BTreeMap;
 
-#[cfg(feature = "ascii")]
-impl BorshSchema for ascii::AsciiChar {
-    #[inline]
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        add_definition(Self::declaration(), Definition::Primitive(1), definitions);
+    impl BorshSchema for ascii::AsciiString {
+        #[inline]
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+            ascii::AsciiStr::add_definitions_recursively(definitions);
+        }
+        #[inline]
+        fn declaration() -> Declaration {
+            ascii::AsciiStr::declaration()
+        }
     }
-    #[inline]
-    fn declaration() -> Declaration {
-        "AsciiChar".into()
+
+    impl BorshSchema for ascii::AsciiStr {
+        #[inline]
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+            let definition = Definition::Sequence {
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: ascii::AsciiChar::declaration(),
+            };
+            add_definition(Self::declaration(), definition, definitions);
+            ascii::AsciiChar::add_definitions_recursively(definitions);
+        }
+        #[inline]
+        fn declaration() -> Declaration {
+            "AsciiString".into()
+        }
+    }
+
+    impl BorshSchema for ascii::AsciiChar {
+        #[inline]
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+            add_definition(Self::declaration(), Definition::Primitive(1), definitions);
+        }
+        #[inline]
+        fn declaration() -> Declaration {
+            "AsciiChar".into()
+        }
     }
 }
 
@@ -1098,38 +1107,6 @@ mod tests {
             },
             actual_defs
         );
-    }
-
-    #[test]
-    #[cfg(feature = "ascii")]
-    fn ascii_string() {
-        assert_eq!("AsciiString", ascii::AsciiStr::declaration());
-        assert_eq!("AsciiString", ascii::AsciiString::declaration());
-        assert_eq!("AsciiChar", ascii::AsciiChar::declaration());
-
-        let want_char = map! {
-            "AsciiChar" => Definition::Primitive(1)
-        };
-        let mut actual_defs = map!();
-        ascii::AsciiChar::add_definitions_recursively(&mut actual_defs);
-        assert_eq!(want_char, actual_defs);
-
-        let want = map! {
-            "AsciiString" => Definition::Sequence {
-                length_width: Definition::DEFAULT_LENGTH_WIDTH,
-                length_range: Definition::DEFAULT_LENGTH_RANGE,
-                elements: "AsciiChar".to_string()
-            },
-            "AsciiChar" => Definition::Primitive(1)
-        };
-
-        let mut actual_defs = map!();
-        ascii::AsciiStr::add_definitions_recursively(&mut actual_defs);
-        assert_eq!(want, actual_defs);
-
-        let mut actual_defs = map!();
-        ascii::AsciiString::add_definitions_recursively(&mut actual_defs);
-        assert_eq!(want, actual_defs);
     }
 
     #[test]
