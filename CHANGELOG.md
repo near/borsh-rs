@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0](https://github.com/near/borsh-rs/compare/borsh-v1.1.2...borsh-v1.2.0) - 2023-11-13
+
+### Added
+- add support for types from `ascii` crate ([#255](https://github.com/near/borsh-rs/pull/255))
+
 ## [1.1.2](https://github.com/near/borsh-rs/compare/borsh-v1.1.1...borsh-v1.1.2) - 2023-11-08
 
 ### Other
