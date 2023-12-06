@@ -18,7 +18,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let mut fields_body = TokenStream2::new();
     let use_discriminant = item::contains_use_discriminant(input)?;
     let discriminants = Discriminants::new(&input.variants);
-    let mut blank_variants = false;
+    let mut has_unit_variant = false;
 
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_ident = &variant.ident;
@@ -32,7 +32,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
         )?;
         all_variants_idx_body.extend(variant_output.variant_idx_body);
         match variant_output.body {
-            VariantBody::Blank => blank_variants = true,
+            VariantBody::Unit => has_unit_variant = true,
             VariantBody::Fields(VariantFields { header, body }) => fields_body.extend(quote!(
                 #enum_ident::#variant_ident #header => {
                     #body
@@ -40,14 +40,31 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
             )),
         }
     }
+    let fields_body = optimize_fields_body(fields_body, has_unit_variant);
     generics_output.extend(&mut where_clause, &cratename);
 
-    let fields_match = if fields_body.is_empty() {
+    Ok(quote! {
+        impl #impl_generics #cratename::ser::BorshSerialize for #enum_ident #ty_generics #where_clause {
+            fn serialize<W: #cratename::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::io::Error> {
+                let variant_idx: u8 = match self {
+                    #all_variants_idx_body
+                };
+                writer.write_all(&variant_idx.to_le_bytes())?;
+
+                #fields_body
+                Ok(())
+            }
+        }
+    })
+}
+
+fn optimize_fields_body(fields_body: TokenStream2, has_unit_variant: bool) -> TokenStream2 {
+    if fields_body.is_empty() {
         // If we no variants with fields, there's nothing to match against. Just
         // re-use the empty token stream.
         fields_body
     } else {
-        let unit_fields_catchall = if blank_variants {
+        let unit_fields_catchall = if has_unit_variant {
             // We had some variants with unit fields, create a catch-all for
             // these to be used at the bottom.
             quote!(
@@ -65,21 +82,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
                 #unit_fields_catchall
             }
         )
-    };
-
-    Ok(quote! {
-        impl #impl_generics #cratename::ser::BorshSerialize for #enum_ident #ty_generics #where_clause {
-            fn serialize<W: #cratename::io::Write>(&self, writer: &mut W) -> ::core::result::Result<(), #cratename::io::Error> {
-                let variant_idx: u8 = match self {
-                    #all_variants_idx_body
-                };
-                writer.write_all(&variant_idx.to_le_bytes())?;
-
-                #fields_match
-                Ok(())
-            }
-        }
-    })
+    }
 }
 
 #[derive(Default)]
@@ -90,7 +93,7 @@ struct VariantFields {
 
 enum VariantBody {
     // No body variant, unit enum variant.
-    Blank,
+    Unit,
     // Variant with body (fields)
     Fields(VariantFields),
 }
@@ -145,7 +148,7 @@ fn process_variant(
             }
         }
         Fields::Unit => VariantOutput {
-            body: VariantBody::Blank,
+            body: VariantBody::Unit,
             variant_idx_body: quote!(
                 #enum_ident::#variant_ident => #discriminant_value,
             ),
