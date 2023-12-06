@@ -18,12 +18,11 @@ impl borsh::ser::BorshSerialize for X {
             X::A(id0) => {
                 borsh::BorshSerialize::serialize(id0, writer)?;
             }
-            X::B => {}
             X::C { x, y, .. } => {
                 borsh::BorshSerialize::serialize(x, writer)?;
                 borsh::BorshSerialize::serialize(y, writer)?;
             }
-            X::D => {}
+            _ => {}
         }
         Ok(())
     }
