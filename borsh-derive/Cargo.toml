@@ -12,6 +12,7 @@ homepage = "https://borsh.io"
 description = """
 Binary Object Representation Serializer for Hashing
 """
+exclude = ["*.snap"]
 
 [lib]
 proc-macro = true
