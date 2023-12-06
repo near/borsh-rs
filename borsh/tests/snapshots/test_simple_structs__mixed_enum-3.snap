@@ -1,0 +1,15 @@
+---
+source: borsh/tests/test_simple_structs.rs
+expression: encoded
+---
+[
+    2,
+    132,
+    0,
+    0,
+    0,
+    239,
+    255,
+    255,
+    255,
+]

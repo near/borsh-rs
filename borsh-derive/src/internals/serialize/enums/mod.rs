@@ -425,4 +425,20 @@ mod tests {
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
+
+    #[test]
+    fn mixed_with_unit_variants() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum X {
+                A(u16),
+                B,
+                C {x: i32, y: i32},
+                D,
+            }
+        })
+        .unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
+
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
 }

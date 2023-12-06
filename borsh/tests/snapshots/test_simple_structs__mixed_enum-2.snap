@@ -1,0 +1,7 @@
+---
+source: borsh/tests/test_simple_structs.rs
+expression: encoded
+---
+[
+    1,
+]
