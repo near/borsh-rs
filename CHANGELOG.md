@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1](https://github.com/near/borsh-rs/compare/borsh-v1.2.0...borsh-v1.2.1) - 2023-12-06
+
+### Other
+- optimize `BorshSerialize` derive for enums with unit variants ([#262](https://github.com/near/borsh-rs/pull/262))
+- fix `release-plz` error; exclude `*.snap` from `borsh-derive` publish ([#263](https://github.com/near/borsh-rs/pull/263))
+
 ## [1.2.0](https://github.com/near/borsh-rs/compare/borsh-v1.1.2...borsh-v1.2.0) - 2023-11-13
 
 ### Added
