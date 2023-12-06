@@ -9,9 +9,9 @@ changelog_path = "./CHANGELOG.md"
 changelog_include = ["borsh-derive"] 
 
 [[package]]
-name = "fuzz-run"
+name = "borsh-fuzz"
 publish = false
 
 [[package]]
-name = "benchmark"
+name = "benchmarks"
 publish = false
