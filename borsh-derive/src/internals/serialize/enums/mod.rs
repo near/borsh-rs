@@ -91,6 +91,26 @@ struct VariantFields {
     body: TokenStream2,
 }
 
+impl VariantFields {
+    fn named_header(self) -> Self {
+        let header = self.header;
+
+        VariantFields {
+            // `..` pattern matching works even if all fields were specified
+            header: quote! { { #header.. }},
+            body: self.body,
+        }
+    }
+    fn unnamed_header(self) -> Self {
+        let header = self.header;
+
+        VariantFields {
+            header: quote! { ( #header )},
+            body: self.body,
+        }
+    }
+}
+
 enum VariantBody {
     // No body variant, unit enum variant.
     Unit,
@@ -118,13 +138,8 @@ fn process_variant(
                 let field_id = serialize::FieldId::Enum(field.ident.clone().unwrap());
                 process_field(field, field_id, cratename, generics, &mut variant_fields)?;
             }
-            let header = variant_fields.header;
             VariantOutput {
-                body: VariantBody::Fields(VariantFields {
-                    // `..` pattern matching works even if all fields were specified
-                    header: quote! { { #header.. }},
-                    body: variant_fields.body,
-                }),
+                body: VariantBody::Fields(variant_fields.named_header()),
                 variant_idx_body: quote!(
                     #enum_ident::#variant_ident {..} => #discriminant_value,
                 ),
@@ -136,12 +151,8 @@ fn process_variant(
                 let field_id = serialize::FieldId::new_enum_unnamed(field_idx)?;
                 process_field(field, field_id, cratename, generics, &mut variant_fields)?;
             }
-            let header = variant_fields.header;
             VariantOutput {
-                body: VariantBody::Fields(VariantFields {
-                    header: quote! { ( #header )},
-                    body: variant_fields.body,
-                }),
+                body: VariantBody::Fields(variant_fields.unnamed_header()),
                 variant_idx_body: quote!(
                     #enum_ident::#variant_ident(..) => #discriminant_value,
                 ),
