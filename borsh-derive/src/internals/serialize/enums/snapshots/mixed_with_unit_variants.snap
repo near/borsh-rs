@@ -8,14 +8,22 @@ impl borsh::ser::BorshSerialize for X {
         writer: &mut W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
         let variant_idx: u8 = match self {
-            X::A => 0u8,
+            X::A(..) => 0u8,
             X::B => 1u8,
-            X::C => 2u8,
+            X::C { .. } => 2u8,
             X::D => 3u8,
-            X::E => 4u8,
-            X::F => 5u8,
         };
         writer.write_all(&variant_idx.to_le_bytes())?;
+        match self {
+            X::A(id0) => {
+                borsh::BorshSerialize::serialize(id0, writer)?;
+            }
+            X::C { x, y, .. } => {
+                borsh::BorshSerialize::serialize(x, writer)?;
+                borsh::BorshSerialize::serialize(y, writer)?;
+            }
+            _ => {}
+        }
         Ok(())
     }
 }

@@ -16,14 +16,6 @@ impl borsh::ser::BorshSerialize for X {
             X::F => 10 + 1,
         };
         writer.write_all(&variant_idx.to_le_bytes())?;
-        match self {
-            X::A => {}
-            X::B => {}
-            X::C => {}
-            X::D => {}
-            X::E => {}
-            X::F => {}
-        }
         Ok(())
     }
 }

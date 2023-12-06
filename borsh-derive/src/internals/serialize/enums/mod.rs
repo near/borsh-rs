@@ -18,6 +18,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let mut fields_body = TokenStream2::new();
     let use_discriminant = item::contains_use_discriminant(input)?;
     let discriminants = Discriminants::new(&input.variants);
+    let mut has_unit_variant = false;
 
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_ident = &variant.ident;
@@ -30,13 +31,16 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
             &mut generics_output,
         )?;
         all_variants_idx_body.extend(variant_output.variant_idx_body);
-        let (variant_header, variant_body) = (variant_output.header, variant_output.body);
-        fields_body.extend(quote!(
-            #enum_ident::#variant_ident #variant_header => {
-                #variant_body
-            }
-        ))
+        match variant_output.body {
+            VariantBody::Unit => has_unit_variant = true,
+            VariantBody::Fields(VariantFields { header, body }) => fields_body.extend(quote!(
+                #enum_ident::#variant_ident #header => {
+                    #body
+                }
+            )),
+        }
     }
+    let fields_body = optimize_fields_body(fields_body, has_unit_variant);
     generics_output.extend(&mut where_clause, &cratename);
 
     Ok(quote! {
@@ -47,29 +51,76 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
                 };
                 writer.write_all(&variant_idx.to_le_bytes())?;
 
-                match self {
-                    #fields_body
-                }
+                #fields_body
                 Ok(())
             }
         }
     })
 }
 
-struct VariantOutput {
-    header: TokenStream2,
-    body: TokenStream2,
-    variant_idx_body: TokenStream2,
+fn optimize_fields_body(fields_body: TokenStream2, has_unit_variant: bool) -> TokenStream2 {
+    if fields_body.is_empty() {
+        // If we no variants with fields, there's nothing to match against. Just
+        // re-use the empty token stream.
+        fields_body
+    } else {
+        let unit_fields_catchall = if has_unit_variant {
+            // We had some variants with unit fields, create a catch-all for
+            // these to be used at the bottom.
+            quote!(
+                _ => {}
+            )
+        } else {
+            TokenStream2::new()
+        };
+        // Create a match that serialises all the fields for each non-unit
+        // variant and add a catch-all at the bottom if we do have unit
+        // variants.
+        quote!(
+            match self {
+                #fields_body
+                #unit_fields_catchall
+            }
+        )
+    }
 }
 
-impl VariantOutput {
-    fn new() -> Self {
-        Self {
-            body: TokenStream2::new(),
-            header: TokenStream2::new(),
-            variant_idx_body: TokenStream2::new(),
+#[derive(Default)]
+struct VariantFields {
+    header: TokenStream2,
+    body: TokenStream2,
+}
+
+impl VariantFields {
+    fn named_header(self) -> Self {
+        let header = self.header;
+
+        VariantFields {
+            // `..` pattern matching works even if all fields were specified
+            header: quote! { { #header.. }},
+            body: self.body,
         }
     }
+    fn unnamed_header(self) -> Self {
+        let header = self.header;
+
+        VariantFields {
+            header: quote! { ( #header )},
+            body: self.body,
+        }
+    }
+}
+
+enum VariantBody {
+    // No body variant, unit enum variant.
+    Unit,
+    // Variant with body (fields)
+    Fields(VariantFields),
+}
+
+struct VariantOutput {
+    body: VariantBody,
+    variant_idx_body: TokenStream2,
 }
 
 fn process_variant(
@@ -80,36 +131,39 @@ fn process_variant(
     generics: &mut serialize::GenericsOutput,
 ) -> syn::Result<VariantOutput> {
     let variant_ident = &variant.ident;
-    let mut variant_output = VariantOutput::new();
-    match &variant.fields {
+    let variant_output = match &variant.fields {
         Fields::Named(fields) => {
+            let mut variant_fields = VariantFields::default();
             for field in &fields.named {
                 let field_id = serialize::FieldId::Enum(field.ident.clone().unwrap());
-                process_field(field, field_id, cratename, generics, &mut variant_output)?;
+                process_field(field, field_id, cratename, generics, &mut variant_fields)?;
             }
-            let header = variant_output.header;
-            // `..` pattern matching works even if all fields were specified
-            variant_output.header = quote! { { #header.. }};
-            variant_output.variant_idx_body = quote!(
-                #enum_ident::#variant_ident {..} => #discriminant_value,
-            );
+            VariantOutput {
+                body: VariantBody::Fields(variant_fields.named_header()),
+                variant_idx_body: quote!(
+                    #enum_ident::#variant_ident {..} => #discriminant_value,
+                ),
+            }
         }
         Fields::Unnamed(fields) => {
+            let mut variant_fields = VariantFields::default();
             for (field_idx, field) in fields.unnamed.iter().enumerate() {
                 let field_id = serialize::FieldId::new_enum_unnamed(field_idx)?;
-                process_field(field, field_id, cratename, generics, &mut variant_output)?;
+                process_field(field, field_id, cratename, generics, &mut variant_fields)?;
             }
-            let header = variant_output.header;
-            variant_output.header = quote! { ( #header )};
-            variant_output.variant_idx_body = quote!(
-                #enum_ident::#variant_ident(..) => #discriminant_value,
-            );
+            VariantOutput {
+                body: VariantBody::Fields(variant_fields.unnamed_header()),
+                variant_idx_body: quote!(
+                    #enum_ident::#variant_ident(..) => #discriminant_value,
+                ),
+            }
         }
-        Fields::Unit => {
-            variant_output.variant_idx_body = quote!(
+        Fields::Unit => VariantOutput {
+            body: VariantBody::Unit,
+            variant_idx_body: quote!(
                 #enum_ident::#variant_ident => #discriminant_value,
-            );
-        }
+            ),
+        },
     };
     Ok(variant_output)
 }
@@ -119,7 +173,7 @@ fn process_field(
     field_id: serialize::FieldId,
     cratename: &Path,
     generics: &mut serialize::GenericsOutput,
-    output: &mut VariantOutput,
+    output: &mut VariantFields,
 ) -> syn::Result<()> {
     let parsed = field::Attributes::parse(&field.attrs)?;
 
@@ -418,6 +472,22 @@ mod tests {
                 D,
                 E = 10,
                 F,
+            }
+        })
+        .unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
+
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn mixed_with_unit_variants() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum X {
+                A(u16),
+                B,
+                C {x: i32, y: i32},
+                D,
             }
         })
         .unwrap();
