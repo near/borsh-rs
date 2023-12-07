@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0](https://github.com/near/borsh-rs/compare/borsh-v1.2.1...borsh-v1.3.0) - 2023-12-07
+
+### Added
+- impl `BorshSchema` for `Rc` and `Arc`; add doc for `rc` feature ([#268](https://github.com/near/borsh-rs/pull/268))
+
 ## [1.2.1](https://github.com/near/borsh-rs/compare/borsh-v1.2.0...borsh-v1.2.1) - 2023-12-06
 
 ### Other
