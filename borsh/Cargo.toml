@@ -45,7 +45,7 @@ borsh = { path = ".", default_features = false, features = ["bytes", "bson"] }
 insta = "1.29.0"
 
 [package.metadata.docs.rs]
-features = ["derive", "unstable__schema"]
+features = ["derive", "unstable__schema", "rc"]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [features]
@@ -53,5 +53,8 @@ default = ["std"]
 derive = ["borsh-derive"]
 unstable__schema = ["derive", "borsh-derive/schema"]
 std = []
+# Opt into impls for Rc<T> and Arc<T>. Serializing and deserializing these types
+# does not preserve identity and may result in multiple copies of the same data.
+# Be sure that this is what you want before enabling this feature.
 rc = []
 de_strict_order = []

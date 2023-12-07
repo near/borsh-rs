@@ -11,9 +11,6 @@ use crate::__private::maybestd::{
 use crate::error::check_zst;
 use crate::io::{Error, ErrorKind, Result, Write};
 
-#[cfg(feature = "rc")]
-use crate::__private::maybestd::{rc::Rc, sync::Arc};
-
 pub(crate) mod helpers;
 
 const FLOAT_NAN_ERR: &str = "For portability reasons we do not allow to serialize NaNs.";
@@ -600,17 +597,38 @@ impl_range!(RangeFrom, this, &this.start);
 impl_range!(RangeTo, this, &this.end);
 impl_range!(RangeToInclusive, this, &this.end);
 
+/// Module is available if borsh is built with `features = ["rc"]`.
 #[cfg(feature = "rc")]
-impl<T: BorshSerialize + ?Sized> BorshSerialize for Rc<T> {
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        (**self).serialize(writer)
-    }
-}
+pub mod rc {
+    //!
+    //! Module defines [BorshSerialize] implementation for
+    //! [alloc::rc::Rc](std::rc::Rc) and [alloc::sync::Arc](std::sync::Arc).
+    use crate::__private::maybestd::{rc::Rc, sync::Arc};
+    use crate::io::{Result, Write};
+    use crate::BorshSerialize;
 
-#[cfg(feature = "rc")]
-impl<T: BorshSerialize + ?Sized> BorshSerialize for Arc<T> {
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        (**self).serialize(writer)
+    /// This impl requires the [`"rc"`] Cargo feature of borsh.
+    ///
+    /// Serializing a data structure containing `Rc` will serialize a copy of
+    /// the contents of the `Rc` each time the `Rc` is referenced within the
+    /// data structure. Serialization will not attempt to deduplicate these
+    /// repeated data.
+    impl<T: BorshSerialize + ?Sized> BorshSerialize for Rc<T> {
+        fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+            (**self).serialize(writer)
+        }
+    }
+
+    /// This impl requires the [`"rc"`] Cargo feature of borsh.
+    ///
+    /// Serializing a data structure containing `Arc` will serialize a copy of
+    /// the contents of the `Arc` each time the `Arc` is referenced within the
+    /// data structure. Serialization will not attempt to deduplicate these
+    /// repeated data.
+    impl<T: BorshSerialize + ?Sized> BorshSerialize for Arc<T> {
+        fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+            (**self).serialize(writer)
+        }
     }
 }
 
