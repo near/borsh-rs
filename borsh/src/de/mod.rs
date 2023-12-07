@@ -716,6 +716,28 @@ where
     }
 }
 
+#[cfg(feature = "std")]
+impl BorshDeserialize for core::time::Duration {
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let secs = <u64 as BorshDeserialize>::deserialize_reader(reader)?;
+        let nanos = <u32 as BorshDeserialize>::deserialize_reader(reader)?;
+        Ok(core::time::Duration::new(secs, nanos))
+    }
+}
+
+#[cfg(feature = "std")]
+impl BorshDeserialize for std::time::SystemTime {
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let duration_since_epoch = <core::time::Duration>::deserialize_reader(reader)?;
+        std::time::UNIX_EPOCH
+            .checked_add(duration_since_epoch)
+            .ok_or(Error::new(
+                ErrorKind::InvalidData,
+                "overflow deserializing SystemTime",
+            ))
+    }
+}
+
 impl<T, const N: usize> BorshDeserialize for [T; N]
 where
     T: BorshDeserialize,

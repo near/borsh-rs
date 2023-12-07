@@ -515,6 +515,31 @@ impl<T: BorshSerialize + ?Sized> BorshSerialize for Box<T> {
     }
 }
 
+#[cfg(feature = "std")]
+impl BorshSerialize for core::time::Duration {
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        <u64 as BorshSerialize>::serialize(&self.as_secs(), writer)?;
+        <u32 as BorshSerialize>::serialize(&self.subsec_nanos(), writer)
+    }
+}
+
+#[cfg(feature = "std")]
+impl BorshSerialize for std::time::SystemTime {
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        let duration_since_epoch = match self.duration_since(std::time::UNIX_EPOCH) {
+            Ok(duration_since_epoch) => duration_since_epoch,
+            Err(_) => {
+                return Err(Error::new(
+                    ErrorKind::InvalidData,
+                    "SystemTime must be later than UNIX_EPOCH",
+                ))
+            }
+        };
+
+        <core::time::Duration>::serialize(&duration_since_epoch, writer)
+    }
+}
+
 impl<T, const N: usize> BorshSerialize for [T; N]
 where
     T: BorshSerialize,
