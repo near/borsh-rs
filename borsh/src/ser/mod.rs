@@ -619,3 +619,55 @@ impl<T: ?Sized> BorshSerialize for PhantomData<T> {
         Ok(())
     }
 }
+
+#[cfg(feature = "std")]
+impl<T> BorshSerialize for core::cell::Cell<T>
+where
+    T: BorshSerialize + Copy,
+{
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        <T as BorshSerialize>::serialize(&self.get(), writer)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T> BorshSerialize for core::cell::RefCell<T>
+where
+    T: BorshSerialize,
+{
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        <T as BorshSerialize>::serialize(core::ops::Deref::deref(&self.borrow()), writer)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T> BorshSerialize for std::sync::Mutex<T>
+where
+    T: BorshSerialize,
+{
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        match self.lock().as_deref() {
+            Ok(locked) => <T as BorshSerialize>::serialize(locked, writer),
+            Err(_) => Err(Error::new(
+                ErrorKind::InvalidData,
+                "lock poison error while serializing",
+            )),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T> BorshSerialize for std::sync::RwLock<T>
+where
+    T: BorshSerialize,
+{
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        match self.read().as_deref() {
+            Ok(locked) => <T as BorshSerialize>::serialize(locked, writer),
+            Err(_) => Err(Error::new(
+                ErrorKind::InvalidData,
+                "lock poison error while serializing",
+            )),
+        }
+    }
+}
