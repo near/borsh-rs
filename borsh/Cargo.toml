@@ -28,7 +28,7 @@ cfg_aliases = "0.1.0"
 
 [dependencies]
 ascii = { version = "1.1", optional = true }
-borsh-derive = { path = "../borsh-derive", version = "~1.2.1", optional = true }
+borsh-derive = { path = "../borsh-derive", version = "~1.2.1", optional = true , default_features = false}
 
 # hashbrown can be used in no-std context.
 # NOTE: There is no reason to restrict use of older versions, but we don't want to get
@@ -49,7 +49,7 @@ features = ["derive", "unstable__schema", "rc"]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [features]
-default = ["std"]
+default = ["std", "derive_use_cargo"]
 derive = ["borsh-derive"]
 unstable__schema = ["derive", "borsh-derive/schema"]
 std = []
@@ -58,3 +58,4 @@ std = []
 # Be sure that this is what you want before enabling this feature.
 rc = []
 de_strict_order = []
+derive_use_cargo = ["borsh-derive?/proc-macro-crate"]
