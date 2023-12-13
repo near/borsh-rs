@@ -73,20 +73,28 @@ Attribute takes literal string value, which is the syn's [Path] to `borsh` crate
 
 Attribute is optional.
 
-1. If the attribute is not provided, [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh`
-in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
+1. If the attribute is not provided:
 
-```bash
- 1  error: proc-macro derive panicked
-   --> path/to/file.rs:27:10
-    |
- 27 | #[derive(BorshSerialize, BorshDeserialize)]
-    |          ^^^^^^^^^^^^^^
-    |
-    = help: message: called `Result::unwrap()` on an `Err` value: CrateNotFound { crate_name: "borsh", path: "/path/to/Cargo.toml" }
-```
+  - If `proc-macro-crate` feature of `borsh-derive`, which is controlled by `derive_use_cargo` feature
+    of `borsh`, is enabled, then
+    [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh`
+    in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
 
-2. If the attribute is provided, the check for `borsh` in `[dependencies]` of the relevant `Cargo.toml` is skipped.
+    ```bash
+     1  error: proc-macro derive panicked
+       --> path/to/file.rs:27:10
+        |
+     27 | #[derive(BorshSerialize, BorshDeserialize)]
+        |          ^^^^^^^^^^^^^^
+        |
+        = help: message: called `Result::unwrap()` on an `Err` value: CrateNotFound { crate_name: "borsh", path: "/path/to/Cargo.toml" }
+    ```
+
+  - If `proc-macro-crate` feature of `borsh-derive` is disabled, the path to `borsh` is assumed to be simply `borsh`.
+    The feature can be opted out of to remove dependency on `cargo` in build process.
+
+2. If the attribute is provided, the check for `borsh` in `[dependencies]` of the relevant `Cargo.toml` is skipped
+   and the provided attribute value is used instead.
 
 Examples of usage:
 
@@ -360,20 +368,28 @@ Attribute takes literal string value, which is the syn's [Path] to `borsh` crate
 
 Attribute is optional.
 
-1. If the attribute is not provided, [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh`
-in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
+1. If the attribute is not provided:
 
-```bash
- 1  error: proc-macro derive panicked
-   --> path/to/file.rs:27:10
-    |
- 27 | #[derive(BorshDeserialize, BorshSerialize)]
-    |          ^^^^^^^^^^^^^^^^
-    |
-    = help: message: called `Result::unwrap()` on an `Err` value: CrateNotFound { crate_name: "borsh", path: "/path/to/Cargo.toml" }
-```
+  - If `proc-macro-crate` feature of `borsh-derive`, which is controlled by `derive_use_cargo` feature
+    of `borsh`, is enabled, then
+    [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh`
+    in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
 
-2. If the attribute is provided, the check for `borsh` in `[dependencies]` of the relevant `Cargo.toml` is skipped.
+    ```bash
+     1  error: proc-macro derive panicked
+       --> path/to/file.rs:27:10
+        |
+     27 | #[derive(BorshDeserialize, BorshSerialize)]
+        |          ^^^^^^^^^^^^^^^^
+        |
+        = help: message: called `Result::unwrap()` on an `Err` value: CrateNotFound { crate_name: "borsh", path: "/path/to/Cargo.toml" }
+    ```
+
+  - If `proc-macro-crate` feature of `borsh-derive` is disabled, the path to `borsh` is assumed to be simply `borsh`.
+    The feature can be opted out of to remove dependency on `cargo` in build process.
+
+2. If the attribute is provided, the check for `borsh` in `[dependencies]` of the relevant `Cargo.toml` is skipped
+   and the provided attribute value is used instead.
 
 Examples of usage:
 
@@ -696,20 +712,28 @@ Attribute takes literal string value, which is the syn's [Path] to `borsh` crate
 
 Attribute is optional.
 
-1. If the attribute is not provided, [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh`
-in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
+1. If the attribute is not provided:
 
-```bash
- 1  error: proc-macro derive panicked
-   --> path/to/file.rs:27:10
-    |
- 27 | #[derive(BorshSchema, BorshSerialize)]
-    |          ^^^^^^^^^^^
-    |
-    = help: message: called `Result::unwrap()` on an `Err` value: CrateNotFound { crate_name: "borsh", path: "/path/to/Cargo.toml" }
-```
+  - If `proc-macro-crate` feature of `borsh-derive`, which is controlled by `derive_use_cargo` feature
+    of `borsh`, is enabled, then
+    [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh`
+    in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
 
-2. If the attribute is provided, the check for `borsh` in `[dependencies]` of the relevant `Cargo.toml` is skipped.
+    ```bash
+     1  error: proc-macro derive panicked
+       --> path/to/file.rs:27:10
+        |
+     27 | #[derive(BorshSchema, BorshSerialize)]
+        |          ^^^^^^^^^^^
+        |
+        = help: message: called `Result::unwrap()` on an `Err` value: CrateNotFound { crate_name: "borsh", path: "/path/to/Cargo.toml" }
+    ```
+
+  - If `proc-macro-crate` feature of `borsh-derive` is disabled, the path to `borsh` is assumed to be simply `borsh`.
+    The feature can be opted out of to remove dependency on `cargo` in build process.
+
+2. If the attribute is provided, the check for `borsh` in `[dependencies]` of the relevant `Cargo.toml` is skipped
+   and the provided attribute value is used instead.
 
 Examples of usage:
 

@@ -20,13 +20,19 @@
 
 ### Default features
 
-* **std** - enabled by default.
+* **std** , **derive_use_cargo** - enabled by default.
 
 ### Other features
 
 * **derive** -
   Gates derive macros of [BorshSerialize] and
   [BorshDeserialize] traits.
+* **derive_use_cargo** -
+  Enables `proc-macro-crate` feature of `borsh-derive` dependency, which tracks `borsh`
+  crate rename in `Cargo.toml` via `cargo`.
+
+  This feature has effect only if **derive** feature  is enabled.
+  More details are mentioned in `#[borsh(crate = ...)]` attribute description in [borsh_derive] doc.
 * **unstable__schema** -
   Gates [BorshSchema] trait and its derive macro.
   Gates [schema] module.
