@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: Install Rust toolchain
@@ -50,7 +50,7 @@ jobs:
   test_exhaustive_checks:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Install nightly for exhaustive check tests
       uses: dtolnay/rust-toolchain@nightly
     # a failure on this check means, that some of `syn` crate's enums have been extended
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Run clippy
       run: cargo clippy --features unstable__schema --benches -- -D clippy::all
 
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Run cargo fmt
       run: cargo fmt --check
 
@@ -83,7 +83,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: run cargo doc
       run: RUSTDOCFLAGS="-D warnings" cargo doc --features derive,unstable__schema
 
@@ -93,7 +93,7 @@ jobs:
     if: github.ref == 'refs/heads/master'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
