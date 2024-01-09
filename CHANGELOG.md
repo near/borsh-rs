@@ -12,9 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - impl `BorshSchema` for `Rc` and `Arc`; add doc for `rc` feature ([#268](https://github.com/near/borsh-rs/pull/268))
 
-### Other
-- bump `proc-macro-crate` to 3.0.0 in `borsh-derive` ([#274](https://github.com/near/borsh-rs/pull/274))
-
 ## [1.2.1](https://github.com/near/borsh-rs/compare/borsh-v1.2.0...borsh-v1.2.1) - 2023-12-06
 
 ### Other

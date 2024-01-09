@@ -4,7 +4,7 @@
 [Latest Version]: https://img.shields.io/crates/v/borsh.svg
 [crates.io]: https://crates.io/crates/borsh
 [borsh: rustc 1.67+]: https://img.shields.io/badge/rustc-1.67+-lightgray.svg
-[Rust 1.67]: https://blog.rust-lang.org/2022/12/15/Rust-1.67.0.html
+[Rust 1.67]: https://blog.rust-lang.org/2023/01/26/Rust-1.67.0.html
 [License Apache-2.0 badge]: https://img.shields.io/badge/license-Apache2.0-blue.svg
 [License Apache-2.0]: https://opensource.org/licenses/Apache-2.0
 [License MIT badge]: https://img.shields.io/badge/license-MIT-blue.svg
