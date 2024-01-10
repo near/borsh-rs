@@ -20,11 +20,11 @@ jobs:
   tests:
     strategy:
       matrix:
-        rust_version: [1.66.0, stable]
+        rust_version: [1.67.0, stable]
     runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: Install Rust toolchain
@@ -36,13 +36,6 @@ jobs:
       run: rustup default ${{ matrix.rust_version }}
     - name: print rustc version
       run: rustc --version
-    # remove this step when MSRV >= 1.67.0
-    - name: downgrade `toml_edit`, time`, `toml_datetime` crate to support older Rust toolchain
-      if: matrix.rust_version == '1.66.0' 
-      run: |
-        cargo update -p toml_edit --precise 0.20.2
-        cargo update -p toml_datetime --precise 0.6.3
-        cargo update -p time --precise 0.3.23
     - name: Run tests
       run: ./.github/test.sh
 
@@ -50,7 +43,7 @@ jobs:
   test_exhaustive_checks:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Install nightly for exhaustive check tests
       uses: dtolnay/rust-toolchain@nightly
     # a failure on this check means, that some of `syn` crate's enums have been extended
@@ -64,7 +57,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Run clippy
       run: cargo clippy --features unstable__schema --benches -- -D clippy::all
 
@@ -72,7 +65,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Run cargo fmt
       run: cargo fmt --check
 
@@ -83,7 +76,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: run cargo doc
       run: RUSTDOCFLAGS="-D warnings" cargo doc --features derive,unstable__schema
 
@@ -93,7 +86,7 @@ jobs:
     if: github.ref == 'refs/heads/master'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
