@@ -51,7 +51,7 @@ jobs:
     # consult https://github.com/serde-rs/serde/blob/master/serde_derive/src/bound.rs#L100 , 
     # the implementation of `FindTyParams` may have been updated already 
     - name: Run exhaustive check tests
-      run: cargo check --workspace --features force_exhaustive_checks
+      run: RUSTFLAGS="-A unused_imports -D warnings" cargo check --workspace --features force_exhaustive_checks
 
   clippy:
     runs-on: ubuntu-20.04
