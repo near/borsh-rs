@@ -103,9 +103,7 @@ fn max_serialized_size_impl<'a>(
         Ok(Definition::Primitive(size)) => match size {
             0 => Ok(0),
             size => {
-                let count_sizes = usize::try_from(*size)
-                    .ok()
-                    .and_then(|size| size.checked_mul(count.get()));
+                let count_sizes = usize::from(*size).checked_mul(count.get());
                 count_sizes.ok_or(Error::Overflow)
             }
         },

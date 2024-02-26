@@ -22,7 +22,7 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
             }
         }
         Fields::Unnamed(fields) => {
-            for (_field_idx, field) in fields.unnamed.iter().enumerate() {
+            for field in fields.unnamed.iter() {
                 deserialize::process_field(field, &cratename, &mut body, &mut generics_output)?;
             }
             quote! {

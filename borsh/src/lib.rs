@@ -35,6 +35,9 @@
   Gates implementation of [BorshSerialize] and [BorshDeserialize]
   for [`Rc<T>`](std::rc::Rc)/[`Arc<T>`](std::sync::Arc) respectively.
   In `no_std` setting `Rc`/`Arc` are pulled from `alloc` crate.
+  Serializing and deserializing these types
+  does not preserve identity and may result in multiple copies of the same data.
+  Be sure that this is what you want before enabling this feature.
 * **hashbrown** -
   Pulls in [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet) when no `std` is available.
   This feature is set to be mutually exclusive with **std** feature.

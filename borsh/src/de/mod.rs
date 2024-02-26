@@ -19,8 +19,6 @@ use crate::__private::maybestd::{
 };
 use crate::io::{Error, ErrorKind, Read, Result};
 
-#[cfg(feature = "rc")]
-use crate::__private::maybestd::{rc::Rc, sync::Arc};
 use crate::error::check_zst;
 
 mod hint;
@@ -883,23 +881,42 @@ impl_range!(RangeFrom, start.., start);
 impl_range!(RangeTo, ..end, end);
 impl_range!(RangeToInclusive, ..=end, end);
 
+/// Module is available if borsh is built with `features = ["rc"]`.
 #[cfg(feature = "rc")]
-impl<T: ?Sized> BorshDeserialize for Rc<T>
-where
-    Box<T>: BorshDeserialize,
-{
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        Ok(Box::<T>::deserialize_reader(reader)?.into())
-    }
-}
+pub mod rc {
+    //!
+    //! Module defines [BorshDeserialize] implementation for
+    //! [alloc::rc::Rc](std::rc::Rc) and [alloc::sync::Arc](std::sync::Arc).
+    use crate::__private::maybestd::{boxed::Box, rc::Rc, sync::Arc};
+    use crate::io::{Read, Result};
+    use crate::BorshDeserialize;
 
-#[cfg(feature = "rc")]
-impl<T: ?Sized> BorshDeserialize for Arc<T>
-where
-    Box<T>: BorshDeserialize,
-{
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        Ok(Box::<T>::deserialize_reader(reader)?.into())
+    /// This impl requires the [`"rc"`] Cargo feature of borsh.
+    ///
+    /// Deserializing a data structure containing `Rc` will not attempt to
+    /// deduplicate `Rc` references to the same data. Every deserialized `Rc`
+    /// will end up with a strong count of 1.
+    impl<T: ?Sized> BorshDeserialize for Rc<T>
+    where
+        Box<T>: BorshDeserialize,
+    {
+        fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+            Ok(Box::<T>::deserialize_reader(reader)?.into())
+        }
+    }
+
+    /// This impl requires the [`"rc"`] Cargo feature of borsh.
+    ///
+    /// Deserializing a data structure containing `Arc` will not attempt to
+    /// deduplicate `Arc` references to the same data. Every deserialized `Arc`
+    /// will end up with a strong count of 1.
+    impl<T: ?Sized> BorshDeserialize for Arc<T>
+    where
+        Box<T>: BorshDeserialize,
+    {
+        fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+            Ok(Box::<T>::deserialize_reader(reader)?.into())
+        }
     }
 }
 
