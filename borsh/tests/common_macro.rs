@@ -109,3 +109,39 @@ macro_rules! map_wrong_order_test [
         }
     ]
 ];
+
+#[allow(unused)]
+macro_rules! schema_map(
+    () => { BTreeMap::new() };
+    { $($key:expr => $value:expr),+ } => {
+        {
+            let mut m = BTreeMap::new();
+            $(
+                m.insert($key.to_string(), $value);
+            )+
+            m
+        }
+     };
+);
+
+#[allow(unused)]
+#[cfg(feature = "unstable__schema")]
+pub mod schema_imports {
+    #[cfg(feature = "std")]
+    pub use std::collections::BTreeMap;
+
+    #[cfg(not(feature = "std"))]
+    extern crate alloc;
+    #[cfg(not(feature = "std"))]
+    pub use alloc::{
+        boxed::Box,
+        collections::BTreeMap,
+        format,
+        string::{String, ToString},
+        vec,
+        vec::Vec,
+    };
+
+    pub use borsh::schema::{BorshSchemaContainer, Definition, Fields};
+    pub use borsh::{schema_container_of, BorshSchema};
+}

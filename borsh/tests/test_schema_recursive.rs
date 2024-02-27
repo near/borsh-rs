@@ -1,15 +1,5 @@
 #![cfg(feature = "unstable__schema")]
 
-#[cfg(feature = "std")]
-use std::collections::BTreeMap;
-
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-#[cfg(not(feature = "std"))]
-use alloc::{collections::BTreeMap, string::ToString, vec};
-
-use borsh::schema::*;
-
 #[allow(unused)]
 #[derive(borsh::BorshSchema)]
 struct CRecC {
@@ -24,25 +14,16 @@ enum ERecD {
     C(u8, Vec<ERecD>),
 }
 
-macro_rules! map(
-    () => { BTreeMap::new() };
-    { $($key:expr => $value:expr),+ } => {
-        {
-            let mut m = BTreeMap::new();
-            $(
-                m.insert($key.to_string(), $value);
-            )+
-            m
-        }
-     };
-);
+#[macro_use]
+mod common_macro;
+use common_macro::schema_imports::*;
 
 #[test]
 pub fn recursive_struct_schema() {
     let mut defs = Default::default();
     CRecC::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
            "CRecC" => Definition::Struct {
                 fields: Fields::NamedFields(
                     vec![
@@ -81,7 +62,7 @@ pub fn recursive_enum_schema() {
     let mut defs = Default::default();
     ERecD::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
            "ERecD" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![

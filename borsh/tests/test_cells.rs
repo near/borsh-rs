@@ -42,36 +42,22 @@ mod de_errors {
     }
 }
 
+#[macro_use]
+mod common_macro;
+
 #[cfg(feature = "unstable__schema")]
 mod schema {
 
-    use alloc::{
-        collections::BTreeMap,
-        string::{String, ToString},
-        vec::Vec,
-    };
-    use borsh::schema::{BorshSchema, Definition};
-    macro_rules! map(
-        () => { BTreeMap::new() };
-        { $($key:expr => $value:expr),+ } => {
-            {
-                let mut m = BTreeMap::new();
-                $(
-                    m.insert($key.to_string(), $value);
-                )+
-                m
-            }
-         };
-        );
+    use super::common_macro::schema_imports::*;
     fn common_map_i32() -> BTreeMap<String, Definition> {
-        map! {
+        schema_map! {
 
             "i32" => Definition::Primitive(4)
         }
     }
 
     fn common_map_slice_i32() -> BTreeMap<String, Definition> {
-        map! {
+        schema_map! {
             "Vec<i32>" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
@@ -85,7 +71,7 @@ mod schema {
     fn test_cell() {
         assert_eq!("i32", <core::cell::Cell<i32> as BorshSchema>::declaration());
 
-        let mut actual_defs = map!();
+        let mut actual_defs = schema_map!();
         <core::cell::Cell<i32> as BorshSchema>::add_definitions_recursively(&mut actual_defs);
         assert_eq!(common_map_i32(), actual_defs);
     }
@@ -97,7 +83,7 @@ mod schema {
             <core::cell::RefCell<Vec<i32>> as BorshSchema>::declaration()
         );
 
-        let mut actual_defs = map!();
+        let mut actual_defs = schema_map!();
         <core::cell::RefCell<Vec<i32>> as BorshSchema>::add_definitions_recursively(
             &mut actual_defs,
         );

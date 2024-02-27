@@ -1,54 +1,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(feature = "unstable__schema")]
 
-#[cfg(feature = "std")]
-use std::collections::BTreeMap;
-
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-#[cfg(not(feature = "std"))]
-use alloc::{
-    collections::BTreeMap,
-    format,
-    string::{String, ToString},
-    vec,
-};
-
-use borsh::schema::*;
-use borsh::BorshSchema;
-
-macro_rules! map(
-    () => { BTreeMap::new() };
-    { $($key:expr => $value:expr),+ } => {
-        {
-            let mut m = BTreeMap::new();
-            $(
-                m.insert($key.to_string(), $value);
-            )+
-            m
-        }
-     };
-);
+#[macro_use]
+mod common_macro;
+use common_macro::schema_imports::*;
 
 #[allow(unused)]
 struct ThirdParty<K, V>(BTreeMap<K, V>);
 #[allow(unused)]
 mod third_party_impl {
-
-    #[cfg(feature = "std")]
-    use std::collections::BTreeMap;
-
-    #[cfg(not(feature = "std"))]
-    use alloc::{
-        borrow,
-        boxed::Box,
-        collections::BTreeMap,
-        format,
-        string::{String, ToString},
-        vec,
-        vec::Vec,
-    };
-    use borsh::BorshSchema;
+    use super::common_macro::schema_imports::*;
 
     pub(super) fn declaration<K: borsh::BorshSchema, V: borsh::BorshSchema>(
     ) -> borsh::schema::Declaration {
@@ -105,7 +66,7 @@ pub fn struct_overriden() {
     let mut defs = Default::default();
     <A<u64, String>>::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
             "A<u64, String>" => Definition::Struct { fields: Fields::NamedFields(vec![
                 ("x".to_string(), "ThirdParty<u64, String>".to_string()),
                 ("y".to_string(), "u64".to_string())]
@@ -140,7 +101,7 @@ pub fn enum_overriden() {
     let mut defs = Default::default();
     <C<u64, String>>::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
             "C<u64, String>" => Definition::Enum {
                 tag_width: 1,
                 variants: vec![

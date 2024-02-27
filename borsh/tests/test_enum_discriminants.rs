@@ -185,31 +185,12 @@ fn test_discriminant_serde() {
     }
 }
 
+#[macro_use]
+mod common_macro;
+
 #[cfg(feature = "unstable__schema")]
 mod schema {
-    #[cfg(not(feature = "std"))]
-    use alloc::{collections::BTreeMap, string::ToString, vec};
-
-    #[cfg(feature = "std")]
-    use std::collections::BTreeMap;
-
-    macro_rules! map(
-        () => { BTreeMap::new() };
-        { $($key:expr => $value:expr),+ } => {
-            {
-                let mut m = BTreeMap::new();
-                $(
-                    m.insert($key.to_string(), $value);
-                )+
-                m
-            }
-         };
-    );
-
-    use borsh::{
-        schema::{Definition, Fields},
-        BorshSchema,
-    };
+    use super::common_macro::schema_imports::*;
 
     #[allow(unused)]
     #[derive(BorshSchema)]
@@ -230,7 +211,7 @@ mod schema {
         let mut defs = Default::default();
         XY::add_definitions_recursively(&mut defs);
         assert_eq!(
-            map! {
+            schema_map! {
                 "XY" => Definition::Enum {
                     tag_width: 1,
                     variants: vec![
@@ -282,7 +263,7 @@ mod schema {
         let mut defs = Default::default();
         XYNoDiscriminant::add_definitions_recursively(&mut defs);
         assert_eq!(
-            map! {
+            schema_map! {
                 "XYNoDiscriminant" => Definition::Enum {
                     tag_width: 1,
                     variants: vec![
