@@ -8,31 +8,11 @@ use hashbrown::HashMap;
 
 use core::marker::PhantomData;
 #[cfg(feature = "std")]
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-#[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    collections::BTreeMap,
-    format,
-    string::{String, ToString},
-    vec,
-};
-
-macro_rules! map(
-    () => { BTreeMap::new() };
-    { $($key:expr => $value:expr),+ } => {
-        {
-            let mut m = BTreeMap::new();
-            $(
-                m.insert($key.to_string(), $value);
-            )+
-            m
-        }
-     };
-);
+#[macro_use]
+mod common_macro;
+use common_macro::schema_imports::*;
 
 #[test]
 pub fn unit_struct() {
@@ -50,7 +30,7 @@ pub fn unit_struct() {
     let mut defs = Default::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
         "A" => Definition::Struct {fields: Fields::Empty}
         },
         defs
@@ -68,7 +48,7 @@ pub fn simple_struct() {
     let mut defs = Default::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
         "A" => Definition::Struct{ fields: Fields::NamedFields(vec![
         ("_f1".to_string(), "u64".to_string()),
         ("_f2".to_string(), "String".to_string())
@@ -97,7 +77,7 @@ pub fn boxed() {
     let mut defs = Default::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
             "Vec<u8>" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
@@ -128,7 +108,7 @@ pub fn wrapper_struct() {
     let mut defs = Default::default();
     <A<u64>>::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
         "A<u64>" => Definition::Struct {fields: Fields::UnnamedFields(vec!["u64".to_string()])},
         "u64" => Definition::Primitive(8)
         },
@@ -144,7 +124,7 @@ pub fn tuple_struct() {
     let mut defs = Default::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
         "A" => Definition::Struct {fields: Fields::UnnamedFields(vec![
          "u64".to_string(), "String".to_string()
         ])},
@@ -171,7 +151,7 @@ pub fn tuple_struct_params() {
     let mut defs = Default::default();
     <A<u64, String>>::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
         "A<u64, String>" => Definition::Struct { fields: Fields::UnnamedFields(vec![
             "u64".to_string(), "String".to_string()
         ])},
@@ -202,7 +182,7 @@ pub fn simple_generics() {
     let mut defs = Default::default();
     <A<u64, String>>::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
         "A<u64, String>" => Definition::Struct {
         fields: Fields::NamedFields(vec![
         ("_f1".to_string(), "HashMap<u64, String>".to_string()),
@@ -228,7 +208,7 @@ pub fn simple_generics() {
 }
 
 fn common_map() -> BTreeMap<String, Definition> {
-    map! {
+    schema_map! {
 
         "Parametrized<String, i8>" => Definition::Struct {
             fields: Fields::NamedFields(vec![
@@ -342,7 +322,7 @@ pub fn generic_associated_item3() {
     let mut defs = Default::default();
     <Parametrized<String, u32>>::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
             "Parametrized<String, u32, i8>" => Definition::Struct {
                 fields: Fields::NamedFields(vec![
                     ("field".to_string(), "(i8, u32)".to_string()),
@@ -382,7 +362,7 @@ pub fn with_phantom_data() {
     let mut defs = Default::default();
     <Parametrized<String, u32>>::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
             "Parametrized<String>" => Definition::Struct {
                 fields: Fields::NamedFields(vec![
                     ("field".to_string(), "String".to_string()),

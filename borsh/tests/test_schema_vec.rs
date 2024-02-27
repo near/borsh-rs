@@ -2,28 +2,9 @@
 #![cfg(hash_collections)]
 #![cfg(feature = "unstable__schema")]
 
-#[cfg(feature = "std")]
-use std::collections::BTreeMap;
-
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-#[cfg(not(feature = "std"))]
-use alloc::{collections::BTreeMap, string::ToString};
-
-use borsh::{schema::*, schema_container_of};
-
-macro_rules! map(
-    () => { BTreeMap::new() };
-    { $($key:expr => $value:expr),+ } => {
-        {
-            let mut m = BTreeMap::new();
-            $(
-                m.insert($key.to_string(), $value);
-            )+
-            m
-        }
-     };
-);
+#[macro_use]
+mod common_macro;
+use common_macro::schema_imports::*;
 
 #[test]
 fn slice_schema_container() {
@@ -33,7 +14,7 @@ fn slice_schema_container() {
         schema,
         BorshSchemaContainer::new(
             "Vec<i64>".to_string(),
-            map! {
+            schema_map! {
                 "Vec<i64>" => Definition::Sequence {
                     length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,
@@ -54,7 +35,7 @@ fn vec_schema_container() {
         schema,
         BorshSchemaContainer::new(
             "Vec<i64>".to_string(),
-            map! {
+            schema_map! {
                 "Vec<i64>" => Definition::Sequence {
                     length_width: Definition::DEFAULT_LENGTH_WIDTH,
                     length_range: Definition::DEFAULT_LENGTH_RANGE,

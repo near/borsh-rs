@@ -84,22 +84,12 @@ mod de_errors {
     }
 }
 
+#[macro_use]
+mod common_macro;
+
 #[cfg(feature = "unstable__schema")]
 mod schema {
-    use alloc::{collections::BTreeMap, string::ToString};
-    use borsh::schema::{BorshSchema, Definition};
-    macro_rules! map(
-        () => { BTreeMap::new() };
-        { $($key:expr => $value:expr),+ } => {
-            {
-                let mut m = BTreeMap::new();
-                $(
-                    m.insert($key.to_string(), $value);
-                )+
-                m
-            }
-         };
-        );
+    use super::common_macro::schema_imports::*;
 
     #[test]
     fn test_ascii_strings() {
@@ -107,14 +97,14 @@ mod schema {
         assert_eq!("AsciiString", ascii::AsciiString::declaration());
         assert_eq!("AsciiChar", ascii::AsciiChar::declaration());
 
-        let want_char = map! {
+        let want_char = schema_map! {
             "AsciiChar" => Definition::Primitive(1)
         };
-        let mut actual_defs = map!();
+        let mut actual_defs = schema_map!();
         ascii::AsciiChar::add_definitions_recursively(&mut actual_defs);
         assert_eq!(want_char, actual_defs);
 
-        let want = map! {
+        let want = schema_map! {
             "AsciiString" => Definition::Sequence {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
@@ -123,11 +113,11 @@ mod schema {
             "AsciiChar" => Definition::Primitive(1)
         };
 
-        let mut actual_defs = map!();
+        let mut actual_defs = schema_map!();
         ascii::AsciiStr::add_definitions_recursively(&mut actual_defs);
         assert_eq!(want, actual_defs);
 
-        let mut actual_defs = map!();
+        let mut actual_defs = schema_map!();
         ascii::AsciiString::add_definitions_recursively(&mut actual_defs);
         assert_eq!(want, actual_defs);
     }

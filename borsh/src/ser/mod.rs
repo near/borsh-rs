@@ -637,3 +637,24 @@ impl<T: ?Sized> BorshSerialize for PhantomData<T> {
         Ok(())
     }
 }
+
+impl<T> BorshSerialize for core::cell::Cell<T>
+where
+    T: BorshSerialize + Copy,
+{
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        <T as BorshSerialize>::serialize(&self.get(), writer)
+    }
+}
+
+impl<T> BorshSerialize for core::cell::RefCell<T>
+where
+    T: BorshSerialize + Sized,
+{
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        match self.try_borrow() {
+            Ok(ref value) => value.serialize(writer),
+            Err(_) => Err(Error::new(ErrorKind::Other, "already mutably borrowed")),
+        }
+    }
+}

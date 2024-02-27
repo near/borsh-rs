@@ -925,6 +925,25 @@ impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
         Ok(PhantomData)
     }
 }
+
+impl<T> BorshDeserialize for core::cell::Cell<T>
+where
+    T: BorshDeserialize + Copy,
+{
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        <T as BorshDeserialize>::deserialize_reader(reader).map(core::cell::Cell::new)
+    }
+}
+
+impl<T> BorshDeserialize for core::cell::RefCell<T>
+where
+    T: BorshDeserialize,
+{
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        <T as BorshDeserialize>::deserialize_reader(reader).map(core::cell::RefCell::new)
+    }
+}
+
 /// Deserializes an object from a slice of bytes.
 /// # Example
 /// ```

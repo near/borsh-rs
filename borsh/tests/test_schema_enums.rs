@@ -2,35 +2,12 @@
 #![allow(dead_code)] // Local structures do not have their fields used.
 #![cfg(feature = "unstable__schema")]
 
-use core::fmt::{Debug, Display};
-#[cfg(feature = "std")]
-use std::collections::BTreeMap;
-
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-#[cfg(not(feature = "std"))]
-use alloc::{
-    collections::BTreeMap,
-    format,
-    string::{String, ToString},
-    vec,
-};
-
-use borsh::schema::*;
 use borsh::{try_from_slice_with_schema, try_to_vec_with_schema};
+use core::fmt::{Debug, Display};
 
-macro_rules! map(
-    () => { BTreeMap::new() };
-    { $($key:expr => $value:expr),+ } => {
-        {
-            let mut m = BTreeMap::new();
-            $(
-                m.insert($key.to_string(), $value);
-            )+
-            m
-        }
-     };
-);
+#[macro_use]
+mod common_macro;
+use common_macro::schema_imports::*;
 
 #[test]
 pub fn simple_enum() {
@@ -50,7 +27,7 @@ pub fn simple_enum() {
     let mut defs = Default::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
         "ABacon" => Definition::Struct{ fields: Fields::Empty },
         "AEggs" => Definition::Struct{ fields: Fields::Empty },
             "A" => Definition::Enum {
@@ -72,7 +49,7 @@ pub fn single_field_enum() {
     let mut defs = Default::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
             "ABacon" => Definition::Struct {fields: Fields::Empty},
             "A" => Definition::Enum {
                 tag_width: 1,
@@ -184,7 +161,7 @@ pub fn complex_enum_with_schema() {
     let mut defs = Default::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
         "Cucumber" => Definition::Struct {fields: Fields::Empty},
         "ASalad" => Definition::Struct{ fields: Fields::UnnamedFields(vec!["Tomatoes".to_string(), "Cucumber".to_string(), "Oil".to_string()])},
         "ABacon" => Definition::Struct {fields: Fields::Empty},
@@ -244,7 +221,7 @@ pub fn complex_enum_generics() {
     let mut defs = Default::default();
     <A<Cucumber, Wrapper>>::add_definitions_recursively(&mut defs);
     assert_eq!(
-        map! {
+        schema_map! {
         "Cucumber" => Definition::Struct {fields: Fields::Empty},
         "ASalad<Cucumber>" => Definition::Struct{
             fields: Fields::UnnamedFields(vec!["Tomatoes".to_string(), "Cucumber".to_string(), "Oil".to_string()])
@@ -276,7 +253,7 @@ pub fn complex_enum_generics() {
 }
 
 fn common_map() -> BTreeMap<String, Definition> {
-    map! {
+    schema_map! {
         "EnumParametrized<String, u32, i8, u16>" => Definition::Enum {
             tag_width: 1,
             variants: vec![
