@@ -317,6 +317,32 @@ where
         T::declaration()
     }
 }
+
+impl<T> BorshSchema for core::cell::Cell<T>
+where
+    T: BorshSchema + Copy,
+{
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        T::add_definitions_recursively(definitions);
+    }
+
+    fn declaration() -> Declaration {
+        T::declaration()
+    }
+}
+
+impl<T> BorshSchema for core::cell::RefCell<T>
+where
+    T: BorshSchema + Sized,
+{
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        T::add_definitions_recursively(definitions);
+    }
+
+    fn declaration() -> Declaration {
+        T::declaration()
+    }
+}
 /// Module is available if borsh is built with `features = ["rc"]`.
 #[cfg(feature = "rc")]
 pub mod rc {

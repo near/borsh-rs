@@ -926,43 +926,21 @@ impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
     }
 }
 
-#[cfg(feature = "std")]
 impl<T> BorshDeserialize for core::cell::Cell<T>
 where
-    T: BorshDeserialize,
+    T: BorshDeserialize + Copy,
 {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         <T as BorshDeserialize>::deserialize_reader(reader).map(core::cell::Cell::new)
     }
 }
 
-#[cfg(feature = "std")]
 impl<T> BorshDeserialize for core::cell::RefCell<T>
 where
     T: BorshDeserialize,
 {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         <T as BorshDeserialize>::deserialize_reader(reader).map(core::cell::RefCell::new)
-    }
-}
-
-#[cfg(feature = "std")]
-impl<T> BorshDeserialize for std::sync::Mutex<T>
-where
-    T: BorshDeserialize,
-{
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        <T as BorshDeserialize>::deserialize_reader(reader).map(std::sync::Mutex::new)
-    }
-}
-
-#[cfg(feature = "std")]
-impl<T> BorshDeserialize for std::sync::RwLock<T>
-where
-    T: BorshDeserialize,
-{
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        <T as BorshDeserialize>::deserialize_reader(reader).map(std::sync::RwLock::new)
     }
 }
 
