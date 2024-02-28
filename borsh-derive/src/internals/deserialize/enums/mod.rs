@@ -34,15 +34,15 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
 
     Ok(quote! {
         impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
-            fn deserialize_reader<R: #cratename::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::io::Error> {
+            fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
                 let tag = <u8 as #cratename::de::BorshDeserialize>::deserialize_reader(reader)?;
                 <Self as #cratename::de::EnumExt>::deserialize_variant(reader, tag)
             }
         }
 
         impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
-            fn deserialize_variant<R: #cratename::io::Read>(
-                reader: &mut R,
+            fn deserialize_variant<__R: #cratename::io::Read>(
+                reader: &mut __R,
                 variant_tag: u8,
             ) -> ::core::result::Result<Self, #cratename::io::Error> {
                 let mut return_value =

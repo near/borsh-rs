@@ -3,9 +3,9 @@ source: borsh-derive/src/internals/serialize/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl reexporter::borsh::ser::BorshSerialize for AB {
-    fn serialize<W: reexporter::borsh::io::Write>(
+    fn serialize<__W: reexporter::borsh::io::Write>(
         &self,
-        writer: &mut W,
+        writer: &mut __W,
     ) -> ::core::result::Result<(), reexporter::borsh::io::Error> {
         let variant_idx: u8 = match self {
             AB::B { .. } => 0u8,
@@ -24,4 +24,3 @@ impl reexporter::borsh::ser::BorshSerialize for AB {
         Ok(())
     }
 }
-

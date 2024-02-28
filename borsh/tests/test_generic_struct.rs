@@ -36,17 +36,17 @@ struct A<T, F, G> {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-enum B<F, G> {
-    X { f: Vec<F> },
+enum B<W, G> {
+    X { f: Vec<W> },
     Y(G),
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-struct TupleA<T>(T, u32);
+struct TupleA<W>(W, u32);
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-struct NamedA<T> {
-    a: T,
+struct NamedA<W> {
+    a: W,
     b: u32,
 }
 
@@ -84,9 +84,9 @@ struct C2<T, U> {
 
 /// `T: Ord` bound is required for `BorshDeserialize` derive to be successful
 #[derive(BorshSerialize, BorshDeserialize)]
-struct D<T: Ord, U> {
+struct D<T: Ord, R> {
     a: String,
-    b: BTreeMap<T, U>,
+    b: BTreeMap<T, R>,
 }
 
 #[cfg(hash_collections)]
@@ -99,7 +99,7 @@ struct G1<K, V, U>(#[borsh(skip)] HashMap<K, V>, U);
 
 #[cfg(hash_collections)]
 #[derive(BorshDeserialize)]
-struct G2<K: Ord + Hash + Eq, V, U>(HashMap<K, V>, #[borsh(skip)] U);
+struct G2<K: Ord + Hash + Eq, R, U>(HashMap<K, R>, #[borsh(skip)] U);
 
 /// implicit derived `core::default::Default` bounds on `K` and `V` are dropped by empty bound
 /// specified, as `HashMap` hash its own `Default` implementation
@@ -118,27 +118,27 @@ struct H<K: Ord, V, U> {
 
 /// `T: Ord` bound is required for `BorshDeserialize` derive to be successful
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-enum E<T: Ord, U, G> {
+enum E<T: Ord, U, W> {
     X { f: BTreeMap<T, U> },
-    Y(G),
+    Y(W),
 }
 
 #[cfg(hash_collections)]
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-enum I1<K, V, U> {
+enum I1<K, V, R> {
     B {
         #[allow(unused)]
         #[borsh(skip)]
         x: HashMap<K, V>,
         y: String,
     },
-    C(K, Vec<U>),
+    C(K, Vec<R>),
 }
 
 #[cfg(hash_collections)]
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-enum I2<K: Ord + Eq + Hash, V, U> {
-    B { x: HashMap<K, V>, y: String },
+enum I2<K: Ord + Eq + Hash, R, U> {
+    B { x: HashMap<K, R>, y: String },
     C(K, #[borsh(skip)] U),
 }
 

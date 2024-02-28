@@ -7,9 +7,9 @@ where
     T: borsh::ser::BorshSerialize + PartialOrd,
     U: borsh::ser::BorshSerialize,
 {
-    fn serialize<W: borsh::io::Write>(
+    fn serialize<__W: borsh::io::Write>(
         &self,
-        writer: &mut W,
+        writer: &mut __W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
         let variant_idx: u8 = match self {
             A::C { .. } => 0u8,
@@ -29,4 +29,3 @@ where
         Ok(())
     }
 }
-
