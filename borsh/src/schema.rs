@@ -14,6 +14,7 @@
 #![allow(dead_code)] // Unclear why rust check complains on fields of `Definition` variants.
 use crate as borsh; // For `#[derive(BorshSerialize, BorshDeserialize)]`.
 use crate::__private::maybestd::{
+    borrow,
     boxed::Box,
     collections::{btree_map::Entry, BTreeMap, BTreeSet},
     format,
@@ -379,6 +380,20 @@ pub mod rc {
         fn declaration() -> Declaration {
             T::declaration()
         }
+    }
+}
+
+impl<T> BorshSchema for borrow::Cow<'_, T>
+where
+    T: borrow::ToOwned + ?Sized,
+    T::Owned: BorshSchema,
+{
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        <T::Owned as BorshSchema>::add_definitions_recursively(definitions);
+    }
+
+    fn declaration() -> Declaration {
+        <T::Owned as BorshSchema>::declaration()
     }
 }
 
