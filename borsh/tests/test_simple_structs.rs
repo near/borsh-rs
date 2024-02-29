@@ -159,7 +159,7 @@ fn test_ultimate_combined_all_features() {
         lazy: Some(5),
         c: borrow::Cow::Owned("Hello".to_string()),
         cow_arr: borrow::Cow::Owned(vec![
-            borrow::Cow::Borrowed("Hello1"),
+            borrow::Cow::Owned("Hello1".to_string()),
             borrow::Cow::Owned("Hello2".to_string()),
         ]),
         range_u32: 12..71,
