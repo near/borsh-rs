@@ -7,13 +7,12 @@ where
     T: borsh::ser::BorshSerialize + PartialOrd,
     U: borsh::ser::BorshSerialize,
 {
-    fn serialize<W: borsh::io::Write>(
+    fn serialize<__W: borsh::io::Write>(
         &self,
-        writer: &mut W,
+        writer: &mut __W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
         borsh::BorshSerialize::serialize(&self.a, writer)?;
         borsh::BorshSerialize::serialize(&self.b, writer)?;
         Ok(())
     }
 }
-

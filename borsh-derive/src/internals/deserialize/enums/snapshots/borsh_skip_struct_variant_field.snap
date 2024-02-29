@@ -3,16 +3,16 @@ source: borsh-derive/src/internals/deserialize/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl borsh::de::BorshDeserialize for AA {
-    fn deserialize_reader<R: borsh::io::Read>(
-        reader: &mut R,
+    fn deserialize_reader<__R: borsh::io::Read>(
+        reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
         let tag = <u8 as borsh::de::BorshDeserialize>::deserialize_reader(reader)?;
         <Self as borsh::de::EnumExt>::deserialize_variant(reader, tag)
     }
 }
 impl borsh::de::EnumExt for AA {
-    fn deserialize_variant<R: borsh::io::Read>(
-        reader: &mut R,
+    fn deserialize_variant<__R: borsh::io::Read>(
+        reader: &mut __R,
         variant_tag: u8,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
         let mut return_value = if variant_tag == 0u8 {
@@ -37,4 +37,3 @@ impl borsh::de::EnumExt for AA {
         Ok(return_value)
     }
 }
-

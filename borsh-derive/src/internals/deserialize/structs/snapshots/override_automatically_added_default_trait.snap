@@ -6,8 +6,8 @@ impl<K, V, U> borsh::de::BorshDeserialize for G1<K, V, U>
 where
     U: borsh::de::BorshDeserialize,
 {
-    fn deserialize_reader<R: borsh::io::Read>(
-        reader: &mut R,
+    fn deserialize_reader<__R: borsh::io::Read>(
+        reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
         Ok(
             Self(
@@ -17,4 +17,3 @@ where
         )
     }
 }
-

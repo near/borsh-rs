@@ -3,8 +3,8 @@ source: borsh-derive/src/internals/deserialize/structs/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl reexporter::borsh::de::BorshDeserialize for A {
-    fn deserialize_reader<R: reexporter::borsh::io::Read>(
-        reader: &mut R,
+    fn deserialize_reader<__R: reexporter::borsh::io::Read>(
+        reader: &mut __R,
     ) -> ::core::result::Result<Self, reexporter::borsh::io::Error> {
         Ok(Self {
             x: reexporter::borsh::BorshDeserialize::deserialize_reader(reader)?,
@@ -12,4 +12,3 @@ impl reexporter::borsh::de::BorshDeserialize for A {
         })
     }
 }
-
