@@ -8,13 +8,12 @@ where
     V: borsh::ser::BorshSerialize,
     <T as TraitName>::Associated: borsh::ser::BorshSerialize,
 {
-    fn serialize<W: borsh::io::Write>(
+    fn serialize<__W: borsh::io::Write>(
         &self,
-        writer: &mut W,
+        writer: &mut __W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
         borsh::BorshSerialize::serialize(&self.field, writer)?;
         borsh::BorshSerialize::serialize(&self.another, writer)?;
         Ok(())
     }
 }
-

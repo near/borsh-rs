@@ -40,7 +40,7 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
     if let Some(method_ident) = item::contains_initialize_with(&input.attrs)? {
         Ok(quote! {
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
-                fn deserialize_reader<R: #cratename::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::io::Error> {
+                fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
                     let mut return_value = #return_value;
                     return_value.#method_ident();
                     Ok(return_value)
@@ -50,7 +50,7 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
     } else {
         Ok(quote! {
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
-                fn deserialize_reader<R: #cratename::io::Read>(reader: &mut R) -> ::core::result::Result<Self, #cratename::io::Error> {
+                fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
                     Ok(#return_value)
                 }
             }

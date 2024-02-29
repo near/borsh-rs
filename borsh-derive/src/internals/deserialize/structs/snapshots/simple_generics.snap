@@ -7,8 +7,8 @@ where
     K: borsh::de::BorshDeserialize,
     V: borsh::de::BorshDeserialize,
 {
-    fn deserialize_reader<R: borsh::io::Read>(
-        reader: &mut R,
+    fn deserialize_reader<__R: borsh::io::Read>(
+        reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
         Ok(Self {
             x: borsh::BorshDeserialize::deserialize_reader(reader)?,
@@ -16,4 +16,3 @@ where
         })
     }
 }
-

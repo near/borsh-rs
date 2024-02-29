@@ -8,13 +8,12 @@ where
     K: borsh::ser::BorshSerialize,
     V: borsh::ser::BorshSerialize,
 {
-    fn serialize<W: borsh::io::Write>(
+    fn serialize<__W: borsh::io::Write>(
         &self,
-        writer: &mut W,
+        writer: &mut __W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
         borsh::BorshSerialize::serialize(&self.x, writer)?;
         borsh::BorshSerialize::serialize(&self.y, writer)?;
         Ok(())
     }
 }
-
