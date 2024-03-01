@@ -1,7 +1,0 @@
----
-source: borsh/tests/test_init_in_deserialize.rs
-expression: encoded_a
----
-[
-    1,
-]

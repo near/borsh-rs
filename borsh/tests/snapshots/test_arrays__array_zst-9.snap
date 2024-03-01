@@ -1,5 +1,0 @@
----
-source: borsh/tests/test_arrays.rs
-expression: buf
----
-[]

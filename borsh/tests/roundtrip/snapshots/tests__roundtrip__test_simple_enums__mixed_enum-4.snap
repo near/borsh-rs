@@ -1,0 +1,7 @@
+---
+source: borsh/tests/roundtrip/test_simple_enums.rs
+expression: encoded
+---
+[
+    3,
+]

@@ -1,0 +1,11 @@
+---
+source: borsh/tests/roundtrip/test_ascii_strings.rs
+expression: _buf
+---
+[
+    1,
+    0,
+    0,
+    0,
+    97,
+]

@@ -1,0 +1,5 @@
+---
+source: borsh/tests/roundtrip/test_arrays.rs
+expression: buf
+---
+[]

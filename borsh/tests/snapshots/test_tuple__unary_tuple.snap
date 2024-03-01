@@ -1,7 +1,0 @@
----
-source: borsh/tests/test_tuple.rs
-expression: buf
----
-[
-    1,
-]

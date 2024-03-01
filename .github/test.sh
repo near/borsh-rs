@@ -5,17 +5,26 @@ export INSTA_UPDATE=no
 pushd borsh
 cargo test --no-run
 cargo test
-cargo test --features unstable__schema,ascii --test test_ascii_strings
+cargo test --features ascii 'roundtrip::test_ascii_strings'
+cargo test --features ascii 'deserialization_errors::test_ascii_strings'
+cargo test --features ascii,unstable__schema 'schema::test_ascii_strings'
 cargo test --features derive
 cargo test --features unstable__schema
-cargo test --test test_rc --features unstable__schema,rc
-cargo test --test test_hash_map --test test_btree_map --features de_strict_order
+cargo test --features rc 'roundtrip::test_rc'
+cargo test --features rc,unstable__schema 'schema::test_rc'
+cargo test --features de_strict_order 'roundtrip::test_hash_map'
+cargo test --features de_strict_order 'roundtrip::test_btree_map'
+cargo test --features derive,bson 'roundtrip::test_bson_object_ids'
+cargo test --features derive,bytes 'roundtrip::test_ultimate_many_features_combined'
 
 cargo test --no-default-features
-cargo test --no-default-features --features unstable__schema,ascii --test test_ascii_strings
+cargo test --no-default-features --features ascii 'roundtrip::test_ascii_strings'
+cargo test --no-default-features --features ascii 'deserialization_errors::test_ascii_strings'
+cargo test --no-default-features --features ascii,unstable__schema 'schema::test_ascii_strings'
 cargo test --no-default-features --features derive
 cargo test --no-default-features --features unstable__schema
-cargo test --no-default-features --test test_rc --features unstable__schema,rc
+cargo test --no-default-features --features rc 'roundtrip::test_rc'
+cargo test --no-default-features --features rc,unstable__schema 'schema::test_rc'
 cargo test --no-default-features --features hashbrown
 popd
 pushd borsh-derive

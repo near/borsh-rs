@@ -127,12 +127,7 @@ macro_rules! schema_map(
 #[allow(unused)]
 #[cfg(feature = "unstable__schema")]
 pub mod schema_imports {
-    #[cfg(feature = "std")]
-    pub use std::collections::BTreeMap;
-
-    #[cfg(not(feature = "std"))]
     extern crate alloc;
-    #[cfg(not(feature = "std"))]
     pub use alloc::{
         boxed::Box,
         collections::BTreeMap,
@@ -142,6 +137,9 @@ pub mod schema_imports {
         vec::Vec,
     };
 
-    pub use borsh::schema::{BorshSchemaContainer, Definition, Fields};
+    pub use borsh::schema::{
+        add_definition, BorshSchemaContainer, Declaration, Definition, Fields,
+        SchemaContainerValidateError, SchemaMaxSerializedSizeError,
+    };
     pub use borsh::{schema_container_of, BorshSchema};
 }

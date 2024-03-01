@@ -99,6 +99,10 @@ enum A {
 }
 ```
 
+## Testing
+
+Integration tests should generally be preferred to unit ones. Root module of integration tests of `borsh` crate is [linked](./borsh/tests/tests.rs) here.
+ 
 ## Releasing
 
 The versions of all public crates in this repository are collectively managed by a single version in the [workspace manifest](https://github.com/near/borsh-rs/blob/master/Cargo.toml).

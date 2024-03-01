@@ -1,0 +1,30 @@
+---
+source: borsh/tests/roundtrip/test_recursive_enums.rs
+expression: data
+---
+[
+    1,
+    11,
+    2,
+    0,
+    0,
+    0,
+    0,
+    3,
+    0,
+    0,
+    0,
+    111,
+    110,
+    101,
+    67,
+    7,
+    49,
+    0,
+    1,
+    10,
+    0,
+    0,
+    0,
+    0,
+]

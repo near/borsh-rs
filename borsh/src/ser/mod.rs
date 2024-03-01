@@ -293,7 +293,7 @@ where
     }
 }
 
-#[cfg(any(test, feature = "bytes"))]
+#[cfg(feature = "bytes")]
 impl BorshSerialize for bytes::Bytes {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -301,7 +301,7 @@ impl BorshSerialize for bytes::Bytes {
     }
 }
 
-#[cfg(any(test, feature = "bytes"))]
+#[cfg(feature = "bytes")]
 impl BorshSerialize for bytes::BytesMut {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -309,7 +309,7 @@ impl BorshSerialize for bytes::BytesMut {
     }
 }
 
-#[cfg(any(test, feature = "bson"))]
+#[cfg(feature = "bson")]
 impl BorshSerialize for bson::oid::ObjectId {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
