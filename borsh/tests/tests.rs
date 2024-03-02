@@ -40,6 +40,7 @@ mod roundtrip {
     mod test_nonzero_integers;
     mod test_range;
     // mod test_phantom_data; // NOTE: there's nothing corresponding to `schema::test_phantom_data`
+    // mod test_option; // NOTE: there's nothing corresponding to `schema::test_option`
     // mod test_box; // NOTE: there's nothing corresponding to `schema::test_box`
     #[cfg(hash_collections)]
     mod test_hash_map;
@@ -83,6 +84,7 @@ mod schema {
     // mod test_nonzero_integers; // NOTE: there's nothing corresponding to `roundtrip::test_nonzero_integers`
     mod test_range;
     mod test_phantom_data;
+    mod test_option;
     mod test_box;
     #[cfg(hash_collections)]
     mod test_hash_map;
