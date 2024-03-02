@@ -1,0 +1,9 @@
+---
+source: borsh/tests/roundtrip/requires_derive_category/test_simple_enums.rs
+expression: encoded
+---
+[
+    0,
+    13,
+    0,
+]

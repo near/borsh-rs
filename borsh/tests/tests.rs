@@ -49,25 +49,22 @@ mod roundtrip {
     mod test_cells;
     #[cfg(feature = "rc")]
     mod test_rc;
-    // mod test_simple_structs; // NOTE: there's nothing corresponding to `schema::test_simple_structs`
+
     #[cfg(feature = "derive")]
-    mod test_generic_structs;
-    #[cfg(feature = "derive")]
-    mod test_simple_enums;
-    #[cfg(feature = "derive")]
-    mod test_generic_enums;
-    #[cfg(feature = "derive")]
-    mod test_recursive_structs;
-    #[cfg(feature = "derive")]
-    mod test_recursive_enums;
-    #[cfg(feature = "derive")]
-    mod test_serde_with_third_party; 
-    #[cfg(feature = "derive")]
-    mod test_enum_discriminants;
-    #[cfg(all(feature = "derive", feature = "bytes"))]
-    mod test_ultimate_many_features_combined;
-    #[cfg(all(feature = "derive", feature = "bson"))]
-    mod test_bson_object_ids;
+    mod requires_derive_category {
+        // mod test_simple_structs; // NOTE: there's nothing corresponding to `schema::test_simple_structs`
+        mod test_generic_structs;
+        mod test_simple_enums;
+        mod test_generic_enums;
+        mod test_recursive_structs;
+        mod test_recursive_enums;
+        mod test_serde_with_third_party; 
+        mod test_enum_discriminants;
+        #[cfg(feature = "bytes")]
+        mod test_ultimate_many_features_combined;
+        #[cfg(feature = "bson")]
+        mod test_bson_object_ids;
+    }
 }
 
 /// These are `BorshSchema` tests for various types

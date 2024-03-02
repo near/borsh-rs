@@ -1,5 +1,5 @@
 ---
-source: borsh/tests/roundtrip/test_ultimate_many_features_combined.rs
+source: borsh/tests/roundtrip/requires_derive_category/test_ultimate_many_features_combined.rs
 expression: encoded_f1
 ---
 [

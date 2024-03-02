@@ -1,8 +1,17 @@
 ---
-source: borsh/tests/roundtrip/test_serde_with_third_party.rs
+source: borsh/tests/roundtrip/requires_derive_category/test_serde_with_third_party.rs
 expression: data
 ---
 [
+    1,
+    42,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
     2,
     0,
     0,
@@ -53,12 +62,4 @@ expression: data
     101,
     110,
     116,
-    42,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
 ]

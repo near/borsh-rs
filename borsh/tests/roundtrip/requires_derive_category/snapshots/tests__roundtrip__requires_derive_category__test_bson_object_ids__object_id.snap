@@ -1,5 +1,5 @@
 ---
-source: borsh/tests/roundtrip/test_bson_object_ids.rs
+source: borsh/tests/roundtrip/requires_derive_category/test_bson_object_ids.rs
 expression: serialized
 ---
 [
