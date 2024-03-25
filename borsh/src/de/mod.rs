@@ -779,6 +779,7 @@ fn array_deserialization_doesnt_leak() {
     static DESERIALIZE_COUNT: AtomicUsize = AtomicUsize::new(0);
     static DROP_COUNT: AtomicUsize = AtomicUsize::new(0);
 
+    #[allow(unused)]
     struct MyType(u8);
     impl BorshDeserialize for MyType {
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {

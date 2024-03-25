@@ -54,6 +54,7 @@ pub fn simple_struct() {
 #[test]
 pub fn tuple_struct() {
     #[derive(borsh::BorshSchema)]
+    #[allow(unused)]
     struct A(u64, String);
     assert_eq!("A".to_string(), A::declaration());
     let mut defs = Default::default();

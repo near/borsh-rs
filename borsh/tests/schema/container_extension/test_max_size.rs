@@ -94,6 +94,7 @@ fn max_serialized_size_derived_types() {
     }
 
     #[derive(BorshSchema)]
+    #[allow(unused)]
     pub struct Unnamed(usize, [u8; 15]);
 
     #[derive(BorshSchema)]
@@ -106,6 +107,7 @@ fn max_serialized_size_derived_types() {
     }
 
     #[derive(BorshSchema)]
+    #[allow(unused)]
     struct Recursive(Option<Box<Recursive>>);
 
     test_ok::<Empty>(0);

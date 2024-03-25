@@ -17,6 +17,7 @@ mod custom_reader {
 #[cfg(feature = "derive")]
 mod compile_derives {
     mod test_macro_namespace_collisions;
+    #[allow(unused)]
     mod test_generic_structs;
     mod test_generic_enums;
     mod test_recursive_structs;

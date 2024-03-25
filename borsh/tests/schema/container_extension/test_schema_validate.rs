@@ -27,16 +27,20 @@ fn validate_for_derived_types() {
     }
 
     #[derive(BorshSchema)]
+    #[allow(unused)]
     pub struct Unnamed(usize, [u8; 15]);
 
     #[derive(BorshSchema)]
+    #[allow(unused)]
     struct Recursive(Option<Box<Recursive>>);
 
     #[derive(BorshSchema)]
+    #[allow(unused)]
     struct RecursiveSequence(Vec<RecursiveSequence>);
 
     // thankfully, this one cannot be constructed
     #[derive(BorshSchema)]
+    #[allow(unused)]
     struct RecursiveArray(Box<[RecursiveArray; 3]>);
 
     test_ok::<Empty>();
