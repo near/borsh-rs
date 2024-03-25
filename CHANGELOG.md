@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0](https://github.com/near/borsh-rs/compare/borsh-v1.3.1...borsh-v1.4.0) - 2024-03-25
+
+### Added
+- impl `BorshSchema` for `Cow<'a, T>` ([#284](https://github.com/near/borsh-rs/pull/284))
+- `BorshSerialize`/`BoshDeserialize`/`BorshSchema` for `Cell`/`RefCell` ([#265](https://github.com/near/borsh-rs/pull/265))
+
+### Other
+- reorg tests ([#285](https://github.com/near/borsh-rs/pull/285))
+- remove conflicts with `W`/`R` parameters for `BorshSerialize`/`BorshDeserialize` derives ([#283](https://github.com/near/borsh-rs/pull/283))
+- fix `test_exhaustive_checks` step + downgrade package for MSRV test ([#280](https://github.com/near/borsh-rs/pull/280))
+
 ## [1.3.1](https://github.com/near/borsh-rs/compare/borsh-v1.3.0...borsh-v1.3.1) - 2024-01-10
 
 ### Other
