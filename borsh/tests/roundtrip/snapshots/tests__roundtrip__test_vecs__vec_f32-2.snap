@@ -1,0 +1,14 @@
+---
+source: borsh/tests/roundtrip/test_vecs.rs
+expression: buf
+---
+[
+    1,
+    0,
+    0,
+    0,
+    40,
+    107,
+    110,
+    78,
+]

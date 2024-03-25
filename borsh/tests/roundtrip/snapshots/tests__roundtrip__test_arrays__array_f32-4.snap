@@ -1,0 +1,18 @@
+---
+source: borsh/tests/roundtrip/test_arrays.rs
+expression: buf
+---
+[
+    40,
+    107,
+    110,
+    78,
+    40,
+    107,
+    110,
+    78,
+    40,
+    107,
+    110,
+    78,
+]

@@ -1,0 +1,10 @@
+---
+source: borsh/tests/roundtrip/test_btree_map.rs
+expression: data
+---
+[
+    0,
+    0,
+    0,
+    0,
+]

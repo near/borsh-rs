@@ -5,7 +5,7 @@ use core::{
     mem::size_of,
 };
 
-#[cfg(any(test, feature = "bytes"))]
+#[cfg(feature = "bytes")]
 use bytes::{BufMut, BytesMut};
 
 use crate::__private::maybestd::{
@@ -421,7 +421,7 @@ where
     }
 }
 
-#[cfg(any(test, feature = "bytes"))]
+#[cfg(feature = "bytes")]
 impl BorshDeserialize for bytes::Bytes {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -430,7 +430,7 @@ impl BorshDeserialize for bytes::Bytes {
     }
 }
 
-#[cfg(any(test, feature = "bytes"))]
+#[cfg(feature = "bytes")]
 impl BorshDeserialize for bytes::BytesMut {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -443,7 +443,7 @@ impl BorshDeserialize for bytes::BytesMut {
     }
 }
 
-#[cfg(any(test, feature = "bson"))]
+#[cfg(feature = "bson")]
 impl BorshDeserialize for bson::oid::ObjectId {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -779,6 +779,7 @@ fn array_deserialization_doesnt_leak() {
     static DESERIALIZE_COUNT: AtomicUsize = AtomicUsize::new(0);
     static DROP_COUNT: AtomicUsize = AtomicUsize::new(0);
 
+    #[allow(unused)]
     struct MyType(u8);
     impl BorshDeserialize for MyType {
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
