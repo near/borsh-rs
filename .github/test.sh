@@ -4,8 +4,8 @@
 # specific feature or features' combination 
 # e.g. `cargo test --features rc,unstable__schema 'schema::test_rc'` is used to test `BorshSchema`
 # implementation of `std::rc::Rc` and `std::sync::Arc`, 
-# where `[TESTNAME]` argument is set to `schema::test_rc`, which filters out tests from `schema::test_rc`
-# submodule of `borsh/tests/tests.rs`
+# where `[TESTNAME]` argument is set to `schema::test_rc`, which includes tests from `schema::test_rc`
+# submodule of `borsh/tests/tests.rs` to be run. 
 set -e
 set -x
 export INSTA_UPDATE=no
