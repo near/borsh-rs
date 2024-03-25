@@ -1,5 +1,8 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
+#[allow(unused)]
+use alloc::{string::String, vec::Vec};
+
 #[cfg(feature = "hashbrown")]
 use hashbrown::HashMap;
 
