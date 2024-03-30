@@ -7,7 +7,7 @@ edition = "2018"
 license = "Apache-2.0"
 readme = "README.md"
 categories = ["encoding", "network-programming"]
-repository = "https://github.com/nearprotocol/borsh"
+repository = "https://github.com/near/borsh-rs"
 homepage = "https://borsh.io"
 description = """
 Binary Object Representation Serializer for Hashing
