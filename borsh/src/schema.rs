@@ -16,7 +16,7 @@ use crate as borsh; // For `#[derive(BorshSerialize, BorshDeserialize)]`.
 use crate::__private::maybestd::{
     borrow,
     boxed::Box,
-    collections::{btree_map::Entry, BTreeMap, BTreeSet},
+    collections::{btree_map::Entry, BTreeMap, BTreeSet, LinkedList, VecDeque},
     format,
     string::{String, ToString},
     vec,
@@ -635,24 +635,32 @@ where
     }
 }
 
-impl<T> BorshSchema for Vec<T>
-where
-    T: BorshSchema,
-{
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        let definition = Definition::Sequence {
-            length_width: Definition::DEFAULT_LENGTH_WIDTH,
-            length_range: Definition::DEFAULT_LENGTH_RANGE,
-            elements: T::declaration(),
-        };
-        add_definition(Self::declaration(), definition, definitions);
-        T::add_definitions_recursively(definitions);
-    }
+macro_rules! impl_for_vec_like_collection {
+    ($type: ident) => {
+        impl<T> BorshSchema for $type<T>
+        where
+            T: BorshSchema,
+        {
+            fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+                let definition = Definition::Sequence {
+                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                    length_range: Definition::DEFAULT_LENGTH_RANGE,
+                    elements: T::declaration(),
+                };
+                add_definition(Self::declaration(), definition, definitions);
+                T::add_definitions_recursively(definitions);
+            }
 
-    fn declaration() -> Declaration {
-        format!(r#"Vec<{}>"#, T::declaration())
-    }
+            fn declaration() -> Declaration {
+                format!(r#"{}<{}>"#, stringify!($type), T::declaration())
+            }
+        }
+    };
 }
+
+impl_for_vec_like_collection!(Vec);
+impl_for_vec_like_collection!(VecDeque);
+impl_for_vec_like_collection!(LinkedList);
 
 impl<T> BorshSchema for [T]
 where
