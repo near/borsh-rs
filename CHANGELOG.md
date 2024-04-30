@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0](https://github.com/near/borsh-rs/compare/borsh-v1.4.0...borsh-v1.5.0) - 2024-04-29
+
+### Added
+- implement `BorshSchema` for `VecDeque` and `LinkedList` ([#291](https://github.com/near/borsh-rs/pull/291))
+
+### Other
+- Fix repository field of borsh-derive ([#288](https://github.com/near/borsh-rs/pull/288))
+
 ## [1.4.0](https://github.com/near/borsh-rs/compare/borsh-v1.3.1...borsh-v1.4.0) - 2024-03-25
 
 ### Added
