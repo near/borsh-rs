@@ -384,9 +384,8 @@ pub mod hashes {
             u32::try_from(vec.len())
                 .map_err(|_| ErrorKind::InvalidData)?
                 .serialize(writer)?;
-            for (key, value) in vec {
-                key.serialize(writer)?;
-                value.serialize(writer)?;
+            for kv in vec {
+                kv.serialize(writer)?;
             }
             Ok(())
         }

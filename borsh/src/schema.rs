@@ -715,6 +715,44 @@ pub mod hashes {
             format!(r#"HashMap<{}, {}>"#, K::declaration(), V::declaration())
         }
     }
+
+    impl<K, V, S> BorshSchema for HashMap<K, V, S>
+    where
+        K: BorshSchema,
+        V: BorshSchema,
+        S: BorshSchema
+    {
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {                        
+            S::add_definitions_recursively(definitions);
+
+            // makes explicit that user must provide empty definition instead of not adding nothing
+            // nor here plug manually empty
+            let tuple_or_empty_struct = &definitions[S::declaration().as_str()];
+            assert!(
+                matches!(
+                    tuple_or_empty_struct, Definition::Struct { fields: crate::schema::Fields::Empty }
+                )
+                || 
+                matches!(
+                    tuple_or_empty_struct, Definition::Tuple { elements } if elements.is_empty()
+                ),
+                "S is not serialized or deserialized, so its schema must be an empty tuple or struct"
+            );
+
+            let definition = Definition::Sequence {
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: <(K, V)>::declaration(),
+            };
+            add_definition(Self::declaration(), definition, definitions);
+            <(K, V)>::add_definitions_recursively(definitions);
+        }
+
+        fn declaration() -> Declaration {
+            format!(r#"HashMap<{}, {}, {}>"#, K::declaration(), V::declaration(), S::declaration())
+        }
+    }    
+
     impl<T> BorshSchema for HashSet<T>
     where
         T: BorshSchema,
