@@ -45,7 +45,7 @@ features = ["derive", "unstable__schema", "rc"]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [features]
-default = ["std", "unstable__schema"]
+default = ["std"]
 derive = ["borsh-derive"]
 unstable__schema = ["derive", "borsh-derive/schema"]
 std = []
