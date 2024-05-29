@@ -75,17 +75,21 @@ fn filter_used_params(generics: &Generics, not_skipped_type_params: HashSet<Iden
         let new_predicates: Punctuated<WherePredicate, Comma> = clause
             .predicates
             .iter()
-            .filter(|predicate| match predicate {
-                WherePredicate::Lifetime(..) => true,
-                WherePredicate::Type(predicate_type) => generics::type_contains_some_param(
-                    &predicate_type.bounded_ty,
-                    &not_skipped_type_params,
-                ),
+            .filter(|predicate| {
                 #[cfg_attr(
                     feature = "force_exhaustive_checks",
                     deny(non_exhaustive_omitted_patterns)
                 )]
-                _ => true,
+                let result = match predicate {
+                    WherePredicate::Lifetime(..) => true,
+                    WherePredicate::Type(predicate_type) => generics::type_contains_some_param(
+                        &predicate_type.bounded_ty,
+                        &not_skipped_type_params,
+                    ),
+
+                    _ => true,
+                };
+                result
             })
             .cloned()
             .collect();
