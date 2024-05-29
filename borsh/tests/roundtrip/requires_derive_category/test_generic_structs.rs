@@ -51,6 +51,7 @@ fn test_generic_struct() {
 
 trait TraitName {
     type Associated;
+    #[allow(unused)]
     fn method(&self);
 }
 
