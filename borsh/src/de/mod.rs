@@ -487,12 +487,11 @@ where
 }
 
 /// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
-#[allow(clippy::mixed_attributes_style)]
+///
+/// Module defines [BorshDeserialize] implementation for
+/// [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
 #[cfg(hash_collections)]
 pub mod hashes {
-    //!
-    //! Module defines [BorshDeserialize] implementation for
-    //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use core::hash::{BuildHasher, Hash};
 
     use crate::BorshDeserialize;
