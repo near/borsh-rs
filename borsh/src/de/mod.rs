@@ -487,6 +487,7 @@ where
 }
 
 /// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
+#[allow(clippy::mixed_attributes_style)]
 #[cfg(hash_collections)]
 pub mod hashes {
     //!

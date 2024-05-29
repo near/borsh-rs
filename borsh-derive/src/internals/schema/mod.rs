@@ -59,6 +59,7 @@ fn declaration(ident_str: &str, cratename: Path, params_for_bounds: Vec<Type>) -
     }
 }
 
+#[allow(clippy::let_and_return)]
 fn filter_used_params(generics: &Generics, not_skipped_type_params: HashSet<Ident>) -> Generics {
     let new_params = generics
         .params
