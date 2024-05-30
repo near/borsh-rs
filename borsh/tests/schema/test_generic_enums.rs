@@ -200,6 +200,7 @@ fn common_map_associated() -> BTreeMap<String, Definition> {
 pub fn generic_associated_item1() {
     trait TraitName {
         type Associated;
+        #[allow(unused)]
         fn method(&self);
     }
 
@@ -238,6 +239,7 @@ pub fn generic_associated_item1() {
 pub fn generic_associated_item2() {
     trait TraitName {
         type Associated;
+        #[allow(unused)]
         fn method(&self);
     }
 

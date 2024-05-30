@@ -156,7 +156,7 @@ impl FindTyParams {
                 params.push(param.clone());
                 params_set.insert(param.clone());
             }
-            if associated_type_params_usage.get(param).is_some() && !params_set.contains(param) {
+            if associated_type_params_usage.contains_key(param) && !params_set.contains(param) {
                 params.push(param.clone());
                 params_set.insert(param.clone());
             }

@@ -353,11 +353,11 @@ where
 }
 
 /// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
+///
+/// Module defines [BorshSerialize] implementation for
+/// [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
 #[cfg(hash_collections)]
 pub mod hashes {
-    //!
-    //! Module defines [BorshSerialize] implementation for
-    //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use crate::__private::maybestd::vec::Vec;
     use crate::error::check_zst;
     use crate::{

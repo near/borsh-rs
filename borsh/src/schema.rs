@@ -682,11 +682,11 @@ where
 }
 
 /// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
+///
+/// Module defines [BorshSchema] implementation for
+/// [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
 #[cfg(hash_collections)]
 pub mod hashes {
-    //!
-    //! Module defines [BorshSchema] implementation for
-    //! [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
     use crate::BorshSchema;
 
     use super::{add_definition, Declaration, Definition};
