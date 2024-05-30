@@ -696,7 +696,11 @@ pub mod hashes {
     #[cfg(not(feature = "std"))]
     use alloc::format;
 
-    impl<K, V> BorshSchema for HashMap<K, V>
+    // S is not serialized, so we ignore it in schema too
+    // forcing S to be BorshSchema forces to define Definition
+    // which must be empty, but if not - it will fail
+    // so better to ignore it
+    impl<K, V, S> BorshSchema for HashMap<K, V, S>
     where
         K: BorshSchema,
         V: BorshSchema,
@@ -715,7 +719,8 @@ pub mod hashes {
             format!(r#"HashMap<{}, {}>"#, K::declaration(), V::declaration())
         }
     }
-    impl<T> BorshSchema for HashSet<T>
+
+    impl<T, S> BorshSchema for HashSet<T, S>
     where
         T: BorshSchema,
     {
