@@ -14,7 +14,7 @@ where
             < B as borsh::BorshSchema > ::declaration(), < A as borsh::BorshSchema >
             ::declaration()
         ];
-        format!(r#"{}<{}>"#, "Side", params.join(", "))
+        format!(r#"{}::{}<{}>"#, std::module_path!(), "Side", params.join(", "))
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
@@ -55,4 +55,3 @@ where
         );
     }
 }
-

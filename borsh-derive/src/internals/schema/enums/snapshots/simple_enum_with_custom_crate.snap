@@ -4,7 +4,7 @@ expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl reexporter::borsh::BorshSchema for A {
     fn declaration() -> reexporter::borsh::schema::Declaration {
-        "A".to_string()
+        format!("{}::{}", std::module_path!(), "A")
     }
     fn add_definitions_recursively(
         definitions: &mut reexporter::borsh::__private::maybestd::collections::BTreeMap<
@@ -42,4 +42,3 @@ impl reexporter::borsh::BorshSchema for A {
         );
     }
 }
-

@@ -10,7 +10,7 @@ where
         let params = borsh::__private::maybestd::vec![
             < V as borsh::BorshSchema > ::declaration()
         ];
-        format!(r#"{}<{}>"#, "A", params.join(", "))
+        format!(r#"{}::{}<{}>"#, std::module_path!(), "A", params.join(", "))
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
@@ -45,4 +45,3 @@ where
         }
     }
 }
-

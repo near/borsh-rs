@@ -19,7 +19,9 @@ where
             ::declaration(), < < K as TraitName > ::Associated as borsh::BorshSchema >
             ::declaration(), < V as borsh::BorshSchema > ::declaration()
         ];
-        format!(r#"{}<{}>"#, "EnumParametrized", params.join(", "))
+        format!(
+            r#"{}::{}<{}>"#, std::module_path!(), "EnumParametrized", params.join(", ")
+        )
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
@@ -72,4 +74,3 @@ where
         );
     }
 }
-

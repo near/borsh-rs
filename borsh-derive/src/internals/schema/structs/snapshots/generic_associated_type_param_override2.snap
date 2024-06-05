@@ -15,7 +15,7 @@ where
             ::declaration(), < < T as TraitName > ::Associated as borsh::BorshSchema >
             ::declaration()
         ];
-        format!(r#"{}<{}>"#, "Parametrized", params.join(", "))
+        format!(r#"{}::{}<{}>"#, std::module_path!(), "Parametrized", params.join(", "))
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
@@ -50,4 +50,3 @@ where
         }
     }
 }
-
