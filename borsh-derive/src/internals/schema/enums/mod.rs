@@ -117,7 +117,7 @@ fn process_variant(
     generics_output: &mut schema::GenericsOutput,
 ) -> syn::Result<VariantOutput> {
     let variant_name = variant.ident.to_token_stream().to_string();
-    let full_variant_name = format!("{}{}", enum_name, variant_name);
+    let full_variant_name = format!("___{}{}", enum_name, variant_name);
     let full_variant_ident = Ident::new(&full_variant_name, Span::call_site());
 
     schema::visit_struct_fields(&variant.fields, &mut generics_output.params_visitor)?;

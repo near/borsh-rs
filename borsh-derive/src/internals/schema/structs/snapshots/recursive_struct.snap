@@ -4,7 +4,7 @@ expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl borsh::BorshSchema for CRecC {
     fn declaration() -> borsh::schema::Declaration {
-        "CRecC".to_string()
+        format!("{}::{}", std::module_path!(), "CRecC")
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
@@ -39,4 +39,3 @@ impl borsh::BorshSchema for CRecC {
         }
     }
 }
-

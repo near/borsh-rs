@@ -4,7 +4,7 @@ expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl<C> borsh::BorshSchema for ASalad<C> {
     fn declaration() -> borsh::schema::Declaration {
-        "ASalad".to_string()
+        format!("{}::{}", std::module_path!(), "ASalad")
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
@@ -35,4 +35,3 @@ impl<C> borsh::BorshSchema for ASalad<C> {
         }
     }
 }
-
