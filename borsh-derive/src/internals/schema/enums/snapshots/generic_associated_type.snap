@@ -32,7 +32,7 @@ where
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct EnumParametrizedB<K, V>
+        struct ___EnumParametrizedB<K, V>
         where
             K: TraitName,
             K: core::cmp::Ord,
@@ -45,25 +45,25 @@ where
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct EnumParametrizedC<T>(
+        struct ___EnumParametrizedC<T>(
             T,
             u16,
         )
         where
             T: Eq + Hash;
-        <EnumParametrizedB<
+        <___EnumParametrizedB<
             K,
             V,
         > as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <EnumParametrizedC<
+        <___EnumParametrizedC<
             T,
         > as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "B".into(), < EnumParametrizedB < K, V > as
+                (u8::from(0u8) as i64, "B".into(), < ___EnumParametrizedB < K, V > as
                 borsh::BorshSchema > ::declaration()), (u8::from(1u8) as i64, "C".into(),
-                < EnumParametrizedC < T > as borsh::BorshSchema > ::declaration())
+                < ___EnumParametrizedC < T > as borsh::BorshSchema > ::declaration())
             ],
         };
         borsh::schema::add_definition(

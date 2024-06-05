@@ -24,7 +24,7 @@ where
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct AB<K: Key, V>
+        struct ___AB<K: Key, V>
         where
             V: Value,
         {
@@ -34,14 +34,14 @@ where
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct AC<K: Key>(K, Vec<A>);
-        <AB<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <AC<K> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        struct ___AC<K: Key>(K, Vec<A>);
+        <___AB<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <___AC<K> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "B".into(), < AB < K, V > as borsh::BorshSchema >
-                ::declaration()), (u8::from(1u8) as i64, "C".into(), < AC < K > as
+                (u8::from(0u8) as i64, "B".into(), < ___AB < K, V > as borsh::BorshSchema
+                > ::declaration()), (u8::from(1u8) as i64, "C".into(), < ___AC < K > as
                 borsh::BorshSchema > ::declaration())
             ],
         };

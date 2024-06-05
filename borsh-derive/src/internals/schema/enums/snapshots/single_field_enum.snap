@@ -15,13 +15,13 @@ impl borsh::BorshSchema for A {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct ABacon;
-        <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        struct ___ABacon;
+        <___ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "Bacon".into(), < ABacon as borsh::BorshSchema >
-                ::declaration())
+                (u8::from(0u8) as i64, "Bacon".into(), < ___ABacon as borsh::BorshSchema
+                > ::declaration())
             ],
         };
         borsh::schema::add_definition(

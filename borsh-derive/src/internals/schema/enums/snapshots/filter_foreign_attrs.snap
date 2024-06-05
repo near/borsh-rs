@@ -15,7 +15,7 @@ impl borsh::BorshSchema for A {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct AB {
+        struct ___AB {
             c: i32,
             #[borsh(skip)]
             d: u32,
@@ -24,17 +24,17 @@ impl borsh::BorshSchema for A {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct ANegative {
+        struct ___ANegative {
             beta: String,
         }
-        <AB as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <ANegative as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <___AB as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <___ANegative as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "B".into(), < AB as borsh::BorshSchema >
-                ::declaration()), (u8::from(1u8) as i64, "Negative".into(), < ANegative
-                as borsh::BorshSchema > ::declaration())
+                (u8::from(0u8) as i64, "B".into(), < ___AB as borsh::BorshSchema >
+                ::declaration()), (u8::from(1u8) as i64, "Negative".into(), <
+                ___ANegative as borsh::BorshSchema > ::declaration())
             ],
         };
         borsh::schema::add_definition(

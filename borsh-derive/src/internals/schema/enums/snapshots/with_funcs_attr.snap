@@ -23,11 +23,11 @@ where
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct CC3(u64, u64);
+        struct ___CC3(u64, u64);
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct CC4<K, V>(
+        struct ___CC4<K, V>(
             u64,
             #[borsh(
                 schema(
@@ -39,14 +39,14 @@ where
             )]
             ThirdParty<K, V>,
         );
-        <CC3 as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <CC4<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <___CC3 as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <___CC4<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "C3".into(), < CC3 as borsh::BorshSchema >
-                ::declaration()), (u8::from(1u8) as i64, "C4".into(), < CC4 < K, V > as
-                borsh::BorshSchema > ::declaration())
+                (u8::from(0u8) as i64, "C3".into(), < ___CC3 as borsh::BorshSchema >
+                ::declaration()), (u8::from(1u8) as i64, "C4".into(), < ___CC4 < K, V >
+                as borsh::BorshSchema > ::declaration())
             ],
         };
         borsh::schema::add_definition(

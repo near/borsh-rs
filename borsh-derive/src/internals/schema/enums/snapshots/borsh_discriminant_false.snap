@@ -15,44 +15,44 @@ impl borsh::BorshSchema for X {
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct XA;
+        struct ___XA;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct XB;
+        struct ___XB;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct XC;
+        struct ___XC;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct XD;
+        struct ___XD;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct XE;
+        struct ___XE;
         #[allow(dead_code)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct XF;
-        <XA as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <XB as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <XC as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <XD as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <XE as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <XF as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        struct ___XF;
+        <___XA as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <___XB as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <___XC as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <___XD as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <___XE as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <___XF as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "A".into(), < XA as borsh::BorshSchema >
-                ::declaration()), (u8::from(1u8) as i64, "B".into(), < XB as
+                (u8::from(0u8) as i64, "A".into(), < ___XA as borsh::BorshSchema >
+                ::declaration()), (u8::from(1u8) as i64, "B".into(), < ___XB as
                 borsh::BorshSchema > ::declaration()), (u8::from(2u8) as i64, "C".into(),
-                < XC as borsh::BorshSchema > ::declaration()), (u8::from(3u8) as i64, "D"
-                .into(), < XD as borsh::BorshSchema > ::declaration()), (u8::from(4u8) as
-                i64, "E".into(), < XE as borsh::BorshSchema > ::declaration()),
-                (u8::from(5u8) as i64, "F".into(), < XF as borsh::BorshSchema >
-                ::declaration())
+                < ___XC as borsh::BorshSchema > ::declaration()), (u8::from(3u8) as i64,
+                "D".into(), < ___XD as borsh::BorshSchema > ::declaration()),
+                (u8::from(4u8) as i64, "E".into(), < ___XE as borsh::BorshSchema >
+                ::declaration()), (u8::from(5u8) as i64, "F".into(), < ___XF as
+                borsh::BorshSchema > ::declaration())
             ],
         };
         borsh::schema::add_definition(
