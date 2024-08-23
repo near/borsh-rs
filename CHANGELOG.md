@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.4] - 2024-08-23
+
+- [RUSTSEC-2023-0033](https://rustsec.org/advisories/RUSTSEC-2023-0033.html) has
+  been resolved by forbidding collections with dynamic runtime length to contain
+  zero-sized types with runtime errors, happening on serialization or
+  deserialization.  Arrays with non-`Copy` and non-`Clone` ZST singletons of
+  length > 1 gracefully panic on deserialization, not causing memory faults.
+
+  This is a backport of a fix present in 1.x release.
+
 ## [0.10.3] - 2022-03-22
 
 - Add optional bytes/bytesmut support
@@ -31,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add clone impls to borsh schema types
 - Remove unnecessary trait bounds requirements for array
 - *BREAKING CHANGE*: `BorshDeserialize` now works by receiving an `&mut std::io::Read`
-  instead of a `&mut &[u8]`. This is a breaking change for code that provides custom 
+  instead of a `&mut &[u8]`. This is a breaking change for code that provides custom
   implementations of `BorshDeserialize`; there is no impact on code that uses only the
   derive macro.
 - Added `BorshDeserialize::try_from_reader` and `BorshDeserialize::deserialize_reader`.
