@@ -138,6 +138,7 @@ macro_rules! impl_for_float {
         impl BorshSerialize for $type {
             #[inline]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+                #[cfg(not(feature = "allow_nan"))]
                 if self.is_nan() {
                     return Err(Error::new(ErrorKind::InvalidData, FLOAT_NAN_ERR));
                 }
