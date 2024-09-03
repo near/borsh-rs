@@ -73,8 +73,7 @@ Attribute takes literal string value, which is the syn's [Path] to `borsh` crate
 
 Attribute is optional.
 
-1. If the attribute is not provided, [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh`
-in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
+1. If the attribute is not provided, [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh` in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
 
 ```bash
  1  error: proc-macro derive panicked
@@ -360,8 +359,7 @@ Attribute takes literal string value, which is the syn's [Path] to `borsh` crate
 
 Attribute is optional.
 
-1. If the attribute is not provided, [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh`
-in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
+1. If the attribute is not provided, [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh` in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
 
 ```bash
  1  error: proc-macro derive panicked
