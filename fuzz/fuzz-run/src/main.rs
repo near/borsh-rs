@@ -33,6 +33,7 @@ fn main() {
                 std::net::SocketAddrV6,
                 std::net::Ipv4Addr,
                 std::net::Ipv6Addr,
+                std::net::IpAddr,
                 Box<[u8]>,
                 Option<u64>,
                 Option<String>,
