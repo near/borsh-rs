@@ -12,3 +12,8 @@ path = "src/main.rs"
 [dependencies]
 honggfuzz = "0.5"
 borsh = { path = "../../borsh" }
+# This is transitive dependency specified here only to limit the
+# version.  We need to limit the version because building
+# serde 1.0.204 breaks due to the use of ‘diagnostic’ attribute.  Drop
+# this dependency once MSRV is updated.
+serde = "1.0, <1.0.204"
