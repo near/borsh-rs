@@ -510,23 +510,11 @@ impl BorshSerialize for std::net::IpAddr {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self {
-            std::net::IpAddr::V4(ipv4) => {
-                // Serialize a byte to indicate it's IPv4
-                writer.write_all(&[0u8])?;
-                // Serialize the IPv4 address
-                writer.write_all(&ipv4.octets())?;
-            }
-            std::net::IpAddr::V6(ipv6) => {
-                // Serialize a byte to indicate it's IPv6
-                writer.write_all(&[1u8])?;
-                // Serialize the IPv6 address
-                writer.write_all(&ipv6.octets())?;
-            }
+            std::net::IpAddr::V4(ipv4) => ipv4.serialize(writer),
+            std::net::IpAddr::V6(ipv6) => ipv6.serialize(writer),
         }
-        Ok(())
     }
-}
-impl<T: BorshSerialize + ?Sized> BorshSerialize for Box<T> {
+}impl<T: BorshSerialize + ?Sized> BorshSerialize for Box<T> {
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         self.as_ref().serialize(writer)
     }
