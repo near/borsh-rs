@@ -515,13 +515,13 @@ impl BorshSerialize for std::net::IpAddr {
                 writer.write_all(&[0u8])?;
                 // Serialize the IPv4 address
                 writer.write_all(&ipv4.octets())?;
-            },
+            }
             std::net::IpAddr::V6(ipv6) => {
                 // Serialize a byte to indicate it's IPv6
                 writer.write_all(&[1u8])?;
                 // Serialize the IPv6 address
                 writer.write_all(&ipv6.octets())?;
-            },
+            }
         }
         Ok(())
     }
