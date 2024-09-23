@@ -6,11 +6,3 @@ changelog_update = false
 name = "borsh"
 changelog_update = true
 changelog_path = "./CHANGELOG.md"
-
-[[package]]
-name = "borsh-fuzz"
-publish = false
-
-[[package]]
-name = "benchmarks"
-publish = false

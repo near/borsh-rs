@@ -10,5 +10,5 @@ members = [
 
 [workspace.package]
 # shared version of all public crates in the workspace
-version = "0.10.3"
+version = "0.10.4"
 rust-version = "1.66.0"

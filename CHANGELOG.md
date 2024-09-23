@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.4] - 2024-09-23
+
+- Backported a fix for RUSTSEC-2023-0033: Forbid Vectors of Zero-sized types from de-/serialization (#145)
+
 ## [0.10.3] - 2022-03-22
 
 - Add optional bytes/bytesmut support
