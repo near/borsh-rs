@@ -1,6 +1,7 @@
 [package]
 name = "borsh"
-version = "0.0.0"
+version.workspace = true
+rust-version.workspace = true
 authors = ["Near Inc <hello@near.org>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -21,7 +22,7 @@ name = "generate_schema_schema"
 path = "src/generate_schema_schema.rs"
 
 [dependencies]
-borsh-derive = { path = "../borsh-derive" }
+borsh-derive = { version = "0.10.3", path = "../borsh-derive" }
 hashbrown = ">=0.11,<0.14"
 bytes = { version = "1", optional = true }
 
