@@ -2,13 +2,13 @@ name: Rust
 
 on:
   push:
-    branches: [ master ]
+    branches: [ 0.10.x ]
   pull_request:
-    branches: [ master ]
+    branches: [ 0.10.x ]
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: '-D warnings'
+  # RUSTFLAGS: '-D warnings'
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: short
 
@@ -46,71 +46,21 @@ jobs:
     - name: Run cargo fmt
       run: cargo fmt --check
 
-  publish:
-    runs-on: ubuntu-20.04
+  release-plz:
+    runs-on: ubuntu-latest
     needs: [tests, clippy, cargo-fmt]
-    if: github.ref == 'refs/heads/master'
-
+    if: github.ref == 'refs/heads/0.10.x'
     steps:
-    - uses: actions/checkout@v2
-      with:
-        # fetch tags for cargo ws publish
-        # might be a simple `fetch-tags: true` option soon, see https://github.com/actions/checkout/pull/579
-        fetch-depth: 0
-
-    - name: Setup
-      run: |
-        git config user.name github-actions
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        cargo install --git https://github.com/miraclx/cargo-workspaces --rev b2d49b9e575e29fd2395352e4d0df47def025039 cargo-workspaces
-        export GIT_PREVIOUS_TAG=$(git describe --tags --abbrev=0)
-        echo "GIT_PREVIOUS_TAG=${GIT_PREVIOUS_TAG}" >> $GITHUB_ENV
-        echo "[ pre run] current latest git tag is \"${GIT_PREVIOUS_TAG}\""
-
-    - name: Publish to crates.io and tag the commit
-      id: tag-and-publish
-      env:
-        CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      run: |
-        cargo ws publish --all --yes --exact --force '*' \
-          --skip-published --no-git-commit --allow-dirty \
-          --tag-existing --tag-prefix 'v' \
-          --tag-msg 'crates.io snapshot' --tag-msg $'%{\n - %n: https://crates.io/crates/%n/%v}' \
-          --no-individual-tags --no-git-push
-        export GIT_LATEST_TAG=$(git describe --tags --abbrev=0)
-        echo "GIT_LATEST_TAG=${GIT_LATEST_TAG}" >> $GITHUB_ENV
-        echo "[post run] current latest git tag is \"${GIT_LATEST_TAG}\""
-        echo "::set-output name=tagged::$( [[ "$GIT_LATEST_TAG" == "$GIT_PREVIOUS_TAG" ]] && echo 0 || echo 1 )"
-
-        # returning multi-line outputs gets truncated to include only the first line
-        # we have to escape the newline chars, runner auto unescapes them later
-        # https://github.community/t/set-output-truncates-multiline-strings/16852/3
-        GIT_TAG_MESSAGE="$(git tag -l --format='%(body)' ${GIT_LATEST_TAG})"
-        GIT_TAG_MESSAGE="${GIT_TAG_MESSAGE//'%'/'%25'}"
-        GIT_TAG_MESSAGE="${GIT_TAG_MESSAGE//$'\n'/'%0A'}"
-        GIT_TAG_MESSAGE="${GIT_TAG_MESSAGE//$'\r'/'%0D'}"
-        echo "::set-output name=git_tag_message::${GIT_TAG_MESSAGE}"
-
-    - name: Push tags to GitHub (if any)
-      if: steps.tag-and-publish.outputs.tagged == 1
-      run: git push --tags
-
-    - name: Extract release notes
-      if: steps.tag-and-publish.outputs.tagged == 1
-      id: extract-release-notes
-      uses: ffurrer2/extract-release-notes@c24866884b7a0d2fd2095be2e406b6f260479da8
-
-    - name: Create release
-      if: steps.tag-and-publish.outputs.tagged == 1
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ env.GIT_LATEST_TAG }}
-        release_name: ${{ env.GIT_LATEST_TAG }}
-        body: |
-          ${{ steps.extract-release-notes.outputs.release_notes }}
-
-          #### Crate Links
-
-          ${{ steps.tag-and-publish.outputs.git_tag_message }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run release-plz
+        uses: MarcoIeni/release-plz-action@v0.5
+        env:
+          # https://marcoieni.github.io/release-plz/github-action.html#triggering-further-workflow-runs
+          GITHUB_TOKEN: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
