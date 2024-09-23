@@ -4,8 +4,9 @@ members = [
     "borsh-derive",
     "borsh-derive-internal",
     "borsh-schema-derive-internal",
+    "fuzz/fuzz-run",
+    "benchmarks"
 ]
-exclude = [ "fuzz/fuzz-run", "benchmarks" ]
 
 [workspace.package]
 # shared version of all public crates in the workspace
