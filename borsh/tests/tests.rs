@@ -91,6 +91,8 @@ mod schema {
     mod test_cells;
     #[cfg(feature = "rc")]
     mod test_rc;
+    #[cfg(feature = "std")]
+    mod test_ip_addr;
     mod test_simple_structs;
     mod test_generic_structs;
     mod test_simple_enums;
