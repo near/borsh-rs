@@ -1,5 +1,6 @@
 use crate::common_macro::schema_imports::*;
 use std::net::IpAddr;
+
 #[test]
 fn ip_addr_schema() {
     let actual_name = IpAddr::declaration();
