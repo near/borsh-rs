@@ -511,7 +511,7 @@ impl BorshDeserialize for serde_json::Number {
                 // This returns None if the number is a NaN or +/-Infinity,
                 // which are not valid JSON numbers.
                 Self::from_f64(f).ok_or_else(|| {
-                    let msg = format!("Invalid JSON number representation: {}", f);
+                    let msg = format!("Invalid JSON number: {}", f);
 
                     Error::new(ErrorKind::InvalidData, msg)
                 })
