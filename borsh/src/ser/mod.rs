@@ -317,6 +317,84 @@ impl BorshSerialize for bson::oid::ObjectId {
     }
 }
 
+#[cfg(feature = "json")]
+impl BorshSerialize for serde_json::Value {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        match self {
+            Self::Null => 0_u8.serialize(writer),
+            Self::Bool(b) => {
+                1_u8.serialize(writer)?;
+                b.serialize(writer)
+            }
+            Self::Number(n) => {
+                2_u8.serialize(writer)?;
+                n.serialize(writer)
+            }
+            Self::String(s) => {
+                3_u8.serialize(writer)?;
+                s.serialize(writer)
+            }
+            Self::Array(a) => {
+                4_u8.serialize(writer)?;
+                a.serialize(writer)
+            }
+            Self::Object(o) => {
+                5_u8.serialize(writer)?;
+                o.serialize(writer)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "json")]
+impl BorshSerialize for serde_json::Number {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        // A JSON number can either be a non-negative integer (represented in
+        // serde_json by a u64), a negative integer (by an i64), or a non-integer
+        // (by an f64).
+        // We identify these cases with the following single-byte discriminants:
+        // 0 - u64
+        // 1 - i64
+        // 2 - f64
+        if let Some(u) = self.as_u64() {
+            0_u8.serialize(writer)?;
+            return u.serialize(writer);
+        }
+
+        if let Some(i) = self.as_i64() {
+            1_u8.serialize(writer)?;
+            return i.serialize(writer);
+        }
+
+        if let Some(f) = self.as_f64() {
+            2_u8.serialize(writer)?;
+            return f.serialize(writer);
+        }
+
+        unreachable!("number is neither a u64, i64, nor f64");
+    }
+}
+
+#[cfg(feature = "json")]
+impl BorshSerialize for serde_json::Map<String, serde_json::Value> {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        // The implementation here is identical to that of BTreeMap<K, V>.
+        u32::try_from(self.len())
+            .map_err(|_| ErrorKind::InvalidData)?
+            .serialize(writer)?;
+
+        for (key, value) in self {
+            key.serialize(writer)?;
+            value.serialize(writer)?;
+        }
+
+        Ok(())
+    }
+}
+
 impl<T> BorshSerialize for VecDeque<T>
 where
     T: BorshSerialize,

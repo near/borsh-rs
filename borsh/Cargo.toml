@@ -36,6 +36,7 @@ borsh-derive = { path = "../borsh-derive", version = "~1.5.1", optional = true }
 hashbrown = { version = ">=0.11,<0.15.0", optional = true }
 bytes = { version = "1", optional = true }
 bson = { version = "2", optional = true }
+serde_json = { version = "1", optional = true }
 
 [dev-dependencies]
 insta = "1.29.0"
@@ -45,7 +46,7 @@ features = ["derive", "unstable__schema", "rc"]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [features]
-default = ["std"]
+default = ["std", "json"]
 derive = ["borsh-derive"]
 unstable__schema = ["derive", "borsh-derive/schema"]
 std = []
@@ -54,3 +55,5 @@ std = []
 # Be sure that this is what you want before enabling this feature.
 rc = []
 de_strict_order = []
+# Implements BorshSerialize and BorshDeserialize for serde_json::Value.
+json = ["serde_json"]

@@ -50,6 +50,8 @@ mod roundtrip {
     mod test_cells;
     #[cfg(feature = "rc")]
     mod test_rc;
+    #[cfg(feature = "json")]
+    mod test_json;
 
     #[cfg(feature = "derive")]
     mod requires_derive_category {

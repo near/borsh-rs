@@ -453,6 +453,91 @@ impl BorshDeserialize for bson::oid::ObjectId {
     }
 }
 
+#[cfg(feature = "json")]
+impl BorshDeserialize for serde_json::Value {
+    #[inline]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let flag: u8 = BorshDeserialize::deserialize_reader(reader)?;
+        match flag {
+            0 => Ok(Self::Null),
+            1 => {
+                let b: bool = BorshDeserialize::deserialize_reader(reader)?;
+                Ok(Self::Bool(b))
+            }
+            2 => {
+                let n: serde_json::Number = BorshDeserialize::deserialize_reader(reader)?;
+                Ok(Self::Number(n))
+            }
+            3 => {
+                let s: String = BorshDeserialize::deserialize_reader(reader)?;
+                Ok(Self::String(s))
+            }
+            4 => {
+                let a: Vec<Self> = BorshDeserialize::deserialize_reader(reader)?;
+                Ok(Self::Array(a))
+            }
+            5 => {
+                let o: serde_json::Map<_, _> = BorshDeserialize::deserialize_reader(reader)?;
+                Ok(Self::Object(o))
+            }
+            _ => {
+                let msg = format!(
+                    "Invalid JSON value representation: {}. The first byte must be 0-5",
+                    flag
+                );
+
+                Err(Error::new(ErrorKind::InvalidData, msg))
+            }
+        }
+    }
+}
+
+#[cfg(feature = "json")]
+impl BorshDeserialize for serde_json::Number {
+    #[inline]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let flag: u8 = BorshDeserialize::deserialize_reader(reader)?;
+        match flag {
+            0 => {
+                let u: u64 = BorshDeserialize::deserialize_reader(reader)?;
+                Ok(u.into())
+            }
+            1 => {
+                let i: i64 = BorshDeserialize::deserialize_reader(reader)?;
+                Ok(i.into())
+            }
+            2 => {
+                let f: f64 = BorshDeserialize::deserialize_reader(reader)?;
+                // This returns None if the number is a NaN or +/-Infinity,
+                // which are not valid JSON numbers.
+                Self::from_f64(f).ok_or_else(|| {
+                    let msg = format!("Invalid JSON number representation: {}", f);
+
+                    Error::new(ErrorKind::InvalidData, msg)
+                })
+            }
+            _ => {
+                let msg = format!(
+                    "Invalid JSON number representation: {}. The first byte must be 0-2",
+                    flag
+                );
+
+                Err(Error::new(ErrorKind::InvalidData, msg))
+            }
+        }
+    }
+}
+
+#[cfg(feature = "json")]
+impl BorshDeserialize for serde_json::Map<String, serde_json::Value> {
+    #[inline]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        // The implementation here is identical to that of BTreeMap<K, V>.
+        let vec = <Vec<(String, serde_json::Value)>>::deserialize_reader(reader)?;
+        Ok(vec.into_iter().collect())
+    }
+}
+
 impl<T> BorshDeserialize for Cow<'_, T>
 where
     T: ToOwned + ?Sized,
