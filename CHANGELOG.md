@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0](https://github.com/near/borsh-rs/compare/borsh-v1.5.1...borsh-v1.6.0) - 2024-10-08
+
+### Added
+
+- ser/de for `IpAddr` type; schema for `Ipv4Addr`/`Ipv6Addr`/`IpAddr` types  ([#309](https://github.com/near/borsh-rs/pull/309))
+
 ## [1.5.1](https://github.com/near/borsh-rs/compare/borsh-v1.5.0...borsh-v1.5.1) - 2024-05-30
 
 ### Added
