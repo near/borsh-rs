@@ -1,0 +1,11 @@
+---
+source: borsh/tests/roundtrip/test_ip_addr.rs
+expression: encoded
+---
+[
+    0,
+    192,
+    168,
+    0,
+    1,
+]
