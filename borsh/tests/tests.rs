@@ -12,7 +12,7 @@ mod custom_reader {
 
 /// this module doesn't contain runnable tests;
 /// it's included into module tree to ensure derived code doesn't raise compilation
-/// errors 
+/// errors
 #[rustfmt::skip]
 #[cfg(feature = "derive")]
 mod compile_derives {
@@ -31,13 +31,15 @@ mod compile_derives {
 /// These are full roundtrip `BorshSerialize`/`BorshDeserialize` tests
 #[rustfmt::skip]
 mod roundtrip {
-    mod test_strings; 
+    mod test_strings;
     #[cfg(feature = "ascii")]
-    mod test_ascii_strings; 
+    mod test_ascii_strings;
     mod test_arrays;
     mod test_vecs;
     mod test_tuple;
     mod test_primitives;
+    #[cfg(feature = "std")]
+    mod test_ip_addr;
     mod test_nonzero_integers;
     mod test_range;
     // mod test_phantom_data; // NOTE: there's nothing corresponding to `schema::test_phantom_data`
@@ -59,7 +61,7 @@ mod roundtrip {
         mod test_generic_enums;
         mod test_recursive_structs;
         mod test_recursive_enums;
-        mod test_serde_with_third_party; 
+        mod test_serde_with_third_party;
         mod test_enum_discriminants;
         #[cfg(feature = "bytes")]
         mod test_ultimate_many_features_combined;
@@ -73,12 +75,14 @@ mod roundtrip {
 #[rustfmt::skip]
 mod schema {
     #[cfg(feature = "ascii")]
-    mod test_ascii_strings; 
-    mod test_strings; 
+    mod test_ascii_strings;
+    mod test_strings;
     mod test_arrays;
     mod test_vecs;
     mod test_tuple;
     mod test_primitives;
+    #[cfg(feature = "std")]
+    mod test_ip_addr;
     // mod test_nonzero_integers; // NOTE: there's nothing corresponding to `roundtrip::test_nonzero_integers`
     mod test_range;
     mod test_phantom_data;
