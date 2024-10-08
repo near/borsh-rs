@@ -81,6 +81,8 @@ mod schema {
     mod test_vecs;
     mod test_tuple;
     mod test_primitives;
+    #[cfg(feature = "std")]
+    mod test_ip_addr;
     // mod test_nonzero_integers; // NOTE: there's nothing corresponding to `roundtrip::test_nonzero_integers`
     mod test_range;
     mod test_phantom_data;
@@ -93,8 +95,6 @@ mod schema {
     mod test_cells;
     #[cfg(feature = "rc")]
     mod test_rc;
-    #[cfg(feature = "std")]
-    mod test_ip_addr;
     mod test_simple_structs;
     mod test_generic_structs;
     mod test_simple_enums;

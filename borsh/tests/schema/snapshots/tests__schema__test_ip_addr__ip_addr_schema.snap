@@ -1,0 +1,68 @@
+---
+source: borsh/tests/schema/test_ip_addr.rs
+expression: "format!(\"{:#?}\", defs)"
+---
+{
+    "IpAddr": Enum {
+        tag_width: 1,
+        variants: [
+            (
+                0,
+                "V4",
+                "IpAddrV4",
+            ),
+            (
+                1,
+                "V6",
+                "IpAddrV6",
+            ),
+        ],
+    },
+    "IpAddrV4": Struct {
+        fields: UnnamedFields(
+            [
+                "Ipv4Addr",
+            ],
+        ),
+    },
+    "IpAddrV6": Struct {
+        fields: UnnamedFields(
+            [
+                "Ipv6Addr",
+            ],
+        ),
+    },
+    "Ipv4Addr": Struct {
+        fields: NamedFields(
+            [
+                (
+                    "octets",
+                    "[u8; 4]",
+                ),
+            ],
+        ),
+    },
+    "Ipv6Addr": Struct {
+        fields: NamedFields(
+            [
+                (
+                    "octets",
+                    "[u8; 16]",
+                ),
+            ],
+        ),
+    },
+    "[u8; 16]": Sequence {
+        length_width: 0,
+        length_range: 16..=16,
+        elements: "u8",
+    },
+    "[u8; 4]": Sequence {
+        length_width: 0,
+        length_range: 4..=4,
+        elements: "u8",
+    },
+    "u8": Primitive(
+        1,
+    ),
+}
