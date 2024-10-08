@@ -817,59 +817,7 @@ macro_rules! impl_tuple {
         }
     }
     };
-
-[cfg(feature = "std")]
-mod id_addr_std_copy {
-    #[derive(crate::BorshSchema)]
-    #[borsh(crate = "crate")]
-    pub struct Ipv4Addr {
-        octets: [u8; 4],
-    }
-    #[derive(crate::BorshSchema)]
-    #[borsh(crate = "crate")]
-    pub struct Ipv6Addr {
-        octets: [u8; 16],
-    }
-    #[derive(crate::BorshSchema)]
-    #[borsh(crate = "crate")]
-    pub enum IpAddr {
-        /// An IPv4 address.
-        V4(std::net::Ipv4Addr),
-        /// An IPv6 address.
-        V6(std::net::Ipv6Addr),
-    }
 }
-#[cfg(feature = "std")]
-impl BorshSchema for std::net::Ipv4Addr
-{
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        <id_addr_std_copy::Ipv4Addr>::add_definitions_recursively(definitions);
-    }
-    fn declaration() -> Declaration {
-        id_addr_std_copy::Ipv4Addr::declaration()
-    }
-}
-#[cfg(feature = "std")]
-impl BorshSchema for std::net::Ipv6Addr
-{
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        <id_addr_std_copy::Ipv6Addr>::add_definitions_recursively(definitions);
-    }
-    fn declaration() -> Declaration {
-        id_addr_std_copy::Ipv6Addr::declaration()
-    }
-}
-#[cfg(feature = "std")]
-impl BorshSchema for std::net::IpAddr
-{
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        <id_addr_std_copy::IpAddr>::add_definitions_recursively(definitions);
-    }
-    fn declaration() -> Declaration {
-        id_addr_std_copy::IpAddr::declaration()
-    }
-}
-
 
 impl_tuple!(T0);
 impl_tuple!(T0, T1);
@@ -896,4 +844,3 @@ impl_tuple!(
 impl_tuple!(
     T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20
 );
-}
