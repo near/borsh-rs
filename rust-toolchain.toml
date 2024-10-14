@@ -1,0 +1,10 @@
+[toolchain]
+channel = "1.81.0"
+
+# Default profile includes `rustfmt`, `clippy`, `rust-docs`.
+# https://rust-lang.github.io/rustup/concepts/profiles.html
+profile = "default"
+components = ["rust-analyzer"]
+
+# For static linking for deployment.
+targets = ["x86_64-unknown-linux-musl"]

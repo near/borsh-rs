@@ -17,7 +17,8 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
     let use_discriminant = item::contains_use_discriminant(input)?;
-    let discriminants = Discriminants::new(&input.variants);
+    let maybe_discriminant_type = item::get_maybe_reprc_attribute(input);
+    let discriminants = Discriminants::new(&input.variants, maybe_discriminant_type);
     let mut has_unit_variant = false;
 
     for (variant_idx, variant) in input.variants.iter().enumerate() {
@@ -42,11 +43,11 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     }
     let fields_body = optimize_fields_body(fields_body, has_unit_variant);
     generics_output.extend(&mut where_clause, &cratename);
-
+    let discriminant_type = discriminants.discriminant_type();
     Ok(quote! {
         impl #impl_generics #cratename::ser::BorshSerialize for #enum_ident #ty_generics #where_clause {
             fn serialize<__W: #cratename::io::Write>(&self, writer: &mut __W) -> ::core::result::Result<(), #cratename::io::Error> {
-                let variant_idx: u8 = match self {
+                let variant_idx: #discriminant_type = match self {
                     #all_variants_idx_body
                 };
                 writer.write_all(&variant_idx.to_le_bytes())?;

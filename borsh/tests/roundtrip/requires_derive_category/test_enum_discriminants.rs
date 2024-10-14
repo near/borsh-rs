@@ -40,6 +40,34 @@ fn test_discriminant_serde_no_unit_type() {
 }
 
 #[test]
+pub fn u16_discriminat() {    
+    use borsh::{BorshSerialize, BorshDeserialize};
+    #[derive(BorshSerialize, BorshDeserialize, Debug)]
+    #[borsh(use_discriminant = true)]
+    #[repr(u16)]
+    enum ZEnum {
+        AA = 42, 
+        Z=2,
+        // A { a: u16, b: u64, d: bool, s: String } = 1u16,
+        // Z { a: u16, b: u64, d: bool, s: String } = 257u16,
+    }
+    let mut ss = vec![];
+    ZEnum::AA.serialize(&mut ss).unwrap();
+    assert!(ss[0] == 42);
+    assert!(ss[1] == 0);
+    // let s = Enum::A {
+    //     a: 13,
+    //     b: 42,
+    //     d: true,
+    //     s: "hello my bonny".to_string(),
+    // };
+    // let mut buf = Vec::new();
+    // s.serialize(&mut buf).expect("must serialize");
+    // panic!("{:?}", buf);
+}
+
+
+#[test]
 fn test_discriminant_serde_no_unit_type_no_use_discriminant() {
     let values = vec![
         XYNoDiscriminant::A,

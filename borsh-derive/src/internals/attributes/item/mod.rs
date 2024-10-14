@@ -1,8 +1,8 @@
 use crate::internals::attributes::{BORSH, CRATE, INIT, USE_DISCRIMINANT};
 use quote::ToTokens;
-use syn::{spanned::Spanned, Attribute, DeriveInput, Error, Expr, ItemEnum, Path};
+use syn::{spanned::Spanned, Attribute, DeriveInput, Error, Expr, ItemEnum, Path, TypePath};
 
-use super::{get_one_attribute, parsing};
+use super::{get_one_attribute, parsing, REPR};
 
 pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
     let borsh = get_one_attribute(&derive_input.attrs)?;
@@ -34,10 +34,11 @@ pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
 }
 
 pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
-    if input.variants.len() > 256 {
+    const MAX_VARIANTS: usize = u16::MAX as usize + 1;
+    if input.variants.len() > MAX_VARIANTS {
         return Err(syn::Error::new(
             input.span(),
-            "up to 256 enum variants are supported",
+            "up to {MAX_VARIANTS} enum variants are supported",
         ));
     }
 
@@ -78,6 +79,14 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
             ));
     }
     Ok(use_discriminant.unwrap_or(false))
+}
+
+/// Gets type of reprc attribute if it exists
+pub (crate) fn get_maybe_reprc_attribute(input: &ItemEnum) -> Option<TypePath> {
+    input.attrs.iter().find(|x| {
+        x.path() == REPR
+    })
+    ?.parse_args().ok()
 }
 
 pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Path>, Error> {

@@ -132,7 +132,7 @@ pub trait EnumExt: BorshDeserialize {
     /// # #[cfg(feature = "derive")]
     /// assert!(from_slice::<OneOrZero>(&data[..]).is_err());
     /// ```
-    fn deserialize_variant<R: Read>(reader: &mut R, tag: u8) -> Result<Self>;
+    fn deserialize_variant<R: Read, Tag: BorshDeserialize + ::core::fmt::Debug + Eq>(reader: &mut R, tag: u8) -> Result<Self>;
 }
 
 fn unexpected_eof_to_unexpected_length_of_input(e: Error) -> Error {
