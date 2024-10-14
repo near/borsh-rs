@@ -11,17 +11,24 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let mut where_clause = generics::default_where(where_clause);
     let mut variant_arms = TokenStream2::new();
     let use_discriminant = item::contains_use_discriminant(input)?;
-    let maybe_reprc_attribute = item::get_maybe_reprc_attribute(input);
+    let maybe_reprc_attribute = use_discriminant.then(||item::get_maybe_reprc_attribute(input)).flatten();
     let discriminants: Discriminants = Discriminants::new(&input.variants, maybe_reprc_attribute);
     let mut generics_output = deserialize::GenericsOutput::new(&generics);
-
+    
+    let discriminant_type = discriminants.discriminant_type();
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_body = process_variant(variant, &cratename, &mut generics_output)?;
         let variant_ident = &variant.ident;
 
         let discriminant_value = discriminants.get(variant_ident, use_discriminant, variant_idx)?;
         variant_arms.extend(quote! {
-            if variant_tag == #discriminant_value.into() { #name::#variant_ident #variant_body } else
+            if TryInto::<(#discriminant_type)>::try_into(variant_tag).map_err(|_|
+                return #cratename::io::Error::new(
+                    #cratename::io::ErrorKind::InvalidData,
+                    #cratename::__private::maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
+                )
+            )?
+                 == #discriminant_value { #name::#variant_ident #variant_body } else
         });
     }
     let init = if let Some(method_ident) = item::contains_initialize_with(&input.attrs)? {
@@ -33,7 +40,6 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     };
     generics_output.extend(&mut where_clause, &cratename);
 
-    let discriminant_type = discriminants.discriminant_type();
     let x = quote! {
         impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
             fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
@@ -45,10 +51,12 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
         impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
             fn deserialize_variant<__R: #cratename::io::Read,
             Tag: borsh::BorshDeserialize + ::core::fmt::Debug + Eq
+            + ::core::convert::TryInto<u16> + ::core::convert::TryInto<u8> + Copy
             >(
                 reader: &mut __R,
-                variant_tag: u8, //#discriminant_type,
+                variant_tag: Tag,
             ) -> ::core::result::Result<Self, #cratename::io::Error> {
+                use ::core::convert::TryInto;
                 let mut return_value =
                     #variant_arms {
                     return Err(#cratename::io::Error::new(

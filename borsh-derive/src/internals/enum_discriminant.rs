@@ -10,7 +10,7 @@ pub struct Discriminants((HashMap<Ident, TokenStream>, syn::TypePath));
 impl Discriminants {
     /// Calculates the discriminant that will be assigned by the compiler.
     /// See: https://doc.rust-lang.org/reference/items/enumerations.html#assigning-discriminant-values
-    pub fn new(variants: &Punctuated<Variant, Comma>, maybe_discriminant_type: Option<syn::TypePath>) -> Self {
+    pub fn new(variants: &Punctuated<Variant, Comma>, mut maybe_discriminant_type: Option<syn::TypePath>) -> Self {
         let mut map = HashMap::new();
         let mut next_discriminant_if_not_specified = quote! {0};
 
@@ -23,9 +23,9 @@ impl Discriminants {
             next_discriminant_if_not_specified = quote! { #this_discriminant + 1 };
             map.insert(variant.ident.clone(), this_discriminant);
         }
-        let discriminant_type = //maybe_discriminant_type.unwrap_or(
+        let discriminant_type = maybe_discriminant_type.unwrap_or(
             syn::parse_str("u8").expect("numeric")
-        //)
+        )
         ;
         
         Self((map, discriminant_type))
