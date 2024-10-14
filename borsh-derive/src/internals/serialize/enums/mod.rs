@@ -17,7 +17,9 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
     let use_discriminant = item::contains_use_discriminant(input)?;
-    let maybe_discriminant_type =  use_discriminant.then(||item::get_maybe_reprc_attribute(input)).flatten();
+    let maybe_discriminant_type = use_discriminant
+        .then(|| item::get_maybe_reprc_attribute(input))
+        .flatten();
     let discriminants = Discriminants::new(&input.variants, maybe_discriminant_type);
     let mut has_unit_variant = false;
 

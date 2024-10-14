@@ -82,11 +82,13 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
 }
 
 /// Gets type of reprc attribute if it exists
-pub (crate) fn get_maybe_reprc_attribute(input: &ItemEnum) -> Option<TypePath> {
-    input.attrs.iter().find(|x| {
-        x.path() == REPR
-    })
-    ?.parse_args().ok()
+pub(crate) fn get_maybe_reprc_attribute(input: &ItemEnum) -> Option<TypePath> {
+    input
+        .attrs
+        .iter()
+        .find(|x| x.path() == REPR)?
+        .parse_args()
+        .ok()
 }
 
 pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Path>, Error> {

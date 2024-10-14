@@ -11,10 +11,11 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let mut where_clause = generics::default_where(where_clause);
     let mut variant_arms = TokenStream2::new();
     let use_discriminant = item::contains_use_discriminant(input)?;
-    let maybe_reprc_attribute = use_discriminant.then(||item::get_maybe_reprc_attribute(input)).flatten();
+    let maybe_reprc_attribute = use_discriminant
+        .then(|| item::get_maybe_reprc_attribute(input))
+        .flatten();
     let discriminants: Discriminants = Discriminants::new(&input.variants, maybe_reprc_attribute);
     let mut generics_output = deserialize::GenericsOutput::new(&generics);
-    
     let discriminant_type = discriminants.discriminant_type();
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_body = process_variant(variant, &cratename, &mut generics_output)?;

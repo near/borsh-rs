@@ -40,30 +40,22 @@ fn test_discriminant_serde_no_unit_type() {
 }
 
 #[test]
-pub fn u16_discriminat() {    
+pub fn u16_discriminant() {    
     use borsh::{BorshSerialize, BorshDeserialize};
-    #[derive(BorshSerialize, BorshDeserialize, Debug)]
+    #[derive(BorshSerialize, BorshDeserialize, Debug, Eq, PartialEq)]
     #[borsh(use_discriminant = true)]
     #[repr(u16)]
-    enum ZEnum {
-        AA = 42, 
-        Z=2,
-        // A { a: u16, b: u64, d: bool, s: String } = 1u16,
-        // Z { a: u16, b: u64, d: bool, s: String } = 257u16,
+    enum U16Discriminant {
+        U8 { a: u16, } = 42,
+        U16 { b: u32, } = 666,
     }
-    let mut ss = vec![];
-    ZEnum::AA.serialize(&mut ss).unwrap();
-    assert!(ss[0] == 42);
-    assert!(ss[1] == 0);
-    // let s = Enum::A {
-    //     a: 13,
-    //     b: 42,
-    //     d: true,
-    //     s: "hello my bonny".to_string(),
-    // };
-    // let mut buf = Vec::new();
-    // s.serialize(&mut buf).expect("must serialize");
-    // panic!("{:?}", buf);
+    let mut buf = vec![];
+    let data =  U16Discriminant::U16{ b: 1234567 };
+    data.serialize(&mut buf).unwrap();
+    assert_eq!(buf[0] , 154);
+    assert_eq!(buf[1] , 2);
+    let deserialized = U16Discriminant::deserialize(&mut buf.as_slice()).unwrap();
+    assert_eq!(deserialized,data);
 }
 
 
