@@ -29,7 +29,9 @@ pub const SERIALIZE_WITH: Symbol = Symbol("serialize_with", "serialize_with = ..
 pub const DESERIALIZE_WITH: Symbol = Symbol("deserialize_with", "deserialize_with = ...");
 /// crate - sub-borsh nested meta, item-level only, `BorshSerialize`, `BorshDeserialize`, `BorshSchema` contexts
 pub const CRATE: Symbol = Symbol("crate", "crate = ...");
-pub const REPR: Symbol = Symbol("repr", "repr(...)");
+
+/// tag_width - sub-borsh nested meta, item-level only attribute in `BorshSerialize`, `BorshDeserialize`, `BorshSchema` contexts
+pub const TAG_WIDTH: Symbol = Symbol("tag_width", "tag_width = ...");
 
 #[cfg(feature = "schema")]
 pub mod schema_keys {

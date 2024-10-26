@@ -1,26 +1,28 @@
 use crate::internals::attributes::{BORSH, CRATE, INIT, USE_DISCRIMINANT};
+use proc_macro2::Span;
 use quote::ToTokens;
 use syn::{spanned::Spanned, Attribute, DeriveInput, Error, Expr, ItemEnum, Path, TypePath};
 
-use super::{get_one_attribute, parsing, REPR};
+use super::{get_one_attribute, parsing, TAG_WIDTH};
 
 pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
     let borsh = get_one_attribute(&derive_input.attrs)?;
 
     if let Some(attr) = borsh {
         attr.parse_nested_meta(|meta| {
-            if meta.path != USE_DISCRIMINANT && meta.path != INIT && meta.path != CRATE {
+            if meta.path != USE_DISCRIMINANT && meta.path != INIT && meta.path != CRATE && meta.path != TAG_WIDTH {
                 return Err(syn::Error::new(
                     meta.path.span(),
-                    "`crate`, `use_discriminant` or `init` are the only supported attributes for `borsh`",
+                    "`crate`, `use_discriminant`, `tag_width` or `init` are the only supported attributes for `borsh`",
                 ));
             }
-            if meta.path == USE_DISCRIMINANT {
+            if meta.path == USE_DISCRIMINANT || meta.path == TAG_WIDTH {
+                let msg = if meta.path == USE_DISCRIMINANT { "borsh(use_discriminant=<bool>)"} else { "borsh(tag_width=<u8>)"};
                 let _expr: Expr = meta.value()?.parse()?;
                 if let syn::Data::Struct(ref _data) = derive_input.data {
                     return Err(syn::Error::new(
                         derive_input.ident.span(),
-                        "borsh(use_discriminant=<bool>) does not support structs",
+                        format!("{msg} does not support structs"),
                     ));
                 }
             } else if meta.path == INIT || meta.path == CRATE {
@@ -33,16 +35,8 @@ pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
     Ok(())
 }
 
-pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
-    const MAX_VARIANTS: usize = u16::MAX as usize + 1;
-    if input.variants.len() > MAX_VARIANTS {
-        return Err(syn::Error::new(
-            input.span(),
-            "up to {MAX_VARIANTS} enum variants are supported",
-        ));
-    }
-
-    let attrs = &input.attrs;
+pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {    
+    let attrs: &Vec<Attribute> = &input.attrs;
     let mut use_discriminant = None;
     let attr = attrs.iter().find(|attr| attr.path() == BORSH);
     if let Some(attr) = attr {
@@ -81,14 +75,51 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
     Ok(use_discriminant.unwrap_or(false))
 }
 
-/// Gets type of reprc attribute if it exists
-pub(crate) fn get_maybe_reprc_attribute(input: &ItemEnum) -> Option<TypePath> {
-    input
-        .attrs
-        .iter()
-        .find(|x| x.path() == REPR)?
-        .parse_args()
-        .ok()
+// const MAX_VARIANTS: usize = u16::MAX as usize + 1;
+    // if input.variants.len() > MAX_VARIANTS {
+    //     return Err(syn::Error::new(
+    //         input.span(),
+    //         "up to {MAX_VARIANTS} enum variants are supported",
+    //     ));
+    // }
+// /// Gets type of tag_witdh attribute if it exists
+// pub(crate) fn get_maybe_borsh_tag_witdh_attribute(input: &ItemEnum) -> Option<TypePath> {
+//     input
+//         .attrs
+//         .iter()
+//         .find(|x| x.path() == TAG_WIDTH)?
+//         .parse_args()
+//         .ok()
+// }
+
+pub(crate) fn get_maybe_borsh_tag_width(input: &ItemEnum) -> Result<Option<(u8, Span)>, syn::Error> {
+    let mut maybe_borsh_tag_width = None;
+    let attr = input.attrs.iter().find(|attr| attr.path() == BORSH);
+    let Some(attr) = attr else {
+        return Ok(None);
+    };
+
+    attr.parse_nested_meta(|meta| {        
+        if meta.path == TAG_WIDTH {
+            let value_expr: Expr = meta.value()?.parse()?;
+            let value = value_expr.to_token_stream().to_string();
+            let value = value.parse::<u8>().map_err(|_| {
+                syn::Error::new(
+                    value_expr.span(),
+                    "`tag_width` accepts only u8",
+                )
+            })?;
+            if value > 8 {
+                return Err(syn::Error::new(
+                    value_expr.span(),
+                    "`tag_width` accepts only values from 0 to 8",
+                ));
+            }
+            maybe_borsh_tag_width= Some((value, value_expr.span()));
+        }
+        Ok(())
+    })?;
+    Ok(maybe_borsh_tag_width)
 }
 
 pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
