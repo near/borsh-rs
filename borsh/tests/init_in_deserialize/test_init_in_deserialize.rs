@@ -26,8 +26,9 @@ fn test_simple_struct() {
     assert_eq!(expected_a, decoded_a);
 }
 
+//ASDF
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-#[borsh(init=initialization_method)]
+#[borsh(init = initialization_method)]
 enum AEnum {
     A,
     B,

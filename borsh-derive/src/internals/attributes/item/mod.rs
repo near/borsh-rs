@@ -56,7 +56,7 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
                         ));
                     }
                 };
-            } else if meta.path == INIT || meta.path == CRATE {
+            } else if meta.path == INIT || meta.path == CRATE || meta.path == TAG_WIDTH {
                 let _value_expr: Expr = meta.value()?.parse()?;
             }
             Ok(())
@@ -74,23 +74,6 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
     }
     Ok(use_discriminant.unwrap_or(false))
 }
-
-// const MAX_VARIANTS: usize = u16::MAX as usize + 1;
-    // if input.variants.len() > MAX_VARIANTS {
-    //     return Err(syn::Error::new(
-    //         input.span(),
-    //         "up to {MAX_VARIANTS} enum variants are supported",
-    //     ));
-    // }
-// /// Gets type of tag_witdh attribute if it exists
-// pub(crate) fn get_maybe_borsh_tag_witdh_attribute(input: &ItemEnum) -> Option<TypePath> {
-//     input
-//         .attrs
-//         .iter()
-//         .find(|x| x.path() == TAG_WIDTH)?
-//         .parse_args()
-//         .ok()
-// }
 
 pub(crate) fn get_maybe_borsh_tag_width(input: &ItemEnum) -> Result<Option<(u8, Span)>, syn::Error> {
     let mut maybe_borsh_tag_width = None;
@@ -116,6 +99,8 @@ pub(crate) fn get_maybe_borsh_tag_width(input: &ItemEnum) -> Result<Option<(u8, 
                 ));
             }
             maybe_borsh_tag_width= Some((value, value_expr.span()));
+        } else if meta.path == INIT || meta.path == CRATE || meta.path == TAG_WIDTH || meta.path == USE_DISCRIMINANT {
+            let _value_expr: Expr = meta.value()?.parse()?;
         }
         Ok(())
     })?;
@@ -130,7 +115,7 @@ pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Pat
             if meta.path == INIT {
                 let value_expr: Path = meta.value()?.parse()?;
                 res = Some(value_expr);
-            } else if meta.path == USE_DISCRIMINANT || meta.path == CRATE {
+            } else if meta.path == USE_DISCRIMINANT || meta.path == CRATE || meta.path == TAG_WIDTH {
                 let _value_expr: Expr = meta.value()?.parse()?;
             }
 
@@ -149,7 +134,7 @@ pub(crate) fn get_crate(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
             if meta.path == CRATE {
                 let value_expr: Path = parsing::parse_lit_into(BORSH, CRATE, &meta)?;
                 res = Some(value_expr);
-            } else if meta.path == USE_DISCRIMINANT || meta.path == INIT {
+            } else if meta.path == USE_DISCRIMINANT || meta.path == INIT || meta.path == TAG_WIDTH {
                 let _value_expr: Expr = meta.value()?.parse()?;
             }
 
