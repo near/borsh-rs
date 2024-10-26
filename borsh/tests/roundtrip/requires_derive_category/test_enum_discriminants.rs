@@ -3,7 +3,6 @@ use alloc::vec;
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
 // sequence, no unit enums
-//ASDF
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
 #[borsh(use_discriminant = true)]
 #[repr(u16)]
@@ -16,7 +15,6 @@ enum XY {
     F(u64),
 }
 
-//ASDF
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
 #[borsh(use_discriminant = false)]
 #[repr(u16)]
@@ -46,8 +44,7 @@ pub fn u16_discriminant() {
     use borsh::{BorshSerialize, BorshDeserialize};
     #[derive(BorshSerialize, BorshDeserialize, Debug, Eq, PartialEq)]
     #[borsh(use_discriminant = true)]
-    #[repr(u16)]
-    //ASDF
+    #[repr(u32)]
     enum U16Discriminant {
         U8 { a: u16, } = 42,
         U16 { b: u32, } = 666,

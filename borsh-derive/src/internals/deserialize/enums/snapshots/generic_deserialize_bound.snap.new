@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
-assertion_line: 271
+assertion_line: 268
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl<T: Debug, U> borsh::de::BorshDeserialize for A<T, U>
