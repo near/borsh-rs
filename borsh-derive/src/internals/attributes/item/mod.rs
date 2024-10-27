@@ -35,7 +35,7 @@ pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
     Ok(())
 }
 
-pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {    
+pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
     let attrs: &Vec<Attribute> = &input.attrs;
     let mut use_discriminant = None;
     let attr = attrs.iter().find(|attr| attr.path() == BORSH);
@@ -75,31 +75,34 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
     Ok(use_discriminant.unwrap_or(false))
 }
 
-pub(crate) fn get_maybe_borsh_tag_width(input: &ItemEnum) -> Result<Option<(u8, Span)>, syn::Error> {
+pub(crate) fn get_maybe_borsh_tag_width(
+    input: &ItemEnum,
+) -> Result<Option<(u8, Span)>, syn::Error> {
     let mut maybe_borsh_tag_width = None;
     let attr = input.attrs.iter().find(|attr| attr.path() == BORSH);
     let Some(attr) = attr else {
         return Ok(None);
     };
 
-    attr.parse_nested_meta(|meta| {        
+    attr.parse_nested_meta(|meta| {
         if meta.path == TAG_WIDTH {
             let value_expr: Expr = meta.value()?.parse()?;
             let value = value_expr.to_token_stream().to_string();
-            let value = value.parse::<u8>().map_err(|_| {
-                syn::Error::new(
-                    value_expr.span(),
-                    "`tag_width` accepts only u8",
-                )
-            })?;
+            let value = value
+                .parse::<u8>()
+                .map_err(|_| syn::Error::new(value_expr.span(), "`tag_width` accepts only u8"))?;
             if value > 8 {
                 return Err(syn::Error::new(
                     value_expr.span(),
                     "`tag_width` accepts only values from 0 to 8",
                 ));
             }
-            maybe_borsh_tag_width= Some((value, value_expr.span()));
-        } else if meta.path == INIT || meta.path == CRATE || meta.path == TAG_WIDTH || meta.path == USE_DISCRIMINANT {
+            maybe_borsh_tag_width = Some((value, value_expr.span()));
+        } else if meta.path == INIT
+            || meta.path == CRATE
+            || meta.path == TAG_WIDTH
+            || meta.path == USE_DISCRIMINANT
+        {
             let _value_expr: Expr = meta.value()?.parse()?;
         }
         Ok(())
@@ -115,7 +118,8 @@ pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Pat
             if meta.path == INIT {
                 let value_expr: Path = meta.value()?.parse()?;
                 res = Some(value_expr);
-            } else if meta.path == USE_DISCRIMINANT || meta.path == CRATE || meta.path == TAG_WIDTH {
+            } else if meta.path == USE_DISCRIMINANT || meta.path == CRATE || meta.path == TAG_WIDTH
+            {
                 let _value_expr: Expr = meta.value()?.parse()?;
             }
 
