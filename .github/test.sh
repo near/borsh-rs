@@ -28,6 +28,9 @@ cargo test --features de_strict_order 'roundtrip::test_hash_map'
 cargo test --features de_strict_order 'roundtrip::test_btree_map'
 ########## features = ["bson"] group
 cargo test --features bson,derive 'roundtrip::requires_derive_category::test_bson_object_ids'
+########## features = ["serde_json_value"] group
+cargo test --features serde_json_value 'roundtrip::test_serde_json_value'
+cargo test --features serde_json_value,unstable__schema 'schema::test_serde_json_value'
 ########## features = ["bytes"] group
 cargo test --features bytes,derive 'roundtrip::requires_derive_category::test_ultimate_many_features_combined'
 
@@ -44,6 +47,9 @@ cargo test --no-default-features --features ascii,unstable__schema 'schema::test
 ########## features = ["rc"] group
 cargo test --no-default-features --features rc 'roundtrip::test_rc'
 cargo test --no-default-features --features rc,unstable__schema 'schema::test_rc'
+########## features = ["serde_json_value"] group
+cargo test --features serde_json_value 'roundtrip::test_serde_json_value'
+cargo test --features serde_json_value,unstable__schema 'schema::test_serde_json_value'
 ########## features = ["hashbrown"] group
 cargo test --no-default-features --features hashbrown
 cargo test --no-default-features --features hashbrown,derive

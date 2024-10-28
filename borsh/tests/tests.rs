@@ -53,7 +53,7 @@ mod roundtrip {
     #[cfg(feature = "rc")]
     mod test_rc;
     #[cfg(feature = "serde_json_value")]
-    mod test_json;
+    mod test_serde_json_value;
 
     #[cfg(feature = "derive")]
     mod requires_derive_category {
@@ -97,6 +97,9 @@ mod schema {
     mod test_cells;
     #[cfg(feature = "rc")]
     mod test_rc;
+    #[cfg(feature = "serde_json_value")]
+    // TODO: add content for schema tests
+    mod test_serde_json_value;
     mod test_simple_structs;
     mod test_generic_structs;
     mod test_simple_enums;

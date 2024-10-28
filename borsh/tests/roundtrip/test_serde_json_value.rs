@@ -53,6 +53,10 @@ fn test_json_value() {
     });
 
     let serialized = borsh::to_vec(&original).unwrap();
+
+    #[cfg(feature = "std")]
+    insta::assert_debug_snapshot!(serialized);
+
     let deserialized: serde_json::Value = borsh::from_slice(&serialized).unwrap();
 
     assert_eq!(original, deserialized);
