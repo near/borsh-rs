@@ -36,7 +36,8 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let mut where_clause = generics::default_where(where_clause);
     let mut generics_output = schema::GenericsOutput::new(&generics);
     let use_discriminant = item::contains_use_discriminant(input)?;
-    let discriminants = Discriminants::new(&input.variants);
+    let maybe_borsh_tag_width = item::get_maybe_borsh_tag_width(input)?;
+    let discriminants = Discriminants::new(&input.variants, maybe_borsh_tag_width);
 
     // Generate functions that return the schema for variants.
     let mut variants_defs = vec![];
@@ -128,6 +129,7 @@ fn process_variant(
     let variant_type = quote! {
         <#full_variant_ident #inner_struct_ty_generics as #cratename::BorshSchema>
     };
+    let discriminant_type = discriminant_info.discriminants.discriminant_type().clone();
     let discriminant_value = process_discriminant(&variant.ident, discriminant_info)?;
 
     Ok(VariantOutput {
@@ -136,7 +138,7 @@ fn process_variant(
             #variant_type::add_definitions_recursively(definitions);
         },
         variant_entry: quote! {
-            (u8::from(#discriminant_value) as i64,
+            (#discriminant_type::from(#discriminant_value) as i64,
              #variant_name.into(),
              #variant_type::declaration())
         },
