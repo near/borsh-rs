@@ -259,7 +259,9 @@ impl FindTyParams {
         )]
         match bound {
             TypeParamBound::Trait(bound) => self.visit_path(&bound.path),
-            TypeParamBound::Lifetime(_) | TypeParamBound::Verbatim(_) => {}
+            TypeParamBound::Lifetime(_)
+            | TypeParamBound::Verbatim(_)
+            | TypeParamBound::PreciseCapture(_) => {}
             _ => {}
         }
     }
