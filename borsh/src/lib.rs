@@ -58,6 +58,9 @@
   and [Ord] for btree ones. Deserialization emits error otherwise.
 
   If this feature is not enabled, it is possible that two different byte slices could deserialize into the same `HashMap`/`HashSet` object.
+* **serde_json_value** -
+  Gates implementation of [BorshSerialize], [BorshDeserialize], [BorshSchema] for
+  [serde_json::Value] and [serde_json] types it depends on.
 
 ### Config aliases
 

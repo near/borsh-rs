@@ -42,7 +42,7 @@ serde_json = { version = "1", optional = true }
 insta = "1.29.0"
 
 [package.metadata.docs.rs]
-features = ["derive", "unstable__schema", "rc"]
+features = ["derive", "unstable__schema", "rc", "bytes", "bson", "ascii", "serde_json_value"]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [features]
@@ -55,5 +55,5 @@ std = []
 # Be sure that this is what you want before enabling this feature.
 rc = []
 de_strict_order = []
-# Implements BorshSerialize and BorshDeserialize for serde_json::Value.
+# Implements BorshSerialize,BorshDeserialize and BorshSchema for serde_json::Value.
 serde_json_value = ["dep:serde_json"]

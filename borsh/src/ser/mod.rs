@@ -378,20 +378,29 @@ impl BorshSerialize for serde_json::Number {
 }
 
 #[cfg(feature = "serde_json_value")]
-impl BorshSerialize for serde_json::Map<String, serde_json::Value> {
-    #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // The implementation here is identical to that of BTreeMap<K, V>.
-        u32::try_from(self.len())
-            .map_err(|_| ErrorKind::InvalidData)?
-            .serialize(writer)?;
+/// Module is available if borsh is built with `features = ["serde_json_value"]`.
+///
+/// Module defines [BorshSerialize] implementation for [serde_json::Map],
+pub mod serde_json_value {
+    use super::BorshSerialize;
+    use crate::io::{ErrorKind, Result, Write};
+    use core::convert::TryFrom;
 
-        for (key, value) in self {
-            key.serialize(writer)?;
-            value.serialize(writer)?;
+    impl BorshSerialize for serde_json::Map<String, serde_json::Value> {
+        #[inline]
+        fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+            // The implementation here is identical to that of BTreeMap<String, serde_json::Value>.
+            u32::try_from(self.len())
+                .map_err(|_| ErrorKind::InvalidData)?
+                .serialize(writer)?;
+
+            for (key, value) in self {
+                key.serialize(writer)?;
+                value.serialize(writer)?;
+            }
+
+            Ok(())
         }
-
-        Ok(())
     }
 }
 
