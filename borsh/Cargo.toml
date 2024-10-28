@@ -56,4 +56,4 @@ std = []
 rc = []
 de_strict_order = []
 # Implements BorshSerialize and BorshDeserialize for serde_json::Value.
-json = ["serde_json"]
+serde_json_value = ["dep:serde_json"]

@@ -52,7 +52,7 @@ mod roundtrip {
     mod test_cells;
     #[cfg(feature = "rc")]
     mod test_rc;
-    #[cfg(feature = "json")]
+    #[cfg(feature = "serde_json_value")]
     mod test_json;
 
     #[cfg(feature = "derive")]

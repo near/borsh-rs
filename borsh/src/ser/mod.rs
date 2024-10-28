@@ -317,7 +317,7 @@ impl BorshSerialize for bson::oid::ObjectId {
     }
 }
 
-#[cfg(feature = "json")]
+#[cfg(feature = "serde_json_value")]
 impl BorshSerialize for serde_json::Value {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -347,7 +347,7 @@ impl BorshSerialize for serde_json::Value {
     }
 }
 
-#[cfg(feature = "json")]
+#[cfg(feature = "serde_json_value")]
 impl BorshSerialize for serde_json::Number {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -377,7 +377,7 @@ impl BorshSerialize for serde_json::Number {
     }
 }
 
-#[cfg(feature = "json")]
+#[cfg(feature = "serde_json_value")]
 impl BorshSerialize for serde_json::Map<String, serde_json::Value> {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {

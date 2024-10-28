@@ -453,7 +453,7 @@ impl BorshDeserialize for bson::oid::ObjectId {
     }
 }
 
-#[cfg(feature = "json")]
+#[cfg(feature = "serde_json_value")]
 impl BorshDeserialize for serde_json::Value {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -492,7 +492,7 @@ impl BorshDeserialize for serde_json::Value {
     }
 }
 
-#[cfg(feature = "json")]
+#[cfg(feature = "serde_json_value")]
 impl BorshDeserialize for serde_json::Number {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -528,7 +528,7 @@ impl BorshDeserialize for serde_json::Number {
     }
 }
 
-#[cfg(feature = "json")]
+#[cfg(feature = "serde_json_value")]
 impl BorshDeserialize for serde_json::Map<String, serde_json::Value> {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
