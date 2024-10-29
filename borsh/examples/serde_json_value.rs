@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
-od serde_json_value {
+mod serde_json_value {
     pub use de::deserialize_value;
     pub use ser::serialize_value;
     mod ser {
@@ -246,6 +246,7 @@ struct SerdeJsonAsField {
 }
 
 fn main() {
+    // original code is from https://github.com/near/borsh-rs/pull/312
     let original = serde_json::json!({
         "null": null,
         "true": true,
