@@ -103,6 +103,7 @@ mod serde_json_value {
             BorshDeserialize,
         };
 
+        /// this is copy-paste of https://github.com/near/borsh-rs/blob/master/borsh/src/de/hint.rs#L2-L5
         fn hint_cautious<T>(hint: u32) -> usize {
             let el_size = core::mem::size_of::<T>() as u32;
             core::cmp::max(core::cmp::min(hint, 4096 / el_size), 1) as usize
