@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
-mod serde_json_value {
+od serde_json_value {
     pub use de::deserialize_value;
     pub use ser::serialize_value;
     mod ser {
