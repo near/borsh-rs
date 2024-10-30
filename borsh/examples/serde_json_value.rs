@@ -70,6 +70,7 @@ mod serde_json_value {
 
         /// this is mutually recursive with `serialize_value`
         fn serialize_array<W: Write>(array: &Vec<serde_json::Value>, writer: &mut W) -> Result<()> {
+            // The implementation here is very similar to that of Vec<V>.
             writer.write_all(
                 &(u32::try_from(array.len()).map_err(|_| ErrorKind::InvalidData)?).to_le_bytes(),
             )?;
@@ -84,7 +85,7 @@ mod serde_json_value {
             map: &serde_json::Map<String, serde_json::Value>,
             writer: &mut W,
         ) -> Result<()> {
-            // The implementation here is identical to that of BTreeMap<String, serde_json::Value>.
+            // The implementation here is very similar to that of BTreeMap<K, V>.
             u32::try_from(map.len())
                 .map_err(|_| ErrorKind::InvalidData)?
                 .serialize(writer)?;
@@ -179,6 +180,7 @@ mod serde_json_value {
 
         /// this is mutually recursive with `deserialize_value`  
         fn deserialize_array<R: Read>(reader: &mut R) -> Result<Vec<serde_json::Value>> {
+            // The implementation here is very similar to that of Vec<V>.
             let len = u32::deserialize_reader(reader)?;
             let mut result = Vec::with_capacity(hint_cautious::<(String, serde_json::Value)>(len));
             for _ in 0..len {
@@ -192,9 +194,10 @@ mod serde_json_value {
         fn deserialize_map<R: Read>(
             reader: &mut R,
         ) -> Result<serde_json::Map<String, serde_json::Value>> {
-            // The implementation here is identical to that of BTreeMap<String, serde_json::Value>.
+            // The implementation here is very similar to that of BTreeMap<K, V>.
 
             let vec: Vec<(String, serde_json::Value)> = {
+                // The implementation here is very similar to that of Vec<(K, V)>.
                 let len = u32::deserialize_reader(reader)?;
                 let mut result =
                     Vec::with_capacity(hint_cautious::<(String, serde_json::Value)>(len));
