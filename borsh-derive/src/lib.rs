@@ -282,10 +282,14 @@ struct B<K, V> {
 }
 ```
 
+###### usage (comprehensive example)
+
+[borsh/examples/serde_json_value.rs](https://github.com/near/borsh-rs/blob/master/borsh/examples/serde_json_value.rs) is
+a more complex example of how the attribute may be used.
+
 ###### interaction with `#[borsh(skip)]`
 
 `#[borsh(serialize_with = ...)]` is not allowed to be used simultaneously with `#[borsh(skip)]`.
-
 
 */
 #[proc_macro_derive(BorshSerialize, attributes(borsh))]
@@ -621,6 +625,11 @@ struct B<K: Hash + Eq, V> {
     y: String,
 }
 ```
+
+###### usage (comprehensive example)
+
+[borsh/examples/serde_json_value.rs](https://github.com/near/borsh-rs/blob/master/borsh/examples/serde_json_value.rs) is
+a more complex example of how the attribute may be used.
 
 ###### interaction with `#[borsh(skip)]`
 

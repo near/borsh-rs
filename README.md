@@ -99,6 +99,12 @@ enum A {
 }
 ```
 
+## Advanced examples 
+
+Some of the less trivial examples are present in [examples](./borsh/examples) folder:
+
+- [implementing `BorshSerialize`/`BorshDeserialize` for third-party `serde_json::Value`](./borsh/examples/serde_json_value.rs)
+
 ## Testing
 
 Integration tests should generally be preferred to unit ones. Root module of integration tests of `borsh` crate is [linked](./borsh/tests/tests.rs) here.
