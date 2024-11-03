@@ -25,6 +25,7 @@ pub fn simple_enum() {
         "ABacon" => Definition::Struct{ fields: Fields::Empty },
         "AEggs" => Definition::Struct{ fields: Fields::Empty },
             "A" => Definition::Enum {
+                tag_signed: false,
                 tag_width: 1,
                 variants: vec![(0, "Bacon".to_string(), "ABacon".to_string()), (1, "Eggs".to_string(), "AEggs".to_string())]
             }
@@ -47,6 +48,7 @@ pub fn single_field_enum() {
         schema_map! {
             "ABacon" => Definition::Struct {fields: Fields::Empty},
             "A" => Definition::Enum {
+                tag_signed: false,
                 tag_width: 1,
                 variants: vec![(0, "Bacon".to_string(), "ABacon".to_string())]
             }
@@ -131,6 +133,7 @@ pub fn complex_enum_with_schema() {
         "ABacon" => Definition::Struct {fields: Fields::Empty},
         "Oil" => Definition::Struct {fields: Fields::Empty},
             "A" => Definition::Enum {
+                tag_signed: false,
                 tag_width: 1,
                 variants: vec![
                     (0, "Bacon".to_string(), "ABacon".to_string()),

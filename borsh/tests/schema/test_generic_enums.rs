@@ -40,6 +40,7 @@ pub fn complex_enum_generics() {
         "ABacon" => Definition::Struct {fields: Fields::Empty},
         "Oil" => Definition::Struct {fields: Fields::Empty},
         "A<Cucumber, Wrapper>" => Definition::Enum {
+            tag_signed: false,
             tag_width: 1,
             variants: vec![
                 (0, "Bacon".to_string(), "ABacon".to_string()),
@@ -102,6 +103,7 @@ pub fn complex_enum_generics2() {
     assert_eq!(
         schema_map! {
             "A<Cucumber, Wrapper<String>>" => Definition::Enum {
+                tag_signed: false,
                 tag_width: 1,
                 variants: vec![
                     (0, "Bacon".to_string(), "ABacon".to_string()),
@@ -111,6 +113,7 @@ pub fn complex_enum_generics2() {
                 ]
             },
             "A<String, String>" => Definition::Enum {
+                tag_signed: false,
                 tag_width: 1,
                 variants: vec![
                     (0, "Bacon".to_string(), "ABacon".to_string()),
@@ -134,6 +137,7 @@ pub fn complex_enum_generics2() {
             },
         "Oil<u64, String>" => Definition::Struct { fields: Fields::NamedFields(vec![("seeds".to_string(), "HashMap<u64, String>".to_string()), ("liquid".to_string(), "Option<u64>".to_string())])},
             "Option<String>" => Definition::Enum {
+                tag_signed: false,
                 tag_width: 1,
                 variants: vec![
                     (0, "None".to_string(), "()".to_string()),
@@ -141,6 +145,7 @@ pub fn complex_enum_generics2() {
                 ]
             },
             "Option<u64>" => Definition::Enum {
+                tag_signed: false,
                 tag_width: 1,
                 variants: vec![
                     (0, "None".to_string(), "()".to_string()),
@@ -166,6 +171,7 @@ pub fn complex_enum_generics2() {
 fn common_map_associated() -> BTreeMap<String, Definition> {
     schema_map! {
         "EnumParametrized<String, u32, i8, u16>" => Definition::Enum {
+            tag_signed: false,
             tag_width: 1,
             variants: vec![
                 (0, "B".to_string(), "EnumParametrizedB<u32, i8, u16>".to_string()),

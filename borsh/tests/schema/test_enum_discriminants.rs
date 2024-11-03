@@ -21,6 +21,7 @@ fn test_schema_discriminant_no_unit_type() {
     assert_eq!(
         schema_map! {
             "XY" => Definition::Enum {
+                tag_signed: false,
                 tag_width: 1,
                 variants: vec![
                      (0, "A".to_string(), "XYA".to_string()),
@@ -29,7 +30,7 @@ fn test_schema_discriminant_no_unit_type() {
                      (22, "D".to_string(), "XYD".to_string()),
                      (10, "E".to_string(), "XYE".to_string()),
                      (11, "F".to_string(), "XYF".to_string())
-                ]
+                ],
             },
             "XYA" => Definition::Struct{ fields: Fields::Empty },
             "XYB" => Definition::Struct{ fields: Fields::Empty },
@@ -73,6 +74,7 @@ fn test_schema_discriminant_no_unit_type_no_use_discriminant() {
     assert_eq!(
         schema_map! {
             "XYNoDiscriminant" => Definition::Enum {
+                tag_signed: false,
                 tag_width: 1,
                 variants: vec![
                      (0, "A".to_string(), "XYNoDiscriminantA".to_string()),
@@ -99,4 +101,54 @@ fn test_schema_discriminant_no_unit_type_no_use_discriminant() {
         },
         defs
     );
+}
+
+
+#[test]
+fn tag_widths() {
+    #[derive(BorshSchema)]
+    #[borsh(use_discriminant=true, tag_width = 2)]
+    #[repr(u16)]
+    enum U16Discriminant {
+       A = 42u16,
+    }
+
+    let mut defs = Default::default();
+    U16Discriminant::add_definitions_recursively(&mut defs);
+    assert_eq!(
+        schema_map! {
+            "U16Discriminant" => Definition::Enum {
+                tag_signed: false,
+                tag_width: 2,
+                variants: vec![
+                     (42, "A".to_string(), "U16DiscriminantA".to_string()),
+                ],
+            },
+            "U16DiscriminantA" => Definition::Struct{ fields: Fields::Empty }
+        },
+        defs
+    );
+
+    #[derive(BorshSchema)]
+    #[borsh(use_discriminant = true, tag_width = 4)]
+    #[repr(u32)]
+    enum U32Discriminant {
+       A = 42u32,
+    }
+
+    let mut defs = Default::default();
+    U32Discriminant::add_definitions_recursively(&mut defs);
+    assert_eq!(
+        schema_map! {
+            "U32Discriminant" => Definition::Enum {
+                tag_signed: false,
+                tag_width: 4,
+                variants: vec![
+                     (42, "A".to_string(), "U32DiscriminantA".to_string()),
+                ],
+            },
+            "U32DiscriminantA" => Definition::Struct{ fields: Fields::Empty }
+        },
+        defs
+    );    
 }

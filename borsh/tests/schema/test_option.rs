@@ -9,6 +9,7 @@ fn simple_option() {
     assert_eq!(
         schema_map! {
             "Option<u64>" => Definition::Enum {
+                tag_signed: false,
                 tag_width: 1,
                 variants: vec![
                     (0, "None".to_string(), "()".to_string()),
@@ -31,6 +32,7 @@ fn nested_option() {
     assert_eq!(
         schema_map! {
             "Option<u64>" => Definition::Enum {
+                tag_signed: false,
                 tag_width: 1,
                 variants: vec![
                     (0, "None".to_string(), "()".to_string()),
@@ -38,6 +40,7 @@ fn nested_option() {
                 ]
             },
             "Option<Option<u64>>" => Definition::Enum {
+                tag_signed: false,
                 tag_width: 1,
                 variants: vec![
                     (0, "None".to_string(), "()".to_string()),

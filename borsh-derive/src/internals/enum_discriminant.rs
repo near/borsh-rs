@@ -10,6 +10,7 @@ pub struct Discriminants{
     variants: HashMap<Ident, TokenStream>, 
     discriminant_type : syn::TypePath,
     use_discriminant: bool,
+    tag_width: u8,
 }
 
 impl Discriminants {
@@ -35,8 +36,10 @@ impl Discriminants {
         }    
 
         let mut discriminant_type: TypePath = syn::parse_str("u8").unwrap();
+        let mut tag_width = 1;
 
-        if let Some((tag_width, span)) = maybe_borsh_tag_width {
+        if let Some((defined_tag_width, span)) = maybe_borsh_tag_width {
+            tag_width = defined_tag_width;
             if !use_discriminant {
                 return Err(syn::Error::new(
                     span,
@@ -67,7 +70,6 @@ impl Discriminants {
                         )),
                     };
                     discriminant_type = rust_repr.clone();
-                    println!("repr_type: {:?}, repr_size: {:?} tag_width:{:?} ", repr_type, repr_size, tag_width);
 
                     if repr_size != tag_width {
                         return Err(syn::Error::new(
@@ -83,18 +85,22 @@ impl Discriminants {
                     ));
                 }
             }
-            println!("discriminant_type: {:?}", discriminant_type.path.get_ident());
         }
 
         Ok(Self {
             variants : map,
             discriminant_type,
-            use_discriminant
+            use_discriminant,
+            tag_width,
         })
     }
 
     pub fn discriminant_type(&self) -> &syn::TypePath {
         &self.discriminant_type
+    }
+
+    pub fn tag_width(&self) -> u8 {
+        self.tag_width
     }
 
     pub fn get(

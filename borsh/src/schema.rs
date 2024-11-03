@@ -112,6 +112,10 @@ pub enum Definition {
         /// invalid if the value is greater than eight.
         tag_width: u8,
 
+        /// If true, than tag is signed value.
+        /// If false, unsigned value.
+        tag_signed: bool,
+
         /// Possible variants of the enumeration.
         /// `VariantName` is metadata, not present in a type's serialized representation.
         variants: Vec<(DiscriminantValue, VariantName, Declaration)>,
@@ -601,6 +605,7 @@ where
                 (0u8 as i64, "None".to_string(), <()>::declaration()),
                 (1u8 as i64, "Some".to_string(), T::declaration()),
             ],
+            tag_signed: false,
         };
         add_definition(Self::declaration(), definition, definitions);
         T::add_definitions_recursively(definitions);
@@ -624,6 +629,7 @@ where
                 (1u8 as i64, "Ok".to_string(), T::declaration()),
                 (0u8 as i64, "Err".to_string(), E::declaration()),
             ],
+            tag_signed: false,
         };
         add_definition(Self::declaration(), definition, definitions);
         T::add_definitions_recursively(definitions);

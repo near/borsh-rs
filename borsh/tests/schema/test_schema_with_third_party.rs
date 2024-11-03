@@ -100,6 +100,7 @@ pub fn enum_overriden() {
     assert_eq!(
         schema_map! {
             "C<u64, String>" => Definition::Enum {
+                tag_signed: false,
                 tag_width: 1,
                 variants: vec![
                     (0, "C3".to_string(), "CC3".to_string()),

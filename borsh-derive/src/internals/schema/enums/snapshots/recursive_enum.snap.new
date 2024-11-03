@@ -1,0 +1,56 @@
+---
+source: borsh-derive/src/internals/schema/enums/mod.rs
+assertion_line: 403
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+impl<K: Key, V> borsh::BorshSchema for A<K, V>
+where
+    V: Value,
+    K: borsh::BorshSchema,
+    V: borsh::BorshSchema,
+{
+    fn declaration() -> borsh::schema::Declaration {
+        let params = borsh::__private::maybestd::vec![
+            < K as borsh::BorshSchema > ::declaration(), < V as borsh::BorshSchema >
+            ::declaration()
+        ];
+        format!(r#"{}<{}>"#, "A", params.join(", "))
+    }
+    fn add_definitions_recursively(
+        definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
+            borsh::schema::Declaration,
+            borsh::schema::Definition,
+        >,
+    ) {
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct AB<K: Key, V>
+        where
+            V: Value,
+        {
+            x: HashMap<K, V>,
+            y: String,
+        }
+        #[allow(dead_code)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct AC<K: Key>(K, Vec<A>);
+        <AB<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <AC<K> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        let definition = borsh::schema::Definition::Enum {
+            tag_width: 1u8,
+            variants: borsh::__private::maybestd::vec![
+                (u8::from(0u8) as i64, "B".into(), < AB < K, V > as borsh::BorshSchema >
+                ::declaration()), (u8::from(1u8) as i64, "C".into(), < AC < K > as
+                borsh::BorshSchema > ::declaration())
+            ],
+            tag_signed: false,
+        };
+        borsh::schema::add_definition(
+            <Self as borsh::BorshSchema>::declaration(),
+            definition,
+            definitions,
+        );
+    }
+}

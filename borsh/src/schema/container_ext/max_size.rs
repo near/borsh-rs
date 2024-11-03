@@ -126,6 +126,7 @@ fn max_serialized_size_impl<'a>(
         Ok(Definition::Enum {
             tag_width,
             variants,
+            tag_signed: _, 
         }) => {
             let mut max = 0;
             for (_, _, variant) in variants {
@@ -232,6 +233,7 @@ fn is_zero_size_impl<'a>(
         Ok(Definition::Enum {
             tag_width: 0,
             variants,
+            tag_signed: _,
         }) => all(
             variants.iter(),
             |(_variant_discrim, _variant_name, declaration)| declaration,

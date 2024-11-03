@@ -14,6 +14,7 @@ pub fn recursive_enum_schema() {
     assert_eq!(
         schema_map! {
            "ERecD" => Definition::Enum {
+                tag_signed: false,
                 tag_width: 1,
                 variants: vec![
                     (0, "B".to_string(), "ERecDB".to_string()),

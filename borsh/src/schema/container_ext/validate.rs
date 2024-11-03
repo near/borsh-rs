@@ -106,10 +106,12 @@ fn validate_impl<'a>(
         Definition::Enum {
             tag_width,
             variants,
+            tag_signed: _,
         } => {
             if *tag_width > U64_LEN {
                 return Err(Error::TagTooWide(declaration.to_string()));
             }
+
             for (_, _, variant) in variants {
                 validate_impl(variant, schema, stack)?;
             }

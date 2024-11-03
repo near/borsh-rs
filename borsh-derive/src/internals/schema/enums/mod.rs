@@ -63,13 +63,15 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
         variants_defs.push(variant_output.variant_entry);
     }
 
+    let tag_width = discriminants.tag_width();
     let type_definitions = quote! {
         fn add_definitions_recursively(definitions: &mut #cratename::__private::maybestd::collections::BTreeMap<#cratename::schema::Declaration, #cratename::schema::Definition>) {
             #inner_defs
             #add_recursive_defs
             let definition = #cratename::schema::Definition::Enum {
-                tag_width: 1,
+                tag_width: #tag_width,
                 variants: #cratename::__private::maybestd::vec![#(#variants_defs),*],
+                tag_signed: false,
             };
             #cratename::schema::add_definition(<Self as #cratename::BorshSchema>::declaration(), definition, definitions);
         }

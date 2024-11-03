@@ -133,6 +133,7 @@ fn max_serialized_size_custom_enum() {
         }
         fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
             let definition = Definition::Enum {
+                tag_signed: false,
                 tag_width: N,
                 variants: vec![
                     (0, "Just".into(), T::declaration()),
