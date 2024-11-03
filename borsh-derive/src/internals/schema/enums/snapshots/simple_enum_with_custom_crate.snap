@@ -1,6 +1,7 @@
 ---
 source: borsh-derive/src/internals/schema/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
+snapshot_kind: text
 ---
 impl reexporter::borsh::BorshSchema for A {
     fn declaration() -> reexporter::borsh::schema::Declaration {
@@ -27,13 +28,14 @@ impl reexporter::borsh::BorshSchema for A {
             definitions,
         );
         let definition = reexporter::borsh::schema::Definition::Enum {
-            tag_width: 1,
+            tag_width: 1u8,
             variants: reexporter::borsh::__private::maybestd::vec![
                 (u8::from(0u8) as i64, "Bacon".into(), < ABacon as
                 reexporter::borsh::BorshSchema > ::declaration()), (u8::from(1u8) as i64,
                 "Eggs".into(), < AEggs as reexporter::borsh::BorshSchema >
                 ::declaration())
             ],
+            tag_signed: false,
         };
         reexporter::borsh::schema::add_definition(
             <Self as reexporter::borsh::BorshSchema>::declaration(),
@@ -42,4 +44,3 @@ impl reexporter::borsh::BorshSchema for A {
         );
     }
 }
-
