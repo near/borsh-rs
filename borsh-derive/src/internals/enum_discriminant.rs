@@ -1,8 +1,3 @@
-//! 
-//! Algorithm of finding out tag width:
-//! 1. Rust `repr(...)` and `borsh(tag_width = ...) attributes are read
-//! 2. If repr is signed, transparent or variable with *size, borsh errors with unsupported
-//! 2.1. NOTE: signed to be supported
 use core::convert::TryInto;
 use std::collections::HashMap;
 use std::convert::TryFrom;
