@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
-assertion_line: 152
+assertion_line: 164
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl reexporter::borsh::de::BorshDeserialize for A {

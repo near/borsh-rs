@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
-use syn::{punctuated::Punctuated, spanned::Spanned, token::Comma, Variant};
+use syn::{punctuated::Punctuated, spanned::Spanned, token::Comma, TypePath, Variant};
 
 pub struct Discriminants{
     variants: HashMap<Ident, TokenStream>, 
@@ -34,7 +34,7 @@ impl Discriminants {
             map.insert(variant.ident.clone(), this_discriminant);
         }    
 
-        let mut discriminant_type = syn::parse_str("u8").unwrap();
+        let mut discriminant_type: TypePath = syn::parse_str("u8").unwrap();
 
         if let Some((tag_width, span)) = maybe_borsh_tag_width {
             if !use_discriminant {
@@ -53,15 +53,12 @@ impl Discriminants {
                 Some(repr_type) =>  {
                     let repr_size= match repr_type.to_string().as_str() {
                         "u8" => {
-                            discriminant_type = syn::parse_str("u8").unwrap();
                             1
                         },
                         "u16" => {
-                            discriminant_type = syn::parse_str("u16").unwrap();
                             2
                         },
                         "u32" => {
-                            discriminant_type = syn::parse_str("u32").unwrap();
                             4
                         },
                         _ => return Err(syn::Error::new(
@@ -69,6 +66,8 @@ impl Discriminants {
                             "`tag_width` specifier is only allowed when `repr` is set to a u8, u16, or u32",
                         )),
                     };
+                    discriminant_type = rust_repr.clone();
+                    println!("repr_type: {:?}, repr_size: {:?} tag_width:{:?} ", repr_type, repr_size, tag_width);
 
                     if repr_size != tag_width {
                         return Err(syn::Error::new(
@@ -84,6 +83,7 @@ impl Discriminants {
                     ));
                 }
             }
+            println!("discriminant_type: {:?}", discriminant_type.path.get_ident());
         }
 
         Ok(Self {

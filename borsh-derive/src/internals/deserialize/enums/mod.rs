@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{Fields, ItemEnum, Path, Variant};
+use syn::{Fields, ItemEnum, Path, TypePath, Variant};
 
 use crate::internals::{attributes::item, deserialize, enum_discriminant::Discriminants, generics};
 
@@ -46,22 +46,34 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
         Ok(return_value)
     };
 
-    Ok(quote! {
+    let deserialize = quote! {
         impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
             fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
                 let variant_tag = <#discriminant_type as #cratename::de::BorshDeserialize>::deserialize_reader(reader)?;
                 #deserialize_variant
             }
         }
+    };
 
-        impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
-            fn deserialize_variant<__R: #cratename::io::Read>(
-                reader: &mut __R,
-                variant_tag: u8,
-            ) -> ::core::result::Result<Self, #cratename::io::Error> {
-                #deserialize_variant
-            }
+    let impl_trait = if discriminant_type.path.get_ident() == (syn::parse_str::<TypePath>("u8").unwrap().path.get_ident()) {
+        quote! {
+            impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
+                fn deserialize_variant<__R: #cratename::io::Read>(
+                    reader: &mut __R,
+                    variant_tag: u8,
+                ) -> ::core::result::Result<Self, #cratename::io::Error> {
+                    #deserialize_variant
+                }
+            }            
         }
+    } else {
+        quote! {}
+    };
+
+    Ok(quote! {
+        #deserialize
+
+        #impl_trait
     })
 }
 

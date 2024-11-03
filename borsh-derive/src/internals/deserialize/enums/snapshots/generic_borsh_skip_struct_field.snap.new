@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
-assertion_line: 222
+assertion_line: 234
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 impl<K: Key, V, U> borsh::de::BorshDeserialize for A<K, V, U>
