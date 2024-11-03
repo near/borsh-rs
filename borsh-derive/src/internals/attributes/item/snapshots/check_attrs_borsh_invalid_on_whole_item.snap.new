@@ -1,8 +1,0 @@
----
-source: borsh-derive/src/internals/attributes/item/mod.rs
-assertion_line: 262
-expression: actual.unwrap_err()
----
-Error(
-    "`crate`, `use_discriminant`, `tag_width` or `init` are the only supported attributes for `borsh`",
-)

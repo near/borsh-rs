@@ -1,6 +1,7 @@
 ---
 source: borsh-derive/src/internals/schema/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
+snapshot_kind: text
 ---
 impl<K: Key, V> borsh::BorshSchema for A<K, V>
 where
@@ -38,12 +39,13 @@ where
         <AB<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         <AC<K> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let definition = borsh::schema::Definition::Enum {
-            tag_width: 1,
+            tag_width: 1u8,
             variants: borsh::__private::maybestd::vec![
                 (u8::from(0u8) as i64, "B".into(), < AB < K, V > as borsh::BorshSchema >
                 ::declaration()), (u8::from(1u8) as i64, "C".into(), < AC < K > as
                 borsh::BorshSchema > ::declaration())
             ],
+            tag_signed: false,
         };
         borsh::schema::add_definition(
             <Self as borsh::BorshSchema>::declaration(),
@@ -52,4 +54,3 @@ where
         );
     }
 }
-

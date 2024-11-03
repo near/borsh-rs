@@ -1,13 +1,35 @@
 ---
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
+snapshot_kind: text
 ---
 impl borsh::de::BorshDeserialize for AAT {
     fn deserialize_reader<__R: borsh::io::Read>(
         reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
-        let tag = <u8 as borsh::de::BorshDeserialize>::deserialize_reader(reader)?;
-        <Self as borsh::de::EnumExt>::deserialize_variant(reader, tag)
+        let variant_tag = <u8 as borsh::de::BorshDeserialize>::deserialize_reader(
+            reader,
+        )?;
+        let mut return_value = if variant_tag == 0u8 {
+            AAT::B(
+                core::default::Default::default(),
+                borsh::BorshDeserialize::deserialize_reader(reader)?,
+            )
+        } else if variant_tag == 1u8 {
+            AAT::NegatedVariant {
+                beta: borsh::BorshDeserialize::deserialize_reader(reader)?,
+            }
+        } else {
+            return Err(
+                borsh::io::Error::new(
+                    borsh::io::ErrorKind::InvalidData,
+                    borsh::__private::maybestd::format!(
+                        "Unexpected variant tag: {:?}", variant_tag
+                    ),
+                ),
+            )
+        };
+        Ok(return_value)
     }
 }
 impl borsh::de::EnumExt for AAT {

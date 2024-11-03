@@ -1,10 +1,12 @@
 ---
 source: borsh/tests/schema/test_ip_addr.rs
 expression: "format!(\"{:#?}\", defs)"
+snapshot_kind: text
 ---
 {
     "IpAddr": Enum {
         tag_width: 1,
+        tag_signed: false,
         variants: [
             (
                 0,
