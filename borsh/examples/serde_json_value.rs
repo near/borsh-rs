@@ -75,7 +75,7 @@ mod serde_json_value {
                 &(u32::try_from(array.len()).map_err(|_| ErrorKind::InvalidData)?).to_le_bytes(),
             )?;
             for item in array {
-                serialize_value(&item, writer)?;
+                serialize_value(item, writer)?;
             }
             Ok(())
         }
@@ -92,7 +92,7 @@ mod serde_json_value {
 
             for (key, value) in map {
                 key.serialize(writer)?;
-                serialize_value(&value, writer)?;
+                serialize_value(value, writer)?;
             }
 
             Ok(())
@@ -260,8 +260,8 @@ fn main() {
         "negative_integer": -88888,
         "positive_float": 123.45,
         "negative_float": -888.88,
-        "positive_max": 1.7976931348623157e+308,
-        "negative_max": -1.7976931348623157e+308,
+        "positive_max": 1.797_693_134_862_315_7e308,
+        "negative_max": -1.797_693_134_862_315_7e308,
         "string": "Larry",
         "array_of_nulls": [null, null, null],
         "array_of_numbers": [0, -1, 1, 1.1, -1.1, 34798324],

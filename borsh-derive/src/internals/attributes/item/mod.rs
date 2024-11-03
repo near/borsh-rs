@@ -36,10 +36,10 @@ pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
 }
 
 pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
-    if input.variants.len() > 256 {
+    if input.variants.len() > u8::MAX as usize + 1 {
         return Err(syn::Error::new(
             input.span(),
-            "up to 256 enum variants are supported",
+            format!("up to {} enum variants are supported", u8::MAX as usize + 1),
         ));
     }
     let attrs: &Vec<Attribute> = &input.attrs;

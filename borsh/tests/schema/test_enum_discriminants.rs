@@ -109,6 +109,7 @@ fn tag_widths() {
     #[derive(BorshSchema)]
     #[borsh(use_discriminant=true, tag_width = 2)]
     #[repr(u16)]
+    #[allow(dead_code)]
     enum U16Discriminant {
        A = 42u16,
     }
@@ -132,6 +133,7 @@ fn tag_widths() {
     #[derive(BorshSchema)]
     #[borsh(use_discriminant = true, tag_width = 4)]
     #[repr(u32)]
+    #[allow(dead_code)]    
     enum U32Discriminant {
        A = 42u32,
     }

@@ -53,7 +53,6 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
         let discriminant_info = DiscriminantInfo {
             variant_idx,
             discriminants: &discriminants,
-            use_discriminant,
         };
         let variant_output = process_variant(
             variant,
@@ -106,7 +105,6 @@ struct VariantOutput {
 struct DiscriminantInfo<'a> {
     variant_idx: usize,
     discriminants: &'a Discriminants,
-    use_discriminant: bool,
 }
 
 fn process_discriminant(

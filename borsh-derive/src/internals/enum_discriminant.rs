@@ -1,10 +1,9 @@
-use core::convert::TryInto;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{quote, ToTokens};
-use syn::{punctuated::Punctuated, spanned::Spanned, token::Comma, TypePath, Variant};
+use quote::quote;
+use syn::{punctuated::Punctuated, token::Comma, TypePath, Variant};
 
 pub struct Discriminants {
     variants: HashMap<Ident, TokenStream>,
@@ -99,6 +98,7 @@ impl Discriminants {
         &self.discriminant_type
     }
 
+    #[allow(dead_code)]
     pub fn tag_width(&self) -> u8 {
         self.tag_width
     }

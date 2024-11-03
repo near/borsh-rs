@@ -29,7 +29,7 @@ enum XYNoDiscriminant {
 
 #[test]
 fn test_discriminant_serde_no_unit_type() {
-    let values = vec![XY::A, XY::B, XY::C, XY::E, XY::D(12, 14), XY::F(35325423)];
+    let values = [XY::A, XY::B, XY::C, XY::E, XY::D(12, 14), XY::F(35325423)];
     let expected_discriminants = [0u8, 20, 21, 10, 22, 11];
 
     for (ind, value) in values.iter().enumerate() {
@@ -89,14 +89,12 @@ pub fn u32_discriminant() {
 
 #[test]
 fn test_discriminant_serde_no_unit_type_no_use_discriminant() {
-    let values = vec![
-        XYNoDiscriminant::A,
+    let values = [XYNoDiscriminant::A,
         XYNoDiscriminant::B,
         XYNoDiscriminant::C,
         XYNoDiscriminant::D(12, 14),
         XYNoDiscriminant::E,
-        XYNoDiscriminant::F(35325423),
-    ];
+        XYNoDiscriminant::F(35325423)];
     let expected_discriminants = [0u8, 1, 2, 3, 4, 5];
 
     for (ind, value) in values.iter().enumerate() {
@@ -153,14 +151,12 @@ enum XNoDiscriminant {
 
 #[test]
 fn test_discriminant_serde_no_use_discriminant() {
-    let values = vec![
-        XNoDiscriminant::A,
+    let values = [XNoDiscriminant::A,
         XNoDiscriminant::B,
         XNoDiscriminant::C,
         XNoDiscriminant::D,
         XNoDiscriminant::E,
-        XNoDiscriminant::F,
-    ];
+        XNoDiscriminant::F];
     let expected_discriminants = [0u8, 1, 2, 3, 4, 5];
     for (index, value) in values.iter().enumerate() {
         let data = to_vec(value).unwrap();
@@ -217,7 +213,7 @@ fn test_deserialize_invalid_discriminant() {
 
 #[test]
 fn test_discriminant_serde() {
-    let values = vec![X::A, X::B, X::C, X::D, X::E, X::F];
+    let values = [X::A, X::B, X::C, X::D, X::E, X::F];
     let expected_discriminants = [0u8, 20, 21, 22, 10, 11];
     for (index, value) in values.iter().enumerate() {
         let data = to_vec(value).unwrap();
