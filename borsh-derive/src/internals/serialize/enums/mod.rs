@@ -18,12 +18,13 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let mut fields_body = TokenStream2::new();
     let use_discriminant = item::contains_use_discriminant(input)?;
     let maybe_borsh_tag_width = item::get_maybe_borsh_tag_width(input)?;
-    let discriminants = Discriminants::new(&input.variants, maybe_borsh_tag_width)?;
+    let maybe_rust_repr = item::get_maybe_rust_repr(input);
+    let discriminants = Discriminants::new(&input.variants, maybe_borsh_tag_width, maybe_rust_repr, use_discriminant)?;
     let mut has_unit_variant = false;
 
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_ident = &variant.ident;
-        let discriminant_value = discriminants.get(variant_ident, use_discriminant, variant_idx)?;
+        let discriminant_value = discriminants.get(variant_ident, variant_idx)?;
         let variant_output = process_variant(
             variant,
             enum_ident,

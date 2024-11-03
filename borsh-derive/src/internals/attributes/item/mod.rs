@@ -36,6 +36,12 @@ pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
 }
 
 pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
+    if input.variants.len() > 256 {
+        return Err(syn::Error::new(
+            input.span(),
+            "up to 256 enum variants are supported",
+        ));
+    }    
     let attrs: &Vec<Attribute> = &input.attrs;
     let mut use_discriminant = None;
     let attr = attrs.iter().find(|attr| attr.path() == BORSH);
@@ -75,14 +81,13 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
     Ok(use_discriminant.unwrap_or(false))
 }
 
-pub(crate) fn get_may_be_repr(inpute: &ItemEnum) -> Result<Option<(TypePath, Span)>, syn::Error> {
-    inpute
+pub(crate) fn get_maybe_rust_repr(input: &ItemEnum) -> Option<(TypePath, Span)> {
+    input
         .attrs
         .iter()
         .find(|attr| attr.path() == RUST_REPR)
-        .map(|attr| attr.parse_args::<TypePath>().map(|value| (attr, value)))
-        .transpose()
-        .map(|(attr, value)| value.map(|value| (value, attr.unwrap().span())))
+        .map(|attr| attr.parse_args::<TypePath>().map(|value| (attr, value)).unwrap())
+        .map(|(attr, value)| (value, attr.span()))
 }
 
 pub(crate) fn get_maybe_borsh_tag_width(

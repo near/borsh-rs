@@ -12,22 +12,17 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let mut variant_arms = TokenStream2::new();
     let use_discriminant = item::contains_use_discriminant(input)?;
     let maybe_borsh_tag_width = item::get_maybe_borsh_tag_width(input)?;
-    let discriminants = Discriminants::new(&input.variants, maybe_borsh_tag_width)?;
+    let maybe_rust_repr = item::get_maybe_rust_repr(input);
+    let discriminants = Discriminants::new(&input.variants, maybe_borsh_tag_width, maybe_rust_repr, use_discriminant)?;
     let mut generics_output = deserialize::GenericsOutput::new(&generics);
     let discriminant_type = discriminants.discriminant_type();
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_body = process_variant(variant, &cratename, &mut generics_output)?;
         let variant_ident = &variant.ident;
 
-        let discriminant_value = discriminants.get(variant_ident, use_discriminant, variant_idx)?;
+        let discriminant_value = discriminants.get(variant_ident, variant_idx)?;
         variant_arms.extend(quote! {
-            if TryInto::<(#discriminant_type)>::try_into(variant_tag).map_err(|_|
-                return #cratename::io::Error::new(
-                    #cratename::io::ErrorKind::InvalidData,
-                    #cratename::__private::maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
-                )
-            )?
-                 == #discriminant_value { #name::#variant_ident #variant_body } else
+            if variant_tag == #discriminant_value { #name::#variant_ident #variant_body } else
         });
     }
     let init = if let Some(method_ident) = item::contains_initialize_with(&input.attrs)? {
@@ -39,36 +34,35 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     };
     generics_output.extend(&mut where_clause, &cratename);
 
-    let x = quote! {
+    let deserialize_variant = quote! {
+        let mut return_value =
+            #variant_arms {
+                return Err(#cratename::io::Error::new(
+                    #cratename::io::ErrorKind::InvalidData,
+                    #cratename::__private::maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
+                ))
+            };
+        #init
+        Ok(return_value)
+    };
+
+    Ok(quote! {
         impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
             fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
-                let tag = <#discriminant_type as #cratename::de::BorshDeserialize>::deserialize_reader(reader)?;
-                <Self as #cratename::de::EnumExt>::deserialize_variant::<_, #discriminant_type>(reader, tag)
+                let variant_tag = <#discriminant_type as #cratename::de::BorshDeserialize>::deserialize_reader(reader)?;
+                #deserialize_variant
             }
         }
 
         impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
-            fn deserialize_variant<__R: #cratename::io::Read,
-            Tag: borsh::BorshDeserialize + ::core::fmt::Debug + Eq
-            + ::core::convert::TryInto<u16> + ::core::convert::TryInto<u8> + Copy
-            >(
+            fn deserialize_variant<__R: #cratename::io::Read>(
                 reader: &mut __R,
-                variant_tag: Tag,
+                variant_tag: u8,
             ) -> ::core::result::Result<Self, #cratename::io::Error> {
-                use ::core::convert::TryInto;
-                let mut return_value =
-                    #variant_arms {
-                    return Err(#cratename::io::Error::new(
-                        #cratename::io::ErrorKind::InvalidData,
-                        #cratename::__private::maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
-                    ))
-                };
-                #init
-                Ok(return_value)
+                #deserialize_variant
             }
         }
-    };
-    Ok(x)
+    })
 }
 
 fn process_variant(
