@@ -1,3 +1,8 @@
+//! 
+//! Algorithm of finding out tag width:
+//! 1. Rust `repr(...)` and `borsh(tag_width = ...) attributes are read
+//! 2. If repr is signed, transparent or variable with *size, borsh errors with unsupported
+//! 2.1. NOTE: signed to be supported
 use core::convert::TryInto;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -17,26 +22,11 @@ impl Discriminants {
         let mut map = HashMap::new();
         let mut next_discriminant_if_not_specified = quote! {0};
 
-        fn bytes_needed(value: usize) -> usize {
-            let bits_needed = std::mem::size_of::<usize>() * 8 - value.leading_zeros() as usize;
-            (bits_needed + 7) / 8
-        }
-
         let min_tag_width: u8 = bytes_needed(variants.len())
             .try_into()
             .expect("variants cannot be bigger u64");
 
-        let mut min = 0;
-        let mut max = 0;
-
         for variant in variants {
-            if let Some(discriminant) = &variant.discriminant {
-                let value = discriminant.1.to_token_stream().to_string();
-                let value = value.parse::<i128>().unwrap();
-                min = value.min(min);
-                max = value.max(max);
-            }
-
             let this_discriminant = variant.discriminant.clone().map_or_else(
                 || quote! { #next_discriminant_if_not_specified },
                 |(_, e)| quote! { #e },
@@ -46,15 +36,6 @@ impl Discriminants {
             map.insert(variant.ident.clone(), this_discriminant);
         }
 
-        let min: u64 = min.abs().try_into().expect("variants cannot be bigger u64");
-        let max: u64 = max.try_into().expect("variants cannot be bigger u64");
-        if min > 0 {
-            return Err(syn::Error::new(
-                variants.span(),
-                "negative variants are not supported, please write manual impl",
-            ));
-        }
-        let max_bytes: u8 = bytes_needed(max as usize).try_into().expect("");
         if let Some((borsh_tag_width, span)) = maybe_borsh_tag_width {
             if borsh_tag_width < min_tag_width {
                 return Err(syn::Error::new(
@@ -68,17 +49,17 @@ impl Discriminants {
             }
         }
 
-        let tag_with = maybe_borsh_tag_width
+        let tag_width = maybe_borsh_tag_width
             .map(|(tag_width, _)| tag_width)
-            .unwrap_or_else(|| (max_bytes).max(min_tag_width));
+            .unwrap_or_else(|| (1).max(min_tag_width));
 
-        let tag_width_type = if tag_with <= 1 {
+        let tag_width_type = if tag_width <= 1 {
             "u8"
-        } else if tag_with <= 2 {
+        } else if tag_width <= 2 {
             "u16"
-        } else if tag_with <= 4 {
+        } else if tag_width <= 4 {
             "u32"
-        } else if tag_with <= 8 {
+        } else if tag_width <= 8 {
             "u64"
         } else {
             unreachable!("we eliminated such error earlier")

@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/attributes/item/mod.rs
-assertion_line: 243
+assertion_line: 247
 expression: actual.unwrap_err()
 ---
 Error(

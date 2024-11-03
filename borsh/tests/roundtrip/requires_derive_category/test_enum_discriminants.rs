@@ -54,6 +54,7 @@ pub fn u16_discriminant() {
     data.serialize(&mut buf).unwrap();
     assert_eq!(buf[0], 154);
     assert_eq!(buf[1], 2);
+    assert!(buf.len(), 2);
     let deserialized = U16Discriminant::deserialize(&mut buf.as_slice()).unwrap();
     assert_eq!(deserialized, data);
 }
@@ -63,16 +64,17 @@ pub fn u32_discriminant() {
     use borsh::{BorshDeserialize, BorshSerialize};
     #[derive(BorshSerialize, BorshDeserialize, Debug, Eq, PartialEq)]
     #[borsh(use_discriminant = true)]
+    #[repr(u32)]
     enum U32Discriminant {
-        U8 { a: u16 } = 42,
+        U8 { a: u16 } = 42u32,
         U32 { b: u32 } = u32::MAX,
     }
     let mut buf = vec![];
-    let data = U16Discriminant::U16 { b: 1234567 };
+    let data = U32Discriminant::U32 { b: 1234567 };
     data.serialize(&mut buf).unwrap();
     assert_eq!(buf[0], 154);
     assert_eq!(buf[1], 2);
-    let deserialized = U16Discriminant::deserialize(&mut buf.as_slice()).unwrap();
+    let deserialized = U32Discriminant::deserialize(&mut buf.as_slice()).unwrap();
     assert_eq!(deserialized, data);
 }
 

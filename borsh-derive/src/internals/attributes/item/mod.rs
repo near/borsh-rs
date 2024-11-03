@@ -3,7 +3,7 @@ use proc_macro2::Span;
 use quote::ToTokens;
 use syn::{spanned::Spanned, Attribute, DeriveInput, Error, Expr, ItemEnum, Path, TypePath};
 
-use super::{get_one_attribute, parsing, TAG_WIDTH};
+use super::{get_one_attribute, parsing, RUST_REPR, TAG_WIDTH};
 
 pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
     let borsh = get_one_attribute(&derive_input.attrs)?;
@@ -73,6 +73,16 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
             ));
     }
     Ok(use_discriminant.unwrap_or(false))
+}
+
+pub(crate) fn get_may_be_repr(inpute: &ItemEnum) -> Result<Option<(TypePath, Span)>, syn::Error> {
+    inpute
+        .attrs
+        .iter()
+        .find(|attr| attr.path() == RUST_REPR)
+        .map(|attr| attr.parse_args::<TypePath>().map(|value| (attr, value)))
+        .transpose()
+        .map(|(attr, value)| value.map(|value| (value, attr.unwrap().span())))
 }
 
 pub(crate) fn get_maybe_borsh_tag_width(
