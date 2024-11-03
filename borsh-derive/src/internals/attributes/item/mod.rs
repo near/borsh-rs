@@ -41,7 +41,7 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
             input.span(),
             "up to 256 enum variants are supported",
         ));
-    }    
+    }
     let attrs: &Vec<Attribute> = &input.attrs;
     let mut use_discriminant = None;
     let attr = attrs.iter().find(|attr| attr.path() == BORSH);
@@ -86,7 +86,11 @@ pub(crate) fn get_maybe_rust_repr(input: &ItemEnum) -> Option<(TypePath, Span)> 
         .attrs
         .iter()
         .find(|attr| attr.path() == RUST_REPR)
-        .map(|attr| attr.parse_args::<TypePath>().map(|value| (attr, value)).unwrap())
+        .map(|attr| {
+            attr.parse_args::<TypePath>()
+                .map(|value| (attr, value))
+                .unwrap()
+        })
         .map(|(attr, value)| (value, attr.span()))
 }
 

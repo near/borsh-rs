@@ -6,9 +6,9 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{punctuated::Punctuated, spanned::Spanned, token::Comma, TypePath, Variant};
 
-pub struct Discriminants{
-    variants: HashMap<Ident, TokenStream>, 
-    discriminant_type : syn::TypePath,
+pub struct Discriminants {
+    variants: HashMap<Ident, TokenStream>,
+    discriminant_type: syn::TypePath,
     use_discriminant: bool,
     tag_width: u8,
 }
@@ -19,7 +19,7 @@ impl Discriminants {
     pub fn new(
         variants: &Punctuated<Variant, Comma>,
         maybe_borsh_tag_width: Option<(u8, Span)>,
-        maybe_rust_repr: Option<(syn::TypePath,Span)>,
+        maybe_rust_repr: Option<(syn::TypePath, Span)>,
         use_discriminant: bool,
     ) -> syn::Result<Self> {
         let mut map = HashMap::new();
@@ -33,7 +33,7 @@ impl Discriminants {
 
             next_discriminant_if_not_specified = quote! { #this_discriminant + 1 };
             map.insert(variant.ident.clone(), this_discriminant);
-        }    
+        }
 
         let mut discriminant_type: TypePath = syn::parse_str("u8").unwrap();
         let mut tag_width = 1;
@@ -53,7 +53,7 @@ impl Discriminants {
                 ));
             };
             match rust_repr.path.get_ident() {
-                Some(repr_type) =>  {
+                Some(repr_type) => {
                     let repr_size= match repr_type.to_string().as_str() {
                         "u8" => {
                             1
@@ -88,7 +88,7 @@ impl Discriminants {
         }
 
         Ok(Self {
-            variants : map,
+            variants: map,
             discriminant_type,
             use_discriminant,
             tag_width,
@@ -103,11 +103,7 @@ impl Discriminants {
         self.tag_width
     }
 
-    pub fn get(
-        &self,
-        variant_ident: &Ident,
-        variant_idx: usize,
-    ) -> syn::Result<TokenStream> {
+    pub fn get(&self, variant_ident: &Ident, variant_idx: usize) -> syn::Result<TokenStream> {
         let result = if self.use_discriminant {
             let discriminant_value = self.variants.get(variant_ident).unwrap();
             quote! { #discriminant_value }
@@ -121,7 +117,7 @@ impl Discriminants {
                         err
                     ),
                 )
-            })?;            
+            })?;
             quote! { #variant_idx }
         };
         Ok(result)

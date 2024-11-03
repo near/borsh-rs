@@ -13,7 +13,12 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let use_discriminant = item::contains_use_discriminant(input)?;
     let maybe_borsh_tag_width = item::get_maybe_borsh_tag_width(input)?;
     let maybe_rust_repr = item::get_maybe_rust_repr(input);
-    let discriminants = Discriminants::new(&input.variants, maybe_borsh_tag_width, maybe_rust_repr, use_discriminant)?;
+    let discriminants = Discriminants::new(
+        &input.variants,
+        maybe_borsh_tag_width,
+        maybe_rust_repr,
+        use_discriminant,
+    )?;
     let mut generics_output = deserialize::GenericsOutput::new(&generics);
     let discriminant_type = discriminants.discriminant_type();
     for (variant_idx, variant) in input.variants.iter().enumerate() {
@@ -55,7 +60,9 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
         }
     };
 
-    let impl_trait = if discriminant_type.path.get_ident() == (syn::parse_str::<TypePath>("u8").unwrap().path.get_ident()) {
+    let impl_trait = if discriminant_type.path.get_ident()
+        == (syn::parse_str::<TypePath>("u8").unwrap().path.get_ident())
+    {
         quote! {
             impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
                 fn deserialize_variant<__R: #cratename::io::Read>(
@@ -64,7 +71,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
                 ) -> ::core::result::Result<Self, #cratename::io::Error> {
                     #deserialize_variant
                 }
-            }            
+            }
         }
     } else {
         quote! {}

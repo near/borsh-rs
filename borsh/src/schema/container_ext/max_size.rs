@@ -126,7 +126,7 @@ fn max_serialized_size_impl<'a>(
         Ok(Definition::Enum {
             tag_width,
             variants,
-            tag_signed: _, 
+            tag_signed: _,
         }) => {
             let mut max = 0;
             for (_, _, variant) in variants {
