@@ -18,6 +18,10 @@ exclude = ["*.snap"]
 name = "borsh"
 path = "src/lib.rs"
 
+[[example]]
+name = "serde_json_value"
+required-features = ["std", "derive"]
+
 [[bin]]
 name = "generate_schema_schema"
 path = "src/generate_schema_schema.rs"
@@ -39,6 +43,7 @@ bson = { version = "2", optional = true }
 
 [dev-dependencies]
 insta = "1.29.0"
+serde_json = { version = "1" }
 
 [package.metadata.docs.rs]
 features = ["derive", "unstable__schema", "rc"]
