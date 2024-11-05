@@ -6,7 +6,12 @@ use crate::internals::attributes::{
     Symbol,
 };
 use once_cell::sync::Lazy;
-use syn::{meta::ParseNestedMeta, Ident, Token, Type};
+use quote::ToTokens;
+use syn::{
+    meta::ParseNestedMeta,
+    parse::{Parse, ParseStream},
+    Ident, Token, Type,
+};
 
 use self::with_funcs::{WithFuncs, WITH_FUNCS_FIELD_PARSE_MAP};
 
@@ -52,11 +57,29 @@ pub static SCHEMA_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::
 /**
 Struct describes an entry like `order_param => override_type`,  e.g. `K => <K as TraitName>::Associated`
 */
-#[derive(Clone, syn_derive::Parse, syn_derive::ToTokens)]
+#[derive(Clone)]
 pub struct ParameterOverride {
     pub order_param: Ident,
     arrow_token: Token![=>],
     pub override_type: Type,
+}
+
+impl Parse for ParameterOverride {
+    fn parse(input: ParseStream) -> Result<Self, syn::Error> {
+        Ok(ParameterOverride {
+            order_param: input.parse()?,
+            arrow_token: input.parse()?,
+            override_type: input.parse()?,
+        })
+    }
+}
+
+impl ToTokens for ParameterOverride {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        self.order_param.to_tokens(tokens);
+        self.arrow_token.to_tokens(tokens);
+        self.override_type.to_tokens(tokens);
+    }
 }
 
 #[allow(unused)]
