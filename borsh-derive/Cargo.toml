@@ -25,7 +25,7 @@ quote = "1"
 once_cell = "1.18.0"
 
 [dev-dependencies]
-syn = { version = "2", features = ["full", "fold", "parsing"] }
+syn = { version = "2.0.81", features = ["full", "fold", "parsing"] }
 prettyplease = "0.2.9"
 insta = "1.29.0"
 
