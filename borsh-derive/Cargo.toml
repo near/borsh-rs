@@ -23,7 +23,6 @@ proc-macro-crate = "3"
 proc-macro2 = "1"
 quote = "1"
 once_cell = "1.18.0"
-syn_derive = "0.1.6"
 
 [dev-dependencies]
 syn = { version = "2", features = ["full", "fold", "parsing"] }

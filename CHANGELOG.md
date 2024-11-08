@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.2](https://github.com/near/borsh-rs/compare/borsh-v1.5.1...borsh-v1.5.2) - 2024-11-07
+
+### Added
+
+- ser/de for `IpAddr` type; schema for `Ipv4Addr`/`Ipv6Addr`/`IpAddr` types  ([#309](https://github.com/near/borsh-rs/pull/309))
+
+### Other
+
+- `serde_json::Value` bridging example/doc ([#317](https://github.com/near/borsh-rs/pull/317))
+- remove dependency on syn_derive ([#318](https://github.com/near/borsh-rs/pull/318))
+- cover one more `syn::generics::TypeParamBound` as per syntax change ([#316](https://github.com/near/borsh-rs/pull/316))
+
 ## [1.5.1](https://github.com/near/borsh-rs/compare/borsh-v1.5.0...borsh-v1.5.1) - 2024-05-30
 
 ### Added
