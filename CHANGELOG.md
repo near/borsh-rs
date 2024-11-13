@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.3](https://github.com/near/borsh-rs/compare/borsh-v1.5.2...borsh-v1.5.3) - 2024-11-13
+
+### Fixed
+
+- specify a minimum version for `syn` as `2.0.81` ([#320](https://github.com/near/borsh-rs/pull/320))
+
 ## [1.5.2](https://github.com/near/borsh-rs/compare/borsh-v1.5.1...borsh-v1.5.2) - 2024-11-07
 
 ### Added
