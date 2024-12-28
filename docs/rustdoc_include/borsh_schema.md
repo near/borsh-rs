@@ -37,13 +37,13 @@ struct A<U, V> {
 
 ###### syntax
 
-Attribute takes literal string value, which is the syn's [Path] to `borsh` crate used.
+Attribute takes literal string value, which is the syn's [Path](https://docs.rs/syn/2.0.92/syn/struct.Path.html) to `borsh` crate used.
 
 ###### usage
 
 Attribute is optional.
 
-1. If the attribute is not provided, [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh`
+1. If the attribute is not provided, [crate_name](https://docs.rs/proc-macro-crate/3.2.0/proc_macro_crate/fn.crate_name.html) is used to find a version of `borsh`
    in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
 
 ```bash
@@ -236,7 +236,7 @@ where
 
 ###### syntax
 
-Each of `declaration` and `definitions` nested sub-attributes takes literal string value, which is a syn's [ExprPath](syn::ExprPath).
+Each of `declaration` and `definitions` nested sub-attributes takes literal string value, which is a syn's [ExprPath](https://docs.rs/syn/latest/syn/struct.ExprPath.html).
 
 Currently both `declaration` and `definitions` are required to be specified at the same time.
 
