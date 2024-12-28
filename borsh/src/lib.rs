@@ -77,7 +77,7 @@ extern crate alloc;
 #[cfg(feature = "unstable__schema")]
 pub use borsh_derive::BorshSchema;
 
-/// Derive macro available if borsh is built with `features = ["derive"]`.
+#[doc = include_str!("../../docs/rustdoc_include/borsh_deserialize.md")]
 #[cfg(feature = "derive")]
 pub use borsh_derive::BorshDeserialize;
 
