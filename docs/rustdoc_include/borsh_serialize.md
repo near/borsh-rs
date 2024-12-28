@@ -1,6 +1,6 @@
 Derive macro available if borsh is built with `features = ["derive"]`.
 
-# derive proc-macro for `borsh::ser::BorshSerialize` trait
+# derive proc-macro for [`BorshSerialize`] trait
 
 ## Bounds
 
