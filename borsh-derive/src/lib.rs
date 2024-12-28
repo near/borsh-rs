@@ -3,6 +3,7 @@
     feature = "force_exhaustive_checks",
     feature(non_exhaustive_omitted_patterns_lint)
 )]
+#![allow(clippy::needless_lifetimes)]
 
 extern crate proc_macro;
 use proc_macro::TokenStream;
