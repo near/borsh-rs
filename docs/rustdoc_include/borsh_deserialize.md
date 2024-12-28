@@ -8,7 +8,9 @@ Generally, `BorshDeserialize` adds `borsh::de::BorshDeserialize` bound to any ty
 found in item's fields and `core::default::Default` bound to any type parameter found
 in item's skipped fields.
 
-```ignore
+```rust
+use borsh::BorshDeserialize;
+
 /// impl<U, V> borsh::de::BorshDeserialize for A<U, V>
 /// where
 ///     U: borsh::de::BorshDeserialize,
@@ -20,7 +22,9 @@ struct A<U, V> {
 }
 ```
 
-```ignore
+```rust
+use borsh::BorshDeserialize;
+
 /// impl<U, V> borsh::de::BorshDeserialize for A<U, V>
 /// where
 ///     U: borsh::de::BorshDeserialize,
@@ -63,7 +67,8 @@ Attribute is optional.
 
 Examples of usage:
 
-```ignore
+(example is not tested, as there's usually no `reexporter` crate during doc build)
+```rust,ignore
 use reexporter::borsh::BorshDeserialize;
 
 // specifying the attribute removes need for a direct import of `borsh` into `[dependencies]`
@@ -76,7 +81,7 @@ struct B {
 }
 ```
 
-```ignore
+```rust,ignore
 use reexporter::borsh::{self, BorshDeserialize};
 
 // specifying the attribute removes need for a direct import of `borsh` into `[dependencies]`
@@ -100,21 +105,26 @@ Attribute's value is syn's [Path](https://docs.rs/syn/2.0.92/syn/struct.Path.htm
 `#[borsh(init=...)]` allows to automatically run an initialization function right after deserialization.
 This adds a lot of convenience for objects that are architectured to be used as strictly immutable.
 
-```ignore
+```rust
+type CryptoHash = String;
+
+# use borsh::BorshDeserialize;
 #[derive(BorshDeserialize)]
 #[borsh(init=init)]
 struct Message {
     message: String,
     timestamp: u64,
-    public_key: CryptoKey,
-    signature: CryptoSignature,
     hash: CryptoHash,
 }
 
 impl Message {
     pub fn init(&mut self) {
-        self.hash = CryptoHash::new().write_string(self.message).write_u64(self.timestamp);
-        self.signature.verify(self.hash, self.public_key);
+        self.hash = {
+            let mut hash = CryptoHash::new();
+            hash.push_str(&self.message);
+            hash.push_str(&format!("{}", self.timestamp));
+            hash
+        };
     }
 }
 ```
@@ -128,21 +138,23 @@ It's useful for backward compatibility and you can set this value to `false` to 
 You must specify `use_discriminant` for all enums with explicit discriminants in your project.
 
 This is equivalent of borsh version 0.10.3 (explicit discriminant is ignored and this enum is equivalent to `A` without explicit discriminant):
-```ignore
+```rust
+# use borsh::BorshDeserialize;
 #[derive(BorshDeserialize)]
 #[borsh(use_discriminant = false)]
 enum A {
-    A
+    A,
     B = 10,
 }
 ```
 
 To have explicit discriminant value serialized as is, you must specify `borsh(use_discriminant=true)` for enum.
-```ignore
+```rust
+# use borsh::BorshDeserialize;
 #[derive(BorshDeserialize)]
 #[borsh(use_discriminant = true)]
 enum B {
-    A
+    A,
     B = 10,
 }
 ```
@@ -150,7 +162,9 @@ enum B {
 
 ###### borsh, expressions, evaluating to `isize`, as discriminant
 This case is not supported:
-```ignore
+
+```rust,compile_fail
+# use borsh::BorshDeserialize;
 const fn discrim() -> isize {
     0x14
 }
@@ -170,7 +184,8 @@ enum X {
 
 ###### borsh explicit discriminant does not support literal values outside of u8 range.
 This is not supported:
-```ignore
+
+```rust,compile_fail
 #[derive(BorshDeserialize)]
 #[borsh(use_discriminant = true)]
 enum X {
@@ -194,7 +209,8 @@ It adds `core::default::Default` bound to any
 parameters encountered in annotated field.
 
 
-```ignore
+```rust
+# use borsh::BorshDeserialize;
 #[derive(BorshDeserialize)]
 struct A {
     x: u64,
@@ -218,9 +234,16 @@ Attribute adds possibility to override bounds for `BorshDeserialize` in order to
 1. removal of bounds on type parameters from struct/enum definition itself and moving them to the trait's implementation block.
 2. fixing complex cases, when derive hasn't figured out the right bounds on type parameters automatically.
 
-```ignore
+```rust
+# use borsh::BorshDeserialize;
+# #[cfg(feature = "hashbrown")]
+# use hashbrown::HashMap;
+# #[cfg(feature = "std")]
+# use std::collections::HashMap;
+use core::hash::Hash;
 /// additional bounds `T: Ord + Hash + Eq` (required by `HashMap`) are injected into
 /// derived trait implementation via attribute to avoid adding the bounds on the struct itself
+# #[cfg(hash_collections)]
 #[derive(BorshDeserialize)]
 struct A<T, U> {
     a: String,
@@ -234,7 +257,12 @@ struct A<T, U> {
 ```
 
 
-```ignore
+```rust
+# use borsh::BorshDeserialize;
+trait TraitName {
+    type Associated;
+    fn method(&self);
+}
 // derive here figures the bound erroneously as `T: borsh::de::BorshDeserialize,`
 #[derive(BorshDeserialize)]
 struct A<T, V>
@@ -252,9 +280,15 @@ where
 `#[borsh(bound(deserialize = ...))]` replaces bounds, which are derived automatically,
 irrelevant of whether `#[borsh(skip)]` attribute is present.
 
-```ignore
+```rust
+# use borsh::BorshDeserialize;
+# #[cfg(feature = "hashbrown")]
+# use hashbrown::HashMap;
+# #[cfg(feature = "std")]
+# use std::collections::HashMap;
 /// implicit derived `core::default::Default` bounds on `K` and `V` type parameters are removed by
 /// empty bound specified, as `HashMap` has its own `Default` implementation
+# #[cfg(hash_collections)]
 #[derive(BorshDeserialize)]
 struct A<K, V, U>(
     #[borsh(skip, bound(deserialize = ""))]
@@ -278,8 +312,20 @@ It may be used when `BorshDeserialize` cannot be implemented for field's type, i
 
 It may be used to override the implementation of deserialization for some other reason.
 
-```ignore
+```rust
+use borsh::BorshDeserialize;
 use indexmap::IndexMap;
+use core::hash::Hash;
+
+/// this a stub module, representing a 3rd party crate `indexmap`
+mod indexmap {
+    /// this a stub struct, representing a 3rd party `indexmap::IndexMap`
+    /// or some local type we want to override trait implementation for
+    pub struct IndexMap<K, V> {
+        pub(crate) tuples: Vec<(K, V)>,
+    }
+    
+}
 
 mod index_map_impl {
     use super::IndexMap;
@@ -293,7 +339,11 @@ mod index_map_impl {
         reader: &mut R,
     ) -> ::core::result::Result<IndexMap<K, V>, borsh::io::Error> {
         let vec: Vec<(K, V)> = borsh::BorshDeserialize::deserialize_reader(reader)?;
-        let result: IndexMap<K, V> = vec.into_iter().collect();
+        // the line of implementation for type from real `indexmap` crate
+        // let result: IndexMap<K, V> = vec.into_iter().collect();
+        let result = IndexMap {
+            tuples: vec,
+        };
         Ok(result)
     }
 }
@@ -306,6 +356,8 @@ struct B<K: Hash + Eq, V> {
     x: IndexMap<K, V>,
     y: String,
 }
+# fn main() {
+# }
 ```
 
 ###### usage (comprehensive example)

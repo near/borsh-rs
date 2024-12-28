@@ -78,7 +78,6 @@ struct B {
 }
 ```
 
-(example is not tested, as there's usually no `reexporter` crate during doc build)
 ```rust,ignore
 use reexporter::borsh::{self, BorshSerialize};
 
