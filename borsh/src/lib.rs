@@ -79,7 +79,11 @@ pub use borsh_derive::BorshSchema;
 
 /// Derive macro available if borsh is built with `features = ["derive"]`.
 #[cfg(feature = "derive")]
-pub use borsh_derive::{BorshDeserialize, BorshSerialize};
+pub use borsh_derive::BorshDeserialize;
+
+#[doc = include_str!("../../docs/rustdoc_include/borsh_serialize.md")]
+#[cfg(feature = "derive")]
+pub use borsh_derive::BorshSerialize;
 
 pub mod de;
 
