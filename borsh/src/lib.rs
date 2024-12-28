@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-
 #![doc = include_str!("../../docs/rustdoc_include/borsh_crate_top_level.md")]
 
 #[cfg(not(feature = "std"))]
