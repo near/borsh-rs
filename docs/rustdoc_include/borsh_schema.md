@@ -7,7 +7,8 @@ Derive macro available if borsh is built with `features = ["unstable__schema"]`.
 Generally, `BorshSchema` adds `borsh::BorshSchema` bound to any type parameter
 found in item's fields.
 
-```ignore
+```rust
+use borsh::BorshSchema;
 /// impl<U, V> borsh::BorshSchema for A<U, V>
 /// where
 ///     U: borsh::BorshSchema,
@@ -19,7 +20,8 @@ struct A<U, V> {
 }
 ```
 
-```ignore
+```rust
+use borsh::BorshSchema;
 /// impl<U, V> borsh::BorshSchema for A<U, V>
 /// where
 ///     U: borsh::BorshSchema,
@@ -60,7 +62,8 @@ Attribute is optional.
 
 Examples of usage:
 
-```ignore
+(example is not tested, as there's usually no `reexporter` crate during doc build)
+```rust,ignore
 use reexporter::borsh::BorshSchema;
 
 // specifying the attribute removes need for a direct import of `borsh` into `[dependencies]`
@@ -73,7 +76,7 @@ struct B {
 }
 ```
 
-```ignore
+```rust,ignore
 use reexporter::borsh::{self, BorshSchema};
 
 // specifying the attribute removes need for a direct import of `borsh` into `[dependencies]`
@@ -93,28 +96,30 @@ This attribute is only applicable to enums.
 You must specify `use_discriminant` for all enums with explicit discriminants in your project.
 
 This is equivalent of borsh version 0.10.3 (explicit discriminant is ignored and this enum is equivalent to `A` without explicit discriminant):
-```ignore
+```rust
+# use borsh::BorshSchema;
 #[derive(BorshSchema)]
 #[borsh(use_discriminant = false)]
 enum A {
-    A
+    A,
     B = 10,
 }
 ```
 
 To have explicit discriminant value serialized as is, you must specify `borsh(use_discriminant=true)` for enum.
-```ignore
+```rust
+# use borsh::BorshSchema;
 #[derive(BorshSchema)]
 #[borsh(use_discriminant = true)]
 enum B {
-    A
+    A,
     B = 10,
 }
 ```
 
 ###### borsh, expressions, evaluating to `isize`, as discriminant
 This case is not supported:
-```ignore
+```rust,compile_fail
 const fn discrim() -> isize {
     0x14
 }
@@ -133,7 +138,7 @@ enum X {
 
 ###### borsh explicit discriminant does not support literal values outside of u8 range
 This is not supported:
-```ignore
+```rust,compile_fail
 #[derive(BorshSchema)]
 #[borsh(use_discriminant = true)]
 enum X {
@@ -152,7 +157,8 @@ enum X {
 
 `#[borsh(skip)]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::BorshSchema`.
 
-```ignore
+```rust
+# use borsh::BorshSchema;
 #[derive(BorshSchema)]
 struct A {
     x: u64,
@@ -186,7 +192,12 @@ Such an entry instructs `BorshSchema` derive to:
 4. entries, specified for a field, together replace whatever would've been derived automatically for 1. and 2. .
 
 
-```ignore
+```rust
+# use borsh::BorshSchema;
+trait TraitName {
+    type Associated;
+    fn method(&self);
+}
 // derive here figures the bound erroneously as `T: borsh::BorshSchema` .
 // attribute replaces it with <T as TraitName>::Associated: borsh::BorshSchema`
 #[derive(BorshSchema)]
@@ -200,7 +211,13 @@ where
 }
 ```
 
-```ignore
+```rust
+# use borsh::BorshSchema;
+use core::marker::PhantomData;
+
+trait EntityRef {
+    fn key_property(&self) -> u64;
+}
 // K in PrimaryMap isn't stored during serialization / read during deserialization.
 // thus, it's not a parameter, relevant for `BorshSchema`
 // ...
@@ -249,31 +266,44 @@ It may be used when `BorshSchema` cannot be implemented for field's type, if it'
 
 It may be used to override the implementation of schema for some other reason.
 
-```ignore
+```rust
+use borsh::BorshSchema;
 use indexmap::IndexMap;
+
+/// this a stub module, representing a 3rd party crate `indexmap`
+mod indexmap {
+    /// this a stub struct, representing a 3rd party `indexmap::IndexMap`
+    /// or some local type we want to override trait implementation for
+    pub struct IndexMap<K, V> {
+        pub(crate) tuples: Vec<(K, V)>,
+    }
+    
+}
 
 mod index_map_impl {
     pub mod schema {
         use std::collections::BTreeMap;
 
         use borsh::{
-            schema::{Declaration, Definition},
+            schema::{Declaration, Definition, self},
             BorshSchema,
         };
 
-        pub fn declaration<K: borsh::BorshSchema, V: borsh::BorshSchema>() -> Declaration {
+        pub fn declaration<K: BorshSchema, V: BorshSchema>() -> Declaration {
             let params = vec![<K>::declaration(), <V>::declaration()];
             format!(r#"{}<{}>"#, "IndexMap", params.join(", "))
         }
 
-        pub fn add_definitions_recursively<K: borsh::BorshSchema, V: borsh::BorshSchema>(
+        pub fn add_definitions_recursively<K: BorshSchema, V: BorshSchema>(
             definitions: &mut BTreeMap<Declaration, Definition>,
         ) {
             let definition = Definition::Sequence {
                 elements: <(K, V)>::declaration(),
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
             };
             let no_recursion_flag = definitions.get(&declaration::<K, V>()).is_none();
-            <() as BorshSchema>::add_definition(declaration::<K, V>(), definition, definitions);
+            schema::add_definition(declaration::<K, V>(), definition, definitions);
             if no_recursion_flag {
                 <(K, V)>::add_definitions_recursively(definitions);
             }
@@ -294,6 +324,8 @@ struct B<K, V> {
     x: IndexMap<K, V>,
     y: String,
 }
+# fn main() {
+# }
 ```
 
 ###### interaction with `#[borsh(skip)]`
