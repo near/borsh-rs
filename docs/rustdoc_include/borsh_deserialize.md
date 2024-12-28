@@ -40,13 +40,13 @@ struct A<U, V> {
 
 ###### syntax
 
-Attribute takes literal string value, which is the syn's [Path] to `borsh` crate used.
+Attribute takes literal string value, which is the syn's [Path](https://docs.rs/syn/2.0.92/syn/struct.Path.html) to `borsh` crate used.
 
 ###### usage
 
 Attribute is optional.
 
-1. If the attribute is not provided, [crate_name](proc_macro_crate::crate_name) is used to find a version of `borsh`
+1. If the attribute is not provided, [crate_name](https://docs.rs/proc-macro-crate/3.2.0/proc_macro_crate/fn.crate_name.html) is used to find a version of `borsh`
    in `[dependencies]` of the relevant `Cargo.toml`. If there is no match, a compilation error, similar to the following, is raised:
 
 ```bash
@@ -93,7 +93,7 @@ struct B {
 
 ###### syntax
 
-Attribute's value is syn's [Path]-s, passed to borsh top level meta attribute as value of `init` argument.
+Attribute's value is syn's [Path](https://docs.rs/syn/2.0.92/syn/struct.Path.html)-s, passed to borsh top level meta attribute as value of `init` argument.
 
 ###### usage
 
@@ -208,7 +208,7 @@ struct A {
 
 ###### syntax
 
-Attribute takes literal string value, which is a comma-separated list of syn's [WherePredicate](syn::WherePredicate)-s, which may be empty.
+Attribute takes literal string value, which is a comma-separated list of syn's [WherePredicate](https://docs.rs/syn/latest/syn/enum.WherePredicate.html)-s, which may be empty.
 
 
 ###### usage
@@ -267,7 +267,7 @@ struct A<K, V, U>(
 
 ###### syntax
 
-Attribute takes literal string value, which is a syn's [ExprPath](syn::ExprPath).
+Attribute takes literal string value, which is a syn's [ExprPath](https://docs.rs/syn/latest/syn/struct.ExprPath.html).
 
 ###### usage
 
