@@ -30,7 +30,7 @@ fn check_attrs_get_cratename(input: &TokenStream) -> Result<Path, Error> {
     cratename::get(&derive_input.attrs)
 }
 
-/// moved to documnetation of **Derive Macro** `BorshSerialize` in `borsh` crate
+/// moved to docs of **Derive Macro** `BorshSerialize` in `borsh` crate
 #[proc_macro_derive(BorshSerialize, attributes(borsh))]
 pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     let cratename = match check_attrs_get_cratename(&input) {

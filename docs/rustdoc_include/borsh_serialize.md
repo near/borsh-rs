@@ -19,7 +19,9 @@ struct A<U, V> {
 }
 ```
 
-```ignore
+```rust
+use borsh::BorshSerialize;
+
 /// impl<U, V> borsh::ser::BorshSerialize for A<U, V>
 /// where
 ///     U: borsh::ser::BorshSerialize,
@@ -60,7 +62,8 @@ Attribute is optional.
 
 Examples of usage:
 
-```ignore
+(example is not tested, as there's usually no `reexporter` crate during doc build)
+```rust,ignore
 use reexporter::borsh::BorshSerialize;
 
 // specifying the attribute removes need for a direct import of `borsh` into `[dependencies]`
@@ -73,7 +76,8 @@ struct B {
 }
 ```
 
-```ignore
+(example is not tested, as there's usually no `reexporter` crate during doc build)
+```rust,ignore
 use reexporter::borsh::{self, BorshSerialize};
 
 // specifying the attribute removes need for a direct import of `borsh` into `[dependencies]`
@@ -93,28 +97,33 @@ This attribute is only applicable to enums.
 You must specify `use_discriminant` for all enums with explicit discriminants in your project.
 
 This is equivalent of borsh version 0.10.3 (explicit discriminant is ignored and this enum is equivalent to `A` without explicit discriminant):
-```ignore
+
+```rust
+# use borsh::BorshSerialize;
+#
 #[derive(BorshSerialize)]
 #[borsh(use_discriminant = false)]
 enum A {
-    A
+    A,
     B = 10,
 }
 ```
 
 To have explicit discriminant value serialized as is, you must specify `borsh(use_discriminant=true)` for enum.
-```ignore
+```rust
+# use borsh::BorshSerialize;
+#
 #[derive(BorshSerialize)]
 #[borsh(use_discriminant = true)]
 enum B {
-    A
+    A,
     B = 10,
 }
 ```
 
 ###### borsh, expressions, evaluating to `isize`, as discriminant
 This case is not supported:
-```ignore
+```rust,compile_fail
 const fn discrim() -> isize {
     0x14
 }
@@ -133,7 +142,7 @@ enum X {
 
 ###### borsh explicit discriminant does not support literal values outside of u8 range
 This is not supported:
-```ignore
+```rust,compile_fail
 #[derive(BorshSerialize)]
 #[borsh(use_discriminant = true)]
 enum X {
@@ -152,7 +161,9 @@ enum X {
 
 `#[borsh(skip)]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::ser::BorshSerialize`.
 
-```ignore
+```rust
+# use borsh::BorshSerialize;
+#
 #[derive(BorshSerialize)]
 struct A {
     x: u64,
@@ -174,9 +185,15 @@ Attribute adds possibility to override bounds for `BorshSerialize` in order to e
 1. removal of bounds on type parameters from struct/enum definition itself and moving them to the trait's implementation block.
 2. fixing complex cases, when derive hasn't figured out the right bounds on type parameters automatically.
 
-```ignore
+```rust
+# use borsh::BorshSerialize;
+# #[cfg(feature = "hashbrown")]
+# use hashbrown::HashMap;
+# #[cfg(feature = "std")]
+# use std::collections::HashMap;
 /// additional bound `T: Ord` (required by `HashMap`) is injected into
 /// derived trait implementation via attribute to avoid adding the bounds on the struct itself
+# #[cfg(hash_collections)]
 #[derive(BorshSerialize)]
 struct A<T, U> {
     a: String,
@@ -188,7 +205,12 @@ struct A<T, U> {
 ```
 
 
-```ignore
+```rust
+# use borsh::BorshSerialize;
+trait TraitName {
+    type Associated;
+    fn method(&self);
+}
 /// derive here figures the bound erroneously as `T: borsh::ser::BorshSerialize`
 #[derive(BorshSerialize)]
 struct A<T, V>
@@ -221,12 +243,22 @@ It may be used when `BorshSerialize` cannot be implemented for field's type, if 
 
 It may be used to override the implementation of serialization for some other reason.
 
-```ignore
+```rust
+use borsh::BorshSerialize;
 use indexmap::IndexMap;
 
+/// this a stub module, representing a 3rd party crate `indexmap`
+mod indexmap {
+    /// this a stub struct, representing a 3rd party `indexmap::IndexMap`
+    /// or some local type we want to override trait implementation for
+    pub struct IndexMap<K, V> {
+        pub(crate) tuples: Vec<(K, V)>,
+    }
+    
+}
+
 mod index_map_impl {
-    use super::IndexMap;
-    use core::hash::Hash;
+    use super::indexmap::IndexMap;
 
     pub fn serialize_index_map<
         K: borsh::ser::BorshSerialize,
@@ -236,7 +268,9 @@ mod index_map_impl {
         obj: &IndexMap<K, V>,
         writer: &mut W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
-        let key_value_tuples = obj.iter().collect::<Vec<_>>();
+        // the line of implementation for type from real `indexmap` crate
+        // let key_value_tuples = obj.iter().collect::<Vec<_>>();
+        let key_value_tuples = obj.tuples.iter().collect::<Vec<_>>();
         borsh::BorshSerialize::serialize(&key_value_tuples, writer)?;
         Ok(())
     }
@@ -250,6 +284,9 @@ struct B<K, V> {
     x: IndexMap<K, V>,
     y: String,
 }
+
+# fn main() {
+# }
 ```
 
 ###### usage (comprehensive example)
