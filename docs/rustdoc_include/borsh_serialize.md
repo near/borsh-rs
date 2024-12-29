@@ -100,8 +100,8 @@ You must specify `use_discriminant` for all enums with explicit discriminants in
 This is equivalent of borsh version 0.10.3 (explicit discriminant is ignored and this enum is equivalent to `A` without explicit discriminant):
 
 ```rust
-# use borsh::BorshSerialize;
-#
+use borsh::BorshSerialize;
+
 #[derive(BorshSerialize)]
 #[borsh(use_discriminant = false)]
 enum A {
@@ -112,8 +112,8 @@ enum A {
 
 To have explicit discriminant value serialized as is, you must specify `borsh(use_discriminant=true)` for enum.
 ```rust
-# use borsh::BorshSerialize;
-#
+use borsh::BorshSerialize;
+
 #[derive(BorshSerialize)]
 #[borsh(use_discriminant = true)]
 enum B {
@@ -163,8 +163,8 @@ enum X {
 `#[borsh(skip)]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::ser::BorshSerialize`.
 
 ```rust
-# use borsh::BorshSerialize;
-#
+use borsh::BorshSerialize;
+
 #[derive(BorshSerialize)]
 struct A {
     x: u64,
@@ -187,14 +187,14 @@ Attribute adds possibility to override bounds for `BorshSerialize` in order to e
 2. fixing complex cases, when derive hasn't figured out the right bounds on type parameters automatically.
 
 ```rust
-# use borsh::BorshSerialize;
-# #[cfg(feature = "hashbrown")]
-# use hashbrown::HashMap;
-# #[cfg(feature = "std")]
-# use std::collections::HashMap;
+use borsh::BorshSerialize;
+#[cfg(feature = "hashbrown")]
+use hashbrown::HashMap;
+#[cfg(feature = "std")]
+use std::collections::HashMap;
 /// additional bound `T: Ord` (required by `HashMap`) is injected into
 /// derived trait implementation via attribute to avoid adding the bounds on the struct itself
-# #[cfg(hash_collections)]
+#[cfg(any(feature = "hashbrown", feature = "std"))]
 #[derive(BorshSerialize)]
 struct A<T, U> {
     a: String,
@@ -207,7 +207,7 @@ struct A<T, U> {
 
 
 ```rust
-# use borsh::BorshSerialize;
+use borsh::BorshSerialize;
 trait TraitName {
     type Associated;
     fn method(&self);

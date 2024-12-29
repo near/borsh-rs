@@ -108,7 +108,7 @@ This adds a lot of convenience for objects that are architectured to be used as 
 ```rust
 type CryptoHash = String;
 
-# use borsh::BorshDeserialize;
+use borsh::BorshDeserialize;
 #[derive(BorshDeserialize)]
 #[borsh(init=init)]
 struct Message {
@@ -139,7 +139,7 @@ You must specify `use_discriminant` for all enums with explicit discriminants in
 
 This is equivalent of borsh version 0.10.3 (explicit discriminant is ignored and this enum is equivalent to `A` without explicit discriminant):
 ```rust
-# use borsh::BorshDeserialize;
+use borsh::BorshDeserialize;
 #[derive(BorshDeserialize)]
 #[borsh(use_discriminant = false)]
 enum A {
@@ -150,7 +150,7 @@ enum A {
 
 To have explicit discriminant value serialized as is, you must specify `borsh(use_discriminant=true)` for enum.
 ```rust
-# use borsh::BorshDeserialize;
+use borsh::BorshDeserialize;
 #[derive(BorshDeserialize)]
 #[borsh(use_discriminant = true)]
 enum B {
@@ -164,7 +164,7 @@ enum B {
 This case is not supported:
 
 ```rust,compile_fail
-# use borsh::BorshDeserialize;
+use borsh::BorshDeserialize;
 const fn discrim() -> isize {
     0x14
 }
@@ -210,7 +210,7 @@ parameters encountered in annotated field.
 
 
 ```rust
-# use borsh::BorshDeserialize;
+use borsh::BorshDeserialize;
 #[derive(BorshDeserialize)]
 struct A {
     x: u64,
@@ -235,15 +235,15 @@ Attribute adds possibility to override bounds for `BorshDeserialize` in order to
 2. fixing complex cases, when derive hasn't figured out the right bounds on type parameters automatically.
 
 ```rust
-# use borsh::BorshDeserialize;
-# #[cfg(feature = "hashbrown")]
-# use hashbrown::HashMap;
-# #[cfg(feature = "std")]
-# use std::collections::HashMap;
+use borsh::BorshDeserialize;
+#[cfg(feature = "hashbrown")]
+use hashbrown::HashMap;
+#[cfg(feature = "std")]
+use std::collections::HashMap;
 use core::hash::Hash;
 /// additional bounds `T: Ord + Hash + Eq` (required by `HashMap`) are injected into
 /// derived trait implementation via attribute to avoid adding the bounds on the struct itself
-# #[cfg(hash_collections)]
+#[cfg(any(feature = "hashbrown", feature = "std"))]
 #[derive(BorshDeserialize)]
 struct A<T, U> {
     a: String,
@@ -258,7 +258,7 @@ struct A<T, U> {
 
 
 ```rust
-# use borsh::BorshDeserialize;
+use borsh::BorshDeserialize;
 trait TraitName {
     type Associated;
     fn method(&self);
@@ -281,14 +281,14 @@ where
 irrelevant of whether `#[borsh(skip)]` attribute is present.
 
 ```rust
-# use borsh::BorshDeserialize;
-# #[cfg(feature = "hashbrown")]
-# use hashbrown::HashMap;
-# #[cfg(feature = "std")]
-# use std::collections::HashMap;
+use borsh::BorshDeserialize;
+#[cfg(feature = "hashbrown")]
+use hashbrown::HashMap;
+#[cfg(feature = "std")]
+use std::collections::HashMap;
 /// implicit derived `core::default::Default` bounds on `K` and `V` type parameters are removed by
 /// empty bound specified, as `HashMap` has its own `Default` implementation
-# #[cfg(hash_collections)]
+#[cfg(any(feature = "hashbrown", feature = "std"))]
 #[derive(BorshDeserialize)]
 struct A<K, V, U>(
     #[borsh(skip, bound(deserialize = ""))]

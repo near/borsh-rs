@@ -97,7 +97,7 @@ You must specify `use_discriminant` for all enums with explicit discriminants in
 
 This is equivalent of borsh version 0.10.3 (explicit discriminant is ignored and this enum is equivalent to `A` without explicit discriminant):
 ```rust
-# use borsh::BorshSchema;
+use borsh::BorshSchema;
 #[derive(BorshSchema)]
 #[borsh(use_discriminant = false)]
 enum A {
@@ -108,7 +108,7 @@ enum A {
 
 To have explicit discriminant value serialized as is, you must specify `borsh(use_discriminant=true)` for enum.
 ```rust
-# use borsh::BorshSchema;
+use borsh::BorshSchema;
 #[derive(BorshSchema)]
 #[borsh(use_discriminant = true)]
 enum B {
@@ -158,7 +158,7 @@ enum X {
 `#[borsh(skip)]` makes derive skip adding any type parameters, present in the field, to parameters bound by `borsh::BorshSchema`.
 
 ```rust
-# use borsh::BorshSchema;
+use borsh::BorshSchema;
 #[derive(BorshSchema)]
 struct A {
     x: u64,
@@ -193,7 +193,7 @@ Such an entry instructs `BorshSchema` derive to:
 
 
 ```rust
-# use borsh::BorshSchema;
+use borsh::BorshSchema;
 trait TraitName {
     type Associated;
     fn method(&self);
@@ -212,7 +212,7 @@ where
 ```
 
 ```rust
-# use borsh::BorshSchema;
+use borsh::BorshSchema;
 use core::marker::PhantomData;
 
 trait EntityRef {
