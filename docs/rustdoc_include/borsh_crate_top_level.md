@@ -65,7 +65,7 @@
 
 # Shortcuts
 
-Following pages are highlighted here just to let reader a better chance at learning that
+Following pages are highlighted here just to give reader a chance at learning that
 they exist.  
 
 - [Derive Macro `BorshSerialize`](macro@crate::BorshSerialize)
