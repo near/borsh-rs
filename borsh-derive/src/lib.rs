@@ -30,6 +30,8 @@ fn check_attrs_get_cratename(input: &TokenStream) -> Result<Path, Error> {
     cratename::get(&derive_input.attrs)
 }
 
+/// ---
+///
 /// moved to docs of **Derive Macro** `BorshSerialize` in `borsh` crate
 #[proc_macro_derive(BorshSerialize, attributes(borsh))]
 pub fn borsh_serialize(input: TokenStream) -> TokenStream {
@@ -56,6 +58,8 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     })
 }
 
+/// ---
+///
 /// moved to docs of **Derive Macro** `BorshDeserialize` in `borsh` crate
 #[proc_macro_derive(BorshDeserialize, attributes(borsh))]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
@@ -82,6 +86,8 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     })
 }
 
+/// ---
+///
 /// moved to docs of **Derive Macro** `BorshSchema` in `borsh` crate
 #[cfg(feature = "schema")]
 #[proc_macro_derive(BorshSchema, attributes(borsh))]
