@@ -903,3 +903,16 @@ impl BorshSchema for std::net::IpAddr {
         ip_addr_std_derive_impl::IpAddr::declaration()
     }
 }
+
+/// Adds schema to `bytes::Bytes`.
+/// Conservatively just uses `[u8]` schema, so that any consumer already handles it.
+/// while in Rust code we can be more optimal as needed.
+#[cfg(feature = "bytes")]
+impl BorshSchema for bytes::Bytes {
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        <[u8]>::add_definitions_recursively(definitions);
+    }
+    fn declaration() -> Declaration {
+        <[u8]>::declaration()
+    }
+}
