@@ -39,65 +39,14 @@ fn test_simple_struct() {
 }
 ```
 
-## Features
+## Docs shortcuts
 
-Opting out from Serde allows borsh to have some features that currently are not available for serde-compatible serializers.
-Currently we support two features: `borsh(init=<your initialization method name>` and `borsh(skip)` (the former one not available in Serde).
+Following pages are highlighted here just to give reader a chance at learning that
+they exist.  
 
-`borsh(init=...)` allows to automatically run an initialization function right after deserialization. This adds a lot of convenience for objects that are architectured to be used as strictly immutable. Usage example:
-
-```rust
-#[derive(BorshSerialize, BorshDeserialize)]
-#[borsh(init=init)]
-struct Message {
-    message: String,
-    timestamp: u64,
-    public_key: CryptoKey,
-    signature: CryptoSignature
-    hash: CryptoHash
-}
-
-impl Message {
-    pub fn init(&mut self) {
-        self.hash = CryptoHash::new().write_string(self.message).write_u64(self.timestamp);
-        self.signature.verify(self.hash, self.public_key);
-    }
-}
-```
-
-`borsh(skip)` allows to skip serializing/deserializing fields, assuming they implement `Default` trait, similarly to `#[serde(skip)]`.
-
-```rust
-#[derive(BorshSerialize, BorshDeserialize)]
-struct A {
-    x: u64,
-    #[borsh(skip)]
-    y: f32,
-}
-```
-
-### Enum with explicit discriminant
-
-`#[borsh(use_discriminant=false|true])` is required if you have an enum with explicit discriminant. This setting affects `BorshSerialize` and `BorshDeserialize` behaviour at the same time.
-
-In the future, borsh will drop the requirement to explicitly use `#[borsh(use_discriminant=false|true)]`, and will default to `true`, but to make sure that the transition from the older versions of borsh (before 0.11 release) does not cause silent breaking changes in de-/serialization, borsh 1.0 will require to specify if the explicit enum discriminant should be used as a de-/serialization tag value.
-
-If you don't specify `use_discriminant` option for enum with explicit discriminant, you will get an error:
-
-```bash
-error: You have to specify `#[borsh(use_discriminant=true)]` or `#[borsh(use_discriminant=false)]` for all enums with explicit discriminant
-```
-
-In order to preserve the behaviour of borsh versions before 0.11, which did not respect explicit enum discriminants for de-/serialization, use `#[borsh(use_discriminant=false)]`, otherwise, use `true`:
-
-```rust
-#[derive(BorshDeserialize, BorshSerialize)]
-#[borsh(use_discriminant=false)]
-enum A {
-    X,
-    Y = 10,
-}
-```
+- [Derive Macro `BorshSerialize`](./docs/rustdoc_include/borsh_serialize.md)
+- [Derive Macro `BorshDeserialize`](./docs/rustdoc_include/borsh_deserialize.md)
+- [Derive Macro `BorshSchema`](./docs/rustdoc_include/borsh_schema.md)
 
 ## Advanced examples 
 
