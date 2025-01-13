@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.4](https://github.com/near/borsh-rs/compare/borsh-v1.5.3...borsh-v1.5.4) - 2025-01-13
+
+### Other
+
+- make doc examples testable in ci (#326)
+- add more CODEOWNERS (#327)
+
 ## [1.5.3](https://github.com/near/borsh-rs/compare/borsh-v1.5.2...borsh-v1.5.3) - 2024-11-13
 
 ### Fixed
