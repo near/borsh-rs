@@ -44,9 +44,9 @@ fn test_simple_struct() {
 Following pages are highlighted here just to give reader a chance at learning that
 they exist.  
 
-- [Derive Macro `BorshSerialize`](./docs/rustdoc_include/borsh_serialize.md)
-- [Derive Macro `BorshDeserialize`](./docs/rustdoc_include/borsh_deserialize.md)
-- [Derive Macro `BorshSchema`](./docs/rustdoc_include/borsh_schema.md)
+- [Derive Macro `BorshSerialize`](./borsh/docs/rustdoc_include/borsh_serialize.md)
+- [Derive Macro `BorshDeserialize`](./borsh/docs/rustdoc_include/borsh_deserialize.md)
+- [Derive Macro `BorshSchema`](./borsh/docs/rustdoc_include/borsh_schema.md)
 
 ## Advanced examples 
 

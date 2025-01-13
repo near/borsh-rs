@@ -1,18 +1,18 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![doc = include_str!("../../docs/rustdoc_include/borsh_crate_top_level.md")]
+#![doc = include_str!("../docs/rustdoc_include/borsh_crate_top_level.md")]
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[doc = include_str!("../../docs/rustdoc_include/borsh_schema.md")]
+#[doc = include_str!("../docs/rustdoc_include/borsh_schema.md")]
 #[cfg(feature = "unstable__schema")]
 pub use borsh_derive::BorshSchema;
 
-#[doc = include_str!("../../docs/rustdoc_include/borsh_deserialize.md")]
+#[doc = include_str!("../docs/rustdoc_include/borsh_deserialize.md")]
 #[cfg(feature = "derive")]
 pub use borsh_derive::BorshDeserialize;
 
-#[doc = include_str!("../../docs/rustdoc_include/borsh_serialize.md")]
+#[doc = include_str!("../docs/rustdoc_include/borsh_serialize.md")]
 #[cfg(feature = "derive")]
 pub use borsh_derive::BorshSerialize;
 
