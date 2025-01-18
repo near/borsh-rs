@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.5](https://github.com/near/borsh-rs/compare/borsh-v1.5.4...borsh-v1.5.5) - 2025-01-18
+
+### Other
+
+- bump hashbrown to 0.15 (#333)
+- fix typo in private module name (#332)
+
 ## [1.5.4](https://github.com/near/borsh-rs/compare/borsh-v1.5.3...borsh-v1.5.4) - 2025-01-13
 
 ### Other
