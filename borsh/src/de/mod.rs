@@ -49,7 +49,6 @@ pub trait BorshDeserialize: Sized {
     }
 
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self>;
@@ -65,7 +64,6 @@ pub trait BorshDeserialize: Sized {
     }
 
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn try_from_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -86,7 +84,6 @@ pub trait BorshDeserialize: Sized {
     #[inline]
     #[doc(hidden)]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>>
     )]
     fn vec_from_reader<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
@@ -98,7 +95,6 @@ pub trait BorshDeserialize: Sized {
     #[inline]
     #[doc(hidden)]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead, const N: usize>(reader: &mut R) -> Result<Option<[Self; N]>>
     )]
     fn array_from_reader<R: Read, const N: usize>(reader: &mut R) -> Result<Option<[Self; N]>> {
@@ -206,7 +202,6 @@ pub trait EnumExt: BorshDeserialize {
     /// assert!(from_slice::<OneOrZero>(&data[..]).is_err());
     /// ```
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R, tag: u8) -> Result<Self>
     )]
     fn deserialize_variant<R: Read>(reader: &mut R, tag: u8) -> Result<Self>;
@@ -228,7 +223,6 @@ fn unexpected_eof_to_unexpected_length_of_input(e: Error) -> Error {
 impl BorshDeserialize for u8 {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -242,7 +236,6 @@ impl BorshDeserialize for u8 {
     #[inline]
     #[doc(hidden)]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>>
     )]
     fn vec_from_reader<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
@@ -279,7 +272,6 @@ impl BorshDeserialize for u8 {
     #[inline]
     #[doc(hidden)]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead, const N: usize>(reader: &mut R) -> Result<Option<[Self; N]>>
     )]
     fn array_from_reader<R: Read, const N: usize>(reader: &mut R) -> Result<Option<[Self; N]>> {
@@ -294,16 +286,15 @@ impl BorshDeserialize for u8 {
 macro_rules! impl_for_integer {
     ($type: ident) => {
         #[async_generic(
-                            #[cfg(feature = "async")]
-                            #[cfg_attr(feature = "async", async_trait)]
-                            async_trait
-                        )]
+            #[cfg(feature = "async")]
+            #[cfg_attr(feature = "async", async_trait)]
+            async_trait
+        )]
         impl BorshDeserialize for $type {
             #[inline]
             #[async_generic(
-                                #[cfg(feature = "async")]
-                                async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
-                            )]
+                async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
+            )]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                 let mut buf = [0u8; size_of::<$type>()];
                 let res = reader.read_exact(&mut buf);
@@ -336,7 +327,6 @@ macro_rules! impl_for_nonzero_integer {
         impl BorshDeserialize for $type {
             #[inline]
             #[async_generic(
-                #[cfg(feature = "async")]
                 async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
             )]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -372,7 +362,6 @@ macro_rules! impl_for_size_integer {
         )]
         impl BorshDeserialize for $type {
             #[async_generic(
-                #[cfg(feature = "async")]
                 async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
             )]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -404,7 +393,6 @@ macro_rules! impl_for_float {
         impl BorshDeserialize for $type {
             #[inline]
             #[async_generic(
-                #[cfg(feature = "async")]
                 async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
             )]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -436,7 +424,6 @@ impl_for_float!(f64, u64);
 impl BorshDeserialize for bool {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -470,7 +457,6 @@ where
 {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -513,7 +499,6 @@ where
 {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -553,7 +538,6 @@ where
 impl BorshDeserialize for String {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -596,7 +580,6 @@ pub mod ascii {
     impl BorshDeserialize for ascii::AsciiString {
         #[inline]
         #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -618,7 +601,6 @@ pub mod ascii {
     impl BorshDeserialize for ascii::AsciiChar {
         #[inline]
         #[async_generic(
-            #[cfg(feature = "async")]
             async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
         )]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -646,7 +628,6 @@ where
 {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -689,7 +670,6 @@ where
 impl BorshDeserialize for bytes::Bytes {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -711,7 +691,6 @@ impl BorshDeserialize for bytes::Bytes {
 impl BorshDeserialize for BytesMut {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -741,7 +720,6 @@ impl BorshDeserialize for BytesMut {
 impl BorshDeserialize for bson::oid::ObjectId {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -770,7 +748,6 @@ where
 {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -795,7 +772,6 @@ where
 {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -821,7 +797,6 @@ where
 {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -878,7 +853,6 @@ pub mod hashes {
     {
         #[inline]
         #[async_generic(
-            #[cfg(feature = "async")]
             async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
         )]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -929,7 +903,6 @@ pub mod hashes {
     {
         #[inline]
         #[async_generic(
-            #[cfg(feature = "async")]
             async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
         )]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -978,7 +951,6 @@ where
 {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1028,7 +1000,6 @@ where
 {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1074,7 +1045,6 @@ where
 impl BorshDeserialize for std::net::SocketAddr {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1113,7 +1083,6 @@ impl BorshDeserialize for std::net::SocketAddr {
 impl BorshDeserialize for std::net::IpAddr {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1158,7 +1127,6 @@ impl BorshDeserialize for std::net::IpAddr {
 impl BorshDeserialize for std::net::SocketAddrV4 {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1185,7 +1153,6 @@ impl BorshDeserialize for std::net::SocketAddrV4 {
 impl BorshDeserialize for std::net::SocketAddrV6 {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1212,7 +1179,6 @@ impl BorshDeserialize for std::net::SocketAddrV6 {
 impl BorshDeserialize for std::net::Ipv4Addr {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1233,7 +1199,6 @@ impl BorshDeserialize for std::net::Ipv4Addr {
 impl BorshDeserialize for std::net::Ipv6Addr {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1262,7 +1227,6 @@ where
 {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1415,7 +1379,6 @@ fn array_deserialization_doesnt_leak() {
     )]
     impl BorshDeserialize for MyType {
         #[async_generic(
-            #[cfg(feature = "async")]
             async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
         )]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1467,7 +1430,6 @@ macro_rules! impl_tuple {
         impl BorshDeserialize for $name {
             #[inline]
             #[async_generic(
-                #[cfg(feature = "async")]
                 async_signature<R: AsyncRead>(_reader: &mut R) -> Result<Self>
             )]
             fn deserialize_reader<R: Read>(_reader: &mut R) -> Result<Self> {
@@ -1490,7 +1452,6 @@ macro_rules! impl_tuple {
         {
             #[inline]
             #[async_generic(
-                #[cfg(feature = "async")]
                 async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
             )]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1537,8 +1498,7 @@ macro_rules! impl_range {
         )]
         impl<T: BorshDeserialize> BorshDeserialize for core::ops::$type<T> {
             #[inline]
-                    #[async_generic(
-                #[cfg(feature = "async")]
+            #[async_generic(
                 async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
             )]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1596,7 +1556,6 @@ pub mod rc {
     {
         #[inline]
         #[async_generic(
-            #[cfg(feature = "async")]
             async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
         )]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1627,7 +1586,6 @@ pub mod rc {
     {
         #[inline]
         #[async_generic(
-            #[cfg(feature = "async")]
             async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
         )]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1649,7 +1607,6 @@ pub mod rc {
 impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(_: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(_: &mut R) -> Result<Self> {
@@ -1670,7 +1627,6 @@ where
 {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -1696,7 +1652,6 @@ where
 {
     #[inline]
     #[async_generic(
-        #[cfg(feature = "async")]
         async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>
     )]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
