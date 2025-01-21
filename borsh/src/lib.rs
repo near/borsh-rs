@@ -41,6 +41,9 @@ pub mod error;
 #[cfg(all(feature = "std", feature = "hashbrown"))]
 compile_error!("feature \"std\" and feature \"hashbrown\" don't make sense at the same time");
 
+#[cfg(all(feature = "tokio", feature = "async-std"))]
+compile_error!("Cannot enable both `async-tokio` and `async-std` features at the same time");
+
 #[cfg(feature = "std")]
 use std::io as io_impl;
 #[cfg(not(feature = "std"))]

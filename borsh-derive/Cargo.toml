@@ -3,7 +3,7 @@ name = "borsh-derive"
 version.workspace = true
 rust-version.workspace = true
 authors = ["Near Inc <hello@nearprotocol.com>"]
-edition = "2018"
+edition.workspace = true
 license = "Apache-2.0"
 readme = "README.md"
 categories = ["encoding", "network-programming"]
@@ -18,14 +18,14 @@ exclude = ["*.snap"]
 proc-macro = true
 
 [dependencies]
-syn = { version = "2.0.81", features = ["full", "fold"] }
+syn = { version = "2.0", features = ["full", "fold"] }
 proc-macro-crate = "3"
-proc-macro2 = "1"
-quote = "1"
+proc-macro2 = "1.0"
+quote = "1.0"
 once_cell = "1.18.0"
 
 [dev-dependencies]
-syn = { version = "2.0.81", features = ["full", "fold", "parsing"] }
+syn = { version = "2.0", features = ["parsing"] }
 prettyplease = "0.2.9"
 insta = "1.29.0"
 
