@@ -48,6 +48,9 @@ compile_error!("Cannot enable both `async-tokio` and `async-std` features at the
 use std::io as io_impl;
 #[cfg(not(feature = "std"))]
 mod nostd_io;
+#[cfg(feature = "async")]
+pub mod async_io;
+
 #[cfg(not(feature = "std"))]
 use nostd_io as io_impl;
 
