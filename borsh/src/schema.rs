@@ -936,5 +936,5 @@ mod bytes_impl {
         fn declaration() -> Declaration {
             "bytes::BytesMut".to_owned()
         }
-    }    
+    }
 }
