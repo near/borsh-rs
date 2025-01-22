@@ -78,6 +78,8 @@ mod schema {
     mod test_ascii_strings;
     mod test_strings;
     mod test_arrays;
+    #[cfg(feature = "bytes")]
+    mod test_bytes;
     mod test_vecs;
     mod test_tuple;
     mod test_primitives;

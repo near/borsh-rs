@@ -904,15 +904,37 @@ impl BorshSchema for std::net::IpAddr {
     }
 }
 
-/// Adds schema to `bytes::Bytes`.
-/// Conservatively just uses `[u8]` schema, so that any consumer already handles it.
-/// while in Rust code we can be more optimal as needed.
+/// Adds schema for `bytes` crate structures.
 #[cfg(feature = "bytes")]
-impl BorshSchema for bytes::Bytes {
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        <[u8]>::add_definitions_recursively(definitions);
+mod bytes_impl {
+    use super::*;
+    impl BorshSchema for bytes::Bytes {
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+            let definition = Definition::Sequence {
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: u8::declaration(),
+            };
+            add_definition(Self::declaration(), definition, definitions);
+            u8::add_definitions_recursively(definitions);
+        }
+        fn declaration() -> Declaration {
+            "bytes::Bytes".to_owned()
+        }
     }
-    fn declaration() -> Declaration {
-        <[u8]>::declaration()
-    }
+
+    impl BorshSchema for bytes::BytesMut {
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+            let definition = Definition::Sequence {
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: u8::declaration(),
+            };
+            add_definition(Self::declaration(), definition, definitions);
+            u8::add_definitions_recursively(definitions);
+        }
+        fn declaration() -> Declaration {
+            "bytes::BytesMut".to_owned()
+        }
+    }    
 }

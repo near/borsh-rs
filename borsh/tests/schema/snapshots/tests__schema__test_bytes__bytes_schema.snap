@@ -1,0 +1,33 @@
+---
+source: borsh/tests/schema/test_bytes.rs
+expression: "format!(\"{:#?}\", (bytes_schema, bytes_mut_schema))"
+snapshot_kind: text
+---
+(
+    BorshSchemaContainer {
+        declaration: "bytes::Bytes",
+        definitions: {
+            "bytes::Bytes": Sequence {
+                length_width: 4,
+                length_range: 0..=4294967295,
+                elements: "u8",
+            },
+            "u8": Primitive(
+                1,
+            ),
+        },
+    },
+    BorshSchemaContainer {
+        declaration: "bytes::BytesMut",
+        definitions: {
+            "bytes::BytesMut": Sequence {
+                length_width: 4,
+                length_range: 0..=4294967295,
+                elements: "u8",
+            },
+            "u8": Primitive(
+                1,
+            ),
+        },
+    },
+)
