@@ -12,7 +12,7 @@
 //! * `BorshSchemaContainer` is used to store all declarations and definitions that are needed to work with a single type.
 
 #![allow(dead_code)] // Unclear why rust check complains on fields of `Definition` variants.
-use crate as borsh; // For `#[derive(BorshSerialize, BorshDeserialize)]`.
+use crate as borsh; // For `#[derive(BorshSerialize, BorshDeserialize, BorshSchema)]`.
 use crate::__private::maybestd::{
     borrow,
     boxed::Box,

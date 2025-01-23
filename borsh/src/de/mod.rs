@@ -41,7 +41,7 @@ const ERROR_WRONG_ORDER_OF_KEYS: &str = "keys were not serialized in ascending o
 #[async_generic(
     #[cfg(feature = "async")]
     #[async_trait]
-    async_trait: BorshDeserialize
+    async_trait
 )]
 pub trait BorshDeserialize: Sized {
     /// Deserializes this instance from a given slice of bytes.

@@ -58,7 +58,7 @@ const FLOAT_NAN_ERR: &str = "For portability reasons we do not allow to serializ
 #[async_generic(
     #[cfg(feature = "async")]
     #[async_trait]
-    async_trait: BorshSerialize
+    async_trait(copy_sync)
 )]
 pub trait BorshSerialize {
     #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
@@ -78,7 +78,7 @@ pub trait BorshSerialize {
 #[async_generic(
     #[cfg(feature = "async")]
     #[async_trait]
-    async_trait
+    async_trait(copy_sync)
 )]
 impl BorshSerialize for u8 {
     #[inline]
