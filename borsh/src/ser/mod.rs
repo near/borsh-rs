@@ -474,14 +474,12 @@ where
         async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
     )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let len = u32::try_from(self.len())
-            .map_err(|_| ErrorKind::InvalidData)?
-            .to_le_bytes();
+        let len = u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidData)?;
         if _sync {
-            writer.write_all(&len)?;
+            writer.write_all(&len.to_le_bytes())?;
             serialize_slice(self, writer)
         } else {
-            writer.write_all(&len).await?;
+            writer.write_u32(len).await?;
             serialize_slice_async(self, writer).await
         }
     }
@@ -609,6 +607,7 @@ impl BorshSerialize for bson::oid::ObjectId {
         async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
     )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        #[inline(always)]
         fn as_bytes(r#ref: &bson::oid::ObjectId) -> &[u8; 12] {
             // SAFETY: `ObjectId` is a `12` byte array.
             unsafe { &*(r#ref as *const bson::oid::ObjectId as *const [u8; 12]) }
@@ -640,14 +639,14 @@ where
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         check_zst::<T>()?;
 
-        let bytes = (u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidData)?).to_le_bytes();
+        let len = u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidData)?;
         let slices = self.as_slices();
         if _sync {
-            writer.write_all(&bytes)?;
+            writer.write_all(&len.to_le_bytes())?;
             serialize_slice(slices.0, writer)?;
             serialize_slice(slices.1, writer)
         } else {
-            writer.write_all(&bytes).await?;
+            writer.write_u32(len).await?;
             serialize_slice_async(slices.0, writer).await?;
             serialize_slice_async(slices.1, writer).await
         }
@@ -675,7 +674,7 @@ where
         if _sync {
             BorshSerialize::serialize(&len, writer)
         } else {
-            BorshSerializeAsync::serialize(&len, writer).await
+            writer.write_u32(len).await
         }?;
         for item in self {
             if _sync {
@@ -740,7 +739,7 @@ pub mod hashes {
             if _sync {
                 BorshSerialize::serialize(&len, writer)
             } else {
-                BorshSerializeAsync::serialize(&len, writer).await
+                writer.write_u32(len).await
             }?;
             for kv in vec {
                 if _sync {
@@ -778,7 +777,7 @@ pub mod hashes {
             if _sync {
                 BorshSerialize::serialize(&len, writer)
             } else {
-                BorshSerializeAsync::serialize(&len, writer).await
+                writer.write_u32(len).await
             }?;
             for item in vec {
                 if _sync {
@@ -817,7 +816,7 @@ where
         if _sync {
             BorshSerialize::serialize(&len, writer)
         } else {
-            BorshSerializeAsync::serialize(&len, writer).await
+            writer.write_u32(len).await
         }?;
         for (key, value) in self {
             if _sync {
@@ -854,7 +853,7 @@ where
         if _sync {
             BorshSerialize::serialize(&len, writer)
         } else {
-            BorshSerializeAsync::serialize(&len, writer).await
+            writer.write_u32(len).await
         }?;
         for item in self {
             if _sync {
@@ -954,6 +953,7 @@ impl BorshSerialize for std::net::Ipv4Addr {
         async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
     )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        #[inline(always)]
         fn as_bytes(ip: &std::net::Ipv4Addr) -> &[u8; 4] {
             // SAFETY: `Ipv4Addr` is a `4` byte array.
             unsafe { &*(ip as *const std::net::Ipv4Addr as *const [u8; 4]) }
@@ -979,6 +979,7 @@ impl BorshSerialize for std::net::Ipv6Addr {
         async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
     )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        #[inline(always)]
         fn as_bytes(ip: &std::net::Ipv6Addr) -> &[u8; 16] {
             // SAFETY: `Ipv4Addr` is a `16` byte array.
             unsafe { &*(ip as *const std::net::Ipv6Addr as *const [u8; 16]) }
