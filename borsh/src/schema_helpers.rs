@@ -1,8 +1,10 @@
-use crate::__private::maybestd::vec::Vec;
-use crate::from_slice;
-use crate::io::{Error, ErrorKind, Result};
-use crate::schema::{BorshSchemaContainer, SchemaMaxSerializedSizeError};
-use crate::{BorshDeserialize, BorshSchema, BorshSerialize};
+use crate::{
+    __private::maybestd::vec::Vec,
+    from_slice,
+    io::{Error, ErrorKind, Result},
+    schema::{BorshSchemaContainer, SchemaMaxSerializedSizeError},
+    BorshDeserialize, BorshSchema, BorshSerialize,
+};
 
 /// Deserialize this instance from a slice of bytes, but assume that at the beginning we have
 /// bytes describing the schema of the type. We deserialize this schema and verify that it is

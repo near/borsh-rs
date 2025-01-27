@@ -1,19 +1,15 @@
-use alloc::{string::ToString, vec, vec::Vec};
-
+use alloc::{
+    collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
+    string::ToString,
+    vec,
+    vec::Vec,
+};
 #[cfg(feature = "std")]
 use std::collections::{HashMap, HashSet};
 
+use borsh::{error::ERROR_ZST_FORBIDDEN, from_slice, to_vec, BorshDeserialize, BorshSerialize};
 #[cfg(feature = "hashbrown")]
 use hashbrown::{HashMap, HashSet};
-
-use alloc::collections::{BTreeMap, BTreeSet, LinkedList, VecDeque};
-
-use borsh::from_slice;
-use borsh::to_vec;
-use borsh::BorshDeserialize;
-use borsh::BorshSerialize;
-
-use borsh::error::ERROR_ZST_FORBIDDEN;
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug, Eq, PartialOrd, Ord, Hash)]
 struct A();
 

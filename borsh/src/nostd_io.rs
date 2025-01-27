@@ -1,7 +1,8 @@
 //! Taken from https://github.com/bbqsrc/bare-io (with adjustments)
 
-use crate::__private::maybestd::string::String;
 use core::{convert::From, fmt, result};
+
+use crate::__private::maybestd::string::String;
 
 /// A specialized [`Result`] type for I/O operations.
 ///

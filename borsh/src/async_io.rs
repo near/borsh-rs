@@ -5,9 +5,13 @@ use std::io::Result;
 
 // #[async_trait]
 pub trait AsyncRead: Unpin + Send {
-    fn read<'a>(&'a mut self, buf: &'a mut [u8]) -> impl Future<Output = Result<usize>> + Send + 'a;
+    fn read<'a>(&'a mut self, buf: &'a mut [u8])
+        -> impl Future<Output = Result<usize>> + Send + 'a;
 
-    fn read_exact<'a>(&'a mut self, buf: &'a mut [u8]) -> impl Future<Output = Result<()>> + Send + 'a;
+    fn read_exact<'a>(
+        &'a mut self,
+        buf: &'a mut [u8],
+    ) -> impl Future<Output = Result<()>> + Send + 'a;
 
     fn read_u8<'a>(&'a mut self) -> impl Future<Output = Result<u8>> + Send + 'a {
         async {
@@ -115,7 +119,10 @@ impl<R: tokio::io::AsyncReadExt + Unpin + Send> AsyncRead for R {
     }
 
     #[inline]
-    fn read_exact<'a>(&'a mut self, buf: &'a mut [u8]) -> impl Future<Output = Result<()>> + Send + 'a {
+    fn read_exact<'a>(
+        &'a mut self,
+        buf: &'a mut [u8],
+    ) -> impl Future<Output = Result<()>> + Send + 'a {
         async {
             tokio::io::AsyncReadExt::read_exact(self, buf)
                 .await
@@ -188,12 +195,18 @@ impl<R: tokio::io::AsyncReadExt + Unpin + Send> AsyncRead for R {
 // #[async_trait]
 impl<R: async_std::io::ReadExt + Unpin + Send> AsyncRead for R {
     #[inline]
-    fn read<'a>(&'a mut self, buf: &'a mut [u8]) -> impl Future<Output = Result<usize>> + Send + 'a {
+    fn read<'a>(
+        &'a mut self,
+        buf: &'a mut [u8],
+    ) -> impl Future<Output = Result<usize>> + Send + 'a {
         async_std::io::ReadExt::read(self, buf)
     }
 
     #[inline]
-    fn read_exact<'a>(&'a mut self, buf: &'a mut [u8]) -> impl Future<Output = Result<()>> + Send + 'a {
+    fn read_exact<'a>(
+        &'a mut self,
+        buf: &'a mut [u8],
+    ) -> impl Future<Output = Result<()>> + Send + 'a {
         async_std::io::ReadExt::read_exact(self, buf)
     }
 }
@@ -201,7 +214,7 @@ impl<R: async_std::io::ReadExt + Unpin + Send> AsyncRead for R {
 // #[async_trait]
 pub trait AsyncWrite: Unpin + Send {
     fn write_all<'a>(&'a mut self, buf: &'a [u8]) -> impl Future<Output = Result<()>> + Send + 'a;
-    
+
     fn write_u8<'a>(&'a mut self, n: u8) -> impl Future<Output = Result<()>> + Send + 'a {
         async move {
             let bytes = n.to_le_bytes();

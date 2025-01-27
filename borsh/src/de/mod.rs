@@ -189,7 +189,9 @@ impl BorshDeserialize for u8 {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         if _sync {
             let mut buf = [0u8; 1];
-            reader.read_exact(&mut buf).map_err(unexpected_eof_to_unexpected_length_of_input)?;
+            reader
+                .read_exact(&mut buf)
+                .map_err(unexpected_eof_to_unexpected_length_of_input)?;
             Ok(buf[0])
         } else {
             reader.read_u8()
@@ -365,7 +367,7 @@ macro_rules! impl_for_float {
                     reader
                         .read_exact(&mut buf)
                         .map_err(unexpected_eof_to_unexpected_length_of_input)?;
-                    $type::from_bits($int_type::from_le_bytes(buf.try_into().unwrap())) 
+                    $type::from_bits($int_type::from_le_bytes(buf.try_into().unwrap()))
                 } else {
                     reader.$method().await?
                 };
@@ -1276,9 +1278,7 @@ where
                 // TODO: replace with `core::array::try_from_fn` when stabilized to avoid manually
                 // dropping uninitialized values through the guard drop.
                 for elem in self.buffer.iter_mut() {
-                    elem.write(
-                        T::deserialize_reader(self.reader).await?,
-                    );
+                    elem.write(T::deserialize_reader(self.reader).await?);
                     self.init_count += 1;
                 }
                 Ok(())
@@ -1482,27 +1482,13 @@ pub mod rc {
     /// Deserializing a data structure containing `Rc` will not attempt to
     /// deduplicate `Rc` references to the same data. Every deserialized `Rc`
     /// will end up with a strong count of 1.
-    // #[async_generic(
-    // #[cfg(feature = "async")]
-    //     async_trait<T: ?Sized>
-    //     where
-    //         Box<T>: BorshDeserializeAsync,
-    // )]
     impl<T: ?Sized> BorshDeserialize for Rc<T>
     where
         Box<T>: BorshDeserialize,
     {
         #[inline]
-        // #[async_generic(
-        //     async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-        // )]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-            Ok(//if _sync {
-                <Box<T>>::deserialize_reader(reader)
-            // } else {
-            //    <Box<T>>::deserialize_reader(reader).await
-            /*}*/?
-            .into())
+            Ok(<Box<T>>::deserialize_reader(reader)?.into())
         }
     }
 

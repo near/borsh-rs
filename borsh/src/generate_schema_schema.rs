@@ -1,9 +1,9 @@
 //! Generate `BorshSchemaCointainer` for `BorshSchemaContainer` and save it into a file.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+use std::{fs::File, io::Write};
+
 use borsh::schema_container_of;
-use std::fs::File;
-use std::io::Write;
 
 fn main() {
     let container = schema_container_of::<borsh::schema::BorshSchemaContainer>();

@@ -1,6 +1,8 @@
-use crate::BorshSerialize;
-use crate::__private::maybestd::vec::Vec;
-use crate::io::{ErrorKind, Result, Write};
+use crate::{
+    BorshSerialize,
+    __private::maybestd::vec::Vec,
+    io::{ErrorKind, Result, Write},
+};
 
 pub(super) const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;
 
@@ -47,7 +49,7 @@ where
 /// struct A {
 ///     tag: String,
 ///     value: u64,
-/// };
+/// }
 ///
 /// # #[cfg(feature = "derive")]
 /// let a = A { tag: "hello".to_owned(), value: 42 };

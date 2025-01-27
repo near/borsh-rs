@@ -6,27 +6,30 @@
 //! on Rust side.
 //!
 //! The important components are: `BorshSchema` trait, `Definition` and `Declaration` types, and `BorshSchemaContainer` struct.
-//! * `BorshSchema` trait allows any type that implements it to be self-descriptive, i.e. generate it's own schema;
+//! * `BorshSchema` trait allows any type that implements it to be self-descriptive, i.e. generate its own schema;
 //! * `Declaration` is used to describe the type identifier, e.g. `HashMap<u64, String>`;
 //! * `Definition` is used to describe the structure of the type;
 //! * `BorshSchemaContainer` is used to store all declarations and definitions that are needed to work with a single type.
 
 #![allow(dead_code)] // Unclear why rust check complains on fields of `Definition` variants.
-use crate as borsh; // For `#[derive(BorshSerialize, BorshDeserialize, BorshSchema)]`.
-use crate::__private::maybestd::{
-    borrow,
-    boxed::Box,
-    collections::{btree_map::Entry, BTreeMap, BTreeSet, LinkedList, VecDeque},
-    format,
-    string::{String, ToString},
-    vec,
-    vec::Vec,
+
+use core::{borrow::Borrow, cmp::Ord, marker::PhantomData};
+
+use crate as borsh;
+// For `#[derive(BorshSerialize, BorshDeserialize, BorshSchema)]`.
+use crate::{
+    __private::maybestd::{
+        borrow,
+        boxed::Box,
+        collections::{btree_map::Entry, BTreeMap, BTreeSet, LinkedList, VecDeque},
+        format,
+        string::{String, ToString},
+        vec,
+        vec::Vec,
+    },
+    io::{Read, Result as IOResult, Write},
+    BorshDeserialize, BorshSchema as BorshSchemaMacro, BorshSerialize,
 };
-use crate::io::{Read, Result as IOResult, Write};
-use crate::{BorshDeserialize, BorshSchema as BorshSchemaMacro, BorshSerialize};
-use core::borrow::Borrow;
-use core::cmp::Ord;
-use core::marker::PhantomData;
 
 mod container_ext;
 
@@ -350,11 +353,11 @@ pub mod rc {
     //!
     //! Module defines [BorshSchema] implementation for
     //! [alloc::rc::Rc](std::rc::Rc) and [alloc::sync::Arc](std::sync::Arc).
-    use crate::BorshSchema;
-
     use super::{Declaration, Definition};
-    use crate::__private::maybestd::collections::BTreeMap;
-    use crate::__private::maybestd::{rc::Rc, sync::Arc};
+    use crate::{
+        BorshSchema,
+        __private::maybestd::{collections::BTreeMap, rc::Rc, sync::Arc},
+    };
 
     impl<T> BorshSchema for Rc<T>
     where
@@ -487,10 +490,8 @@ pub mod ascii {
     //!
     //! Module defines [BorshSchema] implementation for
     //! some types from [ascii](::ascii) crate.
-    use crate::BorshSchema;
-
     use super::{add_definition, Declaration, Definition};
-    use crate::__private::maybestd::collections::BTreeMap;
+    use crate::{BorshSchema, __private::maybestd::collections::BTreeMap};
 
     impl BorshSchema for ascii::AsciiString {
         #[inline]
@@ -575,7 +576,6 @@ where
     T: BorshSchema,
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        use core::convert::TryFrom;
         let length = u64::try_from(N).unwrap();
         let definition = Definition::Sequence {
             length_width: Definition::ARRAY_LENGTH_WIDTH,
@@ -687,14 +687,14 @@ where
 /// [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
 #[cfg(hash_collections)]
 pub mod hashes {
-    use crate::BorshSchema;
-
-    use super::{add_definition, Declaration, Definition};
-    use crate::__private::maybestd::collections::BTreeMap;
-
-    use crate::__private::maybestd::collections::{HashMap, HashSet};
     #[cfg(not(feature = "std"))]
     use alloc::format;
+
+    use super::{add_definition, Declaration, Definition};
+    use crate::{
+        BorshSchema,
+        __private::maybestd::collections::{BTreeMap, HashMap, HashSet},
+    };
 
     // S is not serialized, so we ignore it in schema too
     // forcing S to be BorshSchema forces to define Definition
