@@ -42,7 +42,6 @@ bytes = { version = "1", optional = true }
 bson = { version = "2", optional = true }
 
 async-generic = { git = "https://github.com/DanikVitek/async-generic.git" }
-async-trait = { version = "0.1", optional = true }
 tokio = { version = "1", default-features = false, features = ["io-util"], optional = true }
 async-std = { version = "1", default-features = false, features = ["std"], optional = true }
 
@@ -57,7 +56,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 [features]
 default = ["std"]
 derive = ["borsh-derive"]
-async = ["dep:async-trait"]
+async = []
 tokio = ["async", "dep:tokio"]
 async-std = ["async", "dep:async-std"]
 unstable__schema = ["derive", "borsh-derive/schema"]

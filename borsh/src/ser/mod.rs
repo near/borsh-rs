@@ -1,8 +1,8 @@
+#[cfg(feature = "async")]
+use core::future::Future;
 use core::{convert::TryFrom, marker::PhantomData};
 
 use async_generic::async_generic;
-#[cfg(feature = "async")]
-use async_trait::async_trait;
 
 #[cfg(feature = "async")]
 use crate::async_io::AsyncWrite;
@@ -57,11 +57,12 @@ const FLOAT_NAN_ERR: &str = "For portability reasons we do not allow to serializ
 /// ```
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
-    async_trait(copy_sync)
+    async_trait(copy_sync): Sync
 )]
 pub trait BorshSerialize {
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()>;
 
     #[inline]
@@ -77,18 +78,18 @@ pub trait BorshSerialize {
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait(copy_sync)
 )]
 impl BorshSerialize for u8 {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let res = writer.write_all(core::slice::from_ref(self));
         if _sync {
-            res
+            writer.write_all(core::slice::from_ref(self))
         } else {
-            res.await
+            writer.write_u8(*self)
         }
     }
 
@@ -99,180 +100,192 @@ impl BorshSerialize for u8 {
 }
 
 macro_rules! impl_for_integer {
-    ($type: ident) => {
+    ($type: ident, $method: ident) => {
         #[async_generic(
             #[cfg(feature = "async")]
-            #[async_trait]
             async_trait
         )]
         impl BorshSerialize for $type {
             #[inline]
-            #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+            #[async_generic(
+                async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+            )]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-                let bytes = self.to_le_bytes();
                 if _sync {
+                    let bytes = self.to_le_bytes();
                     writer.write_all(&bytes)
                 } else {
-                    writer.write_all(&bytes).await
+                    writer.$method(*self)
                 }
             }
         }
     };
 }
 
-impl_for_integer!(i8);
-impl_for_integer!(i16);
-impl_for_integer!(i32);
-impl_for_integer!(i64);
-impl_for_integer!(i128);
-impl_for_integer!(u16);
-impl_for_integer!(u32);
-impl_for_integer!(u64);
-impl_for_integer!(u128);
+impl_for_integer!(i8, write_i8);
+impl_for_integer!(i16, write_i16);
+impl_for_integer!(i32, write_i32);
+impl_for_integer!(i64, write_i64);
+impl_for_integer!(i128, write_i128);
+impl_for_integer!(u16, write_u16);
+impl_for_integer!(u32, write_u32);
+impl_for_integer!(u64, write_u64);
+impl_for_integer!(u128, write_u128);
 
 macro_rules! impl_for_nonzero_integer {
-    ($type: ty) => {
+    ($type: ty, $method: ident $(, $repr: ty)?) => {
         #[async_generic(
             #[cfg(feature = "async")]
-            #[async_trait]
             async_trait
         )]
         impl BorshSerialize for $type {
             #[inline]
-            #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+            #[async_generic(
+                async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+            )]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
                 if _sync {
                     BorshSerialize::serialize(&self.get(), writer)
                 } else {
-                    BorshSerializeAsync::serialize(&self.get(), writer).await
+                    let value = self.get();
+                    writer.$method(value $(as $repr)?)
                 }
             }
         }
     };
 }
 
-impl_for_nonzero_integer!(core::num::NonZeroI8);
-impl_for_nonzero_integer!(core::num::NonZeroI16);
-impl_for_nonzero_integer!(core::num::NonZeroI32);
-impl_for_nonzero_integer!(core::num::NonZeroI64);
-impl_for_nonzero_integer!(core::num::NonZeroI128);
-impl_for_nonzero_integer!(core::num::NonZeroU8);
-impl_for_nonzero_integer!(core::num::NonZeroU16);
-impl_for_nonzero_integer!(core::num::NonZeroU32);
-impl_for_nonzero_integer!(core::num::NonZeroU64);
-impl_for_nonzero_integer!(core::num::NonZeroU128);
-impl_for_nonzero_integer!(core::num::NonZeroUsize);
+impl_for_nonzero_integer!(core::num::NonZeroI8, write_i8);
+impl_for_nonzero_integer!(core::num::NonZeroI16, write_i16);
+impl_for_nonzero_integer!(core::num::NonZeroI32, write_i32);
+impl_for_nonzero_integer!(core::num::NonZeroI64, write_i64);
+impl_for_nonzero_integer!(core::num::NonZeroI128, write_i128);
+impl_for_nonzero_integer!(core::num::NonZeroIsize, write_i64, i64);
+impl_for_nonzero_integer!(core::num::NonZeroU8, write_u8);
+impl_for_nonzero_integer!(core::num::NonZeroU16, write_u16);
+impl_for_nonzero_integer!(core::num::NonZeroU32, write_u32);
+impl_for_nonzero_integer!(core::num::NonZeroU64, write_u64);
+impl_for_nonzero_integer!(core::num::NonZeroU128, write_u128);
+impl_for_nonzero_integer!(core::num::NonZeroUsize, write_u64, u64);
 
 macro_rules! impl_for_size_integer {
-    ($type:ty: $repr:ty) => {
+    ($type:ty: $repr:ty, $method: ident) => {
         #[async_generic(
             #[cfg(feature = "async")]
-            #[async_trait]
             async_trait
         )]
         impl BorshSerialize for $type {
             #[inline]
-            #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+            #[async_generic(
+                async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+            )]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
                 if _sync {
                     BorshSerialize::serialize(&(*self as $repr), writer)
                 } else {
-                    BorshSerializeAsync::serialize(&(*self as $repr), writer).await
+                    let value = *self as $repr;
+                    writer.$method(value)
                 }
             }
         }
     };
 }
 
-impl_for_size_integer!(usize: u64);
-impl_for_size_integer!(isize: i64);
+impl_for_size_integer!(usize: u64, write_u64);
+impl_for_size_integer!(isize: i64, write_i64);
 
 // Note NaNs have a portability issue. Specifically, signalling NaNs on MIPS are quiet NaNs on x86,
 // and vice-versa. We disallow NaNs to avoid this issue.
 macro_rules! impl_for_float {
-    ($type: ident) => {
+    ($type: ident, $method: ident) => {
         #[async_generic(
             #[cfg(feature = "async")]
-            #[async_trait]
             async_trait
         )]
         impl BorshSerialize for $type {
             #[inline]
-            #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+            #[async_generic(
+                async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+            )]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
                 if self.is_nan() {
                     return Err(Error::new(ErrorKind::InvalidData, FLOAT_NAN_ERR));
                 }
-                let bytes = self.to_bits().to_le_bytes();
-                if _sync {
+                if _sync{
+                    let bytes = self.to_bits().to_le_bytes();
                     writer.write_all(&bytes)
                 } else {
-                    writer.write_all(&bytes).await
+                    writer.$method(*self).await
                 }
             }
         }
     };
 }
 
-impl_for_float!(f32);
-impl_for_float!(f64);
+impl_for_float!(f32, write_f32);
+impl_for_float!(f64, write_f64);
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait
 )]
 impl BorshSerialize for bool {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         let byte = u8::from(*self);
         if _sync {
             BorshSerialize::serialize(&byte, writer)
         } else {
-            BorshSerializeAsync::serialize(&byte, writer).await
+            writer.write_u8(byte)
         }
     }
 }
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait<T>
     where
-        T: BorshSerializeAsync + Sync,
+        T: BorshSerializeAsync,
 )]
 impl<T> BorshSerialize for Option<T>
 where
     T: BorshSerialize,
 {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self {
-            None => if _sync {
-                BorshSerialize::serialize(&0u8, writer)
-            } else {
-                BorshSerializeAsync::serialize(&0u8, writer).await
-            },
-            Some(value) => if _sync {
-                BorshSerialize::serialize(&1u8, writer)?;
-                BorshSerialize::serialize(value, writer)
-            } else {
-                BorshSerializeAsync::serialize(&1u8, writer).await?;
-                BorshSerializeAsync::serialize(value, writer).await
-            },
+            None => {
+                if _sync {
+                    BorshSerialize::serialize(&0u8, writer)
+                } else {
+                    BorshSerializeAsync::serialize(&0u8, writer).await
+                }
+            }
+            Some(value) => {
+                if _sync {
+                    BorshSerialize::serialize(&1u8, writer)?;
+                    BorshSerialize::serialize(value, writer)
+                } else {
+                    BorshSerializeAsync::serialize(&1u8, writer).await?;
+                    BorshSerializeAsync::serialize(value, writer).await
+                }
+            }
         }
     }
 }
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait<T, E>
     where
-        T: BorshSerializeAsync + Sync,
-        E: BorshSerializeAsync + Sync,
+        T: BorshSerializeAsync,
+        E: BorshSerializeAsync,
 )]
 impl<T, E> BorshSerialize for core::result::Result<T, E>
 where
@@ -280,22 +293,28 @@ where
     E: BorshSerialize,
 {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self {
-            Err(e) => if _sync {
-                BorshSerialize::serialize(&0u8, writer)?;
-                BorshSerialize::serialize(e, writer)
-            } else {
-                BorshSerializeAsync::serialize(&0u8, writer).await?;
-                BorshSerializeAsync::serialize(e, writer).await
+            Err(e) => {
+                if _sync {
+                    BorshSerialize::serialize(&0u8, writer)?;
+                    BorshSerialize::serialize(e, writer)
+                } else {
+                    BorshSerializeAsync::serialize(&0u8, writer).await?;
+                    BorshSerializeAsync::serialize(e, writer).await
+                }
             }
-            Ok(v) => if _sync {
-                BorshSerialize::serialize(&1u8, writer)?;
-                BorshSerialize::serialize(v, writer)
-            } else {
-                BorshSerializeAsync::serialize(&1u8, writer).await?;
-                BorshSerializeAsync::serialize(v, writer).await
+            Ok(v) => {
+                if _sync {
+                    BorshSerialize::serialize(&1u8, writer)?;
+                    BorshSerialize::serialize(v, writer)
+                } else {
+                    BorshSerializeAsync::serialize(&1u8, writer).await?;
+                    BorshSerializeAsync::serialize(v, writer).await
+                }
             }
         }
     }
@@ -303,36 +322,37 @@ where
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait
 )]
 impl BorshSerialize for str {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         let bytes = self.as_bytes();
         if _sync {
             BorshSerialize::serialize(bytes, writer)
         } else {
-            BorshSerializeAsync::serialize(bytes, writer).await
+            BorshSerializeAsync::serialize(bytes, writer)
         }
     }
 }
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait
 )]
 impl BorshSerialize for String {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let bytes = self.as_bytes();
         if _sync {
-            BorshSerialize::serialize(bytes, writer)
+            BorshSerialize::serialize(&**self, writer)
         } else {
-            BorshSerializeAsync::serialize(bytes, writer).await
+            BorshSerializeAsync::serialize(&**self, writer)
         }
     }
 }
@@ -344,9 +364,10 @@ pub mod ascii {
     //! Module defines [BorshSerialize] implementation for
     //! some types from [ascii](::ascii) crate.
 
-    use async_generic::async_generic;
     #[cfg(feature = "async")]
-    use async_trait::async_trait;
+    use core::future::Future;
+
+    use async_generic::async_generic;
 
     use super::BorshSerialize;
     #[cfg(feature = "async")]
@@ -355,54 +376,56 @@ pub mod ascii {
 
     #[async_generic(
         #[cfg(feature = "async")]
-        #[async_trait]
         async_trait
     )]
     impl BorshSerialize for ascii::AsciiChar {
         #[inline]
-        #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+        #[async_generic(
+            async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+        )]
         fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
             let byte = self.as_byte();
             if _sync {
                 BorshSerialize::serialize(&byte, writer)
             } else {
-                BorshSerializeAsync::serialize(&byte, writer).await
+                writer.write_u8(byte)
             }
         }
     }
 
     #[async_generic(
         #[cfg(feature = "async")]
-        #[async_trait]
         async_trait
     )]
     impl BorshSerialize for ascii::AsciiStr {
         #[inline]
-        #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+        #[async_generic(
+            async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+        )]
         fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
             let bytes = self.as_bytes();
             if _sync {
                 BorshSerialize::serialize(bytes, writer)
             } else {
-                BorshSerializeAsync::serialize(bytes, writer).await
+                BorshSerializeAsync::serialize(bytes, writer)
             }
         }
     }
 
     #[async_generic(
         #[cfg(feature = "async")]
-        #[async_trait]
         async_trait
     )]
     impl BorshSerialize for ascii::AsciiString {
         #[inline]
-        #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+        #[async_generic(
+            async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+        )]
         fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-            let bytes = self.as_bytes();
             if _sync {
-                BorshSerialize::serialize(bytes, writer)
+                BorshSerialize::serialize(&**self, writer)
             } else {
-                BorshSerializeAsync::serialize(bytes, writer).await
+                BorshSerializeAsync::serialize(&**self, writer)
             }
         }
     }
@@ -438,7 +461,6 @@ fn serialize_slice<T: BorshSerialize, W: Write>(data: &[T], writer: &mut W) -> R
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait<T>
     where
         T: BorshSerializeAsync + Sync,
@@ -448,14 +470,18 @@ where
     T: BorshSerialize,
 {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let bytes = (u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidData)?).to_le_bytes();
+        let len = u32::try_from(self.len())
+            .map_err(|_| ErrorKind::InvalidData)?
+            .to_le_bytes();
         if _sync {
-            writer.write_all(&bytes)?;
+            writer.write_all(&len)?;
             serialize_slice(self, writer)
         } else {
-            writer.write_all(&bytes).await?;
+            writer.write_all(&len).await?;
             serialize_slice_async(self, writer).await
         }
     }
@@ -463,27 +489,27 @@ where
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait<T: BorshSerializeAsync + ?Sized + Sync>
 )]
 impl<T: BorshSerialize + ?Sized> BorshSerialize for &T {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         if _sync {
             BorshSerialize::serialize(*self, writer)
         } else {
-            BorshSerializeAsync::serialize(*self, writer).await
+            BorshSerializeAsync::serialize(*self, writer)
         }
     }
 }
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait<T>
     where
-        T: BorshSerializeAsync + ToOwned + ?Sized + Sync,
+        T: BorshSerializeAsync + ToOwned + ?Sized,
         <T as ToOwned>::Owned: Sync,
 )]
 impl<T> BorshSerialize for Cow<'_, T>
@@ -491,37 +517,42 @@ where
     T: BorshSerialize + ToOwned + ?Sized,
 {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         let r#ref = self.as_ref();
         if _sync {
             BorshSerialize::serialize(r#ref, writer)
         } else {
-            BorshSerializeAsync::serialize(r#ref, writer).await
+            BorshSerializeAsync::serialize(r#ref, writer)
         }
     }
 }
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait<T>
     where
-        T: BorshSerializeAsync + Sync,
+        T: BorshSerializeAsync,
 )]
 impl<T> BorshSerialize for Vec<T>
 where
     T: BorshSerialize,
 {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         check_zst::<T>()?;
-
         let slice = self.as_slice();
         if _sync {
             BorshSerialize::serialize(slice, writer)
         } else {
+            // don't remove `.await`, because `async_signature` will remove the implicit `async`
+            // block and you would need to setup the state machine manually anyway,
+            // because of `?` in `check_zst::<T>()?`
             BorshSerializeAsync::serialize(slice, writer).await
         }
     }
@@ -530,18 +561,19 @@ where
 #[cfg(feature = "bytes")]
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait
 )]
 impl BorshSerialize for bytes::Bytes {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         let bytes = self.as_ref();
         if _sync {
             BorshSerialize::serialize(bytes, writer)
         } else {
-            BorshSerializeAsync::serialize(bytes, writer).await
+            BorshSerializeAsync::serialize(bytes, writer)
         }
     }
 }
@@ -549,54 +581,62 @@ impl BorshSerialize for bytes::Bytes {
 #[cfg(feature = "bytes")]
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait
 )]
 impl BorshSerialize for bytes::BytesMut {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         let bytes = self.as_ref();
         if _sync {
             BorshSerialize::serialize(bytes, writer)
         } else {
-            BorshSerializeAsync::serialize(bytes, writer).await
+            BorshSerializeAsync::serialize(bytes, writer)
         }
     }
 }
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait
 )]
 #[cfg(feature = "bson")]
 impl BorshSerialize for bson::oid::ObjectId {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let bytes = self.bytes();
+        fn as_bytes(r#ref: &bson::oid::ObjectId) -> &[u8; 12] {
+            // SAFETY: `ObjectId` is a `12` byte array.
+            unsafe { &*(r#ref as *const bson::oid::ObjectId as *const [u8; 12]) }
+        }
+
+        let bytes = as_bytes(self);
         if _sync {
-            BorshSerialize::serialize(&bytes, writer)
+            writer.write_all(bytes)
         } else {
-            BorshSerializeAsync::serialize(&bytes, writer).await
+            writer.write_all(bytes)
         }
     }
 }
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait<T>
     where
-        T: BorshSerializeAsync + Sync,
+        T: BorshSerializeAsync,
 )]
 impl<T> BorshSerialize for VecDeque<T>
 where
     T: BorshSerialize,
 {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         check_zst::<T>()?;
 
@@ -616,25 +656,26 @@ where
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait<T>
     where
-        T: BorshSerializeAsync + Sync,
+        T: BorshSerializeAsync,
 )]
 impl<T> BorshSerialize for LinkedList<T>
 where
     T: BorshSerialize,
 {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         check_zst::<T>()?;
 
-        let bytes =(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidData)?).to_le_bytes();
+        let len = u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidData)?;
         if _sync {
-            writer.write_all(&bytes)
+            BorshSerialize::serialize(&len, writer)
         } else {
-            writer.write_all(&bytes).await
+            BorshSerializeAsync::serialize(&len, writer).await
         }?;
         for item in self {
             if _sync {
@@ -649,16 +690,20 @@ where
 
 /// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
 ///
-/// Module defines [BorshSerialize] implementation for
-/// [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
+/// Module defines [`BorshSerialize`]
+#[cfg_attr(feature = "async", doc = " & [`BorshSerializeAsync`]")]
+/// implementation for [`HashMap`](std::collections::HashMap)/[`HashSet`](std::collections::HashSet).
 #[cfg(hash_collections)]
 pub mod hashes {
+    #[cfg(feature = "async")]
+    use core::future::Future;
     use core::{convert::TryFrom, hash::BuildHasher};
 
     use async_generic::async_generic;
-    #[cfg(feature = "async")]
-    use async_trait::async_trait;
 
+    use super::BorshSerialize;
+    #[cfg(feature = "async")]
+    use super::{AsyncWrite, BorshSerializeAsync};
     use crate::{
         __private::maybestd::{
             collections::{HashMap, HashSet},
@@ -667,17 +712,13 @@ pub mod hashes {
         error::check_zst,
         io::{ErrorKind, Result, Write},
     };
-    use super::BorshSerialize;
-    #[cfg(feature = "async")]
-    use super::{AsyncWrite, BorshSerializeAsync};
 
     #[async_generic(
         #[cfg(feature = "async")]
-        #[async_trait]
         async_trait<K, V, H>
         where
-            K: BorshSerializeAsync + Ord + Sync,
-            V: BorshSerializeAsync + Sync,
+            K: BorshSerializeAsync + Ord,
+            V: BorshSerializeAsync,
             H: BuildHasher + Sync,
     )]
     impl<K, V, H> BorshSerialize for HashMap<K, V, H>
@@ -687,7 +728,9 @@ pub mod hashes {
         H: BuildHasher,
     {
         #[inline]
-        #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+        #[async_generic(
+            async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+        )]
         fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
             check_zst::<K>()?;
 
@@ -712,10 +755,9 @@ pub mod hashes {
 
     #[async_generic(
         #[cfg(feature = "async")]
-        #[async_trait]
         async_trait<T, H>
         where
-            T: BorshSerializeAsync + Ord + Sync,
+            T: BorshSerializeAsync + Ord,
             H: BuildHasher + Sync,
     )]
     impl<T, H> BorshSerialize for HashSet<T, H>
@@ -724,7 +766,9 @@ pub mod hashes {
         H: BuildHasher,
     {
         #[inline]
-        #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+        #[async_generic(
+            async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+        )]
         fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
             check_zst::<T>()?;
 
@@ -750,11 +794,10 @@ pub mod hashes {
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait<K, V>
     where
-        K: BorshSerializeAsync + Sync,
-        V: BorshSerializeAsync + Sync,
+        K: BorshSerializeAsync,
+        V: BorshSerializeAsync,
 )]
 impl<K, V> BorshSerialize for BTreeMap<K, V>
 where
@@ -762,7 +805,9 @@ where
     V: BorshSerialize,
 {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         check_zst::<K>()?;
         // NOTE: BTreeMap iterates over the entries that are sorted by key, so the serialization
@@ -789,7 +834,6 @@ where
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait<T>
     where
         T: BorshSerializeAsync + Sync,
@@ -799,7 +843,9 @@ where
     T: BorshSerialize,
 {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         check_zst::<T>()?;
         // NOTE: BTreeSet iterates over the items that are sorted, so the serialization result will
@@ -824,27 +870,32 @@ where
 #[cfg(feature = "std")]
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait
 )]
 impl BorshSerialize for std::net::SocketAddr {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self {
-            std::net::SocketAddr::V4(addr) => if _sync {
-                BorshSerialize::serialize(&0u8, writer)?;
-                BorshSerialize::serialize(addr, writer)
-            } else {
-                BorshSerializeAsync::serialize(&0u8, writer).await?;
-                BorshSerializeAsync::serialize(addr, writer).await
+            std::net::SocketAddr::V4(addr) => {
+                if _sync {
+                    BorshSerialize::serialize(&0u8, writer)?;
+                    BorshSerialize::serialize(addr, writer)
+                } else {
+                    BorshSerializeAsync::serialize(&0u8, writer).await?;
+                    BorshSerializeAsync::serialize(addr, writer).await
+                }
             }
-            std::net::SocketAddr::V6(addr) => if _sync {
-                BorshSerialize::serialize(&1u8, writer)?;
-                BorshSerialize::serialize(addr, writer)
-            } else {
-                BorshSerializeAsync::serialize(&1u8, writer).await?;
-                BorshSerializeAsync::serialize(addr, writer).await
+            std::net::SocketAddr::V6(addr) => {
+                if _sync {
+                    BorshSerialize::serialize(&1u8, writer)?;
+                    BorshSerialize::serialize(addr, writer)
+                } else {
+                    BorshSerializeAsync::serialize(&1u8, writer).await?;
+                    BorshSerializeAsync::serialize(addr, writer).await
+                }
             }
         }
     }
@@ -853,12 +904,13 @@ impl BorshSerialize for std::net::SocketAddr {
 #[cfg(feature = "std")]
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait
 )]
 impl BorshSerialize for std::net::SocketAddrV4 {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         if _sync {
             BorshSerialize::serialize(self.ip(), writer)?;
@@ -873,12 +925,13 @@ impl BorshSerialize for std::net::SocketAddrV4 {
 #[cfg(feature = "std")]
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait
 )]
 impl BorshSerialize for std::net::SocketAddrV6 {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         if _sync {
             BorshSerialize::serialize(self.ip(), writer)?;
@@ -893,17 +946,24 @@ impl BorshSerialize for std::net::SocketAddrV6 {
 #[cfg(feature = "std")]
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait
 )]
 impl BorshSerialize for std::net::Ipv4Addr {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        fn as_bytes(ip: &std::net::Ipv4Addr) -> &[u8; 4] {
+            // SAFETY: `Ipv4Addr` is a `4` byte array.
+            unsafe { &*(ip as *const std::net::Ipv4Addr as *const [u8; 4]) }
+        }
+
+        let bytes = as_bytes(self);
         if _sync {
-            writer.write_all(&self.octets())
+            writer.write_all(bytes)
         } else {
-            writer.write_all(&self.octets()).await
+            writer.write_all(bytes)
         }
     }
 }
@@ -911,17 +971,24 @@ impl BorshSerialize for std::net::Ipv4Addr {
 #[cfg(feature = "std")]
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait
 )]
 impl BorshSerialize for std::net::Ipv6Addr {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        fn as_bytes(ip: &std::net::Ipv6Addr) -> &[u8; 16] {
+            // SAFETY: `Ipv4Addr` is a `16` byte array.
+            unsafe { &*(ip as *const std::net::Ipv6Addr as *const [u8; 16]) }
+        }
+
+        let bytes = as_bytes(self);
         if _sync {
-            writer.write_all(&self.octets())
+            writer.write_all(bytes)
         } else {
-            writer.write_all(&self.octets()).await
+            writer.write_all(bytes)
         }
     }
 }
@@ -929,27 +996,32 @@ impl BorshSerialize for std::net::Ipv6Addr {
 #[cfg(feature = "std")]
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait
 )]
 impl BorshSerialize for std::net::IpAddr {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self {
-            std::net::IpAddr::V4(ipv4) => if _sync {
-                writer.write_all(&0u8.to_le_bytes())?;
-                BorshSerialize::serialize(ipv4, writer)
-            } else {
-                writer.write_all(&0u8.to_le_bytes()).await?;
-                BorshSerializeAsync::serialize(ipv4, writer).await
+            std::net::IpAddr::V4(ipv4) => {
+                if _sync {
+                    writer.write_all(&0u8.to_le_bytes())?;
+                    BorshSerialize::serialize(ipv4, writer)
+                } else {
+                    writer.write_all(&0u8.to_le_bytes()).await?;
+                    BorshSerializeAsync::serialize(ipv4, writer).await
+                }
             }
-            std::net::IpAddr::V6(ipv6) => if _sync {
-                writer.write_all(&1u8.to_le_bytes())?;
-                BorshSerialize::serialize(ipv6, writer)
-            } else {
-                writer.write_all(&1u8.to_le_bytes()).await?;
-                BorshSerializeAsync::serialize(ipv6, writer).await
+            std::net::IpAddr::V6(ipv6) => {
+                if _sync {
+                    writer.write_all(&1u8.to_le_bytes())?;
+                    BorshSerialize::serialize(ipv6, writer)
+                } else {
+                    writer.write_all(&1u8.to_le_bytes()).await?;
+                    BorshSerializeAsync::serialize(ipv6, writer).await
+                }
             }
         }
     }
@@ -957,37 +1029,39 @@ impl BorshSerialize for std::net::IpAddr {
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait<T>
     where
-        T: BorshSerializeAsync + ?Sized + Sync,
+        T: BorshSerializeAsync + ?Sized,
 )]
 impl<T: BorshSerialize + ?Sized> BorshSerialize for Box<T> {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         let r#ref = self.as_ref();
         if _sync {
             BorshSerialize::serialize(r#ref, writer)
         } else {
-            BorshSerializeAsync::serialize(r#ref, writer).await
+            BorshSerializeAsync::serialize(r#ref, writer)
         }
     }
 }
 
 #[async_generic(
     #[cfg(feature = "async")]
-    #[async_trait]
     async_trait<T, const N: usize>
     where
-        T: BorshSerializeAsync + Sync,
+        T: BorshSerializeAsync,
 )]
 impl<T, const N: usize> BorshSerialize for [T; N]
 where
     T: BorshSerialize,
 {
     #[inline]
-    #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+    #[async_generic(
+        async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+    )]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         if N == 0 {
             Ok(())
@@ -998,7 +1072,7 @@ where
                 writer.write_all(u8_slice).await
             }
         } else {
-            for el in self.iter() {
+            for el in self {
                 if _sync {
                     BorshSerialize::serialize(el, writer)
                 } else {
@@ -1014,13 +1088,14 @@ macro_rules! impl_tuple {
     (@unit $name:ty) => {
         #[async_generic(
             #[cfg(feature = "async")]
-            #[async_trait]
             async_trait
         )]
         impl BorshSerialize for $name {
             #[inline]
-            #[async_generic(async_signature<W: AsyncWrite>(&self, _writer: &mut W) -> Result<()>)]
-            fn serialize<W: Write>(&self, _writer: &mut W) -> Result<()> {
+            #[async_generic(
+                async_signature[ready]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+            )]
+            fn serialize<W: Write>(&self, _: &mut W) -> Result<()> {
                 Ok(())
             }
         }
@@ -1029,17 +1104,18 @@ macro_rules! impl_tuple {
     ($($idx:tt $name:ident)+) => {
         #[async_generic(
             #[cfg(feature = "async")]
-            #[async_trait]
             async_trait<$($name),+>
             where
-                $($name: BorshSerializeAsync + Sync + Send,)+
+                $($name: BorshSerializeAsync,)+
         )]
         impl<$($name),+> BorshSerialize for ($($name,)+)
         where
             $($name: BorshSerialize,)+
         {
             #[inline]
-            #[async_generic(async_signature<W: AsyncWrite>(&self, writer: &mut W) -> Result<()>)]
+            #[async_generic(
+                async_signature[impl_fut]<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> impl Future<Output = Result<()>> + Send + 'a
+            )]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
                 if _sync {
                     $(BorshSerialize::serialize(&self.$idx, writer)?;)+
