@@ -4,5 +4,5 @@ members = ["borsh", "borsh-derive", "fuzz/fuzz-run", "benchmarks"]
 [workspace.package]
 # shared version of all public crates in the workspace
 version = "1.5.5"
-edition = "2018"
-rust-version = "1.70.0"
+edition = "2021"
+rust-version = "1.75.0"
