@@ -3,6 +3,11 @@ use std::collections::HashMap;
 use borsh::{BorshDeserialize, BorshSerialize};
 
 mod serde_json_value {
+    #[allow(unused_imports)] // used in attribute
+    pub use de::deserialize_value;
+    #[allow(unused_imports)] // used in attribute
+    pub use ser::serialize_value;
+
     mod ser {
         use core::convert::TryFrom;
 
