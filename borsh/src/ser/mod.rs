@@ -1200,7 +1200,6 @@ pub mod rc {
     #[cfg(feature = "async")]
     use core::future::Future;
 
-    #[cfg(feature = "async")]
     use async_generic::async_generic;
 
     #[cfg(feature = "async")]
