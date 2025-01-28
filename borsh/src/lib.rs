@@ -25,12 +25,16 @@ pub(crate) mod schema_helpers;
 pub mod ser;
 
 pub use de::{from_reader, from_slice, BorshDeserialize};
+#[cfg(feature = "async")]
+pub use de::{from_reader_async, BorshDeserializeAsync};
 #[cfg(feature = "unstable__schema")]
 pub use schema::BorshSchema;
 #[cfg(feature = "unstable__schema")]
 pub use schema_helpers::{
     max_serialized_size, schema_container_of, try_from_slice_with_schema, try_to_vec_with_schema,
 };
+#[cfg(feature = "async")]
+pub use ser::{helpers::to_writer_async, BorshSerializeAsync};
 pub use ser::{
     helpers::{object_length, to_vec, to_writer},
     BorshSerialize,
