@@ -1528,13 +1528,13 @@ impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
 
 #[async_generic(
     #[cfg(feature = "async")]
-    async_variant<T: ?Sized>
+    async_variant<T>
     where
-        T: BorshDeserializeAsync + Copy,
+        T: BorshDeserializeAsync,
 )]
-impl<T: ?Sized> BorshDeserialize for core::cell::Cell<T>
+impl<T> BorshDeserialize for core::cell::Cell<T>
 where
-    T: BorshDeserialize + Copy,
+    T: BorshDeserialize,
 {
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
@@ -1559,162 +1559,6 @@ where
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let res = T::deserialize_reader(reader);
         if _sync { res } else { res.await }.map(core::cell::RefCell::new)
-    }
-}
-
-#[cfg(feature = "std")]
-#[async_generic(
-    #[cfg(feature = "async")]
-    async_variant<T: ?Sized>
-    where
-        T: BorshDeserializeAsync,
-)]
-impl<T: ?Sized> BorshDeserialize for std::sync::Mutex<T>
-where
-    T: BorshDeserialize,
-{
-    #[inline]
-    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let res = T::deserialize_reader(reader);
-        if _sync { res } else { res.await }.map(std::sync::Mutex::new)
-    }
-}
-
-#[cfg(feature = "std")]
-#[async_generic(
-    #[cfg(feature = "async")]
-    async_variant<T: ?Sized>
-    where
-        T: BorshDeserializeAsync,
-)]
-impl<T: ?Sized> BorshDeserialize for std::sync::RwLock<T>
-where
-    T: BorshDeserialize,
-{
-    #[inline]
-    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let res = T::deserialize_reader(reader);
-        if _sync { res } else { res.await }.map(std::sync::RwLock::new)
-    }
-}
-
-#[cfg(feature = "lock_api")]
-#[async_generic(
-    #[cfg(feature = "async")]
-    async_variant<Raw, T: ?Sized>
-    where
-        Raw: lock_api::RawMutex + Send,
-        T: BorshDeserializeAsync,
-)]
-impl<Raw, T: ?Sized> BorshDeserialize for lock_api::Mutex<Raw, T>
-where
-    Raw: lock_api::RawMutex,
-    T: BorshDeserialize,
-{
-    #[inline]
-    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let res = T::deserialize_reader(reader);
-        if _sync { res } else { res.await }.map(lock_api::Mutex::new)
-    }
-}
-
-#[cfg(feature = "lock_api")]
-#[async_generic(
-    #[cfg(feature = "async")]
-    async_variant<Raw, T: ?Sized>
-    where
-        Raw: lock_api::RawRwLock + Send,
-        T: BorshDeserializeAsync,
-)]
-impl<Raw, T: ?Sized> BorshDeserialize for lock_api::RwLock<Raw, T>
-where
-    Raw: lock_api::RawRwLock,
-    T: BorshDeserialize,
-{
-    #[inline]
-    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let res = T::deserialize_reader(reader);
-        if _sync { res } else { res.await }.map(lock_api::RwLock::new)
-    }
-}
-
-#[cfg(feature = "tokio-sync")]
-#[async_generic(
-    #[cfg(feature = "async")]
-    async_variant<T: ?Sized>
-    where
-        T: BorshDeserializeAsync,
-)]
-impl<T: ?Sized> BorshDeserialize for tokio::sync::Mutex<T>
-where
-    T: BorshDeserialize,
-{
-    #[inline]
-    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let res = T::deserialize_reader(reader);
-        if _sync { res } else { res.await }.map(tokio::sync::Mutex::new)
-    }
-}
-
-#[cfg(feature = "tokio-sync")]
-#[async_generic(
-    #[cfg(feature = "async")]
-    async_variant<T: ?Sized>
-    where
-        T: BorshDeserializeAsync,
-)]
-impl<T: ?Sized> BorshDeserialize for tokio::sync::RwLock<T>
-where
-    T: BorshDeserialize,
-{
-    #[inline]
-    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let res = T::deserialize_reader(reader);
-        if _sync { res } else { res.await }.map(tokio::sync::RwLock::new)
-    }
-}
-
-#[cfg(feature = "async-std-sync")]
-#[async_generic(
-    #[cfg(feature = "async")]
-    async_variant<T: ?Sized>
-    where
-        T: BorshDeserializeAsync,
-)]
-impl<T: ?Sized> BorshDeserialize for async_std::sync::Mutex<T>
-where
-    T: BorshDeserialize,
-{
-    #[inline]
-    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let res = T::deserialize_reader(reader);
-        if _sync { res } else { res.await }.map(async_std::sync::Mutex::new)
-    }
-}
-
-#[cfg(feature = "async-std-sync")]
-#[async_generic(
-    #[cfg(feature = "async")]
-    async_variant<T: ?Sized>
-    where
-        T: BorshDeserializeAsync,
-)]
-impl<T: ?Sized> BorshDeserialize for async_std::sync::RwLock<T>
-where
-    T: BorshDeserialize,
-{
-    #[inline]
-    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let res = T::deserialize_reader(reader);
-        if _sync { res } else { res.await }.map(async_std::sync::RwLock::new)
     }
 }
 

@@ -1264,7 +1264,7 @@ impl<T: ?Sized> BorshSerialize for PhantomData<T> {
 
 impl<T> BorshSerialize for core::cell::Cell<T>
 where
-    T: BorshSerialize + ?Sized + Copy,
+    T: BorshSerialize + Copy,
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -1281,97 +1281,5 @@ where
             Ok(ref value) => value.serialize(writer),
             Err(_) => Err(Error::new(ErrorKind::Other, "already mutably borrowed")),
         }
-    }
-}
-
-#[cfg(feature = "std")]
-impl<T> BorshSerialize for std::sync::Mutex<T>
-where
-    T: BorshSerialize + ?Sized,
-{
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let guard = self
-            .lock()
-            .map_err(|_| Error::new(ErrorKind::Other, "mutex poisoned"))?;
-        guard.serialize(writer)
-    }
-}
-
-#[cfg(feature = "std")]
-impl<T> BorshSerialize for std::sync::RwLock<T>
-where
-    T: BorshSerialize + ?Sized,
-{
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        let guard = self
-            .read()
-            .map_err(|_| Error::new(ErrorKind::Other, "rwlock poisoned"))?;
-        guard.serialize(writer)
-    }
-}
-
-#[cfg(feature = "async-std-sync")]
-impl<T> BorshSerializeAsync for async_std::sync::Mutex<T>
-where
-    T: BorshSerializeAsync + ?Sized + Send,
-{
-    async fn serialize<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> Result<()> {
-        let guard = self.lock().await;
-        guard.serialize(writer).await
-    }
-}
-
-#[cfg(feature = "async-std-sync")]
-impl<T> BorshSerializeAsync for async_std::sync::RwLock<T>
-where
-    T: BorshSerializeAsync + ?Sized + Send,
-{
-    async fn serialize<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> Result<()> {
-        let guard = self.read().await;
-        guard.serialize(writer).await
-    }
-}
-
-#[cfg(feature = "lock_api")]
-impl<R, T> BorshSerialize for lock_api::Mutex<R, T>
-where
-    R: lock_api::RawMutex,
-    T: BorshSerialize + ?Sized,
-{
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        self.lock().serialize(writer)
-    }
-}
-
-#[cfg(feature = "lock_api")]
-impl<R, T> BorshSerialize for lock_api::RwLock<R, T>
-where
-    R: lock_api::RawRwLock,
-    T: BorshSerialize + ?Sized,
-{
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        self.read().serialize(writer)
-    }
-}
-
-#[cfg(feature = "tokio-sync")]
-impl<T> BorshSerializeAsync for tokio::sync::Mutex<T>
-where
-    T: BorshSerializeAsync + ?Sized + Send,
-{
-    async fn serialize<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> Result<()> {
-        let guard = self.lock().await;
-        guard.serialize(writer).await
-    }
-}
-
-#[cfg(feature = "tokio-sync")]
-impl<T> BorshSerializeAsync for tokio::sync::RwLock<T>
-where
-    T: BorshSerializeAsync + ?Sized + Send,
-{
-    async fn serialize<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> Result<()> {
-        let guard = self.read().await;
-        guard.serialize(writer).await
     }
 }
