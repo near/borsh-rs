@@ -18,7 +18,7 @@ use crate::{
         boxed::Box,
         collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
         format,
-        string::{String, ToString},
+        string::String,
         vec,
         vec::Vec,
     },
@@ -503,19 +503,17 @@ where
         }?;
         match flag {
             0 => Ok(None),
-            1 => Ok(Some(if _sync {
-                <T as BorshDeserialize>::deserialize_reader(reader)
-            } else {
-                <T as BorshDeserializeAsync>::deserialize_reader(reader).await
-            }?)),
-            _ => {
-                let msg = format!(
+            1 => Ok(Some({
+                let res = T::deserialize_reader(reader);
+                if _sync { res } else { res.await }?
+            })),
+            _ => Err(Error::new(
+                ErrorKind::InvalidData,
+                format!(
                     "Invalid Option representation: {}. The first byte must be 0 or 1",
                     flag
-                );
-
-                Err(Error::new(ErrorKind::InvalidData, msg))
-            }
+                ),
+            )),
         }
     }
 }
@@ -541,24 +539,21 @@ where
             <u8 as BorshDeserializeAsync>::deserialize_reader(reader).await
         }?;
         match flag {
-            0 => Ok(Err(if _sync {
-                E::deserialize_reader(reader)
-            } else {
-                E::deserialize_reader(reader).await
-            }?)),
-            1 => Ok(Ok(if _sync {
-                T::deserialize_reader(reader)
-            } else {
-                T::deserialize_reader(reader).await
-            }?)),
-            _ => {
-                let msg = format!(
+            0 => Ok(Err({
+                let res = E::deserialize_reader(reader);
+                if _sync { res } else { res.await }?
+            })),
+            1 => Ok(Ok({
+                let res = T::deserialize_reader(reader);
+                if _sync { res } else { res.await }?
+            })),
+            _ => Err(Error::new(
+                ErrorKind::InvalidData,
+                format!(
                     "Invalid Result representation: {}. The first byte must be 0 or 1",
                     flag
-                );
-
-                Err(Error::new(ErrorKind::InvalidData, msg))
-            }
+                ),
+            )),
         }
     }
 }
@@ -576,10 +571,7 @@ impl BorshDeserialize for String {
         } else {
             <Vec<u8> as BorshDeserializeAsync>::deserialize_reader(reader).await
         }?)
-        .map_err(|err| {
-            let msg = err.to_string();
-            Error::new(ErrorKind::InvalidData, msg)
-        })
+        .map_err(|err| Error::new(ErrorKind::InvalidData, err))
     }
 }
 
@@ -597,7 +589,7 @@ pub mod ascii {
     #[cfg(feature = "async")]
     use super::{AsyncRead, BorshDeserializeAsync};
     use crate::{
-        __private::maybestd::{string::ToString, vec::Vec},
+        __private::maybestd::vec::Vec,
         io::{Error, ErrorKind, Read, Result},
     };
 
@@ -615,7 +607,7 @@ pub mod ascii {
                 <Vec<u8> as BorshDeserializeAsync>::deserialize_reader(reader).await
             }?;
             ascii::AsciiString::from_ascii(bytes)
-                .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string()))
+                .map_err(|err| Error::new(ErrorKind::InvalidData, err))
         }
     }
 
@@ -633,7 +625,7 @@ pub mod ascii {
                 <u8 as BorshDeserializeAsync>::deserialize_reader(reader).await
             }?;
             ascii::AsciiChar::from_ascii(byte)
-                .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string()))
+                .map_err(|err| Error::new(ErrorKind::InvalidData, err))
         }
     }
 }
