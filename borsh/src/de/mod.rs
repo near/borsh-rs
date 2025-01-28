@@ -367,9 +367,9 @@ impl_for_integer!(u128, read_u128);
 macro_rules! impl_for_nonzero_integer {
     ($type: ty, $repr: ty) => {
         #[async_generic(
-                                            #[cfg(feature = "async")]
-                                            async_variant
-                                        )]
+            #[cfg(feature = "async")]
+            async_variant
+        )]
         impl BorshDeserialize for $type {
             #[inline]
             #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
@@ -401,9 +401,9 @@ impl_for_nonzero_integer!(core::num::NonZeroUsize, usize);
 macro_rules! impl_for_size_integer {
     ($type: ty: $temp_type: ty, $msg: expr) => {
         #[async_generic(
-                                                                    #[cfg(feature = "async")]
-                                                                    async_variant
-                                                                )]
+            #[cfg(feature = "async")]
+            async_variant
+        )]
         impl BorshDeserialize for $type {
             #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -428,9 +428,9 @@ impl_for_size_integer!(usize: u64, ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE);
 macro_rules! impl_for_float {
     ($type: ident, $int_type: ident, $method: ident) => {
         #[async_generic(
-                                                                    #[cfg(feature = "async")]
-                                                                    async_variant
-                                                                )]
+            #[cfg(feature = "async")]
+            async_variant
+        )]
         impl BorshDeserialize for $type {
             #[inline]
             #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
