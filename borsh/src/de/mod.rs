@@ -1546,11 +1546,11 @@ where
 
 #[async_generic(
     #[cfg(feature = "async")]
-    async_variant<T: ?Sized>
+    async_variant<T>
     where
         T: BorshDeserializeAsync,
 )]
-impl<T: ?Sized> BorshDeserialize for core::cell::RefCell<T>
+impl<T> BorshDeserialize for core::cell::RefCell<T>
 where
     T: BorshDeserialize,
 {
