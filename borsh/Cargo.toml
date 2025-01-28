@@ -44,6 +44,7 @@ bson = { version = "2", optional = true }
 async-generic = { git = "https://github.com/DanikVitek/async-generic.git" }
 tokio = { version = "1", default-features = false, features = ["io-util"], optional = true }
 async-std = { version = "1", default-features = false, features = ["std"], optional = true }
+lock_api = { version = "0.4", optional = true }
 
 [dev-dependencies]
 insta = "1.29.0"
@@ -58,7 +59,11 @@ default = ["std"]
 derive = ["borsh-derive"]
 async = []
 tokio = ["async", "dep:tokio"]
+tokio-sync = ["tokio", "tokio/sync"] # (de-)serialization for tokio mutex/rwlock primitives
 async-std = ["async", "dep:async-std"]
+async-std-sync = ["async-std", "async-std/async-lock"] # (de-)serialization for async-std mutex/rwlock primitives
+lock_api = [] # (de-)serialization for lock_api mutex/rwlock primitives
+parking_lot = ["dep:lock_api"] # aslias for lock_api feature
 unstable__schema = ["derive", "borsh-derive/schema"]
 std = []
 # Opt into impls for Rc<T> and Arc<T>. Serializing and deserializing these types

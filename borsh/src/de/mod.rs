@@ -73,10 +73,11 @@ pub trait BorshDeserialize: Sized {
         } else {
             Self::deserialize_reader(reader).await
         }?;
-        let mut buf = [0u8; 1];
 
+        let mut buf = [0u8; 1];
         let res = reader.read_exact(&mut buf);
-        match if _sync { res } else { res.await } {
+        let res = if _sync { res } else { res.await };
+        match res {
             Err(f) if f.kind() == ErrorKind::UnexpectedEof => Ok(result),
             _ => Err(Error::new(ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ)),
         }
@@ -201,7 +202,7 @@ impl BorshDeserialize for u8 {
     #[inline]
     #[doc(hidden)]
     #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(len: u32, reader: &mut R) -> impl Future<Output=Result<Option<Vec<Self>>>> + Send
+        async_signature<R: AsyncRead>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>>
     )]
     fn vec_from_reader<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
         let len: usize = len.try_into().map_err(|_| ErrorKind::InvalidData)?;
@@ -216,10 +217,11 @@ impl BorshDeserialize for u8 {
                 vec.resize(vec.len().saturating_mul(2).min(len), 0)
             }
             // TODO(mina86): Convert this to read_buf once that stabilises.
-            match {
+            let res = {
                 let res = reader.read(&mut vec.as_mut_slice()[pos..]);
                 if _sync { res } else { res.await }?
-            } {
+            };
+            match res {
                 0 => {
                     return Err(Error::new(
                         ErrorKind::InvalidData,
@@ -237,7 +239,7 @@ impl BorshDeserialize for u8 {
     #[inline]
     #[doc(hidden)]
     #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead, const N: usize>(reader: &mut R) -> impl Future<Output=Result<Option<[Self; N]>>> + Send
+        async_signature<R: AsyncRead, const N: usize>(reader: &mut R) -> Result<Option<[Self; N]>>
     )]
     fn array_from_reader<R: Read, const N: usize>(reader: &mut R) -> Result<Option<[Self; N]>> {
         let mut arr = [0u8; N];
@@ -293,9 +295,7 @@ macro_rules! impl_for_nonzero_integer {
         )]
         impl BorshDeserialize for $type {
             #[inline]
-            #[async_generic(
-                async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-            )]
+            #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                 <$type>::new(if _sync {
                     <$repr as BorshDeserialize>::deserialize_reader(reader)
@@ -324,13 +324,11 @@ impl_for_nonzero_integer!(core::num::NonZeroUsize, usize);
 macro_rules! impl_for_size_integer {
     ($type: ty: $temp_type: ty, $msg: expr) => {
         #[async_generic(
-            #[cfg(feature = "async")]
-            async_trait
-        )]
+                                                                    #[cfg(feature = "async")]
+                                                                    async_trait
+                                                                )]
         impl BorshDeserialize for $type {
-            #[async_generic(
-                async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-            )]
+            #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                 let i = if _sync {
                     <$temp_type as BorshDeserialize>::deserialize_reader(reader)
@@ -353,14 +351,12 @@ impl_for_size_integer!(usize: u64, ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE);
 macro_rules! impl_for_float {
     ($type: ident, $int_type: ident, $method: ident) => {
         #[async_generic(
-            #[cfg(feature = "async")]
-            async_trait
-        )]
+                                                                    #[cfg(feature = "async")]
+                                                                    async_trait
+                                                                )]
         impl BorshDeserialize for $type {
             #[inline]
-            #[async_generic(
-                async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-            )]
+            #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                 let res = if _sync {
                     let mut buf = [0u8; size_of::<$type>()];
@@ -392,9 +388,7 @@ impl_for_float!(f64, u64, read_f64);
 )]
 impl BorshDeserialize for bool {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let b = if _sync {
             <u8 as BorshDeserialize>::deserialize_reader(reader)
@@ -423,9 +417,7 @@ where
     T: BorshDeserialize,
 {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let flag = if _sync {
             <u8 as BorshDeserialize>::deserialize_reader(reader)
@@ -464,9 +456,7 @@ where
     E: BorshDeserialize,
 {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let flag = if _sync {
             <u8 as BorshDeserialize>::deserialize_reader(reader)
@@ -475,14 +465,14 @@ where
         }?;
         match flag {
             0 => Ok(Err(if _sync {
-                <E as BorshDeserialize>::deserialize_reader(reader)
+                E::deserialize_reader(reader)
             } else {
-                <E as BorshDeserializeAsync>::deserialize_reader(reader).await
+                E::deserialize_reader(reader).await
             }?)),
             1 => Ok(Ok(if _sync {
-                <T as BorshDeserialize>::deserialize_reader(reader)
+                T::deserialize_reader(reader)
             } else {
-                <T as BorshDeserializeAsync>::deserialize_reader(reader).await
+                T::deserialize_reader(reader).await
             }?)),
             _ => {
                 let msg = format!(
@@ -502,9 +492,7 @@ where
 )]
 impl BorshDeserialize for String {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         String::from_utf8(if _sync {
             <Vec<u8> as BorshDeserialize>::deserialize_reader(reader)
@@ -522,11 +510,9 @@ impl BorshDeserialize for String {
 #[cfg(feature = "ascii")]
 pub mod ascii {
     //!
-    //! Module defines [BorshDeserialize] implementation for
-    //! some types from [ascii](::ascii) crate.
-
-    #[cfg(feature = "async")]
-    use core::future::Future;
+    //! Module defines [`BorshDeserialize`]
+    #![cfg_attr(feature = "async", doc = " & [`BorshDeserializeAsync`]")]
+    //! implementation for some types from [`ascii`] crate.
 
     use async_generic::async_generic;
 
@@ -544,9 +530,7 @@ pub mod ascii {
     )]
     impl BorshDeserialize for ascii::AsciiString {
         #[inline]
-        #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+        #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
             let bytes = if _sync {
                 <Vec<u8> as BorshDeserialize>::deserialize_reader(reader)
@@ -564,9 +548,7 @@ pub mod ascii {
     )]
     impl BorshDeserialize for ascii::AsciiChar {
         #[inline]
-        #[async_generic(
-            async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-        )]
+        #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
             let byte = if _sync {
                 <u8 as BorshDeserialize>::deserialize_reader(reader)
@@ -590,9 +572,7 @@ where
     T: BorshDeserialize,
 {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         check_zst::<T>()?;
 
@@ -603,21 +583,19 @@ where
         }?;
         if len == 0 {
             Ok(Vec::new())
-        } else if let Some(vec_bytes) = if _sync {
-            T::vec_from_reader(len, reader)
-        } else {
-            T::vec_from_reader(len, reader).await
-        }? {
+        } else if let Some(vec_bytes) = {
+            let res = T::vec_from_reader(len, reader);
+            if _sync { res } else { res.await }?
+        } {
             Ok(vec_bytes)
         } else {
             // TODO(16): return capacity allocation when we can safely do that.
             let mut result = Vec::with_capacity(hint::cautious::<T>(len));
             for _ in 0..len {
-                result.push(if _sync {
-                    T::deserialize_reader(reader)
-                } else {
-                    T::deserialize_reader(reader).await
-                }?);
+                result.push({
+                    let res = T::deserialize_reader(reader);
+                    if _sync { res } else { res.await }?
+                });
             }
             Ok(result)
         }
@@ -631,9 +609,7 @@ where
 )]
 impl BorshDeserialize for bytes::Bytes {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let vec = if _sync {
             <Vec<u8> as BorshDeserialize>::deserialize_reader(reader)
@@ -651,9 +627,7 @@ impl BorshDeserialize for bytes::Bytes {
 )]
 impl BorshDeserialize for BytesMut {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let len = if _sync {
             <u32 as BorshDeserialize>::deserialize_reader(reader)
@@ -679,16 +653,13 @@ impl BorshDeserialize for BytesMut {
 )]
 impl BorshDeserialize for bson::oid::ObjectId {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let mut buf = [0u8; 12];
-        if _sync {
-            reader.read_exact(&mut buf)
-        } else {
-            reader.read_exact(&mut buf).await
-        }?;
+        {
+            let res = reader.read_exact(&mut buf);
+            if _sync { res } else { res.await }?;
+        }
         Ok(bson::oid::ObjectId::from_bytes(buf))
     }
 }
@@ -707,15 +678,12 @@ where
     T::Owned: BorshDeserialize,
 {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        Ok(Cow::Owned(if _sync {
-            T::Owned::deserialize_reader(reader)
-        } else {
-            T::Owned::deserialize_reader(reader).await
-        }?))
+        Ok(Cow::Owned({
+            let res = T::Owned::deserialize_reader(reader);
+            if _sync { res } else { res.await }?
+        }))
     }
 }
 
@@ -730,15 +698,12 @@ where
     T: BorshDeserialize,
 {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let vec = if _sync {
-            <Vec<T>>::deserialize_reader(reader)
-        } else {
-            <Vec<T>>::deserialize_reader(reader).await
-        }?;
+        let vec = {
+            let res = <Vec<T>>::deserialize_reader(reader);
+            if _sync { res } else { res.await }?
+        };
         Ok(vec.into())
     }
 }
@@ -754,27 +719,23 @@ where
     T: BorshDeserialize,
 {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let vec = if _sync {
-            <Vec<T>>::deserialize_reader(reader)
-        } else {
-            <Vec<T>>::deserialize_reader(reader).await
-        }?;
+        let vec = {
+            let res = <Vec<T>>::deserialize_reader(reader);
+            if _sync { res } else { res.await }?
+        };
         Ok(vec.into_iter().collect::<LinkedList<T>>())
     }
 }
 
 /// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
 ///
-/// Module defines [BorshDeserialize] implementation for
-/// [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
+/// Module defines [`BorshDeserialize`]
+#[cfg_attr(feature = "async", doc = " & [`BorshDeserializeAsync`]")]
+/// implementation for [`HashMap`](HashMap)/[`HashSet`](HashSet).
 #[cfg(hash_collections)]
 pub mod hashes {
-    #[cfg(feature = "async")]
-    use core::future::Future;
     use core::hash::{BuildHasher, Hash};
 
     use async_generic::async_generic;
@@ -809,19 +770,16 @@ pub mod hashes {
         H: BuildHasher + Default,
     {
         #[inline]
-        #[async_generic(
-            async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-        )]
+        #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
             // NOTE: deserialize-as-you-go approach as once was in HashSet is better in the sense
             // that it allows to fail early, and not allocate memory for all the elements
             // which may fail `cmp()` checks
             // NOTE: deserialize first to `Vec<T>` is faster
-            let vec = if _sync {
-                <Vec<T>>::deserialize_reader(reader)
-            } else {
-                <Vec<T>>::deserialize_reader(reader).await
-            }?;
+            let vec = {
+                let res = <Vec<T>>::deserialize_reader(reader);
+                if _sync { res } else { res.await }?
+            };
 
             #[cfg(feature = "de_strict_order")]
             // TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
@@ -858,20 +816,17 @@ pub mod hashes {
         H: BuildHasher + Default,
     {
         #[inline]
-        #[async_generic(
-            async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-        )]
+        #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
             check_zst::<K>()?;
             // NOTE: deserialize-as-you-go approach as once was in HashSet is better in the sense
             // that it allows to fail early, and not allocate memory for all the entries
             // which may fail `cmp()` checks
             // NOTE: deserialize first to `Vec<(K, V)>` is faster
-            let vec = if _sync {
-                <Vec<(K, V)>>::deserialize_reader(reader)
-            } else {
-                <Vec<(K, V)>>::deserialize_reader(reader).await
-            }?;
+            let vec = {
+                let res = <Vec<(K, V)>>::deserialize_reader(reader);
+                if _sync { res } else { res.await }?
+            };
 
             #[cfg(feature = "de_strict_order")]
             // TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
@@ -905,19 +860,16 @@ where
     T: BorshDeserialize + Ord,
 {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         // NOTE: deserialize-as-you-go approach as once was in HashSet is better in the sense
         // that it allows to fail early, and not allocate memory for all the elements
         // which may fail `cmp()` checks
         // NOTE: deserialize first to `Vec<T>` is faster
-        let vec = if _sync {
-            <Vec<T>>::deserialize_reader(reader)
-        } else {
-            <Vec<T>>::deserialize_reader(reader).await
-        }?;
+        let vec = {
+            let res = <Vec<T>>::deserialize_reader(reader);
+            if _sync { res } else { res.await }?
+        };
 
         #[cfg(feature = "de_strict_order")]
         // TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
@@ -953,20 +905,17 @@ where
     V: BorshDeserialize,
 {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         check_zst::<K>()?;
         // NOTE: deserialize-as-you-go approach as once was in HashSet is better in the sense
         // that it allows to fail early, and not allocate memory for all the entries
         // which may fail `cmp()` checks
         // NOTE: deserialize first to `Vec<(K, V)>` is faster
-        let vec = if _sync {
-            <Vec<(K, V)> as BorshDeserialize>::deserialize_reader(reader)
-        } else {
-            <Vec<(K, V)> as BorshDeserializeAsync>::deserialize_reader(reader).await
-        }?;
+        let vec = {
+            let res = <Vec<(K, V)>>::deserialize_reader(reader);
+            if _sync { res } else { res.await }?
+        };
 
         #[cfg(feature = "de_strict_order")]
         // TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
@@ -997,9 +946,7 @@ where
 )]
 impl BorshDeserialize for std::net::SocketAddr {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let kind = if _sync {
             <u8 as BorshDeserialize>::deserialize_reader(reader)
@@ -1034,9 +981,7 @@ impl BorshDeserialize for std::net::SocketAddr {
 )]
 impl BorshDeserialize for std::net::IpAddr {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let kind = if _sync {
             <u8 as BorshDeserialize>::deserialize_reader(reader)
@@ -1071,9 +1016,7 @@ impl BorshDeserialize for std::net::IpAddr {
 )]
 impl BorshDeserialize for std::net::SocketAddrV4 {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let ip = if _sync {
             <std::net::Ipv4Addr as BorshDeserialize>::deserialize_reader(reader)
@@ -1096,9 +1039,7 @@ impl BorshDeserialize for std::net::SocketAddrV4 {
 )]
 impl BorshDeserialize for std::net::SocketAddrV6 {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let ip = if _sync {
             <std::net::Ipv6Addr as BorshDeserialize>::deserialize_reader(reader)
@@ -1121,9 +1062,7 @@ impl BorshDeserialize for std::net::SocketAddrV6 {
 )]
 impl BorshDeserialize for std::net::Ipv4Addr {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let mut buf = [0u8; 4];
         let res = reader.read_exact(&mut buf);
@@ -1140,9 +1079,7 @@ impl BorshDeserialize for std::net::Ipv4Addr {
 )]
 impl BorshDeserialize for std::net::Ipv6Addr {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let mut buf = [0u8; 16];
         let res = reader.read_exact(&mut buf);
@@ -1167,16 +1104,12 @@ where
     T::Owned: BorshDeserialize,
 {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        Ok(if _sync {
-            <T::Owned as BorshDeserialize>::deserialize_reader(reader)
-        } else {
-            <T::Owned as BorshDeserializeAsync>::deserialize_reader(reader).await
-        }?
-        .into())
+        Ok({
+            let res = T::Owned::deserialize_reader(reader);
+            if _sync { res } else { res.await }?.into()
+        })
     }
 }
 
@@ -1317,9 +1250,7 @@ fn array_deserialization_doesnt_leak() {
         async_trait
     )]
     impl BorshDeserialize for MyType {
-        #[async_generic(
-            async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-        )]
+        #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
             let val = if _sync {
                 <u8 as BorshDeserialize>::deserialize_reader(reader)
@@ -1388,9 +1319,7 @@ macro_rules! impl_tuple {
             $($name: BorshDeserialize,)+
         {
             #[inline]
-            #[async_generic(
-                async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-            )]
+            #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                 Ok(if _sync {
                     ($(<$name as BorshDeserialize>::deserialize_reader(reader)?,)+)
@@ -1436,15 +1365,12 @@ macro_rules! impl_range {
         )]
         impl<T: BorshDeserialize> BorshDeserialize for core::ops::$type<T> {
             #[inline]
-            #[async_generic(
-                async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-            )]
+            #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-                let [$($side,)*] = if _sync {
-                    <[T; $n] as BorshDeserialize>::deserialize_reader(reader)
-                } else {
-                    <[T; $n] as BorshDeserializeAsync>::deserialize_reader(reader).await
-                }?;
+                let [$($side,)*] = {
+                    let res = <[T; $n]>::deserialize_reader(reader);
+                    if _sync { res } else { res.await }?
+                };
                 Ok($make)
             }
         }
@@ -1461,11 +1387,9 @@ impl_range!(RangeToInclusive, ..=end, 1, end);
 #[cfg(feature = "rc")]
 pub mod rc {
     //!
-    //! Module defines [BorshDeserialize] implementation for
-    //! [alloc::rc::Rc](std::rc::Rc) and [alloc::sync::Arc](std::sync::Arc).
-
-    #[cfg(feature = "async")]
-    use core::future::Future;
+    //! Module defines [`BorshDeserialize`]
+    #![cfg_attr(feature = "async", doc = " & [`BorshDeserializeAsync`]")]
+    //! implementation for [`alloc::rc::Rc`](Rc) and [`alloc::sync::Arc`](Arc).
 
     use async_generic::async_generic;
 
@@ -1509,16 +1433,12 @@ pub mod rc {
         Box<T>: BorshDeserialize,
     {
         #[inline]
-        #[async_generic(
-            async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-        )]
+        #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-            Ok(if _sync {
-                <Box<T>>::deserialize_reader(reader)
-            } else {
-                <Box<T>>::deserialize_reader(reader).await
-            }?
-            .into())
+            Ok({
+                let res = <Box<T>>::deserialize_reader(reader);
+                if _sync { res } else { res.await }?.into()
+            })
         }
     }
 }
@@ -1539,49 +1459,193 @@ impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
 
 #[async_generic(
     #[cfg(feature = "async")]
-    async_trait<T>
+    async_trait<T: ?Sized>
     where
         T: BorshDeserializeAsync + Copy,
 )]
-impl<T> BorshDeserialize for core::cell::Cell<T>
+impl<T: ?Sized> BorshDeserialize for core::cell::Cell<T>
 where
     T: BorshDeserialize + Copy,
 {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        if _sync {
-            T::deserialize_reader(reader)
-        } else {
-            T::deserialize_reader(reader).await
-        }
-        .map(core::cell::Cell::new)
+        let res = T::deserialize_reader(reader);
+        if _sync { res } else { res.await }.map(core::cell::Cell::new)
     }
 }
 
 #[async_generic(
     #[cfg(feature = "async")]
-    async_trait<T>
+    async_trait<T: ?Sized>
     where
         T: BorshDeserializeAsync,
 )]
-impl<T> BorshDeserialize for core::cell::RefCell<T>
+impl<T: ?Sized> BorshDeserialize for core::cell::RefCell<T>
 where
     T: BorshDeserialize,
 {
     #[inline]
-    #[async_generic(
-        async_signature[impl_fut]<R: AsyncRead>(reader: &mut R) -> impl Future<Output=Result<Self>> + Send
-    )]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        if _sync {
-            T::deserialize_reader(reader)
-        } else {
-            T::deserialize_reader(reader).await
-        }
-        .map(core::cell::RefCell::new)
+        let res = T::deserialize_reader(reader);
+        if _sync { res } else { res.await }.map(core::cell::RefCell::new)
+    }
+}
+
+#[cfg(feature = "std")]
+#[async_generic(
+    #[cfg(feature = "async")]
+    async_trait<T: ?Sized>
+    where
+        T: BorshDeserializeAsync,
+)]
+impl<T: ?Sized> BorshDeserialize for std::sync::Mutex<T>
+where
+    T: BorshDeserialize
+{
+    #[inline]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let res = T::deserialize_reader(reader);
+        if _sync { res } else { res.await }.map(std::sync::Mutex::new)
+    }
+}
+
+#[cfg(feature = "std")]
+#[async_generic(
+    #[cfg(feature = "async")]
+    async_trait<T: ?Sized>
+    where
+        T: BorshDeserializeAsync,
+)]
+impl<T: ?Sized> BorshDeserialize for std::sync::RwLock<T>
+where
+    T: BorshDeserialize
+{
+    #[inline]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let res = T::deserialize_reader(reader);
+        if _sync { res } else { res.await }.map(std::sync::RwLock::new)
+    }
+}
+
+#[cfg(feature = "lock_api")]
+#[async_generic(
+    #[cfg(feature = "async")]
+    async_trait<Raw, T: ?Sized>
+    where
+        Raw: lock_api::RawMutex + Send,
+        T: BorshDeserializeAsync,
+)]
+impl<Raw, T: ?Sized> BorshDeserialize for lock_api::Mutex<Raw, T>
+where
+    Raw: lock_api::RawMutex,
+    T: BorshDeserialize
+{
+    #[inline]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let res = T::deserialize_reader(reader);
+        if _sync { res } else { res.await }.map(lock_api::Mutex::new)
+    }
+}
+
+#[cfg(feature = "lock_api")]
+#[async_generic(
+    #[cfg(feature = "async")]
+    async_trait<Raw, T: ?Sized>
+    where
+        Raw: lock_api::RawRwLock + Send,
+        T: BorshDeserializeAsync,
+)]
+impl<Raw, T: ?Sized> BorshDeserialize for lock_api::RwLock<Raw, T>
+where
+    Raw: lock_api::RawRwLock,
+    T: BorshDeserialize
+{
+    #[inline]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let res = T::deserialize_reader(reader);
+        if _sync { res } else { res.await }.map(lock_api::RwLock::new)
+    }
+}
+
+#[cfg(feature = "tokio-sync")]
+#[async_generic(
+    #[cfg(feature = "async")]
+    async_trait<T: ?Sized>
+    where
+        T: BorshDeserializeAsync,
+)]
+impl<T: ?Sized> BorshDeserialize for tokio::sync::Mutex<T>
+where
+    T: BorshDeserialize
+{
+    #[inline]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let res = T::deserialize_reader(reader);
+        if _sync { res } else { res.await }.map(tokio::sync::Mutex::new)
+    }
+}
+
+#[cfg(feature = "tokio-sync")]
+#[async_generic(
+    #[cfg(feature = "async")]
+    async_trait<T: ?Sized>
+    where
+        T: BorshDeserializeAsync,
+)]
+impl<T: ?Sized> BorshDeserialize for tokio::sync::RwLock<T>
+where
+    T: BorshDeserialize
+{
+    #[inline]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let res = T::deserialize_reader(reader);
+        if _sync { res } else { res.await }.map(tokio::sync::RwLock::new)
+    }
+}
+
+#[cfg(feature = "async-std-sync")]
+#[async_generic(
+    #[cfg(feature = "async")]
+    async_trait<T: ?Sized>
+    where
+        T: BorshDeserializeAsync,
+)]
+impl<T: ?Sized> BorshDeserialize for async_std::sync::Mutex<T>
+where
+    T: BorshDeserialize
+{
+    #[inline]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let res = T::deserialize_reader(reader);
+        if _sync { res } else { res.await }.map(async_std::sync::Mutex::new)
+    }
+}
+
+#[cfg(feature = "async-std-sync")]
+#[async_generic(
+    #[cfg(feature = "async")]
+    async_trait<T: ?Sized>
+    where
+        T: BorshDeserializeAsync,
+)]
+impl<T: ?Sized> BorshDeserialize for async_std::sync::RwLock<T>
+where
+    T: BorshDeserialize
+{
+    #[inline]
+    #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let res = T::deserialize_reader(reader);
+        if _sync { res } else { res.await }.map(async_std::sync::RwLock::new)
     }
 }
 
@@ -1649,9 +1713,5 @@ pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
     async_signature[impl_fut]<'a, R: AsyncRead, T: BorshDeserializeAsync + 'a>(reader: &'a mut R) -> impl Future<Output=Result<T>> + Send + 'a
 )]
 pub fn from_reader<R: Read, T: BorshDeserialize>(reader: &mut R) -> Result<T> {
-    if _sync {
-        T::try_from_reader(reader)
-    } else {
-        T::try_from_reader(reader)
-    }
+    T::try_from_reader(reader)
 }
