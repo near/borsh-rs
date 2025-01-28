@@ -111,7 +111,10 @@ pub trait AsyncRead: Unpin + Send {
 // #[async_trait]
 impl<R: tokio::io::AsyncReadExt + Unpin + Send> AsyncRead for R {
     #[inline]
-    fn read<'a>(&'a mut self, buf: &'a mut [u8]) -> impl Future<Output = Result<usize>> + Send + 'a {
+    fn read<'a>(
+        &'a mut self,
+        buf: &'a mut [u8],
+    ) -> impl Future<Output = Result<usize>> + Send + 'a {
         tokio::io::AsyncReadExt::read(self, buf)
     }
 

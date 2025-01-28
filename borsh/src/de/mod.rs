@@ -290,9 +290,9 @@ impl_for_integer!(u128, read_u128);
 macro_rules! impl_for_nonzero_integer {
     ($type: ty, $repr: ty) => {
         #[async_generic(
-            #[cfg(feature = "async")]
-            async_trait
-        )]
+                    #[cfg(feature = "async")]
+                    async_trait
+                )]
         impl BorshDeserialize for $type {
             #[inline]
             #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
@@ -733,7 +733,7 @@ where
 ///
 /// Module defines [`BorshDeserialize`]
 #[cfg_attr(feature = "async", doc = " & [`BorshDeserializeAsync`]")]
-/// implementation for [`HashMap`](HashMap)/[`HashSet`](HashSet).
+/// implementation for [`HashMap`](std::collections::HashMap)/[`HashSet`](std::collections::HashSet).
 #[cfg(hash_collections)]
 pub mod hashes {
     use core::hash::{BuildHasher, Hash};
@@ -1502,7 +1502,7 @@ where
 )]
 impl<T: ?Sized> BorshDeserialize for std::sync::Mutex<T>
 where
-    T: BorshDeserialize
+    T: BorshDeserialize,
 {
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
@@ -1521,7 +1521,7 @@ where
 )]
 impl<T: ?Sized> BorshDeserialize for std::sync::RwLock<T>
 where
-    T: BorshDeserialize
+    T: BorshDeserialize,
 {
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
@@ -1542,7 +1542,7 @@ where
 impl<Raw, T: ?Sized> BorshDeserialize for lock_api::Mutex<Raw, T>
 where
     Raw: lock_api::RawMutex,
-    T: BorshDeserialize
+    T: BorshDeserialize,
 {
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
@@ -1563,7 +1563,7 @@ where
 impl<Raw, T: ?Sized> BorshDeserialize for lock_api::RwLock<Raw, T>
 where
     Raw: lock_api::RawRwLock,
-    T: BorshDeserialize
+    T: BorshDeserialize,
 {
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
@@ -1582,7 +1582,7 @@ where
 )]
 impl<T: ?Sized> BorshDeserialize for tokio::sync::Mutex<T>
 where
-    T: BorshDeserialize
+    T: BorshDeserialize,
 {
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
@@ -1601,7 +1601,7 @@ where
 )]
 impl<T: ?Sized> BorshDeserialize for tokio::sync::RwLock<T>
 where
-    T: BorshDeserialize
+    T: BorshDeserialize,
 {
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
@@ -1620,7 +1620,7 @@ where
 )]
 impl<T: ?Sized> BorshDeserialize for async_std::sync::Mutex<T>
 where
-    T: BorshDeserialize
+    T: BorshDeserialize,
 {
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
@@ -1639,7 +1639,7 @@ where
 )]
 impl<T: ?Sized> BorshDeserialize for async_std::sync::RwLock<T>
 where
-    T: BorshDeserialize
+    T: BorshDeserialize,
 {
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]

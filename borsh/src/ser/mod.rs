@@ -675,7 +675,7 @@ where
 ///
 /// Module defines [`BorshSerialize`]
 #[cfg_attr(feature = "async", doc = " & [`BorshSerializeAsync`]")]
-/// implementation for [`HashMap`]/[`HashSet`].
+/// implementation for [`HashMap`](std::collections::HashMap)/[`HashSet`](std::collections::HashSet).
 #[cfg(hash_collections)]
 pub mod hashes {
     use core::{convert::TryFrom, hash::BuildHasher};
