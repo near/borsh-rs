@@ -41,7 +41,6 @@ hashbrown = { version = ">=0.11,<0.16.0", optional = true }
 bytes = { version = "1", optional = true }
 bson = { version = "2", optional = true }
 
-async-generic = { git = "https://github.com/DanikVitek/async-generic.git" }
 async-generic = { git = "https://github.com/DanikVitek/async-generic.git#392e8ef432c9bf4ca381262f56e192a27136e04f" }
 tokio = { version = "1", default-features = false, features = ["io-util"], optional = true }
 async-std = { version = "1", default-features = false, features = ["std"], optional = true }
