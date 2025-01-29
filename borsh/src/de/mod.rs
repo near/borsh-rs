@@ -364,6 +364,7 @@ impl_for_integer!(u32, read_u32);
 impl_for_integer!(u64, read_u64);
 impl_for_integer!(u128, read_u128);
 
+#[rustfmt::skip]
 macro_rules! impl_for_nonzero_integer {
     ($type: ty, $repr: ty) => {
         #[async_generic(
@@ -398,6 +399,7 @@ impl_for_nonzero_integer!(core::num::NonZeroU64, u64);
 impl_for_nonzero_integer!(core::num::NonZeroU128, u128);
 impl_for_nonzero_integer!(core::num::NonZeroUsize, usize);
 
+#[rustfmt::skip]
 macro_rules! impl_for_size_integer {
     ($type: ty: $temp_type: ty, $msg: expr) => {
         #[async_generic(
@@ -425,6 +427,7 @@ impl_for_size_integer!(usize: u64, ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE);
 
 // Note NaNs have a portability issue. Specifically, signalling NaNs on MIPS are quiet NaNs on x86,
 // and vice versa. We disallow NaNs to avoid this issue.
+#[rustfmt::skip]
 macro_rules! impl_for_float {
     ($type: ident, $int_type: ident, $method: ident) => {
         #[async_generic(
