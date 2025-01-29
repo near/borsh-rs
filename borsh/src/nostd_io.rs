@@ -227,14 +227,15 @@ impl Error {
     /// // errors can also be created from other errors
     /// let custom_error2 = Error::new(ErrorKind::Interrupted, custom_error);
     /// ```
+    #[inline]
     pub fn new<T: Into<String>>(kind: ErrorKind, error: T) -> Error {
-        Self::_new(kind, error.into())
-    }
-
-    fn _new(kind: ErrorKind, error: String) -> Error {
-        Error {
-            repr: Repr::Custom(Custom { kind, error }),
+        fn new(kind: ErrorKind, error: String) -> Error {
+            Error {
+                repr: Repr::Custom(Custom { kind, error }),
+            }
         }
+
+        new(kind, error.into())
     }
 
     /// Returns a reference to the inner error wrapped by this error (if any).
