@@ -10,6 +10,8 @@ use async_generic::async_generic;
 #[cfg(feature = "bytes")]
 use bytes::{BufMut, BytesMut};
 
+#[cfg(not(feature = "std"))]
+use crate::__private::maybestd::string::ToString;
 #[cfg(feature = "async")]
 use crate::async_io::AsyncRead;
 use crate::{
@@ -18,7 +20,7 @@ use crate::{
         boxed::Box,
         collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
         format,
-        string::{String, ToString},
+        string::String,
         vec,
         vec::Vec,
     },
@@ -572,9 +574,12 @@ impl BorshDeserialize for String {
             <Vec<u8> as BorshDeserializeAsync>::deserialize_reader(reader).await
         }?)
         .map_err(|err| {
-            if cfg!(feature = "std") {
+            #[cfg(feature = "std")]
+            {
                 Error::new(ErrorKind::InvalidData, err)
-            } else {
+            }
+            #[cfg(not(feature = "std"))]
+            {
                 Error::new(ErrorKind::InvalidData, err.to_string())
             }
         })
@@ -613,9 +618,12 @@ pub mod ascii {
                 <Vec<u8> as BorshDeserializeAsync>::deserialize_reader(reader).await
             }?;
             ascii::AsciiString::from_ascii(bytes).map_err(|err| {
-                if cfg!(feature = "std") {
+                #[cfg(feature = "std")]
+                {
                     Error::new(ErrorKind::InvalidData, err)
-                } else {
+                }
+                #[cfg(not(feature = "std"))]
+                {
                     Error::new(ErrorKind::InvalidData, err.to_string())
                 }
             })
@@ -636,9 +644,12 @@ pub mod ascii {
                 <u8 as BorshDeserializeAsync>::deserialize_reader(reader).await
             }?;
             ascii::AsciiChar::from_ascii(byte).map_err(|err| {
-                if cfg!(feature = "std") {
+                #[cfg(feature = "std")]
+                {
                     Error::new(ErrorKind::InvalidData, err)
-                } else {
+                }
+                #[cfg(not(feature = "std"))]
+                {
                     Error::new(ErrorKind::InvalidData, err.to_string())
                 }
             })

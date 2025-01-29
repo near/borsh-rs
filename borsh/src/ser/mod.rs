@@ -239,7 +239,7 @@ impl_for_size_integer!(usize: u64, write_u64);
 impl_for_size_integer!(isize: i64, write_i64);
 
 // Note NaNs have a portability issue. Specifically, signalling NaNs on MIPS are quiet NaNs on x86,
-// and vice-versa. We disallow NaNs to avoid this issue.
+// and vice versa. We disallow NaNs to avoid this issue.
 macro_rules! impl_for_float {
     ($type: ident, $method: ident) => {
         #[async_generic(
