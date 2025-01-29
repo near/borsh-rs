@@ -1,5 +1,6 @@
 use core::future::Future;
-use std::io::Result;
+
+use crate::io::Result;
 
 pub trait AsyncRead: Unpin + Send {
     fn read<'a>(&'a mut self, buf: &'a mut [u8])
