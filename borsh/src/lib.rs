@@ -45,7 +45,9 @@ pub mod error;
 compile_error!("feature \"std\" and feature \"hashbrown\" don't make sense at the same time");
 
 #[cfg(all(feature = "unstable__tokio", feature = "unstable__async-std"))]
-compile_error!("Cannot enable both `unstable__tokio` and `unstable__async-std` features at the same time");
+compile_error!(
+    "Cannot enable both `unstable__tokio` and `unstable__async-std` features at the same time"
+);
 
 #[cfg(feature = "std")]
 use std::io as io_impl;
