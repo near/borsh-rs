@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
-expression: pretty_print_syn_str(&actual).unwrap()
+expression: pretty_print_syn_str(actual).unwrap()
 ---
 impl<K: Key, V> borsh::de::BorshDeserialize for A<K, V>
 where
@@ -36,7 +36,7 @@ where
                 borsh::BorshDeserialize::deserialize_reader(reader)?,
             )
         } else {
-            return Err(
+            return ::core::result::Result::Err(
                 borsh::io::Error::new(
                     borsh::io::ErrorKind::InvalidData,
                     borsh::__private::maybestd::format!(
@@ -45,6 +45,6 @@ where
                 ),
             )
         };
-        Ok(return_value)
+        ::core::result::Result::Ok(return_value)
     }
 }

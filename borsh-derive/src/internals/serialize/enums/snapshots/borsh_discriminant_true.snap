@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/serialize/enums/mod.rs
-expression: pretty_print_syn_str(&actual).unwrap()
+expression: pretty_print_syn_str(actual).unwrap()
 ---
 impl borsh::ser::BorshSerialize for X {
     fn serialize<__W: borsh::io::Write>(
@@ -16,6 +16,6 @@ impl borsh::ser::BorshSerialize for X {
             X::F => 10 + 1,
         };
         writer.write_all(&variant_idx.to_le_bytes())?;
-        Ok(())
+        ::core::result::Result::Ok(())
     }
 }

@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/deserialize/structs/mod.rs
-expression: pretty_print_syn_str(&actual).unwrap()
+expression: pretty_print_syn_str(actual).unwrap()
 ---
 impl borsh::de::BorshDeserialize for A {
     fn deserialize_reader<__R: borsh::io::Read>(
@@ -11,6 +11,6 @@ impl borsh::de::BorshDeserialize for A {
             y: borsh::BorshDeserialize::deserialize_reader(reader)?,
         };
         return_value.initialization_method();
-        Ok(return_value)
+        ::core::result::Result::Ok(return_value)
     }
 }

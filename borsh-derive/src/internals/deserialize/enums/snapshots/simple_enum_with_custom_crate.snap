@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
-expression: pretty_print_syn_str(&actual).unwrap()
+expression: pretty_print_syn_str(actual).unwrap()
 ---
 impl reexporter::borsh::de::BorshDeserialize for A {
     fn deserialize_reader<__R: reexporter::borsh::io::Read>(
@@ -28,7 +28,7 @@ impl reexporter::borsh::de::EnumExt for A {
                 reexporter::borsh::BorshDeserialize::deserialize_reader(reader)?,
             )
         } else {
-            return Err(
+            return ::core::result::Result::Err(
                 reexporter::borsh::io::Error::new(
                     reexporter::borsh::io::ErrorKind::InvalidData,
                     reexporter::borsh::__private::maybestd::format!(
@@ -37,6 +37,6 @@ impl reexporter::borsh::de::EnumExt for A {
                 ),
             )
         };
-        Ok(return_value)
+        ::core::result::Result::Ok(return_value)
     }
 }

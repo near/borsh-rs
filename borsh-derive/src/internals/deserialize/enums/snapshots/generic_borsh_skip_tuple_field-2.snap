@@ -2,39 +2,42 @@
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
 expression: pretty_print_syn_str(actual).unwrap()
 ---
-impl<K: Key, V, U> borsh::de::BorshDeserialize for A<K, V, U>
+#[::async_trait::async_trait]
+impl<K: Key, V, U> borsh::de::BorshDeserializeAsync for A<K, V, U>
 where
     V: Value,
-    K: borsh::de::BorshDeserialize,
-    V: borsh::de::BorshDeserialize,
+    K: borsh::de::BorshDeserializeAsync,
+    V: borsh::de::BorshDeserializeAsync,
     U: ::core::default::Default,
 {
-    fn deserialize_reader<__R: borsh::io::Read>(
+    async fn deserialize_reader<__R: borsh::async_io::AsyncRead>(
         reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
-        let tag = <u8 as borsh::de::BorshDeserialize>::deserialize_reader(reader)?;
-        <Self as borsh::de::EnumExt>::deserialize_variant(reader, tag)
+        let tag = <u8 as borsh::de::BorshDeserializeAsync>::deserialize_reader(reader)
+            .await?;
+        <Self as borsh::de::EnumExtAsync>::deserialize_variant(reader, tag).await
     }
 }
-impl<K: Key, V, U> borsh::de::EnumExt for A<K, V, U>
+#[::async_trait::async_trait]
+impl<K: Key, V, U> borsh::de::EnumExtAsync for A<K, V, U>
 where
     V: Value,
-    K: borsh::de::BorshDeserialize,
-    V: borsh::de::BorshDeserialize,
+    K: borsh::de::BorshDeserializeAsync,
+    V: borsh::de::BorshDeserializeAsync,
     U: ::core::default::Default,
 {
-    fn deserialize_variant<__R: borsh::io::Read>(
+    async fn deserialize_variant<__R: borsh::async_io::AsyncRead>(
         reader: &mut __R,
         variant_tag: u8,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
         let mut return_value = if variant_tag == 0u8 {
             A::B {
-                x: borsh::BorshDeserialize::deserialize_reader(reader)?,
-                y: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                x: borsh::BorshDeserializeAsync::deserialize_reader(reader).await?,
+                y: borsh::BorshDeserializeAsync::deserialize_reader(reader).await?,
             }
         } else if variant_tag == 1u8 {
             A::C(
-                borsh::BorshDeserialize::deserialize_reader(reader)?,
+                borsh::BorshDeserializeAsync::deserialize_reader(reader).await?,
                 ::core::default::Default::default(),
             )
         } else {

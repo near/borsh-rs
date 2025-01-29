@@ -2,36 +2,39 @@
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
 expression: pretty_print_syn_str(actual).unwrap()
 ---
-impl<T: Debug, U> borsh::de::BorshDeserialize for A<T, U>
+#[::async_trait::async_trait]
+impl<T: Debug, U> borsh::de::BorshDeserializeAsync for A<T, U>
 where
     T: PartialOrd + Hash + Eq + borsh::de::BorshDeserialize,
     U: borsh::de::BorshDeserialize,
 {
-    fn deserialize_reader<__R: borsh::io::Read>(
+    async fn deserialize_reader<__R: borsh::async_io::AsyncRead>(
         reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
-        let tag = <u8 as borsh::de::BorshDeserialize>::deserialize_reader(reader)?;
-        <Self as borsh::de::EnumExt>::deserialize_variant(reader, tag)
+        let tag = <u8 as borsh::de::BorshDeserializeAsync>::deserialize_reader(reader)
+            .await?;
+        <Self as borsh::de::EnumExtAsync>::deserialize_variant(reader, tag).await
     }
 }
-impl<T: Debug, U> borsh::de::EnumExt for A<T, U>
+#[::async_trait::async_trait]
+impl<T: Debug, U> borsh::de::EnumExtAsync for A<T, U>
 where
     T: PartialOrd + Hash + Eq + borsh::de::BorshDeserialize,
     U: borsh::de::BorshDeserialize,
 {
-    fn deserialize_variant<__R: borsh::io::Read>(
+    async fn deserialize_variant<__R: borsh::async_io::AsyncRead>(
         reader: &mut __R,
         variant_tag: u8,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
         let mut return_value = if variant_tag == 0u8 {
             A::C {
-                a: borsh::BorshDeserialize::deserialize_reader(reader)?,
-                b: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                a: borsh::BorshDeserializeAsync::deserialize_reader(reader).await?,
+                b: borsh::BorshDeserializeAsync::deserialize_reader(reader).await?,
             }
         } else if variant_tag == 1u8 {
             A::D(
-                borsh::BorshDeserialize::deserialize_reader(reader)?,
-                borsh::BorshDeserialize::deserialize_reader(reader)?,
+                borsh::BorshDeserializeAsync::deserialize_reader(reader).await?,
+                borsh::BorshDeserializeAsync::deserialize_reader(reader).await?,
             )
         } else {
             return ::core::result::Result::Err(

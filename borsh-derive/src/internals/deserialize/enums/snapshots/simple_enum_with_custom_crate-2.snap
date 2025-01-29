@@ -1,0 +1,50 @@
+---
+source: borsh-derive/src/internals/deserialize/enums/mod.rs
+expression: pretty_print_syn_str(actual).unwrap()
+---
+#[::async_trait::async_trait]
+impl reexporter::borsh::de::BorshDeserializeAsync for A {
+    async fn deserialize_reader<__R: reexporter::borsh::async_io::AsyncRead>(
+        reader: &mut __R,
+    ) -> ::core::result::Result<Self, reexporter::borsh::io::Error> {
+        let tag = <u8 as reexporter::borsh::de::BorshDeserializeAsync>::deserialize_reader(
+                reader,
+            )
+            .await?;
+        <Self as reexporter::borsh::de::EnumExtAsync>::deserialize_variant(reader, tag)
+            .await
+    }
+}
+#[::async_trait::async_trait]
+impl reexporter::borsh::de::EnumExtAsync for A {
+    async fn deserialize_variant<__R: reexporter::borsh::async_io::AsyncRead>(
+        reader: &mut __R,
+        variant_tag: u8,
+    ) -> ::core::result::Result<Self, reexporter::borsh::io::Error> {
+        let mut return_value = if variant_tag == 0u8 {
+            A::B {
+                x: reexporter::borsh::BorshDeserializeAsync::deserialize_reader(reader)
+                    .await?,
+                y: reexporter::borsh::BorshDeserializeAsync::deserialize_reader(reader)
+                    .await?,
+            }
+        } else if variant_tag == 1u8 {
+            A::C(
+                reexporter::borsh::BorshDeserializeAsync::deserialize_reader(reader)
+                    .await?,
+                reexporter::borsh::BorshDeserializeAsync::deserialize_reader(reader)
+                    .await?,
+            )
+        } else {
+            return ::core::result::Result::Err(
+                reexporter::borsh::io::Error::new(
+                    reexporter::borsh::io::ErrorKind::InvalidData,
+                    reexporter::borsh::__private::maybestd::format!(
+                        "Unexpected variant tag: {:?}", variant_tag
+                    ),
+                ),
+            )
+        };
+        ::core::result::Result::Ok(return_value)
+    }
+}

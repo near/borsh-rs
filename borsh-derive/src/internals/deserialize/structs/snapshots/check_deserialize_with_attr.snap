@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/deserialize/structs/mod.rs
-expression: pretty_print_syn_str(&actual).unwrap()
+expression: pretty_print_syn_str(actual).unwrap()
 ---
 impl<K: Ord, V> borsh::de::BorshDeserialize for A<K, V>
 where
@@ -10,7 +10,7 @@ where
     fn deserialize_reader<__R: borsh::io::Read>(
         reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
-        Ok(Self {
+        ::core::result::Result::Ok(Self {
             x: third_party_impl::deserialize_third_party(reader)?,
             y: borsh::BorshDeserialize::deserialize_reader(reader)?,
         })

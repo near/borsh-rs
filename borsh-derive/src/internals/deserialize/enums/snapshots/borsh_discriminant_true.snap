@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
-expression: pretty_print_syn_str(&actual).unwrap()
+expression: pretty_print_syn_str(actual).unwrap()
 ---
 impl borsh::de::BorshDeserialize for X {
     fn deserialize_reader<__R: borsh::io::Read>(
@@ -28,7 +28,7 @@ impl borsh::de::EnumExt for X {
         } else if variant_tag == 10 + 1 {
             X::F
         } else {
-            return Err(
+            return ::core::result::Result::Err(
                 borsh::io::Error::new(
                     borsh::io::ErrorKind::InvalidData,
                     borsh::__private::maybestd::format!(
@@ -37,6 +37,6 @@ impl borsh::de::EnumExt for X {
                 ),
             )
         };
-        Ok(return_value)
+        ::core::result::Result::Ok(return_value)
     }
 }

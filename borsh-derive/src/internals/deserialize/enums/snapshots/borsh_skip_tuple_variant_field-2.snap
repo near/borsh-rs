@@ -2,27 +2,30 @@
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
 expression: pretty_print_syn_str(actual).unwrap()
 ---
-impl borsh::de::BorshDeserialize for AA {
-    fn deserialize_reader<__R: borsh::io::Read>(
+#[::async_trait::async_trait]
+impl borsh::de::BorshDeserializeAsync for AAT {
+    async fn deserialize_reader<__R: borsh::async_io::AsyncRead>(
         reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
-        let tag = <u8 as borsh::de::BorshDeserialize>::deserialize_reader(reader)?;
-        <Self as borsh::de::EnumExt>::deserialize_variant(reader, tag)
+        let tag = <u8 as borsh::de::BorshDeserializeAsync>::deserialize_reader(reader)
+            .await?;
+        <Self as borsh::de::EnumExtAsync>::deserialize_variant(reader, tag).await
     }
 }
-impl borsh::de::EnumExt for AA {
-    fn deserialize_variant<__R: borsh::io::Read>(
+#[::async_trait::async_trait]
+impl borsh::de::EnumExtAsync for AAT {
+    async fn deserialize_variant<__R: borsh::async_io::AsyncRead>(
         reader: &mut __R,
         variant_tag: u8,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
         let mut return_value = if variant_tag == 0u8 {
-            AA::B {
-                c: ::core::default::Default::default(),
-                d: borsh::BorshDeserialize::deserialize_reader(reader)?,
-            }
+            AAT::B(
+                ::core::default::Default::default(),
+                borsh::BorshDeserializeAsync::deserialize_reader(reader).await?,
+            )
         } else if variant_tag == 1u8 {
-            AA::NegatedVariant {
-                beta: borsh::BorshDeserialize::deserialize_reader(reader)?,
+            AAT::NegatedVariant {
+                beta: borsh::BorshDeserializeAsync::deserialize_reader(reader).await?,
             }
         } else {
             return ::core::result::Result::Err(

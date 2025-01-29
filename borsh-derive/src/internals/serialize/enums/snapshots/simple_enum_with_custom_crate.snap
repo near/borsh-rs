@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/serialize/enums/mod.rs
-expression: pretty_print_syn_str(&actual).unwrap()
+expression: pretty_print_syn_str(actual).unwrap()
 ---
 impl reexporter::borsh::ser::BorshSerialize for AB {
     fn serialize<__W: reexporter::borsh::io::Write>(
@@ -21,6 +21,6 @@ impl reexporter::borsh::ser::BorshSerialize for AB {
                 reexporter::borsh::BorshSerialize::serialize(beta, writer)?;
             }
         }
-        Ok(())
+        ::core::result::Result::Ok(())
     }
 }
