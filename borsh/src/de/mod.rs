@@ -18,7 +18,7 @@ use crate::{
         boxed::Box,
         collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
         format,
-        string::String,
+        string::{String, ToString},
         vec,
         vec::Vec,
     },
@@ -571,7 +571,13 @@ impl BorshDeserialize for String {
         } else {
             <Vec<u8> as BorshDeserializeAsync>::deserialize_reader(reader).await
         }?)
-        .map_err(|err| Error::new(ErrorKind::InvalidData, err))
+        .map_err(|err| {
+            if cfg!(feature = "std") {
+                Error::new(ErrorKind::InvalidData, err)
+            } else {
+                Error::new(ErrorKind::InvalidData, err.to_string())
+            }
+        })
     }
 }
 
@@ -606,8 +612,13 @@ pub mod ascii {
             } else {
                 <Vec<u8> as BorshDeserializeAsync>::deserialize_reader(reader).await
             }?;
-            ascii::AsciiString::from_ascii(bytes)
-                .map_err(|err| Error::new(ErrorKind::InvalidData, err))
+            ascii::AsciiString::from_ascii(bytes).map_err(|err| {
+                if cfg!(feature = "std") {
+                    Error::new(ErrorKind::InvalidData, err)
+                } else {
+                    Error::new(ErrorKind::InvalidData, err.to_string())
+                }
+            })
         }
     }
 
@@ -624,8 +635,13 @@ pub mod ascii {
             } else {
                 <u8 as BorshDeserializeAsync>::deserialize_reader(reader).await
             }?;
-            ascii::AsciiChar::from_ascii(byte)
-                .map_err(|err| Error::new(ErrorKind::InvalidData, err))
+            ascii::AsciiChar::from_ascii(byte).map_err(|err| {
+                if cfg!(feature = "std") {
+                    Error::new(ErrorKind::InvalidData, err)
+                } else {
+                    Error::new(ErrorKind::InvalidData, err.to_string())
+                }
+            })
         }
     }
 }
