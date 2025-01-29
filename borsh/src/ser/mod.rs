@@ -1,10 +1,10 @@
-#[cfg(feature = "async")]
+#[cfg(feature = "unstable__async")]
 use core::future::Future;
 use core::{convert::TryFrom, marker::PhantomData};
 
 use async_generic::async_generic;
 
-#[cfg(feature = "async")]
+#[cfg(feature = "unstable__async")]
 use crate::async_io::AsyncWrite;
 use crate::{
     __private::maybestd::{
@@ -102,7 +102,7 @@ pub trait BorshSerialize {
 /// x.serialize(&mut buffer_slice_enough_for_the_data).unwrap();
 /// # })
 /// ```
-#[cfg(feature = "async")]
+#[cfg(feature = "unstable__async")]
 pub trait BorshSerializeAsync: Sync {
     fn serialize<'a, W: AsyncWrite>(
         &'a self,
@@ -121,7 +121,7 @@ pub trait BorshSerializeAsync: Sync {
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant(copy_sync)
 )]
 impl BorshSerialize for u8 {
@@ -146,7 +146,7 @@ impl BorshSerialize for u8 {
 macro_rules! impl_for_integer {
     ($type: ident, $method: ident) => {
         #[async_generic(
-            #[cfg(feature = "async")]
+            #[cfg(feature = "unstable__async")]
             async_variant
         )]
         impl BorshSerialize for $type {
@@ -179,7 +179,7 @@ impl_for_integer!(u128, write_u128);
 macro_rules! impl_for_nonzero_integer {
     ($type: ty, $method: ident $(, $repr: ty)?) => {
         #[async_generic(
-            #[cfg(feature = "async")]
+            #[cfg(feature = "unstable__async")]
             async_variant
         )]
         impl BorshSerialize for $type {
@@ -215,7 +215,7 @@ impl_for_nonzero_integer!(core::num::NonZeroUsize, write_u64, u64);
 macro_rules! impl_for_size_integer {
     ($type:ty: $repr:ty, $method: ident) => {
         #[async_generic(
-            #[cfg(feature = "async")]
+            #[cfg(feature = "unstable__async")]
             async_variant
         )]
         impl BorshSerialize for $type {
@@ -243,7 +243,7 @@ impl_for_size_integer!(isize: i64, write_i64);
 macro_rules! impl_for_float {
     ($type: ident, $method: ident) => {
         #[async_generic(
-            #[cfg(feature = "async")]
+            #[cfg(feature = "unstable__async")]
             async_variant
         )]
         impl BorshSerialize for $type {
@@ -268,7 +268,7 @@ impl_for_float!(f32, write_f32);
 impl_for_float!(f64, write_f64);
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant
 )]
 impl BorshSerialize for bool {
@@ -287,7 +287,7 @@ impl BorshSerialize for bool {
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant<T>
     where
         T: BorshSerializeAsync,
@@ -321,7 +321,7 @@ where
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant<T, E>
     where
         T: BorshSerializeAsync,
@@ -359,7 +359,7 @@ where
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant
 )]
 impl BorshSerialize for str {
@@ -378,7 +378,7 @@ impl BorshSerialize for str {
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant
 )]
 impl BorshSerialize for String {
@@ -400,21 +400,21 @@ impl BorshSerialize for String {
 pub mod ascii {
     //!
     //! Module defines [`BorshSerialize`]
-    #![cfg_attr(feature = "async", doc = " & [`BorshSerializeAsync`]")]
+    #![cfg_attr(feature = "unstable__async", doc = " & [`BorshSerializeAsync`]")]
     //! implementation for some types from [`ascii`] crate.
 
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     use core::future::Future;
 
     use async_generic::async_generic;
 
     use super::BorshSerialize;
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     use super::{AsyncWrite, BorshSerializeAsync};
     use crate::io::{Result, Write};
 
     #[async_generic(
-        #[cfg(feature = "async")]
+        #[cfg(feature = "unstable__async")]
         async_variant
     )]
     impl BorshSerialize for ascii::AsciiChar {
@@ -433,7 +433,7 @@ pub mod ascii {
     }
 
     #[async_generic(
-        #[cfg(feature = "async")]
+        #[cfg(feature = "unstable__async")]
         async_variant
     )]
     impl BorshSerialize for ascii::AsciiStr {
@@ -452,7 +452,7 @@ pub mod ascii {
     }
 
     #[async_generic(
-        #[cfg(feature = "async")]
+        #[cfg(feature = "unstable__async")]
         async_variant
     )]
     impl BorshSerialize for ascii::AsciiString {
@@ -473,7 +473,7 @@ pub mod ascii {
 /// Helper method that is used to serialize a slice of data (without the length marker).
 #[inline]
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_signature<T: BorshSerializeAsync, W: AsyncWrite>(data: &[T], writer: &mut W) -> Result<()>
 )]
 fn serialize_slice<T: BorshSerialize, W: Write>(data: &[T], writer: &mut W) -> Result<()> {
@@ -496,7 +496,7 @@ fn serialize_slice<T: BorshSerialize, W: Write>(data: &[T], writer: &mut W) -> R
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant<T>
     where
         T: BorshSerializeAsync + Sync,
@@ -520,7 +520,7 @@ where
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant<T: BorshSerializeAsync + ?Sized + Sync>
 )]
 impl<T: BorshSerialize + ?Sized> BorshSerialize for &T {
@@ -538,7 +538,7 @@ impl<T: BorshSerialize + ?Sized> BorshSerialize for &T {
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant<T>
     where
         T: BorshSerializeAsync + ToOwned + ?Sized,
@@ -563,7 +563,7 @@ where
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant<T>
     where
         T: BorshSerializeAsync,
@@ -590,7 +590,7 @@ where
 
 #[cfg(feature = "bytes")]
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant
 )]
 impl BorshSerialize for bytes::Bytes {
@@ -610,7 +610,7 @@ impl BorshSerialize for bytes::Bytes {
 
 #[cfg(feature = "bytes")]
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant
 )]
 impl BorshSerialize for bytes::BytesMut {
@@ -629,7 +629,7 @@ impl BorshSerialize for bytes::BytesMut {
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant
 )]
 #[cfg(feature = "bson")]
@@ -655,7 +655,7 @@ impl BorshSerialize for bson::oid::ObjectId {
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant<T>
     where
         T: BorshSerializeAsync,
@@ -684,7 +684,7 @@ where
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant<T>
     where
         T: BorshSerializeAsync,
@@ -718,7 +718,7 @@ where
 /// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
 ///
 /// Module defines [`BorshSerialize`]
-#[cfg_attr(feature = "async", doc = " & [`BorshSerializeAsync`]")]
+#[cfg_attr(feature = "unstable__async", doc = " & [`BorshSerializeAsync`]")]
 /// implementation for [`HashMap`](std::collections::HashMap)/[`HashSet`](std::collections::HashSet).
 #[cfg(hash_collections)]
 pub mod hashes {
@@ -727,7 +727,7 @@ pub mod hashes {
     use async_generic::async_generic;
 
     use super::BorshSerialize;
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     use super::{AsyncWrite, BorshSerializeAsync};
     use crate::{
         __private::maybestd::{
@@ -739,7 +739,7 @@ pub mod hashes {
     };
 
     #[async_generic(
-        #[cfg(feature = "async")]
+        #[cfg(feature = "unstable__async")]
         async_variant<K, V, H>
         where
             K: BorshSerializeAsync + Ord,
@@ -777,7 +777,7 @@ pub mod hashes {
     }
 
     #[async_generic(
-        #[cfg(feature = "async")]
+        #[cfg(feature = "unstable__async")]
         async_variant<T, H>
         where
             T: BorshSerializeAsync + Ord,
@@ -814,7 +814,7 @@ pub mod hashes {
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant<K, V>
     where
         K: BorshSerializeAsync,
@@ -852,7 +852,7 @@ where
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant<T>
     where
         T: BorshSerializeAsync + Sync,
@@ -886,7 +886,7 @@ where
 
 #[cfg(feature = "std")]
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant
 )]
 impl BorshSerialize for std::net::SocketAddr {
@@ -918,7 +918,7 @@ impl BorshSerialize for std::net::SocketAddr {
 
 #[cfg(feature = "std")]
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant
 )]
 impl BorshSerialize for std::net::SocketAddrV4 {
@@ -937,7 +937,7 @@ impl BorshSerialize for std::net::SocketAddrV4 {
 
 #[cfg(feature = "std")]
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant
 )]
 impl BorshSerialize for std::net::SocketAddrV6 {
@@ -956,7 +956,7 @@ impl BorshSerialize for std::net::SocketAddrV6 {
 
 #[cfg(feature = "std")]
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant
 )]
 impl BorshSerialize for std::net::Ipv4Addr {
@@ -982,7 +982,7 @@ impl BorshSerialize for std::net::Ipv4Addr {
 
 #[cfg(feature = "std")]
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant
 )]
 impl BorshSerialize for std::net::Ipv6Addr {
@@ -1008,7 +1008,7 @@ impl BorshSerialize for std::net::Ipv6Addr {
 
 #[cfg(feature = "std")]
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant
 )]
 impl BorshSerialize for std::net::IpAddr {
@@ -1039,7 +1039,7 @@ impl BorshSerialize for std::net::IpAddr {
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant<T>
     where
         T: BorshSerializeAsync + ?Sized,
@@ -1060,7 +1060,7 @@ impl<T: BorshSerialize + ?Sized> BorshSerialize for Box<T> {
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant<T, const N: usize>
     where
         T: BorshSerializeAsync,
@@ -1096,7 +1096,7 @@ where
 macro_rules! impl_tuple {
     (@unit $name:ty) => {
         #[async_generic(
-            #[cfg(feature = "async")]
+            #[cfg(feature = "unstable__async")]
             async_variant
         )]
         impl BorshSerialize for $name {
@@ -1112,7 +1112,7 @@ macro_rules! impl_tuple {
 
     ($($idx:tt $name:ident)+) => {
         #[async_generic(
-            #[cfg(feature = "async")]
+            #[cfg(feature = "unstable__async")]
             async_variant<$($name),+>
             where
                 $($name: BorshSerializeAsync,)+
@@ -1162,7 +1162,7 @@ impl_tuple!(0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T
 macro_rules! impl_range {
     ($type:ident, $this:ident, $($field:expr),*) => {
         #[async_generic(
-            #[cfg(feature = "async")]
+            #[cfg(feature = "unstable__async")]
             async_variant<T>
             where
                 T: BorshSerializeAsync,
@@ -1194,15 +1194,15 @@ impl_range!(RangeToInclusive, this, &this.end);
 pub mod rc {
     //!
     //! Module defines [`BorshSerialize`]
-    #![cfg_attr(feature = "async", doc = " & [`BorshSerializeAsync`]")]
+    #![cfg_attr(feature = "unstable__async", doc = " & [`BorshSerializeAsync`]")]
     //! implementation for [`Rc`] and [`Arc`].
 
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     use core::future::Future;
 
     use async_generic::async_generic;
 
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     use super::{AsyncWrite, BorshSerializeAsync};
     use crate::{
         __private::maybestd::{rc::Rc, sync::Arc},
@@ -1229,7 +1229,7 @@ pub mod rc {
     /// data structure. Serialization will not attempt to deduplicate these
     /// repeated data.
     #[async_generic(
-        #[cfg(feature = "async")]
+        #[cfg(feature = "unstable__async")]
         async_variant<T>
         where
             T: BorshSerializeAsync + ?Sized + Send,
@@ -1246,7 +1246,7 @@ pub mod rc {
 }
 
 #[async_generic(
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_variant<T>
     where
         T: ?Sized + Sync,

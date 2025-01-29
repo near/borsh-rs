@@ -1,6 +1,6 @@
 use async_generic::async_generic;
 
-#[cfg(feature = "async")]
+#[cfg(feature = "unstable__async")]
 use crate::{async_io::AsyncWrite, BorshSerializeAsync};
 use crate::{
     BorshSerialize,
@@ -36,7 +36,7 @@ where
     /// assert_eq!((), borsh::to_writer(&stderr, "hello_0x0a").unwrap());
     /// ```
     sync_signature;
-    #[cfg(feature = "async")]
+    #[cfg(feature = "unstable__async")]
     async_signature<T, W: AsyncWrite>(mut writer: W, value: &T) -> Result<()>
     where
         T: BorshSerializeAsync + ?Sized,
