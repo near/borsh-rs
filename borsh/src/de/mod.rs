@@ -10,8 +10,6 @@ use async_generic::async_generic;
 #[cfg(feature = "bytes")]
 use bytes::{BufMut, BytesMut};
 
-#[cfg(not(feature = "std"))]
-use crate::__private::maybestd::string::ToString;
 #[cfg(feature = "async")]
 use crate::async_io::AsyncRead;
 use crate::{
@@ -580,6 +578,7 @@ impl BorshDeserialize for String {
             }
             #[cfg(not(feature = "std"))]
             {
+                use crate::__private::maybestd::string::ToString;
                 Error::new(ErrorKind::InvalidData, err.to_string())
             }
         })
@@ -624,6 +623,7 @@ pub mod ascii {
                 }
                 #[cfg(not(feature = "std"))]
                 {
+                    use crate::__private::maybestd::string::ToString;
                     Error::new(ErrorKind::InvalidData, err.to_string())
                 }
             })
@@ -650,6 +650,7 @@ pub mod ascii {
                 }
                 #[cfg(not(feature = "std"))]
                 {
+                    use crate::__private::maybestd::string::ToString;
                     Error::new(ErrorKind::InvalidData, err.to_string())
                 }
             })
