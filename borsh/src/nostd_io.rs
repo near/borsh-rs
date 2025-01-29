@@ -2,7 +2,7 @@
 
 use core::{convert::From, fmt, result};
 
-use crate::__private::maybestd::string::String;
+use crate::__private::maybestd::borrow::Cow;
 
 /// A specialized [`Result`] type for I/O operations.
 ///
@@ -68,7 +68,7 @@ enum Repr {
 #[derive(Debug)]
 struct Custom {
     kind: ErrorKind,
-    error: String,
+    error: Cow<'static, str>,
 }
 
 /// A list specifying general categories of I/O error.
@@ -228,8 +228,8 @@ impl Error {
     /// let custom_error2 = Error::new(ErrorKind::Interrupted, custom_error);
     /// ```
     #[inline]
-    pub fn new<T: Into<String>>(kind: ErrorKind, error: T) -> Error {
-        fn new(kind: ErrorKind, error: String) -> Error {
+    pub fn new<T: Into<Cow<'static, str>>>(kind: ErrorKind, error: T) -> Error {
+        fn new(kind: ErrorKind, error: Cow<'static, str>) -> Error {
             Error {
                 repr: Repr::Custom(Custom { kind, error }),
             }
@@ -299,7 +299,7 @@ impl Error {
     ///     print_error(Error::new(ErrorKind::Other, "oh no!"));
     /// }
     /// ```
-    pub fn into_inner(self) -> Option<String> {
+    pub fn into_inner(self) -> Option<Cow<'static, str>> {
         match self.repr {
             Repr::Simple(..) => None,
             Repr::Custom(c) => Some(c.error),

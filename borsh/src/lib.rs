@@ -25,7 +25,7 @@ pub(crate) mod schema_helpers;
 pub mod ser;
 
 pub use de::{from_reader, from_slice, BorshDeserialize};
-#[cfg(feature = "async")]
+#[cfg(feature = "unstable__async")]
 pub use de::{from_reader_async, BorshDeserializeAsync};
 #[cfg(feature = "unstable__schema")]
 pub use schema::BorshSchema;
@@ -33,7 +33,7 @@ pub use schema::BorshSchema;
 pub use schema_helpers::{
     max_serialized_size, schema_container_of, try_from_slice_with_schema, try_to_vec_with_schema,
 };
-#[cfg(feature = "async")]
+#[cfg(feature = "unstable__async")]
 pub use ser::{helpers::to_writer_async, BorshSerializeAsync};
 pub use ser::{
     helpers::{object_length, to_vec, to_writer},
@@ -44,12 +44,12 @@ pub mod error;
 #[cfg(all(feature = "std", feature = "hashbrown"))]
 compile_error!("feature \"std\" and feature \"hashbrown\" don't make sense at the same time");
 
-#[cfg(all(feature = "tokio", feature = "async-std"))]
-compile_error!("Cannot enable both `async-tokio` and `async-std` features at the same time");
+#[cfg(all(feature = "unstable__tokio", feature = "unstable__async-std"))]
+compile_error!("Cannot enable both `unstable__tokio` and `unstable__async-std` features at the same time");
 
 #[cfg(feature = "std")]
 use std::io as io_impl;
-#[cfg(feature = "async")]
+#[cfg(feature = "unstable__async")]
 pub mod async_io;
 #[cfg(not(feature = "std"))]
 mod nostd_io;

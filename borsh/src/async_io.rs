@@ -108,8 +108,7 @@ pub trait AsyncRead: Unpin + Send {
     }
 }
 
-#[cfg(feature = "tokio")]
-// #[async_trait]
+#[cfg(feature = "unstable__tokio")]
 impl<R: tokio::io::AsyncReadExt + Unpin + Send> AsyncRead for R {
     #[inline]
     fn read<'a>(
@@ -187,7 +186,7 @@ impl<R: tokio::io::AsyncReadExt + Unpin + Send> AsyncRead for R {
     }
 }
 
-#[cfg(feature = "async-std")]
+#[cfg(feature = "unstable__async-std")]
 impl<R: async_std::io::ReadExt + Unpin + Send> AsyncRead for R {
     #[inline]
     fn read<'a>(
@@ -306,7 +305,7 @@ pub trait AsyncWrite: Unpin + Send {
     }
 }
 
-#[cfg(feature = "tokio")]
+#[cfg(feature = "unstable__tokio")]
 impl<R: tokio::io::AsyncWriteExt + Unpin + Send> AsyncWrite for R {
     #[inline]
     fn write_all<'a>(&'a mut self, buf: &'a [u8]) -> impl Future<Output = Result<()>> + Send + 'a {
@@ -374,7 +373,7 @@ impl<R: tokio::io::AsyncWriteExt + Unpin + Send> AsyncWrite for R {
     }
 }
 
-#[cfg(feature = "async-std")]
+#[cfg(feature = "unstable__async-std")]
 impl<R: async_std::io::WriteExt + Unpin + Send> AsyncWrite for R {
     #[inline]
     fn write_all<'a>(&'a mut self, buf: &'a [u8]) -> impl Future<Output = Result<()>> + Send + 'a {
