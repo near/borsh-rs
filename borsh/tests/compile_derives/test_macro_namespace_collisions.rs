@@ -15,6 +15,7 @@ enum B {
 #[derive(borsh::BorshSerialize, borsh::BorshDeserialize)]
 struct C {
     x: u64,
+    #[allow(unused)]
     #[borsh(skip)]
     y: String,
 }
