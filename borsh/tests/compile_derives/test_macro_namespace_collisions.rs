@@ -17,5 +17,5 @@ struct C {
     x: u64,
     #[allow(unused)]
     #[borsh(skip)]
-    y: String,
+    y: u64,
 }
