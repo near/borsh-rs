@@ -211,7 +211,7 @@ pub trait EnumExtAsync: BorshDeserializeAsync {
     ///
     /// # #[cfg(feature = "derive")]
     /// impl borsh::de::BorshDeserializeAsync for OneOrZero {
-    ///     async fn deserialize_reader<R: borsh::io::Read>(
+    ///     async fn deserialize_reader<R: borsh::async_io::AsyncRead>(
     ///         reader: &mut R,
     ///     ) -> borsh::io::Result<Self> {
     ///         use borsh::de::EnumExtAsync;
@@ -227,18 +227,18 @@ pub trait EnumExtAsync: BorshDeserializeAsync {
     ///     }
     /// }
     ///
-    /// use borsh::from_slice;
+    /// use borsh::from_reader_async;
     /// let data = b"\0";
-    /// # #[cfg(feature = "derive")]
-    /// assert_eq!(MyEnum::Zero, from_slice::<MyEnum>(&data[..]).unwrap());
-    /// # #[cfg(feature = "derive")]
-    /// assert_eq!(MyEnum::Zero, from_slice::<OneOrZero>(&data[..]).unwrap().0);
+    /// # #[cfg(all(feature = "derive", any(feature = "unstable__tokio", feature = "unstable__async-std")))]
+    /// assert_eq!(MyEnum::Zero, from_reader_async::<_, MyEnum>(&mut &data[..]).await.unwrap());
+    /// # #[cfg(all(feature = "derive", any(feature = "unstable__tokio", feature = "unstable__async-std")))]
+    /// assert_eq!(MyEnum::Zero, from_reader_async::<_, OneOrZero>(&mut &data[..]).await.unwrap().0);
     ///
     /// let data = b"\x02\0\0\0\0";
-    /// # #[cfg(feature = "derive")]
-    /// assert_eq!(MyEnum::Many(Vec::new()), from_slice::<MyEnum>(&data[..]).unwrap());
-    /// # #[cfg(feature = "derive")]
-    /// assert!(from_slice::<OneOrZero>(&data[..]).is_err());
+    /// # #[cfg(all(feature = "derive", any(feature = "unstable__tokio", feature = "unstable__async-std")))]
+    /// assert_eq!(MyEnum::Many(Vec::new()), from_reader_async::<_, MyEnum>(&mut &data[..]).await.unwrap());
+    /// # #[cfg(all(feature = "derive", any(feature = "unstable__tokio", feature = "unstable__async-std")))]
+    /// assert!(from_reader_async::<_, OneOrZero>(&mut &data[..]).await.is_err());
     /// # });
     /// ```
     fn deserialize_variant<R: AsyncRead>(
