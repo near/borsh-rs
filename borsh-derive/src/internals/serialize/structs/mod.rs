@@ -1,6 +1,6 @@
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{Fields, ItemStruct, Path};
+use syn::{Fields, ItemStruct, Lifetime, Path, Token};
 
 use crate::internals::{
     attributes::{field, BoundType},
@@ -48,20 +48,29 @@ pub fn process<const IS_ASYNC: bool>(
     }
     generics_output.extend::<IS_ASYNC>(&mut where_clause, &cratename);
 
-    let serialize_trait = if IS_ASYNC {
-        quote! { BorshSerializeAsync }
-    } else {
-        quote! { BorshSerialize }
-    };
+    let serialize_trait = Ident::new(
+        if IS_ASYNC {
+            "BorshSerializeAsync"
+        } else {
+            "BorshSerialize"
+        },
+        Span::call_site(),
+    );
     let writer_trait_path = if IS_ASYNC {
         quote! { async_io::AsyncWrite }
     } else {
         quote! { io::Write }
     };
+    let r#async = IS_ASYNC.then(|| Token![async](Span::call_site()));
+    let lifetime = IS_ASYNC.then(|| Lifetime::new("'async_variant", Span::call_site()));
+    let lt_comma = IS_ASYNC.then(|| Token![,](Span::call_site()));
 
     Ok(quote! {
         impl #impl_generics #cratename::ser::#serialize_trait for #name #ty_generics #where_clause {
-            fn serialize<__W: #cratename::#writer_trait_path>(&self, writer: &mut __W) -> ::core::result::Result<(), #cratename::io::Error> {
+            #r#async fn serialize<#lifetime #lt_comma __W: #cratename::#writer_trait_path>(
+                &#lifetime self,
+                writer: &#lifetime mut __W,
+            ) -> ::core::result::Result<(), #cratename::io::Error> {
                 #body
                 ::core::result::Result::Ok(())
             }
@@ -77,13 +86,21 @@ fn process_field<const IS_ASYNC: bool>(
     body: &mut TokenStream2,
 ) -> syn::Result<()> {
     let parsed = field::Attributes::parse(&field.attrs)?;
-    let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
 
-    generics
-        .overrides
-        .extend(parsed.collect_bounds(BoundType::Serialize));
+    let needs_bounds_derive = if IS_ASYNC {
+        parsed.needs_async_bounds_derive(BoundType::Serialize)
+    } else {
+        parsed.needs_bounds_derive(BoundType::Serialize)
+    };
+    generics.overrides.extend(if IS_ASYNC {
+        parsed.collect_async_bounds(BoundType::Serialize)
+    } else {
+        parsed.collect_bounds(BoundType::Serialize)
+    });
+
     if !parsed.skip {
         let delta = field_id.serialize_output::<IS_ASYNC>(
+            &field.ty,
             cratename,
             if IS_ASYNC {
                 parsed.serialize_with_async

@@ -1,6 +1,6 @@
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{Fields, Ident, ItemEnum, Path, Variant};
+use syn::{Fields, Ident, ItemEnum, Lifetime, Path, Token, Variant};
 
 use crate::internals::{
     attributes::{field, item, BoundType},
@@ -46,32 +46,30 @@ pub fn process<const IS_ASYNC: bool>(
     let fields_body = optimize_fields_body(fields_body, has_unit_variant);
     generics_output.extend::<IS_ASYNC>(&mut where_clause, &cratename);
 
-    let serialize_trait = if IS_ASYNC {
-        quote!(BorshSerializeAsync)
-    } else {
-        quote!(BorshSerialize)
-    };
+    let serialize_trait = Ident::new(
+        if IS_ASYNC {
+            "BorshSerializeAsync"
+        } else {
+            "BorshSerialize"
+        },
+        Span::call_site(),
+    );
     let writer_trait = if IS_ASYNC {
-        quote!(async_io::AsyncWrite)
+        quote! { async_io::AsyncWrite }
     } else {
-        quote!(io::Write)
+        quote! { io::Write }
     };
-    let async_trait = if IS_ASYNC {
-        quote! { #[::async_trait::async_trait] }
-    } else {
-        quote!()
-    };
-    let r#async = if IS_ASYNC { quote!(async) } else { quote!() };
-    let dot_await = if IS_ASYNC {
-        quote! { .await }
-    } else {
-        quote!()
-    };
+    let r#async = IS_ASYNC.then(|| Token![async](Span::call_site()));
+    let dot_await = IS_ASYNC.then(|| quote! { .await });
+    let lifetime = IS_ASYNC.then(|| Lifetime::new("'async_variant", Span::call_site()));
+    let lt_comma = IS_ASYNC.then(|| Token![,](Span::call_site()));
 
     Ok(quote! {
-        #async_trait
         impl #impl_generics #cratename::ser::#serialize_trait for #enum_ident #ty_generics #where_clause {
-            #r#async fn serialize<__W: #cratename::#writer_trait>(&self, writer: &mut __W) -> ::core::result::Result<(), #cratename::io::Error> {
+            #r#async fn serialize<#lifetime #lt_comma __W: #cratename::#writer_trait>(
+                &#lifetime self,
+                writer: &#lifetime mut __W,
+            ) -> ::core::result::Result<(), #cratename::io::Error> {
                 let variant_idx: u8 = match self {
                     #all_variants_idx_body
                 };
@@ -215,10 +213,16 @@ fn process_field<const IS_ASYNC: bool>(
 ) -> syn::Result<()> {
     let parsed = field::Attributes::parse(&field.attrs)?;
 
-    let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
-    generics
-        .overrides
-        .extend(parsed.collect_bounds(BoundType::Serialize));
+    let needs_bounds_derive = if IS_ASYNC {
+        parsed.needs_async_bounds_derive(BoundType::Serialize)
+    } else {
+        parsed.needs_bounds_derive(BoundType::Serialize)
+    };
+    generics.overrides.extend(if IS_ASYNC {
+        parsed.collect_async_bounds(BoundType::Serialize)
+    } else {
+        parsed.collect_bounds(BoundType::Serialize)
+    });
 
     let field_variant_header = field_id.enum_variant_header(parsed.skip);
     if let Some(field_variant_header) = field_variant_header {
@@ -227,6 +231,7 @@ fn process_field<const IS_ASYNC: bool>(
 
     if !parsed.skip {
         let delta = field_id.serialize_output::<IS_ASYNC>(
+            &field.ty,
             cratename,
             if IS_ASYNC {
                 parsed.serialize_with_async

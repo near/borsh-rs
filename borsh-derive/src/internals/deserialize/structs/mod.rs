@@ -1,6 +1,6 @@
-use proc_macro2::{Span, TokenStream as TokenStream2};
+use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{Fields, ItemStruct, Path};
+use syn::{Fields, ItemStruct, Path, Token};
 
 use crate::internals::{attributes::item, deserialize, generics};
 
@@ -25,9 +25,7 @@ pub fn process<const IS_ASYNC: bool>(
                     &mut generics_output,
                 )?;
             }
-            quote! {
-                Self { #body }
-            }
+            quote! { Self { #body } }
         }
         Fields::Unnamed(fields) => {
             for field in fields.unnamed.iter() {
@@ -38,30 +36,26 @@ pub fn process<const IS_ASYNC: bool>(
                     &mut generics_output,
                 )?;
             }
-            quote! {
-                Self( #body )
-            }
+            quote! { Self( #body ) }
         }
-        Fields::Unit => {
-            quote! {
-                Self {}
-            }
-        }
+        Fields::Unit => quote! { Self {} },
     };
     generics_output.extend::<IS_ASYNC>(&mut where_clause, &cratename);
 
-    let deserialize_trait = if IS_ASYNC {
-        quote! { BorshDeserializeAsync }
-    } else {
-        quote! { BorshDeserialize }
-    };
+    let deserialize_trait = Ident::new(
+        if IS_ASYNC {
+            "BorshDeserializeAsync"
+        } else {
+            "BorshDeserialize"
+        },
+        Span::call_site(),
+    );
     let read_trait_path = if IS_ASYNC {
         quote! { async_io::AsyncRead }
     } else {
         quote! { io::Read }
     };
-    let async_trait = IS_ASYNC.then(|| quote! { #[::async_trait::async_trait] });
-    let r#async = IS_ASYNC.then(|| syn::token::Async(Span::call_site()));
+    let r#async = IS_ASYNC.then(|| Token![async](Span::call_site()));
 
     let body = if let Some(method_ident) = item::contains_initialize_with(&input.attrs)? {
         quote! {
@@ -74,7 +68,6 @@ pub fn process<const IS_ASYNC: bool>(
     };
 
     Ok(quote! {
-        #async_trait
         impl #impl_generics #cratename::de::#deserialize_trait for #name #ty_generics #where_clause {
             #r#async fn deserialize_reader<__R: #cratename::#read_trait_path>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
                 #body

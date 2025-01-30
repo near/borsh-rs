@@ -1,6 +1,6 @@
-use proc_macro2::{Span, TokenStream as TokenStream2};
+use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{Fields, ItemEnum, Path, Variant};
+use syn::{Fields, ItemEnum, Path, Token, Variant};
 
 use crate::internals::{attributes::item, deserialize, enum_discriminant::Discriminants, generics};
 
@@ -31,29 +31,30 @@ pub fn process<const IS_ASYNC: bool>(
     }
     let init = item::contains_initialize_with(&input.attrs)?
         .map(|method_ident| quote! { return_value.#method_ident(); });
+    let r#mut = init.is_some().then(|| Token![mut](Span::call_site()));
     generics_output.extend::<IS_ASYNC>(&mut where_clause, &cratename);
 
-    let deserialize_trait = if IS_ASYNC {
-        quote! { BorshDeserializeAsync }
-    } else {
-        quote! { BorshDeserialize }
-    };
-    let enum_ext = if IS_ASYNC {
-        quote! { EnumExtAsync }
-    } else {
-        quote! { EnumExt }
-    };
+    let deserialize_trait = Ident::new(
+        if IS_ASYNC {
+            "BorshDeserializeAsync"
+        } else {
+            "BorshDeserialize"
+        },
+        Span::call_site(),
+    );
+    let enum_ext = Ident::new(
+        if IS_ASYNC { "EnumExtAsync" } else { "EnumExt" },
+        Span::call_site(),
+    );
     let read_trait_path = if IS_ASYNC {
         quote! { async_io::AsyncRead }
     } else {
         quote! { io::Read }
     };
-    let async_trait = IS_ASYNC.then(|| quote! { #[::async_trait::async_trait] });
-    let r#async = IS_ASYNC.then(|| syn::token::Async(Span::call_site()));
+    let r#async = IS_ASYNC.then(|| Token![async](Span::call_site()));
     let dot_await = IS_ASYNC.then(|| quote! { .await });
 
     Ok(quote! {
-        #async_trait
         impl #impl_generics #cratename::de::#deserialize_trait for #name #ty_generics #where_clause {
             #r#async fn deserialize_reader<__R: #cratename::#read_trait_path>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
                 let tag = <u8 as #cratename::de::#deserialize_trait>::deserialize_reader(reader)#dot_await?;
@@ -61,13 +62,12 @@ pub fn process<const IS_ASYNC: bool>(
             }
         }
 
-        #async_trait
         impl #impl_generics #cratename::de::#enum_ext for #name #ty_generics #where_clause {
             #r#async fn deserialize_variant<__R: #cratename::#read_trait_path>(
                 reader: &mut __R,
                 variant_tag: u8,
             ) -> ::core::result::Result<Self, #cratename::io::Error> {
-                let mut return_value =
+                let #r#mut return_value =
                     #variant_arms {
                     return ::core::result::Result::Err(#cratename::io::Error::new(
                         #cratename::io::ErrorKind::InvalidData,

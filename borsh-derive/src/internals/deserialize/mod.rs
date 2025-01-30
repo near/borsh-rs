@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{parse_quote, ExprPath, Generics, Ident, Path};
+use syn::{parse_quote, ExprPath, Generics, Ident, Path, Type};
 
 use super::{
     attributes::{field, BoundType},
@@ -25,6 +25,7 @@ impl GenericsOutput {
             default_visitor: generics::FindTyParams::new(generics),
         }
     }
+
     fn extend<const IS_ASYNC: bool>(self, where_clause: &mut syn::WhereClause, cratename: &Path) {
         let de_trait: Path = if IS_ASYNC {
             parse_quote! { #cratename::de::BorshDeserializeAsync }
@@ -50,10 +51,16 @@ fn process_field<const IS_ASYNC: bool>(
 ) -> syn::Result<()> {
     let parsed = field::Attributes::parse(&field.attrs)?;
 
-    generics
-        .overrides
-        .extend(parsed.collect_bounds(BoundType::Deserialize));
-    let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
+    generics.overrides.extend(if IS_ASYNC {
+        parsed.collect_async_bounds(BoundType::Deserialize)
+    } else {
+        parsed.collect_bounds(BoundType::Deserialize)
+    });
+    let needs_bounds_derive = if IS_ASYNC {
+        parsed.needs_async_bounds_derive(BoundType::Deserialize)
+    } else {
+        parsed.needs_bounds_derive(BoundType::Deserialize)
+    };
 
     let field_name = field.ident.as_ref();
     let delta = if parsed.skip {
@@ -67,6 +74,7 @@ fn process_field<const IS_ASYNC: bool>(
         }
         field_output::<IS_ASYNC>(
             field_name,
+            &field.ty,
             cratename,
             if IS_ASYNC {
                 parsed.deserialize_with_async
@@ -83,15 +91,20 @@ fn process_field<const IS_ASYNC: bool>(
 /// of code, which deserializes single field
 fn field_output<const IS_ASYNC: bool>(
     field_name: Option<&Ident>,
+    field_type: &Type,
     cratename: &Path,
     deserialize_with: Option<ExprPath>,
 ) -> TokenStream2 {
     let default_path = || {
-        if IS_ASYNC {
-            parse_quote! { #cratename::BorshDeserializeAsync::deserialize_reader }
-        } else {
-            parse_quote! { #cratename::BorshDeserialize::deserialize_reader }
-        }
+        let deserialize_trait = Ident::new(
+            if IS_ASYNC {
+                "BorshDeserializeAsync"
+            } else {
+                "BorshDeserialize"
+            },
+            proc_macro2::Span::call_site(),
+        );
+        parse_quote! { <#field_type as #cratename::#deserialize_trait>::deserialize_reader }
     };
 
     let path: ExprPath = deserialize_with.unwrap_or_else(default_path);

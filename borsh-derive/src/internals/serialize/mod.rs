@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{parse_quote, Expr, ExprPath, Generics, Ident, Index, Path};
+use syn::{parse_quote, Expr, ExprPath, Generics, Ident, Index, Path, Type};
 
 use super::generics;
 
@@ -79,36 +79,45 @@ impl FieldId {
             }
         }
     }
+
     /// function which computes derive output [proc_macro2::TokenStream]
     /// of code, which serializes single field
     pub fn serialize_output<const IS_ASYNC: bool>(
         &self,
+        field_type: &Type,
         cratename: &Path,
         serialize_with: Option<ExprPath>,
     ) -> TokenStream2 {
         let arg: Expr = self.serialize_arg();
-        let dot_await = IS_ASYNC.then_some(quote! { .await });
-        let serialize_trait = if IS_ASYNC {
-            quote! { BorshSerializeAsync }
-        } else {
-            quote! { BorshSerialize }
-        };
+        let dot_await = IS_ASYNC.then(|| quote! { .await });
         if let Some(func) = serialize_with {
             quote! { #func(#arg, writer)#dot_await?; }
         } else {
-            quote! { #cratename::#serialize_trait::serialize(#arg, writer)#dot_await?; }
+            let serialize_trait = Ident::new(
+                if IS_ASYNC {
+                    "BorshSerializeAsync"
+                } else {
+                    "BorshSerialize"
+                },
+                Span::call_site(),
+            );
+            quote! { <#field_type as #cratename::#serialize_trait>::serialize(#arg, writer)#dot_await?; }
         }
     }
+
     pub fn enum_variant_header(&self, skipped: bool) -> Option<TokenStream2> {
         match self {
             Self::Struct(..) | Self::StructUnnamed(..) => unreachable!("no variant header"),
             Self::Enum(name) => (!skipped).then_some(quote! { #name, }),
             Self::EnumUnnamed(index) => {
-                let field_ident = if skipped {
-                    Ident::new(&format!("_id{}", index.index), Span::mixed_site())
-                } else {
-                    Ident::new(&format!("id{}", index.index), Span::mixed_site())
-                };
+                let field_ident = Ident::new(
+                    &if skipped {
+                        format!("_id{}", index.index)
+                    } else {
+                        format!("id{}", index.index)
+                    },
+                    Span::mixed_site(),
+                );
                 Some(quote! { #field_ident, })
             }
         }

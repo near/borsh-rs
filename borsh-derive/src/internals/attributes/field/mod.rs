@@ -206,6 +206,7 @@ impl Attributes {
 
         Ok(())
     }
+
     pub(crate) fn parse(attrs: &[Attribute]) -> Result<Self, syn::Error> {
         let borsh = get_one_attribute(attrs)?;
 
@@ -219,8 +220,14 @@ impl Attributes {
 
         Ok(result)
     }
+
     pub(crate) fn needs_bounds_derive(&self, ty: BoundType) -> bool {
         let predicates = self.get_bounds(ty);
+        predicates.is_none()
+    }
+
+    pub(crate) fn needs_async_bounds_derive(&self, ty: BoundType) -> bool {
+        let predicates = self.get_async_bounds(ty);
         predicates.is_none()
     }
 
@@ -242,6 +249,11 @@ impl Attributes {
 
     pub(crate) fn collect_bounds(&self, ty: BoundType) -> Vec<WherePredicate> {
         let predicates = self.get_bounds(ty);
+        predicates.unwrap_or_default()
+    }
+
+    pub(crate) fn collect_async_bounds(&self, ty: BoundType) -> Vec<WherePredicate> {
+        let predicates = self.get_async_bounds(ty);
         predicates.unwrap_or_default()
     }
 }
