@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl<T: Debug, U> borsh::de::BorshDeserialize for A<T, U>
 where
     T: PartialOrd + Hash + Eq + borsh::de::BorshDeserialize,
@@ -14,6 +15,7 @@ where
         <Self as borsh::de::EnumExt>::deserialize_variant(reader, tag)
     }
 }
+#[automatically_derived]
 impl<T: Debug, U> borsh::de::EnumExt for A<T, U>
 where
     T: PartialOrd + Hash + Eq + borsh::de::BorshDeserialize,

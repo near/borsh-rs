@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/schema/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl<B, A> borsh::BorshSchema for Side<B, A>
 where
     A: Display + Debug,
@@ -55,4 +56,3 @@ where
         );
     }
 }
-

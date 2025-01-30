@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/deserialize/structs/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl<K, V, U> borsh::de::BorshDeserialize for G<K, V, U>
 where
     K: borsh::de::BorshDeserialize,

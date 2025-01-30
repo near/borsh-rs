@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl reexporter::borsh::de::BorshDeserialize for A {
     fn deserialize_reader<__R: reexporter::borsh::io::Read>(
         reader: &mut __R,
@@ -12,6 +13,7 @@ impl reexporter::borsh::de::BorshDeserialize for A {
         <Self as reexporter::borsh::de::EnumExt>::deserialize_variant(reader, tag)
     }
 }
+#[automatically_derived]
 impl reexporter::borsh::de::EnumExt for A {
     fn deserialize_variant<__R: reexporter::borsh::io::Read>(
         reader: &mut __R,
