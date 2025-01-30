@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/schema/structs/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl reexporter::borsh::BorshSchema for A {
     fn declaration() -> reexporter::borsh::schema::Declaration {
         "A".to_string()
@@ -40,4 +41,3 @@ impl reexporter::borsh::BorshSchema for A {
         }
     }
 }
-

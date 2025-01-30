@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/schema/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl<K: Key, V> borsh::BorshSchema for A<K, V>
 where
     V: Value,
@@ -52,4 +53,3 @@ where
         );
     }
 }
-
