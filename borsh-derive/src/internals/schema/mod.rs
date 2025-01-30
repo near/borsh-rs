@@ -2,10 +2,7 @@ use std::collections::HashSet;
 
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{
-    punctuated::Punctuated, token::Comma, Field, Fields, GenericParam, Generics, Ident, Path, Type,
-    WherePredicate,
-};
+use syn::{parse_quote, punctuated::Punctuated, token::Comma, Field, Fields, GenericParam, Generics, Ident, Path, Type, WherePredicate};
 
 use crate::internals::{attributes::field, generics};
 
@@ -23,7 +20,7 @@ impl GenericsOutput {
         }
     }
     fn result(self, item_name: &str, cratename: &Path) -> (Vec<WherePredicate>, TokenStream2) {
-        let trait_path: Path = syn::parse2(quote! { #cratename::BorshSchema }).unwrap();
+        let trait_path: Path = parse_quote! { #cratename::BorshSchema };
         let predicates = generics::compute_predicates(
             self.params_visitor.clone().process_for_bounds(),
             &trait_path,

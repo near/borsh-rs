@@ -52,7 +52,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
                 writer.write_all(&variant_idx.to_le_bytes())?;
 
                 #fields_body
-                Ok(())
+                ::core::result::Result::Ok(())
             }
         }
     })
@@ -202,11 +202,12 @@ mod tests {
     use crate::internals::test_helpers::{
         default_cratename, local_insta_assert_snapshot, pretty_print_syn_str,
     };
+    use syn::parse_quote;
 
     use super::*;
     #[test]
     fn borsh_skip_tuple_variant_field() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum AATTB {
                 B(#[borsh(skip)] i32, #[borsh(skip)] u32),
 
@@ -214,8 +215,7 @@ mod tests {
                     beta: u8,
                 }
             }
-        })
-        .unwrap();
+        };
         let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -223,7 +223,7 @@ mod tests {
 
     #[test]
     fn struct_variant_field() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum AB {
                 B {
                     c: i32,
@@ -234,8 +234,7 @@ mod tests {
                     beta: String,
                 }
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_enum, default_cratename()).unwrap();
 
@@ -244,7 +243,7 @@ mod tests {
 
     #[test]
     fn simple_enum_with_custom_crate() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum AB {
                 B {
                     c: i32,
@@ -255,10 +254,9 @@ mod tests {
                     beta: String,
                 }
             }
-        })
-        .unwrap();
+        };
 
-        let crate_: Path = syn::parse2(quote! { reexporter::borsh }).unwrap();
+        let crate_: Path = parse_quote! { reexporter::borsh };
         let actual = process(&item_enum, crate_).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -266,7 +264,7 @@ mod tests {
 
     #[test]
     fn borsh_skip_struct_variant_field() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
 
             enum AB {
                 B {
@@ -280,8 +278,7 @@ mod tests {
                     beta: String,
                 }
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_enum, default_cratename()).unwrap();
 
@@ -290,7 +287,7 @@ mod tests {
 
     #[test]
     fn borsh_skip_struct_variant_all_fields() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
 
             enum AAB {
                 B {
@@ -305,8 +302,7 @@ mod tests {
                     beta: String,
                 }
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_enum, default_cratename()).unwrap();
 
@@ -315,7 +311,7 @@ mod tests {
 
     #[test]
     fn simple_generics() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<K, V, U> {
                 B {
                     x: HashMap<K, V>,
@@ -323,16 +319,15 @@ mod tests {
                 },
                 C(K, Vec<U>),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn bound_generics() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<K: Key, V, U> where V: Value {
                 B {
                     x: HashMap<K, V>,
@@ -340,16 +335,15 @@ mod tests {
                 },
                 C(K, Vec<U>),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn recursive_enum() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<K: Key, V> where V: Value {
                 B {
                     x: HashMap<K, V>,
@@ -357,17 +351,16 @@ mod tests {
                 },
                 C(K, Vec<A>),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn generic_borsh_skip_struct_field() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<K: Key, V, U> where V: Value {
                 B {
                     #[borsh(skip)]
@@ -376,17 +369,16 @@ mod tests {
                 },
                 C(K, Vec<U>),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn generic_borsh_skip_tuple_field() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<K: Key, V, U> where V: Value {
                 B {
                     x: HashMap<K, V>,
@@ -394,17 +386,16 @@ mod tests {
                 },
                 C(K, #[borsh(skip)] Vec<U>),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn generic_serialize_bound() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<T: Debug, U> {
                 C {
                     a: String,
@@ -416,17 +407,16 @@ mod tests {
                 },
                 D(u32, u32),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn check_serialize_with_attr() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum C<K: Ord, V> {
                 C3(u64, u64),
                 C4 {
@@ -435,17 +425,16 @@ mod tests {
                     y: ThirdParty<K, V>
                 },
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn borsh_discriminant_false() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
            #[borsh(use_discriminant = false)]
             enum X {
                 A,
@@ -455,15 +444,15 @@ mod tests {
                 E = 10,
                 F,
             }
-        })
-        .unwrap();
+        };
         let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
+
     #[test]
     fn borsh_discriminant_true() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             #[borsh(use_discriminant = true)]
             enum X {
                 A,
@@ -473,8 +462,7 @@ mod tests {
                 E = 10,
                 F,
             }
-        })
-        .unwrap();
+        };
         let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -482,15 +470,14 @@ mod tests {
 
     #[test]
     fn mixed_with_unit_variants() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum X {
                 A(u16),
                 B,
                 C {x: i32, y: i32},
                 D,
             }
-        })
-        .unwrap();
+        };
         let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());

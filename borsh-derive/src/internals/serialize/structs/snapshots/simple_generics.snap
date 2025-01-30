@@ -13,6 +13,6 @@ where
     ) -> ::core::result::Result<(), borsh::io::Error> {
         borsh::BorshSerialize::serialize(&self.x, writer)?;
         borsh::BorshSerialize::serialize(&self.y, writer)?;
-        Ok(())
+        ::core::result::Result::Ok(())
     }
 }

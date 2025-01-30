@@ -24,6 +24,6 @@ impl borsh::ser::BorshSerialize for X {
             }
             _ => {}
         }
-        Ok(())
+        ::core::result::Result::Ok(())
     }
 }

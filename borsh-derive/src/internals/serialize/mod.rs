@@ -1,7 +1,7 @@
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use std::convert::TryFrom;
-use syn::{Expr, ExprPath, Generics, Ident, Index, Path};
+use syn::{parse_quote, Expr, ExprPath, Generics, Ident, Index, Path};
 
 use super::generics;
 
@@ -22,7 +22,7 @@ impl GenericsOutput {
         }
     }
     fn extend(self, where_clause: &mut syn::WhereClause, cratename: &Path) {
-        let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
+        let trait_path: Path = parse_quote! { #cratename::ser::BorshSerialize };
         let predicates =
             generics::compute_predicates(self.serialize_visitor.process_for_bounds(), &trait_path);
         where_clause.predicates.extend(predicates);
@@ -65,12 +65,12 @@ impl FieldId {
 impl FieldId {
     fn serialize_arg(&self) -> Expr {
         match self {
-            Self::Struct(name) => syn::parse2(quote! { &self.#name }).unwrap(),
-            Self::StructUnnamed(index) => syn::parse2(quote! { &self.#index }).unwrap(),
-            Self::Enum(name) => syn::parse2(quote! { #name }).unwrap(),
+            Self::Struct(name) => parse_quote! { &self.#name },
+            Self::StructUnnamed(index) => parse_quote! { &self.#index },
+            Self::Enum(name) => parse_quote! { #name },
             Self::EnumUnnamed(ind) => {
                 let field = Ident::new(&format!("id{}", ind.index), Span::mixed_site());
-                syn::parse2(quote! { #field }).unwrap()
+                parse_quote! { #field }
             }
         }
     }

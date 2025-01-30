@@ -37,7 +37,7 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
         impl #impl_generics #cratename::ser::BorshSerialize for #name #ty_generics #where_clause {
             fn serialize<__W: #cratename::io::Write>(&self, writer: &mut __W) -> ::core::result::Result<(), #cratename::io::Error> {
                 #body
-                Ok(())
+                ::core::result::Result::Ok(())
             }
         }
     })
@@ -73,18 +73,18 @@ mod tests {
         default_cratename, local_insta_assert_debug_snapshot, local_insta_assert_snapshot,
         pretty_print_syn_str,
     };
+    use syn::parse_quote;
 
     use super::*;
 
     #[test]
     fn simple_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_struct, default_cratename()).unwrap();
 
@@ -93,15 +93,14 @@ mod tests {
 
     #[test]
     fn simple_struct_with_custom_crate() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
-        let crate_: Path = syn::parse2(quote! { reexporter::borsh }).unwrap();
+        let crate_: Path = parse_quote! { reexporter::borsh };
         let actual = process(&item_struct, crate_).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -109,13 +108,12 @@ mod tests {
 
     #[test]
     fn simple_generics() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A<K, V> {
                 x: HashMap<K, V>,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -123,10 +121,9 @@ mod tests {
 
     #[test]
     fn simple_generic_tuple_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct TupleA<T>(T, u32);
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -134,13 +131,12 @@ mod tests {
 
     #[test]
     fn bound_generics() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A<K: Key, V> where V: Value {
                 x: HashMap<K, V>,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -148,13 +144,12 @@ mod tests {
 
     #[test]
     fn recursive_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct CRecC {
                 a: String,
                 b: HashMap<String, CRecC>,
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_struct, default_cratename()).unwrap();
 
@@ -163,14 +158,13 @@ mod tests {
 
     #[test]
     fn generic_tuple_struct_borsh_skip1() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct G<K, V, U> (
                 #[borsh(skip)]
                 HashMap<K, V>,
                 U,
             );
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_struct, default_cratename()).unwrap();
 
@@ -179,14 +173,13 @@ mod tests {
 
     #[test]
     fn generic_tuple_struct_borsh_skip2() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct G<K, V, U> (
                 HashMap<K, V>,
                 #[borsh(skip)]
                 U,
             );
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_struct, default_cratename()).unwrap();
 
@@ -195,14 +188,13 @@ mod tests {
 
     #[test]
     fn generic_named_fields_struct_borsh_skip() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct G<K, V, U> {
                 #[borsh(skip)]
                 x: HashMap<K, V>,
                 y: U,
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_struct, default_cratename()).unwrap();
 
@@ -211,7 +203,7 @@ mod tests {
 
     #[test]
     fn generic_associated_type() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct Parametrized<T, V>
             where
                 T: TraitName,
@@ -219,8 +211,7 @@ mod tests {
                 field: T::Associated,
                 another: V,
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_struct, default_cratename()).unwrap();
 
@@ -229,7 +220,7 @@ mod tests {
 
     #[test]
     fn generic_serialize_bound() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct C<T: Debug, U> {
                 a: String,
                 #[borsh(bound(serialize =
@@ -238,8 +229,7 @@ mod tests {
                 ))]
                 b: HashMap<T, U>,
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_struct, default_cratename()).unwrap();
 
@@ -248,7 +238,7 @@ mod tests {
 
     #[test]
     fn override_generic_associated_type_wrong_derive() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct Parametrized<T, V> where T: TraitName {
                 #[borsh(bound(serialize =
                     "<T as TraitName>::Associated: borsh::ser::BorshSerialize"
@@ -256,8 +246,7 @@ mod tests {
                 field: <T as TraitName>::Associated,
                 another: V,
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_struct, default_cratename()).unwrap();
 
@@ -266,14 +255,13 @@ mod tests {
 
     #[test]
     fn check_serialize_with_attr() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A<K: Ord, V> {
                 #[borsh(serialize_with = "third_party_impl::serialize_third_party")]
                 x: ThirdParty<K, V>,
                 y: u64,
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_struct, default_cratename()).unwrap();
 
@@ -282,14 +270,13 @@ mod tests {
 
     #[test]
     fn check_serialize_with_skip_conflict() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A<K: Ord, V> {
                 #[borsh(skip,serialize_with = "third_party_impl::serialize_third_party")]
                 x: ThirdParty<K, V>,
                 y: u64,
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_struct, default_cratename());
 

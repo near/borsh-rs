@@ -165,8 +165,7 @@ impl Attributes {
         Ok(result)
     }
     pub(crate) fn needs_bounds_derive(&self, ty: BoundType) -> bool {
-        let predicates = self.get_bounds(ty);
-        predicates.is_none()
+        self.get_bounds(ty).is_none()
     }
 
     fn get_bounds(&self, ty: BoundType) -> Option<Vec<WherePredicate>> {
@@ -243,8 +242,7 @@ impl Attributes {
 
 #[cfg(test)]
 mod tests {
-    use quote::quote;
-    use syn::{Attribute, ItemStruct};
+    use syn::{parse_quote, Attribute, ItemStruct};
 
     fn parse_bounds(attrs: &[Attribute]) -> Result<Option<bounds::Bounds>, syn::Error> {
         // #[borsh(bound(serialize = "...", deserialize = "..."))]
@@ -261,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_reject_multiple_borsh_attrs() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(skip)]
                 #[borsh(bound(deserialize = "K: Hash + Ord,
@@ -272,8 +270,7 @@ mod tests {
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let err = match Attributes::parse(&first_field.attrs) {
@@ -285,7 +282,7 @@ mod tests {
 
     #[test]
     fn test_bounds_parsing1() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(bound(deserialize = "K: Hash + Ord,
                      V: Eq + Ord",
@@ -295,8 +292,7 @@ mod tests {
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
@@ -306,7 +302,7 @@ mod tests {
 
     #[test]
     fn test_bounds_parsing2() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(bound(deserialize = "K: Hash + Eq + borsh::de::BorshDeserialize,
                      V: borsh::de::BorshDeserialize",
@@ -316,8 +312,7 @@ mod tests {
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
@@ -327,7 +322,7 @@ mod tests {
 
     #[test]
     fn test_bounds_parsing3() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(bound(deserialize = "K: Hash + Eq + borsh::de::BorshDeserialize,
                      V: borsh::de::BorshDeserialize",
@@ -336,8 +331,7 @@ mod tests {
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
@@ -347,14 +341,13 @@ mod tests {
 
     #[test]
     fn test_bounds_parsing4() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(bound(deserialize = "K: Hash"))]
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
@@ -364,14 +357,13 @@ mod tests {
 
     #[test]
     fn test_bounds_parsing_error() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(bound(deser = "K: Hash"))]
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let err = match parse_bounds(&first_field.attrs) {
@@ -383,14 +375,13 @@ mod tests {
 
     #[test]
     fn test_bounds_parsing_error2() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(bound(deserialize = "K Hash"))]
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let err = match parse_bounds(&first_field.attrs) {
@@ -402,14 +393,13 @@ mod tests {
 
     #[test]
     fn test_bounds_parsing_error3() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(bound(deserialize = 42))]
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let err = match parse_bounds(&first_field.attrs) {
@@ -421,7 +411,7 @@ mod tests {
 
     #[test]
     fn test_ser_de_with_parsing1() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(
                     serialize_with = "third_party_impl::serialize_third_party",
@@ -430,8 +420,7 @@ mod tests {
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let attrs = Attributes::parse(&first_field.attrs).unwrap();
@@ -440,14 +429,13 @@ mod tests {
     }
     #[test]
     fn test_borsh_skip() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(skip)]
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
 
@@ -456,13 +444,12 @@ mod tests {
     }
     #[test]
     fn test_borsh_no_skip() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
 
@@ -483,7 +470,7 @@ mod tests_schema {
     };
 
     use quote::quote;
-    use syn::{Attribute, ItemStruct};
+    use syn::{parse_quote, Attribute, ItemStruct};
 
     use super::schema;
     fn parse_schema_attrs(attrs: &[Attribute]) -> Result<Option<schema::Attributes>, syn::Error> {
@@ -494,7 +481,7 @@ mod tests_schema {
 
     #[test]
     fn test_root_bounds_and_params_combined() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(
                     serialize_with = "third_party_impl::serialize_third_party",
@@ -504,8 +491,7 @@ mod tests_schema {
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
 
@@ -521,7 +507,7 @@ mod tests_schema {
 
     #[test]
     fn test_schema_params_parsing1() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct Parametrized<V, T>
             where
                 T: TraitName,
@@ -532,8 +518,7 @@ mod tests_schema {
                 field: <T as TraitName>::Associated,
                 another: V,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
@@ -541,7 +526,7 @@ mod tests_schema {
     }
     #[test]
     fn test_schema_params_parsing_error() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct Parametrized<V, T>
             where
                 T: TraitName,
@@ -552,8 +537,7 @@ mod tests_schema {
                 field: <T as TraitName>::Associated,
                 another: V,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let err = match parse_schema_attrs(&first_field.attrs) {
@@ -565,7 +549,7 @@ mod tests_schema {
 
     #[test]
     fn test_schema_params_parsing_error2() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct Parametrized<V, T>
             where
                 T: TraitName,
@@ -576,8 +560,7 @@ mod tests_schema {
                 field: <T as TraitName>::Associated,
                 another: V,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let err = match parse_schema_attrs(&first_field.attrs) {
@@ -589,7 +572,7 @@ mod tests_schema {
 
     #[test]
     fn test_schema_params_parsing2() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct Parametrized<V, T>
             where
                 T: TraitName,
@@ -600,8 +583,7 @@ mod tests_schema {
                 field: <T as TraitName>::Associated,
                 another: V,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
@@ -609,7 +591,7 @@ mod tests_schema {
     }
     #[test]
     fn test_schema_params_parsing3() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct Parametrized<V, T>
             where
                 T: TraitName,
@@ -618,8 +600,7 @@ mod tests_schema {
                 field: <T as TraitName>::Associated,
                 another: V,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
@@ -628,7 +609,7 @@ mod tests_schema {
 
     #[test]
     fn test_schema_params_parsing4() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct Parametrized<V, T>
             where
                 T: TraitName,
@@ -636,8 +617,7 @@ mod tests_schema {
                 field: <T as TraitName>::Associated,
                 another: V,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
@@ -646,7 +626,7 @@ mod tests_schema {
 
     #[test]
     fn test_schema_with_funcs_parsing() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(schema(with_funcs(
                     declaration = "third_party_impl::declaration::<K, V>",
@@ -655,8 +635,7 @@ mod tests_schema {
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let attrs = Attributes::parse(&first_field.attrs).unwrap();
@@ -670,7 +649,7 @@ mod tests_schema {
     // both `declaration` and `definitions` have to be specified
     #[test]
     fn test_schema_with_funcs_parsing_error() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(schema(with_funcs(
                     declaration = "third_party_impl::declaration::<K, V>"
@@ -678,8 +657,7 @@ mod tests_schema {
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let attrs = Attributes::parse(&first_field.attrs);
@@ -693,14 +671,13 @@ mod tests_schema {
 
     #[test]
     fn test_root_error() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(boons)]
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
         let err = match Attributes::parse(&first_field.attrs) {
@@ -712,7 +689,7 @@ mod tests_schema {
 
     #[test]
     fn test_root_bounds_and_wrong_key_combined() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(bound(deserialize = "K: Hash"),
                         schhema(params = "T => <T as TraitName>::Associated, V => Vec<V>")
@@ -720,8 +697,7 @@ mod tests_schema {
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
 

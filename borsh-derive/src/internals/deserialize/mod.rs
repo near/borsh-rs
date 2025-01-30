@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{parse_quote, ExprPath, Generics, Ident, Path, Type};
+use syn::{parse_quote, ExprPath, Generics, Ident, Path, Type, TypeGroup};
 
 use super::{
     attributes::{field, BoundType},
@@ -13,7 +13,7 @@ pub mod unions;
 
 struct GenericsOutput {
     overrides: Vec<syn::WherePredicate>,
-    default_visitor: generics::FindTyParams,
+    skipped_fields_types: Vec<Type>,
     deserialize_visitor: generics::FindTyParams,
 }
 
@@ -21,8 +21,8 @@ impl GenericsOutput {
     fn new(generics: &Generics) -> Self {
         Self {
             overrides: vec![],
+            skipped_fields_types: vec![],
             deserialize_visitor: generics::FindTyParams::new(generics),
-            default_visitor: generics::FindTyParams::new(generics),
         }
     }
 
@@ -32,7 +32,7 @@ impl GenericsOutput {
         let de_predicates =
             generics::compute_predicates(self.deserialize_visitor.process_for_bounds(), &de_trait);
         let default_predicates =
-            generics::compute_predicates(self.default_visitor.process_for_bounds(), &default_trait); // FIXME: this is not correct, the `Default` trait should be requested for field types, rather than their type parameters
+            generics::compute_predicates(self.skipped_fields_types, &default_trait);
         where_clause.predicates.extend(de_predicates);
         where_clause.predicates.extend(default_predicates);
         where_clause.predicates.extend(self.overrides);
@@ -55,7 +55,11 @@ fn process_field(
     let field_name = field.ident.as_ref();
     let delta = if parsed.skip {
         if needs_bounds_derive {
-            generics.default_visitor.visit_field(field);
+            let mut ty = &field.ty;
+            while let Type::Group(TypeGroup { elem, .. }) = ty {
+                ty = elem;
+            }
+            generics.skipped_fields_types.push(ty.clone());
         }
         field_default_output(field_name)
     } else {

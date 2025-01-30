@@ -21,6 +21,6 @@ impl borsh::ser::BorshSerialize for AB {
                 borsh::BorshSerialize::serialize(beta, writer)?;
             }
         }
-        Ok(())
+        ::core::result::Result::Ok(())
     }
 }

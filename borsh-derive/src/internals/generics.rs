@@ -166,6 +166,7 @@ impl FindTyParams {
 }
 
 impl FindTyParams {
+    /// Visits the filed to collect its type parameters
     pub fn visit_field(&mut self, field: &Field) {
         self.visit_type_top_level(&field.ty);
     }

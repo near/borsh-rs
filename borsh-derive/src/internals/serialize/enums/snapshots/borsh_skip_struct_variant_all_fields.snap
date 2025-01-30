@@ -18,6 +18,6 @@ impl borsh::ser::BorshSerialize for AAB {
                 borsh::BorshSerialize::serialize(beta, writer)?;
             }
         }
-        Ok(())
+        ::core::result::Result::Ok(())
     }
 }

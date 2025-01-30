@@ -6,9 +6,11 @@ impl reexporter::borsh::de::BorshDeserialize for A {
     fn deserialize_reader<__R: reexporter::borsh::io::Read>(
         reader: &mut __R,
     ) -> ::core::result::Result<Self, reexporter::borsh::io::Error> {
-        Ok(Self {
-            x: reexporter::borsh::BorshDeserialize::deserialize_reader(reader)?,
-            y: reexporter::borsh::BorshDeserialize::deserialize_reader(reader)?,
+        ::core::result::Result::Ok(Self {
+            x: <u64 as reexporter::borsh::BorshDeserialize>::deserialize_reader(reader)?,
+            y: <String as reexporter::borsh::BorshDeserialize>::deserialize_reader(
+                reader,
+            )?,
         })
     }
 }

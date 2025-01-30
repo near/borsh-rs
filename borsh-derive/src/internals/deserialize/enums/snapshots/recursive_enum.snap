@@ -25,18 +25,21 @@ where
         reader: &mut __R,
         variant_tag: u8,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
-        let mut return_value = if variant_tag == 0u8 {
+        let return_value = if variant_tag == 0u8 {
             A::B {
-                x: borsh::BorshDeserialize::deserialize_reader(reader)?,
-                y: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                x: <HashMap<
+                    K,
+                    V,
+                > as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+                y: <String as borsh::BorshDeserialize>::deserialize_reader(reader)?,
             }
         } else if variant_tag == 1u8 {
             A::C(
-                borsh::BorshDeserialize::deserialize_reader(reader)?,
-                borsh::BorshDeserialize::deserialize_reader(reader)?,
+                <K as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+                <Vec<A> as borsh::BorshDeserialize>::deserialize_reader(reader)?,
             )
         } else {
-            return Err(
+            return ::core::result::Result::Err(
                 borsh::io::Error::new(
                     borsh::io::ErrorKind::InvalidData,
                     borsh::__private::maybestd::format!(
@@ -45,6 +48,6 @@ where
                 ),
             )
         };
-        Ok(return_value)
+        ::core::result::Result::Ok(return_value)
     }
 }

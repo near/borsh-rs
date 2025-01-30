@@ -12,6 +12,6 @@ where
         writer: &mut __W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
         borsh::BorshSerialize::serialize(&self.0, writer)?;
-        Ok(())
+        ::core::result::Result::Ok(())
     }
 }

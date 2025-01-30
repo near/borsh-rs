@@ -185,18 +185,18 @@ mod tests {
         default_cratename, local_insta_assert_debug_snapshot, local_insta_assert_snapshot,
         pretty_print_syn_str,
     };
+    use syn::parse_quote;
 
     use super::*;
 
     #[test]
     fn simple_enum() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A {
                 Bacon,
                 Eggs
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_enum, default_cratename()).unwrap();
 
@@ -205,15 +205,14 @@ mod tests {
 
     #[test]
     fn simple_enum_with_custom_crate() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A {
                 Bacon,
                 Eggs
             }
-        })
-        .unwrap();
+        };
 
-        let crate_: Path = syn::parse2(quote! { reexporter::borsh }).unwrap();
+        let crate_: Path = parse_quote! { reexporter::borsh };
         let actual = process(&item_enum, crate_).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -221,7 +220,7 @@ mod tests {
 
     #[test]
     fn borsh_discriminant_false() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
            #[borsh(use_discriminant = false)]
             enum X {
                 A,
@@ -231,15 +230,14 @@ mod tests {
                 E = 10,
                 F,
             }
-        })
-        .unwrap();
+        };
         let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
     #[test]
     fn borsh_discriminant_true() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             #[borsh(use_discriminant = true)]
             enum X {
                 A,
@@ -249,8 +247,7 @@ mod tests {
                 E = 10,
                 F,
             }
-        })
-        .unwrap();
+        };
         let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -258,12 +255,11 @@ mod tests {
 
     #[test]
     fn single_field_enum() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A {
                 Bacon,
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -271,15 +267,14 @@ mod tests {
 
     #[test]
     fn complex_enum() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A {
                 Bacon,
                 Eggs,
                 Salad(Tomatoes, Cucumber, Oil),
                 Sausage{wrapper: Wrapper, filling: Filling},
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -287,15 +282,14 @@ mod tests {
 
     #[test]
     fn complex_enum_generics() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<C, W> {
                 Bacon,
                 Eggs,
                 Salad(Tomatoes, C, Oil),
                 Sausage{wrapper: W, filling: Filling},
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -303,7 +297,7 @@ mod tests {
 
     #[test]
     fn trailing_comma_generics() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum Side<B, A>
             where
                 A: Display + Debug,
@@ -312,16 +306,15 @@ mod tests {
                 Left(A),
                 Right(B),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn test_filter_foreign_attrs() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A {
                 #[serde(rename = "ab")]
                 B {
@@ -335,25 +328,23 @@ mod tests {
                     beta: String,
                 }
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn complex_enum_generics_borsh_skip_tuple_field() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<C: Eq, W> where W: Hash {
                 Bacon,
                 Eggs,
                 Salad(Tomatoes, #[borsh(skip)] C, Oil),
                 Sausage{wrapper: W, filling: Filling},
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -361,7 +352,7 @@ mod tests {
 
     #[test]
     fn complex_enum_generics_borsh_skip_named_field() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<W, U, C> {
                 Bacon,
                 Eggs,
@@ -373,8 +364,7 @@ mod tests {
                     unexpected: U,
                 },
             }
-        })
-        .unwrap();
+        };
 
         let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
@@ -382,7 +372,7 @@ mod tests {
 
     #[test]
     fn recursive_enum() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<K: Key, V> where V: Value {
                 B {
                     x: HashMap<K, V>,
@@ -390,17 +380,16 @@ mod tests {
                 },
                 C(K, Vec<A>),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn generic_associated_type() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum EnumParametrized<T, K, V>
             where
                 K: TraitName,
@@ -415,16 +404,16 @@ mod tests {
                 },
                 C(T, u16),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
+
     #[test]
     fn generic_associated_type_param_override() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum EnumParametrized<T, K, V>
             where
                 K: TraitName,
@@ -440,17 +429,16 @@ mod tests {
                 },
                 C(T, u16),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
     #[test]
     fn generic_associated_type_param_override_conflict() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum EnumParametrized<T, K, V>
             where
                 K: TraitName,
@@ -462,17 +450,16 @@ mod tests {
                 },
                 C(T, u16),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename());
+        let actual = process(&item_enum, default_cratename());
 
         local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
 
     #[test]
     fn check_with_funcs_skip_conflict() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum C<K, V> {
                 C3(u64, u64),
                 C4(
@@ -484,17 +471,16 @@ mod tests {
                     ThirdParty<K, V>,
                 ),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename());
+        let actual = process(&item_enum, default_cratename());
 
         local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
 
     #[test]
     fn with_funcs_attr() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum C<K, V> {
                 C3(u64, u64),
                 C4(
@@ -506,10 +492,9 @@ mod tests {
                     ThirdParty<K, V>,
                 ),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }

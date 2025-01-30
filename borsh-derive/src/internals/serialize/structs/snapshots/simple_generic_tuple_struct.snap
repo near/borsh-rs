@@ -12,6 +12,6 @@ where
     ) -> ::core::result::Result<(), borsh::io::Error> {
         borsh::BorshSerialize::serialize(&self.0, writer)?;
         borsh::BorshSerialize::serialize(&self.1, writer)?;
-        Ok(())
+        ::core::result::Result::Ok(())
     }
 }

@@ -15,7 +15,7 @@ impl borsh::de::EnumExt for X {
         reader: &mut __R,
         variant_tag: u8,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
-        let mut return_value = if variant_tag == 0 {
+        let return_value = if variant_tag == 0 {
             X::A
         } else if variant_tag == 20 {
             X::B
@@ -28,7 +28,7 @@ impl borsh::de::EnumExt for X {
         } else if variant_tag == 10 + 1 {
             X::F
         } else {
-            return Err(
+            return ::core::result::Result::Err(
                 borsh::io::Error::new(
                     borsh::io::ErrorKind::InvalidData,
                     borsh::__private::maybestd::format!(
@@ -37,6 +37,6 @@ impl borsh::de::EnumExt for X {
                 ),
             )
         };
-        Ok(return_value)
+        ::core::result::Result::Ok(return_value)
     }
 }

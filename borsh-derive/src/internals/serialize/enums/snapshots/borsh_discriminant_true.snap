@@ -16,6 +16,6 @@ impl borsh::ser::BorshSerialize for X {
             X::F => 10 + 1,
         };
         writer.write_all(&variant_idx.to_le_bytes())?;
-        Ok(())
+        ::core::result::Result::Ok(())
     }
 }
