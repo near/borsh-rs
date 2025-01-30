@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{ExprPath, Generics, Ident, Path};
+use syn::{parse_quote, ExprPath, Generics, Ident, Path, Type};
 
 use super::{
     attributes::{field, BoundType},
@@ -25,13 +25,14 @@ impl GenericsOutput {
             default_visitor: generics::FindTyParams::new(generics),
         }
     }
+
     fn extend(self, where_clause: &mut syn::WhereClause, cratename: &Path) {
-        let de_trait: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
-        let default_trait: Path = syn::parse2(quote! { core::default::Default }).unwrap();
+        let de_trait: Path = parse_quote! { #cratename::de::BorshDeserialize };
+        let default_trait: Path = parse_quote! { ::core::default::Default };
         let de_predicates =
             generics::compute_predicates(self.deserialize_visitor.process_for_bounds(), &de_trait);
         let default_predicates =
-            generics::compute_predicates(self.default_visitor.process_for_bounds(), &default_trait);
+            generics::compute_predicates(self.default_visitor.process_for_bounds(), &default_trait); // FIXME: this is not correct, the `Default` trait should be requested for field types, rather than their type parameters
         where_clause.predicates.extend(de_predicates);
         where_clause.predicates.extend(default_predicates);
         where_clause.predicates.extend(self.overrides);
@@ -61,7 +62,7 @@ fn process_field(
         if needs_bounds_derive {
             generics.deserialize_visitor.visit_field(field);
         }
-        field_output(field_name, cratename, parsed.deserialize_with)
+        field_output(field_name, &field.ty, cratename, parsed.deserialize_with)
     };
     body.extend(delta);
     Ok(())
@@ -71,20 +72,18 @@ fn process_field(
 /// of code, which deserializes single field
 fn field_output(
     field_name: Option<&Ident>,
+    field_type: &Type,
     cratename: &Path,
     deserialize_with: Option<ExprPath>,
 ) -> TokenStream2 {
-    let default_path: ExprPath =
-        syn::parse2(quote! { #cratename::BorshDeserialize::deserialize_reader }).unwrap();
-    let path: ExprPath = deserialize_with.unwrap_or(default_path);
+    let default_path = || {
+        parse_quote! { <#field_type as #cratename::BorshDeserialize>::deserialize_reader }
+    };
+    let path: ExprPath = deserialize_with.unwrap_or_else(default_path);
     if let Some(field_name) = field_name {
-        quote! {
-            #field_name: #path(reader)?,
-        }
+        quote! { #field_name: #path(reader)?, }
     } else {
-        quote! {
-            #path(reader)?,
-        }
+        quote! { #path(reader)?, }
     }
 }
 
@@ -92,10 +91,8 @@ fn field_output(
 /// of code, which deserializes single skipped field
 fn field_default_output(field_name: Option<&Ident>) -> TokenStream2 {
     if let Some(field_name) = field_name {
-        quote! {
-            #field_name: core::default::Default::default(),
-        }
+        quote! { #field_name: ::core::default::Default::default(), }
     } else {
-        quote! { core::default::Default::default(), }
+        quote! { ::core::default::Default::default(), }
     }
 }

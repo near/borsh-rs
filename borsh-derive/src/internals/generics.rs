@@ -1,9 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use quote::{quote, ToTokens};
+use quote::ToTokens;
 use syn::{
-    punctuated::Pair, Field, GenericArgument, Generics, Ident, Macro, Path, PathArguments,
-    PathSegment, ReturnType, Type, TypeParamBound, TypePath, WhereClause, WherePredicate,
+    parse_quote, punctuated::Pair, Field, GenericArgument, Generics, Ident, Macro, Path,
+    PathArguments, PathSegment, ReturnType, Type, TypeGroup, TypeParamBound, TypePath, WhereClause,
+    WherePredicate,
 };
 
 pub fn default_where(where_clause: Option<&WhereClause>) -> WhereClause {
@@ -19,12 +20,7 @@ pub fn default_where(where_clause: Option<&WhereClause>) -> WhereClause {
 pub fn compute_predicates(params: Vec<Type>, traitname: &Path) -> Vec<WherePredicate> {
     params
         .into_iter()
-        .map(|param| {
-            syn::parse2(quote! {
-                #param: #traitname
-            })
-            .unwrap()
-        })
+        .map(|param| parse_quote! { #param: #traitname })
         .collect()
 }
 
@@ -32,7 +28,7 @@ pub fn compute_predicates(params: Vec<Type>, traitname: &Path) -> Vec<WherePredi
 // they look like associated types: "error: associated type bindings are not
 // allowed here".
 pub fn without_defaults(generics: &Generics) -> Generics {
-    syn::Generics {
+    Generics {
         params: generics
             .params
             .iter()
@@ -74,8 +70,8 @@ pub struct FindTyParams {
 }
 
 fn ungroup(mut ty: &Type) -> &Type {
-    while let Type::Group(group) = ty {
-        ty = &group.elem;
+    while let Type::Group(TypeGroup { elem, .. }) = ty {
+        ty = &**elem;
     }
     ty
 }
@@ -99,6 +95,7 @@ impl FindTyParams {
             associated_type_params_usage: HashMap::new(),
         }
     }
+
     pub fn process_for_bounds(self) -> Vec<Type> {
         let relevant_type_params = self.relevant_type_params;
         let associated_type_params_usage = self.associated_type_params_usage;
