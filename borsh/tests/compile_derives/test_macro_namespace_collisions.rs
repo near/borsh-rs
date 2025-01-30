@@ -11,3 +11,10 @@ enum B {
     C,
     D,
 }
+
+#[derive(borsh::BorshSerialize, borsh::BorshDeserialize)]
+struct C {
+    x: u64,
+    #[borsh(skip)]
+    y: String,
+}

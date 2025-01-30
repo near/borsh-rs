@@ -66,7 +66,7 @@ struct G1<K, V, U>(#[borsh(skip)] HashMap<K, V>, U);
 struct G2<K: Ord + Hash + Eq, R, U>(HashMap<K, R>, #[borsh(skip)] U);
 
 /// implicit derived `core::default::Default` bounds on `K` and `V` are dropped by empty bound
-/// specified, as `HashMap` hash its own `Default` implementation
+/// specified, as `HashMap` has its own `Default` implementation
 #[cfg(hash_collections)]
 #[derive(BorshDeserialize)]
 struct G3<K, V, U>(#[borsh(skip, bound(deserialize = ""))] HashMap<K, V>, U);
