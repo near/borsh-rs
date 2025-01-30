@@ -469,7 +469,6 @@ mod tests_schema {
         },
     };
 
-    use quote::quote;
     use syn::{parse_quote, Attribute, ItemStruct};
 
     use super::schema;

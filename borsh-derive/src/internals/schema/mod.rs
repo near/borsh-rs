@@ -2,7 +2,10 @@ use std::collections::HashSet;
 
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{parse_quote, punctuated::Punctuated, token::Comma, Field, Fields, GenericParam, Generics, Ident, Path, Type, WherePredicate};
+use syn::{
+    parse_quote, punctuated::Punctuated, token::Comma, Field, Fields, GenericParam, Generics,
+    Ident, Path, Type, WherePredicate,
+};
 
 use crate::internals::{attributes::field, generics};
 
