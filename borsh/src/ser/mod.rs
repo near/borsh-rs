@@ -90,7 +90,7 @@ pub trait BorshSerialize {
 /// let single_serialized_buffer_len = buffer.len();
 ///
 /// # #[cfg(feature = "derive")]
-/// x.serialize(&mut buffer).unwrap();
+/// x.serialize(&mut buffer).await.unwrap();
 /// # #[cfg(feature = "derive")]
 /// assert_eq!(buffer.len(), single_serialized_buffer_len * 2);
 ///
@@ -99,7 +99,7 @@ pub trait BorshSerialize {
 /// # #[cfg(feature = "derive")]
 /// let mut buffer_slice_enough_for_the_data = &mut buffer[1024..1024 + single_serialized_buffer_len];
 /// # #[cfg(feature = "derive")]
-/// x.serialize(&mut buffer_slice_enough_for_the_data).unwrap();
+/// x.serialize(&mut buffer_slice_enough_for_the_data).await.unwrap();
 /// # })
 /// ```
 #[cfg(feature = "unstable__async")]

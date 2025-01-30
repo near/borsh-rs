@@ -9,7 +9,22 @@ pub trait AsyncRead: Unpin + Send {
     fn read_exact<'a>(
         &'a mut self,
         buf: &'a mut [u8],
-    ) -> impl Future<Output = Result<()>> + Send + 'a;
+    ) -> impl Future<Output = Result<()>> + Send + 'a {
+        async {
+            let mut offset = 0;
+            while offset < buf.len() {
+                let read = self.read(&mut buf[offset..]).await?;
+                if read == 0 {
+                    return Err(crate::io::Error::new(
+                        crate::io::ErrorKind::UnexpectedEof,
+                        "failed to fill the whole buffer",
+                    ));
+                }
+                offset += read;
+            }
+            Ok(())
+        }
+    }
 
     fn read_u8(&mut self) -> impl Future<Output = Result<u8>> + Send {
         async {
