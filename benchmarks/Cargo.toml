@@ -3,7 +3,7 @@ name = "benchmarks"
 version.workspace = true
 rust-version.workspace = true
 authors = ["Near Inc <hello@nearprotocol.com>"]
-edition = "2018"
+edition.workspace = true
 publish = false
 
 # This is somehow needed for command line arguments to work: https://github.com/bheisler/criterion.rs/issues/193#issuecomment-415740713

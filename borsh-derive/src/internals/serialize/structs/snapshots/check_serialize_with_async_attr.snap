@@ -1,0 +1,18 @@
+---
+source: borsh-derive/src/internals/serialize/structs/mod.rs
+expression: pretty_print_syn_str(actual).unwrap()
+---
+impl<K: Ord, V> borsh::ser::BorshSerialize for A<K, V>
+where
+    K: borsh::ser::BorshSerialize,
+    V: borsh::ser::BorshSerialize,
+{
+    fn serialize<__W: borsh::io::Write>(
+        &self,
+        writer: &mut __W,
+    ) -> ::core::result::Result<(), borsh::io::Error> {
+        <ThirdParty<K, V> as borsh::BorshSerialize>::serialize(&self.x, writer)?;
+        <u64 as borsh::BorshSerialize>::serialize(&self.y, writer)?;
+        ::core::result::Result::Ok(())
+    }
+}

@@ -22,6 +22,14 @@ mod compile_derives {
     mod test_generic_enums;
     mod test_recursive_structs;
 
+    #[cfg(feature = "unstable__async")]
+    mod async_derives {
+        mod test_generic_structs;
+        mod test_generic_enums;
+        mod test_recursive_structs;
+        mod test_macro_namespace_collisions;
+    }
+    
     #[cfg(feature = "unstable__schema")]
     mod schema {
         mod test_generic_enums;

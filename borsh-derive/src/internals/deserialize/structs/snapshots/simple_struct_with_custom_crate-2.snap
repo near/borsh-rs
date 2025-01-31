@@ -1,0 +1,20 @@
+---
+source: borsh-derive/src/internals/deserialize/structs/mod.rs
+expression: pretty_print_syn_str(actual).unwrap()
+---
+impl reexporter::borsh::de::BorshDeserializeAsync for A {
+    async fn deserialize_reader<__R: reexporter::borsh::async_io::AsyncRead>(
+        reader: &mut __R,
+    ) -> ::core::result::Result<Self, reexporter::borsh::io::Error> {
+        ::core::result::Result::Ok(Self {
+            x: <u64 as reexporter::borsh::BorshDeserializeAsync>::deserialize_reader(
+                    reader,
+                )
+                .await?,
+            y: <String as reexporter::borsh::BorshDeserializeAsync>::deserialize_reader(
+                    reader,
+                )
+                .await?,
+        })
+    }
+}

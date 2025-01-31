@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/deserialize/structs/mod.rs
-expression: pretty_print_syn_str(&actual).unwrap()
+expression: pretty_print_syn_str(actual).unwrap()
 ---
 impl<T> borsh::de::BorshDeserialize for TupleA<T>
 where
@@ -9,10 +9,10 @@ where
     fn deserialize_reader<__R: borsh::io::Read>(
         reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
-        Ok(
+        ::core::result::Result::Ok(
             Self(
-                borsh::BorshDeserialize::deserialize_reader(reader)?,
-                borsh::BorshDeserialize::deserialize_reader(reader)?,
+                <T as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+                <u32 as borsh::BorshDeserialize>::deserialize_reader(reader)?,
             ),
         )
     }

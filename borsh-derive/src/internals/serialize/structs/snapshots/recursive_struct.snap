@@ -1,14 +1,14 @@
 ---
 source: borsh-derive/src/internals/serialize/structs/mod.rs
-expression: pretty_print_syn_str(&actual).unwrap()
+expression: pretty_print_syn_str(actual).unwrap()
 ---
 impl borsh::ser::BorshSerialize for CRecC {
     fn serialize<__W: borsh::io::Write>(
         &self,
         writer: &mut __W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
-        borsh::BorshSerialize::serialize(&self.a, writer)?;
-        borsh::BorshSerialize::serialize(&self.b, writer)?;
-        Ok(())
+        <String as borsh::BorshSerialize>::serialize(&self.a, writer)?;
+        <HashMap<String, CRecC> as borsh::BorshSerialize>::serialize(&self.b, writer)?;
+        ::core::result::Result::Ok(())
     }
 }

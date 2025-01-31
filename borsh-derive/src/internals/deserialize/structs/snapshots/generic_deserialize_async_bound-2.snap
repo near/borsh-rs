@@ -1,0 +1,23 @@
+---
+source: borsh-derive/src/internals/deserialize/structs/mod.rs
+expression: pretty_print_syn_str(actual).unwrap()
+---
+impl<T: Debug, U> borsh::de::BorshDeserializeAsync for C<T, U>
+where
+    T: PartialOrd + Hash + Eq + borsh::de::BorshDeserializeAsync,
+    U: borsh::de::BorshDeserializeAsync,
+{
+    async fn deserialize_reader<__R: borsh::async_io::AsyncRead>(
+        reader: &mut __R,
+    ) -> ::core::result::Result<Self, borsh::io::Error> {
+        ::core::result::Result::Ok(Self {
+            a: <String as borsh::BorshDeserializeAsync>::deserialize_reader(reader)
+                .await?,
+            b: <HashMap<
+                T,
+                U,
+            > as borsh::BorshDeserializeAsync>::deserialize_reader(reader)
+                .await?,
+        })
+    }
+}

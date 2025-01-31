@@ -1,14 +1,13 @@
-use borsh::from_slice;
-
-#[cfg(feature = "derive")]
-use borsh::BorshDeserialize;
-
 use alloc::{
     format,
     string::{String, ToString},
     vec,
     vec::Vec,
 };
+
+use borsh::from_slice;
+#[cfg(feature = "derive")]
+use borsh::BorshDeserialize;
 
 #[cfg(feature = "derive")]
 #[derive(BorshDeserialize, Debug)]

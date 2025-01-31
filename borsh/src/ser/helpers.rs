@@ -1,6 +1,12 @@
-use crate::BorshSerialize;
-use crate::__private::maybestd::vec::Vec;
-use crate::io::{ErrorKind, Result, Write};
+use async_generic::async_generic;
+
+#[cfg(feature = "unstable__async")]
+use crate::{async_io::AsyncWrite, BorshSerializeAsync};
+use crate::{
+    BorshSerialize,
+    __private::maybestd::vec::Vec,
+    io::{ErrorKind, Result, Write},
+};
 
 pub(super) const DEFAULT_SERIALIZER_CAPACITY: usize = 1024;
 
@@ -22,17 +28,29 @@ where
 /// Serializes an object directly into a `Writer`.
 /// # Example
 ///
-/// ```
-/// # #[cfg(feature = "std")]
-/// let stderr = std::io::stderr();
-/// # #[cfg(feature = "std")]
-/// assert_eq!((), borsh::to_writer(&stderr, "hello_0x0a").unwrap());
-/// ```
+#[async_generic(
+    /// ```
+    /// # #[cfg(feature = "std")]
+    /// let stderr = std::io::stderr();
+    /// # #[cfg(feature = "std")]
+    /// assert_eq!((), borsh::to_writer(&stderr, "hello_0x0a").unwrap());
+    /// ```
+    sync_signature;
+    #[cfg(feature = "unstable__async")]
+    async_signature<T, W: AsyncWrite>(mut writer: W, value: &T) -> Result<()>
+    where
+        T: BorshSerializeAsync + ?Sized,
+)]
 pub fn to_writer<T, W: Write>(mut writer: W, value: &T) -> Result<()>
 where
     T: BorshSerialize + ?Sized,
 {
-    value.serialize(&mut writer)
+    let res = value.serialize(&mut writer);
+    if _sync {
+        res
+    } else {
+        res.await
+    }
 }
 
 /// Serializes an object without allocation to compute and return its length
@@ -47,7 +65,7 @@ where
 /// struct A {
 ///     tag: String,
 ///     value: u64,
-/// };
+/// }
 ///
 /// # #[cfg(feature = "derive")]
 /// let a = A { tag: "hello".to_owned(), value: 42 };

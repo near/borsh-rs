@@ -1,14 +1,17 @@
 ---
 source: borsh-derive/src/internals/deserialize/structs/mod.rs
-expression: pretty_print_syn_str(&actual).unwrap()
+expression: pretty_print_syn_str(actual).unwrap()
 ---
 impl borsh::de::BorshDeserialize for CRecC {
     fn deserialize_reader<__R: borsh::io::Read>(
         reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
-        Ok(Self {
-            a: borsh::BorshDeserialize::deserialize_reader(reader)?,
-            b: borsh::BorshDeserialize::deserialize_reader(reader)?,
+        ::core::result::Result::Ok(Self {
+            a: <String as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+            b: <HashMap<
+                String,
+                CRecC,
+            > as borsh::BorshDeserialize>::deserialize_reader(reader)?,
         })
     }
 }

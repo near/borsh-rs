@@ -1,0 +1,51 @@
+---
+source: borsh-derive/src/internals/deserialize/enums/mod.rs
+expression: pretty_print_syn_str(actual).unwrap()
+---
+impl<T: Debug, U> borsh::de::BorshDeserialize for A<T, U>
+where
+    T: borsh::de::BorshDeserialize,
+    U: borsh::de::BorshDeserialize,
+{
+    fn deserialize_reader<__R: borsh::io::Read>(
+        reader: &mut __R,
+    ) -> ::core::result::Result<Self, borsh::io::Error> {
+        let tag = <u8 as borsh::de::BorshDeserialize>::deserialize_reader(reader)?;
+        <Self as borsh::de::EnumExt>::deserialize_variant(reader, tag)
+    }
+}
+impl<T: Debug, U> borsh::de::EnumExt for A<T, U>
+where
+    T: borsh::de::BorshDeserialize,
+    U: borsh::de::BorshDeserialize,
+{
+    fn deserialize_variant<__R: borsh::io::Read>(
+        reader: &mut __R,
+        variant_tag: u8,
+    ) -> ::core::result::Result<Self, borsh::io::Error> {
+        let return_value = if variant_tag == 0u8 {
+            A::C {
+                a: <String as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+                b: <HashMap<
+                    T,
+                    U,
+                > as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+            }
+        } else if variant_tag == 1u8 {
+            A::D(
+                <u32 as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+                <u32 as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+            )
+        } else {
+            return ::core::result::Result::Err(
+                borsh::io::Error::new(
+                    borsh::io::ErrorKind::InvalidData,
+                    borsh::__private::maybestd::format!(
+                        "Unexpected variant tag: {:?}", variant_tag
+                    ),
+                ),
+            )
+        };
+        ::core::result::Result::Ok(return_value)
+    }
+}

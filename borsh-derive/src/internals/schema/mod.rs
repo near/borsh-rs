@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{
-    punctuated::Punctuated, token::Comma, Field, Fields, GenericParam, Generics, Ident, Path, Type,
-    WherePredicate,
+    parse_quote, punctuated::Punctuated, token::Comma, Field, Fields, GenericParam, Generics,
+    Ident, Path, Type, WherePredicate,
 };
 
 use crate::internals::{attributes::field, generics};
@@ -22,8 +22,9 @@ impl GenericsOutput {
             params_visitor: generics::FindTyParams::new(generics),
         }
     }
+
     fn result(self, item_name: &str, cratename: &Path) -> (Vec<WherePredicate>, TokenStream2) {
-        let trait_path: Path = syn::parse2(quote! { #cratename::BorshSchema }).unwrap();
+        let trait_path: Path = parse_quote! { #cratename::BorshSchema };
         let predicates = generics::compute_predicates(
             self.params_visitor.clone().process_for_bounds(),
             &trait_path,
@@ -48,13 +49,11 @@ fn declaration(ident_str: &str, cratename: Path, params_for_bounds: Vec<Type>) -
         });
     }
     if declaration_params.is_empty() {
-        quote! {
-                #ident_str.to_string()
-        }
+        quote! { #ident_str.to_string() }
     } else {
         quote! {
-                let params = #cratename::__private::maybestd::vec![#(#declaration_params),*];
-                format!(r#"{}<{}>"#, #ident_str, params.join(", "))
+            let params = #cratename::__private::maybestd::vec![#(#declaration_params),*];
+            format!(r#"{}<{}>"#, #ident_str, params.join(", "))
         }
     }
 }

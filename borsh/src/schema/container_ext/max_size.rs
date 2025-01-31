@@ -1,7 +1,7 @@
+use core::num::NonZeroUsize;
+
 use super::{BorshSchemaContainer, Declaration, Definition, Fields};
 use crate::__private::maybestd::{string::ToString, vec::Vec};
-
-use core::num::NonZeroUsize;
 
 /// NonZeroUsize of value one.
 // TODO: Replace usage by NonZeroUsize::MIN once MSRV is 1.70+.
@@ -13,7 +13,7 @@ impl BorshSchemaContainer {
     /// Even when if returned upper bound is correct, the theoretical value may be
     /// *much* larger than any practical length.  For example, maximum encoded
     /// length of `String` is 4 GiB while in practice one may encounter strings of
-    /// at most dozen of characters.
+    /// at most a dozen of characters.
     ///
     /// # Example
     ///
@@ -66,8 +66,6 @@ fn max_serialized_size_impl<'a>(
     schema: &'a BorshSchemaContainer,
     stack: &mut Vec<&'a str>,
 ) -> Result<usize, Error> {
-    use core::convert::TryFrom;
-
     /// Maximum number of elements in a vector or length of a string which can
     /// be serialised.
     const MAX_LEN: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(u32::MAX as usize) };
@@ -263,7 +261,6 @@ fn is_zero_size_impl<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-
     // this is not integration test module, so can use __private for ease of imports;
     // it cannot be made integration, as it tests `is_zero_size` function, chosen to be non-pub
     use crate::__private::maybestd::{boxed::Box, string::ToString};
