@@ -153,7 +153,7 @@ mod tests {
         };
 
         let crate_: Path = parse_quote! { reexporter::borsh };
-        
+
         let actual = process::<false>(item_struct.clone(), crate_.clone()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
