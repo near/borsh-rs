@@ -13,10 +13,9 @@ fn field_declaration_output(
     cratename: &Path,
     declaration_override: Option<ExprPath>,
 ) -> TokenStream2 {
-    let default_path: ExprPath =
-        parse_quote! { <#field_type as #cratename::BorshSchema>::declaration };
+    let default_path = || parse_quote! { <#field_type as #cratename::BorshSchema>::declaration };
 
-    let path = declaration_override.unwrap_or(default_path);
+    let path = declaration_override.unwrap_or_else(default_path);
 
     if let Some(field_name) = field_name {
         let field_name = field_name.to_token_stream().to_string();
@@ -37,11 +36,9 @@ fn field_definitions_output(
     cratename: &Path,
     definitions_override: Option<ExprPath>,
 ) -> TokenStream2 {
-    let default_path: ExprPath = syn::parse2(
-        quote! { <#field_type as #cratename::BorshSchema>::add_definitions_recursively },
-    )
-    .unwrap();
-    let path = definitions_override.unwrap_or(default_path);
+    let default_path =
+        || parse_quote! { <#field_type as #cratename::BorshSchema>::add_definitions_recursively };
+    let path = definitions_override.unwrap_or_else(default_path);
 
     quote! {
         #path(definitions);
@@ -135,6 +132,7 @@ fn process_fields(
     }
     Ok((struct_fields, add_definitions_recursively))
 }
+
 fn process_field(
     field: &syn::Field,
     cratename: &Path,

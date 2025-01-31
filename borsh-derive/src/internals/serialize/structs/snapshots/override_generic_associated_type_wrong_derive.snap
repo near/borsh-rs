@@ -12,8 +12,11 @@ where
         &self,
         writer: &mut __W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
-        borsh::BorshSerialize::serialize(&self.field, writer)?;
-        borsh::BorshSerialize::serialize(&self.another, writer)?;
+        <<T as TraitName>::Associated as borsh::BorshSerialize>::serialize(
+            &self.field,
+            writer,
+        )?;
+        <V as borsh::BorshSerialize>::serialize(&self.another, writer)?;
         ::core::result::Result::Ok(())
     }
 }

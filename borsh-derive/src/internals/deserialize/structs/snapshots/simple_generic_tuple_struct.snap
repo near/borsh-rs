@@ -11,8 +11,8 @@ where
     ) -> ::core::result::Result<Self, borsh::io::Error> {
         ::core::result::Result::Ok(
             Self(
-                borsh::BorshDeserialize::deserialize_reader(reader)?,
-                borsh::BorshDeserialize::deserialize_reader(reader)?,
+                <T as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+                <u32 as borsh::BorshDeserialize>::deserialize_reader(reader)?,
             ),
         )
     }

@@ -7,8 +7,8 @@ impl borsh::de::BorshDeserialize for A {
         reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
         let mut return_value = Self {
-            x: borsh::BorshDeserialize::deserialize_reader(reader)?,
-            y: borsh::BorshDeserialize::deserialize_reader(reader)?,
+            x: <u64 as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+            y: <String as borsh::BorshDeserialize>::deserialize_reader(reader)?,
         };
         return_value.initialization_method();
         ::core::result::Result::Ok(return_value)

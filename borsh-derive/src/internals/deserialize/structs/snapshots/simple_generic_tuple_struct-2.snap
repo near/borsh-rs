@@ -1,0 +1,19 @@
+---
+source: borsh-derive/src/internals/deserialize/structs/mod.rs
+expression: pretty_print_syn_str(actual).unwrap()
+---
+impl<T> borsh::de::BorshDeserializeAsync for TupleA<T>
+where
+    T: borsh::de::BorshDeserializeAsync,
+{
+    async fn deserialize_reader<__R: borsh::async_io::AsyncRead>(
+        reader: &mut __R,
+    ) -> ::core::result::Result<Self, borsh::io::Error> {
+        ::core::result::Result::Ok(
+            Self(
+                <T as borsh::BorshDeserializeAsync>::deserialize_reader(reader).await?,
+                <u32 as borsh::BorshDeserializeAsync>::deserialize_reader(reader).await?,
+            ),
+        )
+    }
+}

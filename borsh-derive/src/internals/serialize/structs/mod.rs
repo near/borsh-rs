@@ -136,8 +136,10 @@ mod tests {
             }
         };
 
-        let actual = process::<false>(item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
+        let actual = process::<true>(item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
@@ -151,8 +153,11 @@ mod tests {
         };
 
         let crate_: Path = parse_quote! { reexporter::borsh };
-        let actual = process::<false>(item_struct, crate_).unwrap();
+        
+        let actual = process::<false>(item_struct.clone(), crate_.clone()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
+        let actual = process::<true>(item_struct, crate_).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
@@ -165,7 +170,10 @@ mod tests {
             }
         };
 
-        let actual = process::<false>(item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
@@ -175,7 +183,10 @@ mod tests {
             struct TupleA<T>(T, u32);
         };
 
-        let actual = process::<false>(item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
@@ -188,7 +199,10 @@ mod tests {
             }
         };
 
-        let actual = process::<false>(item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
@@ -201,8 +215,10 @@ mod tests {
             }
         };
 
-        let actual = process::<false>(item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
+        let actual = process::<true>(item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
@@ -216,8 +232,10 @@ mod tests {
             );
         };
 
-        let actual = process::<false>(item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
+        let actual = process::<true>(item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
@@ -231,8 +249,10 @@ mod tests {
             );
         };
 
-        let actual = process::<false>(item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
+        let actual = process::<true>(item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
@@ -246,8 +266,10 @@ mod tests {
             }
         };
 
-        let actual = process::<false>(item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
+        let actual = process::<true>(item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
@@ -281,8 +303,30 @@ mod tests {
             }
         };
 
-        let actual = process::<false>(item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
+        let actual = process::<true>(item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+    }
+
+    #[test]
+    fn generic_serialize_async_bound() {
+        let item_struct: ItemStruct = parse_quote! {
+            struct C<T: Debug, U> {
+                a: String,
+                #[borsh(async_bound(serialize =
+                    "T: borsh::ser::BorshSerializeAsync + PartialOrd,
+                     U: borsh::ser::BorshSerializeAsync"
+                ))]
+                b: HashMap<T, U>,
+            }
+        };
+
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
@@ -298,8 +342,29 @@ mod tests {
             }
         };
 
-        let actual = process::<false>(item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
+        let actual = process::<true>(item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+    }
+
+    #[test]
+    fn async_override_generic_associated_type_wrong_derive() {
+        let item_struct: ItemStruct = parse_quote! {
+            struct Parametrized<T, V> where T: TraitName {
+                #[borsh(async_bound(serialize =
+                    "<T as TraitName>::Associated: borsh::ser::BorshSerializeAsync"
+                ))]
+                field: <T as TraitName>::Associated,
+                another: V,
+            }
+        };
+
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
@@ -313,8 +378,27 @@ mod tests {
             }
         };
 
-        let actual = process::<false>(item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
+        let actual = process::<true>(item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+    }
+
+    #[test]
+    fn check_serialize_with_async_attr() {
+        let item_struct: ItemStruct = parse_quote! {
+            struct A<K: Ord, V> {
+                #[borsh(serialize_with_async = "third_party_impl::serialize_third_party")]
+                x: ThirdParty<K, V>,
+                y: u64,
+            }
+        };
+
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
@@ -322,13 +406,48 @@ mod tests {
     fn check_serialize_with_skip_conflict() {
         let item_struct: ItemStruct = parse_quote! {
             struct A<K: Ord, V> {
-                #[borsh(skip,serialize_with = "third_party_impl::serialize_third_party")]
+                #[borsh(skip, serialize_with = "third_party_impl::serialize_third_party")]
                 x: ThirdParty<K, V>,
                 y: u64,
             }
         };
 
-        let actual = process::<false>(item_struct, default_cratename());
+        let actual = process::<false>(item_struct.clone(), default_cratename());
+
+        let err = match actual {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        local_insta_assert_debug_snapshot!(err);
+
+        let actual = process::<true>(item_struct, default_cratename());
+
+        let err = match actual {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        local_insta_assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn check_serialize_with_async_skip_conflict() {
+        let item_struct: ItemStruct = parse_quote! {
+            struct A<K: Ord, V> {
+                #[borsh(skip, serialize_with_async = "third_party_impl::serialize_third_party")]
+                x: ThirdParty<K, V>,
+                y: u64,
+            }
+        };
+
+        let actual = process::<false>(item_struct.clone(), default_cratename());
+
+        let err = match actual {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        local_insta_assert_debug_snapshot!(err);
+
+        let actual = process::<true>(item_struct, default_cratename());
 
         let err = match actual {
             Ok(..) => unreachable!("expecting error here"),

@@ -14,7 +14,7 @@ where
         ::core::result::Result::Ok(
             Self(
                 ::core::default::Default::default(),
-                borsh::BorshDeserialize::deserialize_reader(reader)?,
+                <U as borsh::BorshDeserialize>::deserialize_reader(reader)?,
             ),
         )
     }

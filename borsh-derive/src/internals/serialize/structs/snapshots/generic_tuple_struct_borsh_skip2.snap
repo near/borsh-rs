@@ -11,7 +11,7 @@ where
         &self,
         writer: &mut __W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
-        borsh::BorshSerialize::serialize(&self.0, writer)?;
+        <HashMap<K, V> as borsh::BorshSerialize>::serialize(&self.0, writer)?;
         ::core::result::Result::Ok(())
     }
 }

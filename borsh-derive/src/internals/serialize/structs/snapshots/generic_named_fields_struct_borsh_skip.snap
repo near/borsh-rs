@@ -10,7 +10,7 @@ where
         &self,
         writer: &mut __W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
-        borsh::BorshSerialize::serialize(&self.y, writer)?;
+        <U as borsh::BorshSerialize>::serialize(&self.y, writer)?;
         ::core::result::Result::Ok(())
     }
 }

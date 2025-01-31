@@ -2,7 +2,6 @@
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
 expression: pretty_print_syn_str(actual).unwrap()
 ---
-#[::async_trait::async_trait]
 impl borsh::de::BorshDeserializeAsync for A {
     async fn deserialize_reader<__R: borsh::async_io::AsyncRead>(
         reader: &mut __R,
@@ -12,7 +11,6 @@ impl borsh::de::BorshDeserializeAsync for A {
         <Self as borsh::de::EnumExtAsync>::deserialize_variant(reader, tag).await
     }
 }
-#[::async_trait::async_trait]
 impl borsh::de::EnumExtAsync for A {
     async fn deserialize_variant<__R: borsh::async_io::AsyncRead>(
         reader: &mut __R,

@@ -7,8 +7,11 @@ impl borsh::de::BorshDeserialize for CRecC {
         reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
         ::core::result::Result::Ok(Self {
-            a: borsh::BorshDeserialize::deserialize_reader(reader)?,
-            b: borsh::BorshDeserialize::deserialize_reader(reader)?,
+            a: <String as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+            b: <HashMap<
+                String,
+                CRecC,
+            > as borsh::BorshDeserialize>::deserialize_reader(reader)?,
         })
     }
 }

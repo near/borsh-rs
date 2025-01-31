@@ -317,6 +317,12 @@ impl Attributes {
 mod tests {
     use syn::{parse_quote, Attribute, ItemStruct};
 
+    use super::{bounds, Attributes};
+    use crate::internals::test_helpers::{
+        debug_print_tokenizable, debug_print_vec_of_tokenizable, local_insta_assert_debug_snapshot,
+        local_insta_assert_snapshot,
+    };
+
     struct ParsedBounds {
         common: Option<bounds::Bounds>,
         r#async: Option<bounds::Bounds>,
@@ -330,12 +336,6 @@ mod tests {
             r#async: borsh_attrs.async_bounds,
         })
     }
-
-    use super::{bounds, Attributes};
-    use crate::internals::test_helpers::{
-        debug_print_tokenizable, debug_print_vec_of_tokenizable, local_insta_assert_debug_snapshot,
-        local_insta_assert_snapshot,
-    };
 
     #[test]
     fn test_reject_multiple_borsh_attrs() {
@@ -475,7 +475,7 @@ mod tests {
     fn test_bounds_parsing_error3() {
         let item_struct: ItemStruct = parse_quote! {
             struct A {
-                #[borsh(async_bound(deserialize = 42))]
+                #[borsh(bound(deserialize = 42))]
                 x: u64,
                 y: String,
             }
@@ -493,9 +493,12 @@ mod tests {
     fn test_async_bounds_parsing1() {
         let item_struct: ItemStruct = parse_quote! {
             struct A {
-                #[borsh(async_bound(deserialize = "K: Hash + Ord,
+                #[borsh(async_bound(
+                    deserialize =
+                    "K: Hash + Ord,
                      V: Eq + Ord",
-                    serialize = "K: Hash + Eq + Ord,
+                    serialize =
+                    "K: Hash + Eq + Ord,
                      V: Ord"
                 ))]
                 x: u64,
@@ -513,10 +516,12 @@ mod tests {
     fn test_async_bounds_parsing2() {
         let item_struct: ItemStruct = parse_quote! {
             struct A {
-                #[borsh(async_bound(deserialize = "K: Hash + Eq + borsh::de::BorshDeserialize,
-                     V: borsh::de::BorshDeserialize",
-                    serialize = "K: Hash + Eq + borsh::ser::BorshSerialize,
-                     V: borsh::ser::BorshSerialize"
+                #[borsh(async_bound(deserialize =
+                    "K: Hash + Eq + borsh::de::BorshDeserializeAsync,
+                     V: borsh::de::BorshDeserializeAsync",
+                    serialize =
+                    "K: Hash + Eq + borsh::ser::BorshSerializeAsync,
+                     V: borsh::ser::BorshSerializeAsync"
                 ))]
                 x: u64,
                 y: String,
@@ -533,8 +538,9 @@ mod tests {
     fn test_async_bounds_parsing3() {
         let item_struct: ItemStruct = parse_quote! {
             struct A {
-                #[borsh(async_bound(deserialize = "K: Hash + Eq + borsh::de::BorshDeserialize,
-                     V: borsh::de::BorshDeserialize",
+                #[borsh(async_bound(deserialize =
+                    "K: Hash + Eq + borsh::de::BorshDeserializeAsync,
+                     V: borsh::de::BorshDeserializeAsync",
                     serialize = ""
                 ))]
                 x: u64,
@@ -636,6 +642,26 @@ mod tests {
         local_insta_assert_snapshot!(debug_print_tokenizable(attrs.serialize_with.as_ref()));
         local_insta_assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
     }
+
+    #[test]
+    fn test_async_ser_de_with_parsing1() {
+        let item_struct: ItemStruct = parse_quote! {
+            struct A {
+                #[borsh(
+                    serialize_with_async = "third_party_impl::serialize_third_party",
+                    deserialize_with_async = "third_party_impl::deserialize_third_party",
+                )]
+                x: u64,
+                y: String,
+            }
+        };
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = Attributes::parse(&first_field.attrs).unwrap();
+        local_insta_assert_snapshot!(debug_print_tokenizable(attrs.serialize_with_async.as_ref()));
+        local_insta_assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with_async));
+    }
+
     #[test]
     fn test_borsh_skip() {
         let item_struct: ItemStruct = parse_quote! {
@@ -651,6 +677,7 @@ mod tests {
         let result = Attributes::parse(&first_field.attrs).unwrap();
         assert!(result.skip);
     }
+
     #[test]
     fn test_borsh_no_skip() {
         let item_struct: ItemStruct = parse_quote! {
@@ -680,6 +707,7 @@ mod tests_schema {
             local_insta_assert_debug_snapshot, local_insta_assert_snapshot,
         },
     };
+
     fn parse_schema_attrs(attrs: &[Attribute]) -> Result<Option<schema::Attributes>, syn::Error> {
         // #[borsh(schema(params = "..."))]
         let borsh_attrs = Attributes::parse(attrs)?;
@@ -731,6 +759,7 @@ mod tests_schema {
         let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(schema_attrs.unwrap().params));
     }
+
     #[test]
     fn test_schema_params_parsing_error() {
         let item_struct: ItemStruct = parse_quote! {
@@ -796,6 +825,7 @@ mod tests_schema {
         let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(schema_attrs.unwrap().params));
     }
+
     #[test]
     fn test_schema_params_parsing3() {
         let item_struct: ItemStruct = parse_quote! {

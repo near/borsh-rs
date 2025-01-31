@@ -20,12 +20,12 @@ where
         writer.write_all(&variant_idx.to_le_bytes())?;
         match self {
             A::B { x, y, .. } => {
-                borsh::BorshSerialize::serialize(x, writer)?;
-                borsh::BorshSerialize::serialize(y, writer)?;
+                <HashMap<K, V> as borsh::BorshSerialize>::serialize(x, writer)?;
+                <String as borsh::BorshSerialize>::serialize(y, writer)?;
             }
             A::C(id0, id1) => {
-                borsh::BorshSerialize::serialize(id0, writer)?;
-                borsh::BorshSerialize::serialize(id1, writer)?;
+                <K as borsh::BorshSerialize>::serialize(id0, writer)?;
+                <Vec<U> as borsh::BorshSerialize>::serialize(id1, writer)?;
             }
         }
         ::core::result::Result::Ok(())

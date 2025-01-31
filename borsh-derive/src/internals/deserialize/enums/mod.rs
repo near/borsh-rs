@@ -295,6 +295,29 @@ mod tests {
     }
 
     #[test]
+    fn generic_deserialize_async_bound() {
+        let item_enum: ItemEnum = parse_quote! {
+            enum A<T: Debug, U> {
+                C {
+                    a: String,
+                    #[borsh(async_bound(deserialize =
+                        "T: PartialOrd + Hash + Eq + borsh::de::BorshDeserializeAsync,
+                         U: borsh::de::BorshDeserializeAsync"
+                    ))]
+                    b: HashMap<T, U>,
+                },
+                D(u32, u32),
+            }
+        };
+
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+    }
+
+    #[test]
     fn check_deserialize_with_attr() {
         let item_enum: ItemEnum = parse_quote! {
             enum C<K: Ord, V> {
@@ -302,6 +325,26 @@ mod tests {
                 C4 {
                     x: u64,
                     #[borsh(deserialize_with = "third_party_impl::deserialize_third_party")]
+                    y: ThirdParty<K, V>
+                },
+            }
+        };
+
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+    }
+
+    #[test]
+    fn check_deserialize_with_async_attr() {
+        let item_enum: ItemEnum = parse_quote! {
+            enum C<K: Ord, V> {
+                C3(u64, u64),
+                C4 {
+                    x: u64,
+                    #[borsh(deserialize_with_async = "third_party_impl::deserialize_third_party")]
                     y: ThirdParty<K, V>
                 },
             }
@@ -334,6 +377,7 @@ mod tests {
         let actual = process::<true>(item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
+
     #[test]
     fn borsh_discriminant_true() {
         let item_enum: ItemEnum = parse_quote! {
@@ -354,6 +398,7 @@ mod tests {
         let actual = process::<true>(item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
+
     #[test]
     fn borsh_init_func() {
         let item_enum: ItemEnum = parse_quote! {

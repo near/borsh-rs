@@ -7,8 +7,8 @@ impl borsh::ser::BorshSerialize for A {
         &self,
         writer: &mut __W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
-        borsh::BorshSerialize::serialize(&self.x, writer)?;
-        borsh::BorshSerialize::serialize(&self.y, writer)?;
+        <u64 as borsh::BorshSerialize>::serialize(&self.x, writer)?;
+        <String as borsh::BorshSerialize>::serialize(&self.y, writer)?;
         ::core::result::Result::Ok(())
     }
 }

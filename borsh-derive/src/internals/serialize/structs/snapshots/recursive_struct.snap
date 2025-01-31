@@ -7,8 +7,8 @@ impl borsh::ser::BorshSerialize for CRecC {
         &self,
         writer: &mut __W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
-        borsh::BorshSerialize::serialize(&self.a, writer)?;
-        borsh::BorshSerialize::serialize(&self.b, writer)?;
+        <String as borsh::BorshSerialize>::serialize(&self.a, writer)?;
+        <HashMap<String, CRecC> as borsh::BorshSerialize>::serialize(&self.b, writer)?;
         ::core::result::Result::Ok(())
     }
 }

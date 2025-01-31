@@ -14,11 +14,11 @@ impl borsh::ser::BorshSerialize for AB {
         writer.write_all(&variant_idx.to_le_bytes())?;
         match self {
             AB::B { c, d, .. } => {
-                borsh::BorshSerialize::serialize(c, writer)?;
-                borsh::BorshSerialize::serialize(d, writer)?;
+                <i32 as borsh::BorshSerialize>::serialize(c, writer)?;
+                <u32 as borsh::BorshSerialize>::serialize(d, writer)?;
             }
             AB::NegatedVariant { beta, .. } => {
-                borsh::BorshSerialize::serialize(beta, writer)?;
+                <String as borsh::BorshSerialize>::serialize(beta, writer)?;
             }
         }
         ::core::result::Result::Ok(())

@@ -15,7 +15,7 @@ impl borsh::ser::BorshSerialize for AAB {
         match self {
             AAB::B { .. } => {}
             AAB::NegatedVariant { beta, .. } => {
-                borsh::BorshSerialize::serialize(beta, writer)?;
+                <String as borsh::BorshSerialize>::serialize(beta, writer)?;
             }
         }
         ::core::result::Result::Ok(())

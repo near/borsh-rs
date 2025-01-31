@@ -2,7 +2,6 @@
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
 expression: pretty_print_syn_str(actual).unwrap()
 ---
-#[::async_trait::async_trait]
 impl<K: Ord, V> borsh::de::BorshDeserializeAsync for C<K, V>
 where
     K: borsh::de::BorshDeserializeAsync,
@@ -16,7 +15,6 @@ where
         <Self as borsh::de::EnumExtAsync>::deserialize_variant(reader, tag).await
     }
 }
-#[::async_trait::async_trait]
 impl<K: Ord, V> borsh::de::EnumExtAsync for C<K, V>
 where
     K: borsh::de::BorshDeserializeAsync,
@@ -26,15 +24,20 @@ where
         reader: &mut __R,
         variant_tag: u8,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
-        let mut return_value = if variant_tag == 0u8 {
+        let return_value = if variant_tag == 0u8 {
             C::C3(
-                borsh::BorshDeserializeAsync::deserialize_reader(reader).await?,
-                borsh::BorshDeserializeAsync::deserialize_reader(reader).await?,
+                <u64 as borsh::BorshDeserializeAsync>::deserialize_reader(reader).await?,
+                <u64 as borsh::BorshDeserializeAsync>::deserialize_reader(reader).await?,
             )
         } else if variant_tag == 1u8 {
             C::C4 {
-                x: borsh::BorshDeserializeAsync::deserialize_reader(reader).await?,
-                y: borsh::BorshDeserializeAsync::deserialize_reader(reader).await?,
+                x: <u64 as borsh::BorshDeserializeAsync>::deserialize_reader(reader)
+                    .await?,
+                y: <ThirdParty<
+                    K,
+                    V,
+                > as borsh::BorshDeserializeAsync>::deserialize_reader(reader)
+                    .await?,
             }
         } else {
             return ::core::result::Result::Err(

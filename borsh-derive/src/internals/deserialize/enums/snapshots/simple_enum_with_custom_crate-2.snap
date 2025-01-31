@@ -2,7 +2,6 @@
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
 expression: pretty_print_syn_str(actual).unwrap()
 ---
-#[::async_trait::async_trait]
 impl reexporter::borsh::de::BorshDeserializeAsync for A {
     async fn deserialize_reader<__R: reexporter::borsh::async_io::AsyncRead>(
         reader: &mut __R,
@@ -15,24 +14,36 @@ impl reexporter::borsh::de::BorshDeserializeAsync for A {
             .await
     }
 }
-#[::async_trait::async_trait]
 impl reexporter::borsh::de::EnumExtAsync for A {
     async fn deserialize_variant<__R: reexporter::borsh::async_io::AsyncRead>(
         reader: &mut __R,
         variant_tag: u8,
     ) -> ::core::result::Result<Self, reexporter::borsh::io::Error> {
-        let mut return_value = if variant_tag == 0u8 {
+        let return_value = if variant_tag == 0u8 {
             A::B {
-                x: reexporter::borsh::BorshDeserializeAsync::deserialize_reader(reader)
+                x: <HashMap<
+                    u32,
+                    String,
+                > as reexporter::borsh::BorshDeserializeAsync>::deserialize_reader(
+                        reader,
+                    )
                     .await?,
-                y: reexporter::borsh::BorshDeserializeAsync::deserialize_reader(reader)
+                y: <String as reexporter::borsh::BorshDeserializeAsync>::deserialize_reader(
+                        reader,
+                    )
                     .await?,
             }
         } else if variant_tag == 1u8 {
             A::C(
-                reexporter::borsh::BorshDeserializeAsync::deserialize_reader(reader)
+                <K as reexporter::borsh::BorshDeserializeAsync>::deserialize_reader(
+                        reader,
+                    )
                     .await?,
-                reexporter::borsh::BorshDeserializeAsync::deserialize_reader(reader)
+                <Vec<
+                    u64,
+                > as reexporter::borsh::BorshDeserializeAsync>::deserialize_reader(
+                        reader,
+                    )
                     .await?,
             )
         } else {

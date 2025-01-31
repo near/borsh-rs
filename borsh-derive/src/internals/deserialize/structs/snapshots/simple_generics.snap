@@ -11,8 +11,8 @@ where
         reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
         ::core::result::Result::Ok(Self {
-            x: borsh::BorshDeserialize::deserialize_reader(reader)?,
-            y: borsh::BorshDeserialize::deserialize_reader(reader)?,
+            x: <HashMap<K, V> as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+            y: <String as borsh::BorshDeserialize>::deserialize_reader(reader)?,
         })
     }
 }

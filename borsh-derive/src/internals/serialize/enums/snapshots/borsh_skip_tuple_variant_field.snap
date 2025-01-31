@@ -15,7 +15,7 @@ impl borsh::ser::BorshSerialize for AATTB {
         match self {
             AATTB::B(_id0, _id1) => {}
             AATTB::NegatedVariant { beta, .. } => {
-                borsh::BorshSerialize::serialize(beta, writer)?;
+                <u8 as borsh::BorshSerialize>::serialize(beta, writer)?;
             }
         }
         ::core::result::Result::Ok(())

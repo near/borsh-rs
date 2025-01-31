@@ -13,7 +13,7 @@ where
     ) -> ::core::result::Result<Self, borsh::io::Error> {
         ::core::result::Result::Ok(Self {
             x: ::core::default::Default::default(),
-            y: borsh::BorshDeserialize::deserialize_reader(reader)?,
+            y: <U as borsh::BorshDeserialize>::deserialize_reader(reader)?,
         })
     }
 }

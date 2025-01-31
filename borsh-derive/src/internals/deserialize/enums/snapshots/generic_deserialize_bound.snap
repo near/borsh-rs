@@ -23,15 +23,18 @@ where
         reader: &mut __R,
         variant_tag: u8,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
-        let mut return_value = if variant_tag == 0u8 {
+        let return_value = if variant_tag == 0u8 {
             A::C {
-                a: borsh::BorshDeserialize::deserialize_reader(reader)?,
-                b: borsh::BorshDeserialize::deserialize_reader(reader)?,
+                a: <String as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+                b: <HashMap<
+                    T,
+                    U,
+                > as borsh::BorshDeserialize>::deserialize_reader(reader)?,
             }
         } else if variant_tag == 1u8 {
             A::D(
-                borsh::BorshDeserialize::deserialize_reader(reader)?,
-                borsh::BorshDeserialize::deserialize_reader(reader)?,
+                <u32 as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+                <u32 as borsh::BorshDeserialize>::deserialize_reader(reader)?,
             )
         } else {
             return ::core::result::Result::Err(
