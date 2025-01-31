@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/serialize/structs/mod.rs
-expression: pretty_print_syn_str(&actual).unwrap()
+expression: pretty_print_syn_str(actual).unwrap()
 ---
 impl<K: Ord, V> borsh::ser::BorshSerialize for A<K, V>
 where
@@ -12,7 +12,7 @@ where
         writer: &mut __W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
         third_party_impl::serialize_third_party(&self.x, writer)?;
-        borsh::BorshSerialize::serialize(&self.y, writer)?;
-        Ok(())
+        <u64 as borsh::BorshSerialize>::serialize(&self.y, writer)?;
+        ::core::result::Result::Ok(())
     }
 }

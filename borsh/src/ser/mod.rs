@@ -73,6 +73,12 @@ pub trait BorshSerialize {
 /// ```
 /// # tokio_test::block_on(async {
 /// use borsh::BorshSerializeAsync;
+/// # #[cfg(all(feature = "derive", feature = "unstable__tokio"))]
+/// # use std::io;
+/// # #[cfg(all(feature = "derive", feature = "unstable__async-std"))]
+/// # use async_std::io;
+/// # #[cfg(all(feature = "derive", any(feature = "unstable__tokio", feature = "unstable__async-std")))]
+/// use io::Cursor;
 ///
 /// /// derive is only available if borsh is built with `features = ["derive"]`
 /// # #[cfg(feature = "derive")]
@@ -84,22 +90,22 @@ pub trait BorshSerialize {
 /// # #[cfg(feature = "derive")]
 /// let x = MyBorshSerializableStruct { value: "hello".to_owned() };
 /// let mut buffer: Vec<u8> = Vec::new();
-/// # #[cfg(feature = "derive")]
+/// # #[cfg(all(feature = "derive", any(feature = "unstable__tokio", feature = "unstable__async-std")))]
 /// x.serialize(&mut buffer).await.unwrap();
-/// # #[cfg(feature = "derive")]
+/// # #[cfg(all(feature = "derive", any(feature = "unstable__tokio", feature = "unstable__async-std")))]
 /// let single_serialized_buffer_len = buffer.len();
 ///
-/// # #[cfg(feature = "derive")]
+/// # #[cfg(all(feature = "derive", any(feature = "unstable__tokio", feature = "unstable__async-std")))]
 /// x.serialize(&mut buffer).await.unwrap();
-/// # #[cfg(feature = "derive")]
+/// # #[cfg(all(feature = "derive", any(feature = "unstable__tokio", feature = "unstable__async-std")))]
 /// assert_eq!(buffer.len(), single_serialized_buffer_len * 2);
 ///
-/// # #[cfg(feature = "derive")]
-/// let mut buffer: Vec<u8> = vec![0; 1024 + single_serialized_buffer_len];
-/// # #[cfg(feature = "derive")]
-/// let mut buffer_slice_enough_for_the_data = &mut buffer[1024..1024 + single_serialized_buffer_len];
-/// # #[cfg(feature = "derive")]
-/// x.serialize(&mut buffer_slice_enough_for_the_data).await.unwrap();
+/// # #[cfg(all(feature = "derive", any(feature = "unstable__tokio", feature = "unstable__async-std")))]
+/// let mut buffer: Cursor<Vec<u8>> = Cursor::new(vec![0; 1024 + single_serialized_buffer_len]);
+/// # #[cfg(all(feature = "derive", any(feature = "unstable__tokio", feature = "unstable__async-std")))]
+/// buffer.set_position(1024);
+/// # #[cfg(all(feature = "derive", any(feature = "unstable__tokio", feature = "unstable__async-std")))]
+/// x.serialize(&mut buffer).await.unwrap();
 /// # })
 /// ```
 #[cfg(feature = "unstable__async")]

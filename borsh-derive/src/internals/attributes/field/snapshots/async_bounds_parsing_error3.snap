@@ -1,0 +1,7 @@
+---
+source: borsh-derive/src/internals/attributes/field/mod.rs
+expression: err
+---
+Error(
+    "expected borsh async_bound attribute to be a string: `deserialize = \"...\"`",
+)

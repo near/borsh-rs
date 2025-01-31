@@ -7,12 +7,18 @@ extern crate alloc;
 #[doc = include_str!("../docs/rustdoc_include/borsh_deserialize.md")]
 #[cfg(feature = "derive")]
 pub use borsh_derive::BorshDeserialize;
+// TODO: add docs
+#[cfg(all(feature = "derive", feature = "unstable__async"))]
+pub use borsh_derive::BorshDeserializeAsync;
 #[doc = include_str!("../docs/rustdoc_include/borsh_schema.md")]
 #[cfg(feature = "unstable__schema")]
 pub use borsh_derive::BorshSchema;
 #[doc = include_str!("../docs/rustdoc_include/borsh_serialize.md")]
 #[cfg(feature = "derive")]
 pub use borsh_derive::BorshSerialize;
+// TODO: add docs
+#[cfg(all(feature = "derive", feature = "unstable__async"))]
+pub use borsh_derive::BorshSerializeAsync;
 
 pub mod de;
 

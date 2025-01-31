@@ -1,0 +1,17 @@
+---
+source: borsh-derive/src/internals/serialize/structs/mod.rs
+expression: pretty_print_syn_str(actual).unwrap()
+---
+impl<T> borsh::ser::BorshSerializeAsync for TupleA<T>
+where
+    T: borsh::ser::BorshSerializeAsync,
+{
+    async fn serialize<'async_variant, __W: borsh::async_io::AsyncWrite>(
+        &'async_variant self,
+        writer: &'async_variant mut __W,
+    ) -> ::core::result::Result<(), borsh::io::Error> {
+        <T as borsh::BorshSerializeAsync>::serialize(&self.0, writer).await?;
+        <u32 as borsh::BorshSerializeAsync>::serialize(&self.1, writer).await?;
+        ::core::result::Result::Ok(())
+    }
+}

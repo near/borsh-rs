@@ -1,0 +1,57 @@
+---
+source: borsh-derive/src/internals/deserialize/enums/mod.rs
+expression: pretty_print_syn_str(actual).unwrap()
+---
+impl<K, V, U> borsh::de::BorshDeserializeAsync for A<K, V, U>
+where
+    K: borsh::de::BorshDeserializeAsync,
+    V: borsh::de::BorshDeserializeAsync,
+    U: borsh::de::BorshDeserializeAsync,
+{
+    async fn deserialize_reader<__R: borsh::async_io::AsyncRead>(
+        reader: &mut __R,
+    ) -> ::core::result::Result<Self, borsh::io::Error> {
+        let tag = <u8 as borsh::de::BorshDeserializeAsync>::deserialize_reader(reader)
+            .await?;
+        <Self as borsh::de::EnumExtAsync>::deserialize_variant(reader, tag).await
+    }
+}
+impl<K, V, U> borsh::de::EnumExtAsync for A<K, V, U>
+where
+    K: borsh::de::BorshDeserializeAsync,
+    V: borsh::de::BorshDeserializeAsync,
+    U: borsh::de::BorshDeserializeAsync,
+{
+    async fn deserialize_variant<__R: borsh::async_io::AsyncRead>(
+        reader: &mut __R,
+        variant_tag: u8,
+    ) -> ::core::result::Result<Self, borsh::io::Error> {
+        let return_value = if variant_tag == 0u8 {
+            A::B {
+                x: <HashMap<
+                    K,
+                    V,
+                > as borsh::BorshDeserializeAsync>::deserialize_reader(reader)
+                    .await?,
+                y: <String as borsh::BorshDeserializeAsync>::deserialize_reader(reader)
+                    .await?,
+            }
+        } else if variant_tag == 1u8 {
+            A::C(
+                <K as borsh::BorshDeserializeAsync>::deserialize_reader(reader).await?,
+                <Vec<U> as borsh::BorshDeserializeAsync>::deserialize_reader(reader)
+                    .await?,
+            )
+        } else {
+            return ::core::result::Result::Err(
+                borsh::io::Error::new(
+                    borsh::io::ErrorKind::InvalidData,
+                    borsh::__private::maybestd::format!(
+                        "Unexpected variant tag: {:?}", variant_tag
+                    ),
+                ),
+            )
+        };
+        ::core::result::Result::Ok(return_value)
+    }
+}

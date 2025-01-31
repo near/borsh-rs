@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/serialize/enums/mod.rs
-expression: pretty_print_syn_str(&actual).unwrap()
+expression: pretty_print_syn_str(actual).unwrap()
 ---
 impl borsh::ser::BorshSerialize for AAB {
     fn serialize<__W: borsh::io::Write>(
@@ -15,9 +15,9 @@ impl borsh::ser::BorshSerialize for AAB {
         match self {
             AAB::B { .. } => {}
             AAB::NegatedVariant { beta, .. } => {
-                borsh::BorshSerialize::serialize(beta, writer)?;
+                <String as borsh::BorshSerialize>::serialize(beta, writer)?;
             }
         }
-        Ok(())
+        ::core::result::Result::Ok(())
     }
 }

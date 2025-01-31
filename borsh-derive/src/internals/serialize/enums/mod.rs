@@ -1,6 +1,6 @@
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{Fields, Ident, ItemEnum, Path, Variant};
+use syn::{Fields, Ident, ItemEnum, Lifetime, Path, Token, Variant};
 
 use crate::internals::{
     attributes::{field, item, BoundType},
@@ -8,22 +8,25 @@ use crate::internals::{
     generics, serialize,
 };
 
-pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
+pub fn process<const IS_ASYNC: bool>(
+    input: ItemEnum,
+    cratename: Path,
+) -> syn::Result<TokenStream2> {
     let enum_ident = &input.ident;
-    let generics = generics::without_defaults(&input.generics);
+    let use_discriminant = item::contains_use_discriminant(&input)?;
+    let generics = generics::without_defaults(input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let mut where_clause = generics::default_where(where_clause);
     let mut generics_output = serialize::GenericsOutput::new(&generics);
     let mut all_variants_idx_body = TokenStream2::new();
     let mut fields_body = TokenStream2::new();
-    let use_discriminant = item::contains_use_discriminant(input)?;
     let discriminants = Discriminants::new(&input.variants);
     let mut has_unit_variant = false;
 
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_ident = &variant.ident;
         let discriminant_value = discriminants.get(variant_ident, use_discriminant, variant_idx)?;
-        let variant_output = process_variant(
+        let variant_output = process_variant::<IS_ASYNC>(
             variant,
             enum_ident,
             &discriminant_value,
@@ -41,18 +44,44 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
         }
     }
     let fields_body = optimize_fields_body(fields_body, has_unit_variant);
-    generics_output.extend(&mut where_clause, &cratename);
+    generics_output.extend::<IS_ASYNC>(&mut where_clause, &cratename);
+
+    let serialize_trait = Ident::new(
+        if IS_ASYNC {
+            "BorshSerializeAsync"
+        } else {
+            "BorshSerialize"
+        },
+        Span::call_site(),
+    );
+    let writer_trait = if IS_ASYNC {
+        quote! { async_io::AsyncWrite }
+    } else {
+        quote! { io::Write }
+    };
+    let r#async = IS_ASYNC.then(|| Token![async](Span::call_site()));
+    let lifetime = IS_ASYNC.then(|| Lifetime::new("'async_variant", Span::call_site()));
+    let lt_comma = IS_ASYNC.then(|| Token![,](Span::call_site()));
+
+    let write_variant_idx = if IS_ASYNC {
+        quote! { writer.write_u8(variant_idx).await }
+    } else {
+        quote! { writer.write_all(&variant_idx.to_le_bytes()) }
+    };
 
     Ok(quote! {
-        impl #impl_generics #cratename::ser::BorshSerialize for #enum_ident #ty_generics #where_clause {
-            fn serialize<__W: #cratename::io::Write>(&self, writer: &mut __W) -> ::core::result::Result<(), #cratename::io::Error> {
+        impl #impl_generics #cratename::ser::#serialize_trait for #enum_ident #ty_generics #where_clause {
+            #r#async fn serialize<#lifetime #lt_comma __W: #cratename::#writer_trait>(
+                &#lifetime self,
+                writer: &#lifetime mut __W,
+            ) -> ::core::result::Result<(), #cratename::io::Error> {
                 let variant_idx: u8 = match self {
                     #all_variants_idx_body
                 };
-                writer.write_all(&variant_idx.to_le_bytes())?;
+                #write_variant_idx?;
 
                 #fields_body
-                Ok(())
+                ::core::result::Result::Ok(())
             }
         }
     })
@@ -123,7 +152,7 @@ struct VariantOutput {
     variant_idx_body: TokenStream2,
 }
 
-fn process_variant(
+fn process_variant<const IS_ASYNC: bool>(
     variant: &Variant,
     enum_ident: &Ident,
     discriminant_value: &TokenStream2,
@@ -136,7 +165,13 @@ fn process_variant(
             let mut variant_fields = VariantFields::default();
             for field in &fields.named {
                 let field_id = serialize::FieldId::Enum(field.ident.clone().unwrap());
-                process_field(field, field_id, cratename, generics, &mut variant_fields)?;
+                process_field::<IS_ASYNC>(
+                    field,
+                    field_id,
+                    cratename,
+                    generics,
+                    &mut variant_fields,
+                )?;
             }
             VariantOutput {
                 body: VariantBody::Fields(variant_fields.named_header()),
@@ -149,7 +184,13 @@ fn process_variant(
             let mut variant_fields = VariantFields::default();
             for (field_idx, field) in fields.unnamed.iter().enumerate() {
                 let field_id = serialize::FieldId::new_enum_unnamed(field_idx)?;
-                process_field(field, field_id, cratename, generics, &mut variant_fields)?;
+                process_field::<IS_ASYNC>(
+                    field,
+                    field_id,
+                    cratename,
+                    generics,
+                    &mut variant_fields,
+                )?;
             }
             VariantOutput {
                 body: VariantBody::Fields(variant_fields.unnamed_header()),
@@ -168,7 +209,7 @@ fn process_variant(
     Ok(variant_output)
 }
 
-fn process_field(
+fn process_field<const IS_ASYNC: bool>(
     field: &syn::Field,
     field_id: serialize::FieldId,
     cratename: &Path,
@@ -177,10 +218,16 @@ fn process_field(
 ) -> syn::Result<()> {
     let parsed = field::Attributes::parse(&field.attrs)?;
 
-    let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Serialize);
-    generics
-        .overrides
-        .extend(parsed.collect_bounds(BoundType::Serialize));
+    let needs_bounds_derive = if IS_ASYNC {
+        parsed.needs_async_bounds_derive(BoundType::Serialize)
+    } else {
+        parsed.needs_bounds_derive(BoundType::Serialize)
+    };
+    generics.overrides.extend(if IS_ASYNC {
+        parsed.collect_async_bounds(BoundType::Serialize)
+    } else {
+        parsed.collect_bounds(BoundType::Serialize)
+    });
 
     let field_variant_header = field_id.enum_variant_header(parsed.skip);
     if let Some(field_variant_header) = field_variant_header {
@@ -188,7 +235,15 @@ fn process_field(
     }
 
     if !parsed.skip {
-        let delta = field_id.serialize_output(cratename, parsed.serialize_with);
+        let delta = field_id.serialize_output::<IS_ASYNC>(
+            &field.ty,
+            cratename,
+            if IS_ASYNC {
+                parsed.serialize_with_async
+            } else {
+                parsed.serialize_with
+            },
+        );
         output.body.extend(delta);
         if needs_bounds_derive {
             generics.serialize_visitor.visit_field(field);
@@ -199,14 +254,15 @@ fn process_field(
 
 #[cfg(test)]
 mod tests {
+    use syn::parse_quote;
+
+    use super::*;
     use crate::internals::test_helpers::{
         default_cratename, local_insta_assert_snapshot, pretty_print_syn_str,
     };
-
-    use super::*;
     #[test]
     fn borsh_skip_tuple_variant_field() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum AATTB {
                 B(#[borsh(skip)] i32, #[borsh(skip)] u32),
 
@@ -214,16 +270,18 @@ mod tests {
                     beta: u8,
                 }
             }
-        })
-        .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        };
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn struct_variant_field() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum AB {
                 B {
                     c: i32,
@@ -234,17 +292,18 @@ mod tests {
                     beta: String,
                 }
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn simple_enum_with_custom_crate() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum AB {
                 B {
                     c: i32,
@@ -255,18 +314,20 @@ mod tests {
                     beta: String,
                 }
             }
-        })
-        .unwrap();
+        };
 
-        let crate_: Path = syn::parse2(quote! { reexporter::borsh }).unwrap();
-        let actual = process(&item_enum, crate_).unwrap();
+        let crate_: Path = parse_quote! { reexporter::borsh };
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<false>(item_enum.clone(), crate_.clone()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_enum, crate_).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn borsh_skip_struct_variant_field() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
 
             enum AB {
                 B {
@@ -280,17 +341,18 @@ mod tests {
                     beta: String,
                 }
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn borsh_skip_struct_variant_all_fields() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
 
             enum AAB {
                 B {
@@ -305,17 +367,18 @@ mod tests {
                     beta: String,
                 }
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn simple_generics() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<K, V, U> {
                 B {
                     x: HashMap<K, V>,
@@ -323,16 +386,18 @@ mod tests {
                 },
                 C(K, Vec<U>),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn bound_generics() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<K: Key, V, U> where V: Value {
                 B {
                     x: HashMap<K, V>,
@@ -340,16 +405,18 @@ mod tests {
                 },
                 C(K, Vec<U>),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn recursive_enum() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<K: Key, V> where V: Value {
                 B {
                     x: HashMap<K, V>,
@@ -357,17 +424,18 @@ mod tests {
                 },
                 C(K, Vec<A>),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn generic_borsh_skip_struct_field() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<K: Key, V, U> where V: Value {
                 B {
                     #[borsh(skip)]
@@ -376,17 +444,18 @@ mod tests {
                 },
                 C(K, Vec<U>),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn generic_borsh_skip_tuple_field() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<K: Key, V, U> where V: Value {
                 B {
                     x: HashMap<K, V>,
@@ -394,17 +463,18 @@ mod tests {
                 },
                 C(K, #[borsh(skip)] Vec<U>),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn generic_serialize_bound() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum A<T: Debug, U> {
                 C {
                     a: String,
@@ -416,17 +486,41 @@ mod tests {
                 },
                 D(u32, u32),
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+    }
+
+    #[test]
+    fn generic_serialize_async_bound() {
+        let item_enum: ItemEnum = parse_quote! {
+            enum A<T: Debug, U> {
+                C {
+                    a: String,
+                    #[borsh(async_bound(serialize =
+                        "T: borsh::ser::BorshSerializeAsync + PartialOrd,
+                         U: borsh::ser::BorshSerializeAsync"
+                    ))]
+                    b: HashMap<T, U>,
+                },
+                D(u32, u32),
+            }
+        };
+
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn check_serialize_with_attr() {
-        let item_struct: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum C<K: Ord, V> {
                 C3(u64, u64),
                 C4 {
@@ -435,17 +529,38 @@ mod tests {
                     y: ThirdParty<K, V>
                 },
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+    }
+
+    #[test]
+    fn check_serialize_with_async_attr() {
+        let item_enum: ItemEnum = parse_quote! {
+            enum C<K: Ord, V> {
+                C3(u64, u64),
+                C4 {
+                    x: u64,
+                    #[borsh(serialize_with_async = "third_party_impl::serialize_third_party")]
+                    y: ThirdParty<K, V>
+                },
+            }
+        };
+
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn borsh_discriminant_false() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
            #[borsh(use_discriminant = false)]
             enum X {
                 A,
@@ -455,15 +570,17 @@ mod tests {
                 E = 10,
                 F,
             }
-        })
-        .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        };
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
     #[test]
     fn borsh_discriminant_true() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             #[borsh(use_discriminant = true)]
             enum X {
                 A,
@@ -473,26 +590,30 @@ mod tests {
                 E = 10,
                 F,
             }
-        })
-        .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        };
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn mixed_with_unit_variants() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             enum X {
                 A(u16),
                 B,
                 C {x: i32, y: i32},
                 D,
             }
-        })
-        .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        };
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        let actual = process::<true>(item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 }

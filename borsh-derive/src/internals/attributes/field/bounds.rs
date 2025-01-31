@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
+use once_cell::sync::Lazy;
 use syn::{meta::ParseNestedMeta, WherePredicate};
 
 use crate::internals::attributes::{parsing::parse_lit_into_vec, Symbol, DESERIALIZE, SERIALIZE};
-use once_cell::sync::Lazy;
 
 pub enum Variants {
     Serialize(Vec<WherePredicate>),

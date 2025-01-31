@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/deserialize/structs/mod.rs
-expression: pretty_print_syn_str(&actual).unwrap()
+expression: pretty_print_syn_str(actual).unwrap()
 ---
 impl<K, V> borsh::de::BorshDeserialize for A<K, V>
 where
@@ -10,9 +10,9 @@ where
     fn deserialize_reader<__R: borsh::io::Read>(
         reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
-        Ok(Self {
-            x: borsh::BorshDeserialize::deserialize_reader(reader)?,
-            y: borsh::BorshDeserialize::deserialize_reader(reader)?,
+        ::core::result::Result::Ok(Self {
+            x: <HashMap<K, V> as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+            y: <String as borsh::BorshDeserialize>::deserialize_reader(reader)?,
         })
     }
 }

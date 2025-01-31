@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{ExprPath, Generics, Ident, Path};
+use syn::{parse_quote, ExprPath, Generics, Ident, Path, Type};
 
 use super::{
     attributes::{field, BoundType},
@@ -25,9 +25,14 @@ impl GenericsOutput {
             default_visitor: generics::FindTyParams::new(generics),
         }
     }
-    fn extend(self, where_clause: &mut syn::WhereClause, cratename: &Path) {
-        let de_trait: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
-        let default_trait: Path = syn::parse2(quote! { core::default::Default }).unwrap();
+
+    fn extend<const IS_ASYNC: bool>(self, where_clause: &mut syn::WhereClause, cratename: &Path) {
+        let de_trait: Path = if IS_ASYNC {
+            parse_quote! { #cratename::de::BorshDeserializeAsync }
+        } else {
+            parse_quote! { #cratename::de::BorshDeserialize }
+        };
+        let default_trait: Path = parse_quote! { ::core::default::Default };
         let de_predicates =
             generics::compute_predicates(self.deserialize_visitor.process_for_bounds(), &de_trait);
         let default_predicates =
@@ -38,7 +43,7 @@ impl GenericsOutput {
     }
 }
 
-fn process_field(
+fn process_field<const IS_ASYNC: bool>(
     field: &syn::Field,
     cratename: &Path,
     body: &mut TokenStream2,
@@ -46,10 +51,16 @@ fn process_field(
 ) -> syn::Result<()> {
     let parsed = field::Attributes::parse(&field.attrs)?;
 
-    generics
-        .overrides
-        .extend(parsed.collect_bounds(BoundType::Deserialize));
-    let needs_bounds_derive = parsed.needs_bounds_derive(BoundType::Deserialize);
+    generics.overrides.extend(if IS_ASYNC {
+        parsed.collect_async_bounds(BoundType::Deserialize)
+    } else {
+        parsed.collect_bounds(BoundType::Deserialize)
+    });
+    let needs_bounds_derive = if IS_ASYNC {
+        parsed.needs_async_bounds_derive(BoundType::Deserialize)
+    } else {
+        parsed.needs_bounds_derive(BoundType::Deserialize)
+    };
 
     let field_name = field.ident.as_ref();
     let delta = if parsed.skip {
@@ -61,7 +72,16 @@ fn process_field(
         if needs_bounds_derive {
             generics.deserialize_visitor.visit_field(field);
         }
-        field_output(field_name, cratename, parsed.deserialize_with)
+        field_output::<IS_ASYNC>(
+            field_name,
+            &field.ty,
+            cratename,
+            if IS_ASYNC {
+                parsed.deserialize_with_async
+            } else {
+                parsed.deserialize_with
+            },
+        )
     };
     body.extend(delta);
     Ok(())
@@ -69,22 +89,31 @@ fn process_field(
 
 /// function which computes derive output [proc_macro2::TokenStream]
 /// of code, which deserializes single field
-fn field_output(
+fn field_output<const IS_ASYNC: bool>(
     field_name: Option<&Ident>,
+    field_type: &Type,
     cratename: &Path,
     deserialize_with: Option<ExprPath>,
 ) -> TokenStream2 {
-    let default_path: ExprPath =
-        syn::parse2(quote! { #cratename::BorshDeserialize::deserialize_reader }).unwrap();
-    let path: ExprPath = deserialize_with.unwrap_or(default_path);
+    let default_path = || {
+        let deserialize_trait = Ident::new(
+            if IS_ASYNC {
+                "BorshDeserializeAsync"
+            } else {
+                "BorshDeserialize"
+            },
+            proc_macro2::Span::call_site(),
+        );
+        parse_quote! { <#field_type as #cratename::#deserialize_trait>::deserialize_reader }
+    };
+
+    let path: ExprPath = deserialize_with.unwrap_or_else(default_path);
+    let dot_await = IS_ASYNC.then(|| quote! { .await });
+
     if let Some(field_name) = field_name {
-        quote! {
-            #field_name: #path(reader)?,
-        }
+        quote! { #field_name: #path(reader)#dot_await?, }
     } else {
-        quote! {
-            #path(reader)?,
-        }
+        quote! { #path(reader)#dot_await?, }
     }
 }
 
@@ -92,10 +121,8 @@ fn field_output(
 /// of code, which deserializes single skipped field
 fn field_default_output(field_name: Option<&Ident>) -> TokenStream2 {
     if let Some(field_name) = field_name {
-        quote! {
-            #field_name: core::default::Default::default(),
-        }
+        quote! { #field_name: ::core::default::Default::default(), }
     } else {
-        quote! { core::default::Default::default(), }
+        quote! { ::core::default::Default::default(), }
     }
 }
