@@ -1662,7 +1662,9 @@ pub fn from_reader<R: Read, T: BorshDeserialize>(reader: &mut R) -> Result<T> {
     T::try_from_reader(reader)
 }
 
+#[cfg(feature = "unstable__async")]
 use captures::Captures;
+#[cfg(feature = "unstable__async")]
 mod captures {
     /// This is a [trick](https://github.com/rust-lang/rfcs/blob/master/text/3498-lifetime-capture-rules-2024.md#the-captures-trick),
     /// used to not over-restrict the lifetime and trait bounds of a RPIT.
