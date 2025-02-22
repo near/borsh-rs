@@ -22,11 +22,23 @@
 
 * **derive** -
   Gates derive macros of [BorshSerialize] and
-  [BorshDeserialize] traits.
+  [BorshDeserialize] traits, as well as of [BorshSchema],
+  [BorshAsyncSerialize] and [BorshAsyncDeserialize] traits
+  if corresponding features are enabled.
 * **unstable__schema** -
   Gates [BorshSchema] trait and its derive macro.
   Gates [schema] module.
   This feature requires **derive** to be enabled too.
+* **unstable__async** -
+  Gates [BorshAsyncSerialize] and [BorshAsyncDeserialize] traits.
+  Gates [async_io] module.
+  This feature is meant to allow implementing serialization/deserialization
+  using async I/O.
+* **unstable__tokio** / **unstable__async-std** -
+  Gates implementation of [async_io::AsyncWrite] and [async_io::AsyncRead]
+  for `tokio` and `async-std` runtimes respectively.
+  Enabling either of these features will also enable **unstable__async** feature.
+  These features are set to be mutually exclusive.
 * **rc** -
   Gates implementation of [BorshSerialize] and [BorshDeserialize]
   for [`Rc<T>`](std::rc::Rc)/[`Arc<T>`](std::sync::Arc) respectively.
