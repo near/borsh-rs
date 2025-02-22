@@ -26,16 +26,25 @@ where
 }
 
 /// Serializes an object directly into a `Writer`.
-/// # Example
 ///
+/// # Example
 #[async_generic(
     /// ```
     /// # #[cfg(feature = "std")]
     /// let stderr = std::io::stderr();
     /// # #[cfg(feature = "std")]
-    /// assert_eq!((), borsh::to_writer(&stderr, "hello_0x0a").unwrap());
+    /// borsh::to_writer(&stderr, "hello_0x0a").unwrap();
     /// ```
     sync_signature;
+
+    /// ```
+    /// # tokio_test::block_on(async {
+    /// # #[cfg(feature = "unstable__tokio")]
+    /// let mut stderr = tokio::io::stderr();
+    /// # #[cfg(feature = "unstable__tokio")]
+    /// borsh::to_writer_async(&mut stderr, "hello_0x0a").await.unwrap();
+    /// # })
+    /// ```
     #[cfg(feature = "unstable__async")]
     async_signature<T, W: AsyncWrite>(mut writer: W, value: &T) -> Result<()>
     where

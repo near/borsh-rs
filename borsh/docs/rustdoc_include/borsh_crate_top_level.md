@@ -85,4 +85,6 @@ Following pages are highlighted here just to give reader a chance at learning th
 - [Derive Macro `BorshSerialize`](macro@crate::BorshSerialize)
 - [Derive Macro `BorshDeserialize`](macro@crate::BorshDeserialize)
 - [Derive Macro `BorshSchema`](macro@crate::BorshSchema)
+- [Derive Macro `BorshSerializeAsync`](macro@crate::BorshSerializeAsync)
+- [Derive Macro `BorshDeserializeAsync`](macro@crate::BorshDeserializeAsync)
 

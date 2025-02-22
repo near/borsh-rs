@@ -1632,27 +1632,51 @@ pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
 
 /// Deserializes an object from a reader.
 /// # Example
-/// ```
-/// use borsh::{BorshDeserialize, BorshSerialize, from_reader, to_vec};
-///
-/// /// derive is only available if borsh is built with `features = ["derive"]`
-/// # #[cfg(feature = "derive")]
-/// #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-/// struct MyStruct {
-///     a: u64,
-///     b: Vec<u8>,
-/// }
-///
-/// # #[cfg(feature = "derive")]
-/// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
-/// # #[cfg(feature = "derive")]
-/// let encoded = to_vec(&original).unwrap();
-/// # #[cfg(feature = "derive")]
-/// let decoded = from_reader::<_, MyStruct>(&mut encoded.as_slice()).unwrap();
-/// # #[cfg(feature = "derive")]
-/// assert_eq!(original, decoded);
-/// ```
 #[async_generic(
+    /// ```
+    /// use borsh::{BorshDeserialize, BorshSerialize, from_reader, to_vec};
+    ///
+    /// /// derive is only available if borsh is built with `features = ["derive"]`
+    /// # #[cfg(feature = "derive")]
+    /// #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+    /// struct MyStruct {
+    ///     a: u64,
+    ///     b: Vec<u8>,
+    /// }
+    ///
+    /// # #[cfg(feature = "derive")]
+    /// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
+    /// # #[cfg(feature = "derive")]
+    /// let encoded = to_vec(&original).unwrap();
+    /// # #[cfg(feature = "derive")]
+    /// let decoded = from_reader::<_, MyStruct>(&mut encoded.as_slice()).unwrap();
+    /// # #[cfg(feature = "derive")]
+    /// assert_eq!(original, decoded);
+    /// ```
+    sync_signature;
+
+    /// ```
+    /// use borsh::{BorshDeserializeAsync, BorshSerialize, from_reader_async, to_vec};
+    ///
+    /// /// derive is only available if borsh is built with `features = ["derive"]`
+    /// # #[cfg(feature = "derive")]
+    /// #[derive(BorshSerialize, BorshDeserializeAsync, PartialEq, Debug)]
+    /// struct MyStruct {
+    ///     a: u64,
+    ///     b: Vec<u8>,
+    /// }
+    ///
+    /// # tokio_test::block_on(async {
+    /// # #[cfg(feature = "derive")]
+    /// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
+    /// # #[cfg(feature = "derive")]
+    /// let encoded = to_vec(&original).unwrap();
+    /// # #[cfg(feature = "derive")]
+    /// let decoded = from_reader_async::<_, MyStruct>(&mut encoded.as_slice()).await.unwrap();
+    /// # #[cfg(feature = "derive")]
+    /// assert_eq!(original, decoded);
+    /// # });
+    /// ```
     #[cfg(feature = "unstable__async")]
     async_signature[impl_fut]<R: AsyncRead, T: BorshDeserializeAsync>(
         reader: &mut R,

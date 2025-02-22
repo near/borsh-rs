@@ -58,9 +58,9 @@ compile_error!(
 #[cfg(feature = "std")]
 use std::io as io_impl;
 
-/// Module is available if `borsh` is built with `features = ["unstable__async"]`.
-///
 /// Provides traits for async I/O operations.
+///
+/// Module is available if `borsh` is built with `features = ["unstable__async"]`.
 #[cfg(feature = "unstable__async")]
 pub mod async_io;
 
