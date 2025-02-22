@@ -192,7 +192,6 @@ pub trait EnumExtAsync: BorshDeserializeAsync {
     /// variant is being deserialized.
     ///
     /// ```
-    /// # tokio_test::block_on(async {
     /// use borsh::BorshDeserializeAsync;
     /// use borsh::de::EnumExtAsync as _;
     ///
@@ -228,6 +227,7 @@ pub trait EnumExtAsync: BorshDeserializeAsync {
     /// }
     ///
     /// use borsh::from_reader_async;
+    /// # tokio_test::block_on(async {
     /// let data = b"\0";
     /// # #[cfg(all(feature = "derive", any(feature = "unstable__tokio", feature = "unstable__async-std")))]
     /// assert_eq!(MyEnum::Zero, from_reader_async::<_, MyEnum>(&mut &data[..]).await.unwrap());
@@ -294,10 +294,11 @@ impl BorshDeserialize for u8 {
                 vec.resize(vec.len().saturating_mul(2).min(len), 0)
             }
             // TODO(mina86): Convert this to read_buf once that stabilises.
-            let res = {
-                let res = reader.read(&mut vec.as_mut_slice()[pos..]);
-                if _sync { res } else { res.await }?
-            };
+            let res = if _sync {
+                reader.read(&mut vec.as_mut_slice()[pos..])
+            } else {
+                reader.read(&mut vec.as_mut_slice()[pos..]).await
+            }?;
             match res {
                 0 => {
                     return Err(Error::new(
@@ -320,9 +321,12 @@ impl BorshDeserialize for u8 {
     )]
     fn array_from_reader<R: Read, const N: usize>(reader: &mut R) -> Result<Option<[Self; N]>> {
         let mut arr = [0u8; N];
-        let res = reader.read_exact(&mut arr);
-        if _sync { res } else { res.await }
-            .map_err(unexpected_eof_to_unexpected_length_of_input)?;
+        if _sync {
+            reader.read_exact(&mut arr)
+        } else {
+            reader.read_exact(&mut arr).await
+        }
+        .map_err(unexpected_eof_to_unexpected_length_of_input)?;
         Ok(Some(arr))
     }
 }
@@ -506,10 +510,11 @@ where
         }?;
         match flag {
             0 => Ok(None),
-            1 => Ok(Some({
-                let res = T::deserialize_reader(reader);
-                if _sync { res } else { res.await }?
-            })),
+            1 => Ok(Some(if _sync {
+                T::deserialize_reader(reader)
+            } else {
+                T::deserialize_reader(reader).await
+            }?)),
             _ => Err(Error::new(
                 ErrorKind::InvalidData,
                 format!(
@@ -542,14 +547,16 @@ where
             <u8 as BorshDeserializeAsync>::deserialize_reader(reader).await
         }?;
         match flag {
-            0 => Ok(Err({
-                let res = E::deserialize_reader(reader);
-                if _sync { res } else { res.await }?
-            })),
-            1 => Ok(Ok({
-                let res = T::deserialize_reader(reader);
-                if _sync { res } else { res.await }?
-            })),
+            0 => Ok(Err(if _sync {
+                E::deserialize_reader(reader)
+            } else {
+                E::deserialize_reader(reader).await
+            }?)),
+            1 => Ok(Ok(if _sync {
+                T::deserialize_reader(reader)
+            } else {
+                T::deserialize_reader(reader).await
+            }?)),
             _ => Err(Error::new(
                 ErrorKind::InvalidData,
                 format!(
@@ -589,13 +596,12 @@ impl BorshDeserialize for String {
 }
 
 /// Module is available if borsh is built with `features = ["ascii"]`.
+///
+/// Module defines [`BorshDeserialize`]
+#[cfg_attr(feature = "unstable__async", doc = " and [`BorshDeserializeAsync`]")]
+/// implementation for some types from [`ascii`](::ascii) crate.
 #[cfg(feature = "ascii")]
 pub mod ascii {
-    //!
-    //! Module defines [`BorshDeserialize`]
-    #![cfg_attr(feature = "unstable__async", doc = " & [`BorshDeserializeAsync`]")]
-    //! implementation for some types from [`ascii`] crate.
-
     use async_generic::async_generic;
 
     use super::BorshDeserialize;
@@ -684,18 +690,22 @@ where
         if len == 0 {
             Ok(Vec::new())
         } else if let Some(vec_bytes) = {
-            let res = T::vec_from_reader(len, reader);
-            if _sync { res } else { res.await }?
+            if _sync {
+                T::vec_from_reader(len, reader)
+            } else {
+                T::vec_from_reader(len, reader).await
+            }?
         } {
             Ok(vec_bytes)
         } else {
             // TODO(16): return capacity allocation when we can safely do that.
             let mut result = Vec::with_capacity(hint::cautious::<T>(len));
             for _ in 0..len {
-                result.push({
-                    let res = T::deserialize_reader(reader);
-                    if _sync { res } else { res.await }?
-                });
+                result.push(if _sync {
+                    T::deserialize_reader(reader)
+                } else {
+                    T::deserialize_reader(reader).await
+                }?);
             }
             Ok(result)
         }
@@ -756,10 +766,11 @@ impl BorshDeserialize for bson::oid::ObjectId {
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let mut buf = [0u8; 12];
-        {
-            let res = reader.read_exact(&mut buf);
-            if _sync { res } else { res.await }?;
-        }
+        if _sync {
+            reader.read_exact(&mut buf)
+        } else {
+            reader.read_exact(&mut buf).await
+        }?;
         Ok(bson::oid::ObjectId::from_bytes(buf))
     }
 }
@@ -780,10 +791,11 @@ where
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        Ok(Cow::Owned({
-            let res = T::Owned::deserialize_reader(reader);
-            if _sync { res } else { res.await }?
-        }))
+        Ok(Cow::Owned(if _sync {
+            T::Owned::deserialize_reader(reader)
+        } else {
+            T::Owned::deserialize_reader(reader).await
+        }?))
     }
 }
 
@@ -800,10 +812,11 @@ where
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let vec = {
-            let res = <Vec<T>>::deserialize_reader(reader);
-            if _sync { res } else { res.await }?
-        };
+        let vec = if _sync {
+            <Vec<T>>::deserialize_reader(reader)
+        } else {
+            <Vec<T>>::deserialize_reader(reader).await
+        }?;
         Ok(vec.into())
     }
 }
@@ -821,10 +834,11 @@ where
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let vec = {
-            let res = <Vec<T>>::deserialize_reader(reader);
-            if _sync { res } else { res.await }?
-        };
+        let vec = if _sync {
+            <Vec<T>>::deserialize_reader(reader)
+        } else {
+            <Vec<T>>::deserialize_reader(reader).await
+        }?;
         Ok(vec.into_iter().collect::<LinkedList<T>>())
     }
 }
@@ -832,7 +846,7 @@ where
 /// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
 ///
 /// Module defines [`BorshDeserialize`]
-#[cfg_attr(feature = "unstable__async", doc = " & [`BorshDeserializeAsync`]")]
+#[cfg_attr(feature = "unstable__async", doc = " and [`BorshDeserializeAsync`]")]
 /// implementation for [`HashMap`](std::collections::HashMap)/[`HashSet`](std::collections::HashSet).
 #[cfg(hash_collections)]
 pub mod hashes {
@@ -876,14 +890,14 @@ pub mod hashes {
             // that it allows to fail early, and not allocate memory for all the elements
             // which may fail `cmp()` checks
             // NOTE: deserialize first to `Vec<T>` is faster
-            let vec = {
-                let res = <Vec<T>>::deserialize_reader(reader);
-                if _sync { res } else { res.await }?
-            };
+            let vec = if _sync {
+                <Vec<T>>::deserialize_reader(reader)
+            } else {
+                <Vec<T>>::deserialize_reader(reader).await
+            }?;
 
             #[cfg(feature = "de_strict_order")]
-            // TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
-            // TODO: first replace with `array_windows` api when stabilizes https://github.com/rust-lang/rust/issues/75027
+            // TODO: replace with `is_sorted` api once MSRV >= 1.82
             for pair in vec.windows(2) {
                 let [a, b] = pair else {
                     unreachable!("`windows` always return a slice of length 2 or nothing");
@@ -923,14 +937,14 @@ pub mod hashes {
             // that it allows to fail early, and not allocate memory for all the entries
             // which may fail `cmp()` checks
             // NOTE: deserialize first to `Vec<(K, V)>` is faster
-            let vec = {
-                let res = <Vec<(K, V)>>::deserialize_reader(reader);
-                if _sync { res } else { res.await }?
-            };
+            let vec = if _sync {
+                <Vec<(K, V)>>::deserialize_reader(reader)
+            } else {
+                <Vec<(K, V)>>::deserialize_reader(reader).await
+            }?;
 
             #[cfg(feature = "de_strict_order")]
-            // TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
-            // TODO: first replace with `array_windows` api when stabilizes https://github.com/rust-lang/rust/issues/75027
+            // TODO: replace with `is_sorted` api once MSRV >= 1.82
             for pair in vec.windows(2) {
                 let [(a_k, _a_v), (b_k, _b_v)] = pair else {
                     unreachable!("`windows` always return a slice of length 2 or nothing");
@@ -966,14 +980,14 @@ where
         // that it allows to fail early, and not allocate memory for all the elements
         // which may fail `cmp()` checks
         // NOTE: deserialize first to `Vec<T>` is faster
-        let vec = {
-            let res = <Vec<T>>::deserialize_reader(reader);
-            if _sync { res } else { res.await }?
-        };
+        let vec = if _sync {
+            <Vec<T>>::deserialize_reader(reader)
+        } else {
+            <Vec<T>>::deserialize_reader(reader).await
+        }?;
 
         #[cfg(feature = "de_strict_order")]
-        // TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
-        // TODO: first replace with `array_windows` api when stabilizes https://github.com/rust-lang/rust/issues/75027
+        // TODO: replace with `is_sorted` api once MSRV >= 1.82
         for pair in vec.windows(2) {
             let [a, b] = pair else {
                 unreachable!("`windows` always return a slice of length 2 or nothing");
@@ -1012,14 +1026,14 @@ where
         // that it allows to fail early, and not allocate memory for all the entries
         // which may fail `cmp()` checks
         // NOTE: deserialize first to `Vec<(K, V)>` is faster
-        let vec = {
-            let res = <Vec<(K, V)>>::deserialize_reader(reader);
-            if _sync { res } else { res.await }?
-        };
+        let vec = if _sync {
+            <Vec<(K, V)>>::deserialize_reader(reader)
+        } else {
+            <Vec<(K, V)>>::deserialize_reader(reader).await
+        }?;
 
         #[cfg(feature = "de_strict_order")]
-        // TODO: replace with `is_sorted` api when stabilizes https://github.com/rust-lang/rust/issues/53485
-        // TODO: first replace with `array_windows` api when stabilizes https://github.com/rust-lang/rust/issues/75027
+        // TODO: replace with `is_sorted` api once MSRV >= 1.82
         for pair in vec.windows(2) {
             let [(a_k, _a_v), (b_k, _b_v)] = pair else {
                 unreachable!("`windows` always return a slice of length 2 or nothing");
@@ -1165,9 +1179,12 @@ impl BorshDeserialize for std::net::Ipv4Addr {
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let mut buf = [0u8; 4];
-        let res = reader.read_exact(&mut buf);
-        if _sync { res } else { res.await }
-            .map_err(unexpected_eof_to_unexpected_length_of_input)?;
+        if _sync {
+            reader.read_exact(&mut buf)
+        } else {
+            reader.read_exact(&mut buf).await
+        }
+        .map_err(unexpected_eof_to_unexpected_length_of_input)?;
         Ok(std::net::Ipv4Addr::from(buf))
     }
 }
@@ -1182,9 +1199,12 @@ impl BorshDeserialize for std::net::Ipv6Addr {
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let mut buf = [0u8; 16];
-        let res = reader.read_exact(&mut buf);
-        if _sync { res } else { res.await }
-            .map_err(unexpected_eof_to_unexpected_length_of_input)?;
+        if _sync {
+            reader.read_exact(&mut buf)
+        } else {
+            reader.read_exact(&mut buf).await
+        }
+        .map_err(unexpected_eof_to_unexpected_length_of_input)?;
         Ok(std::net::Ipv6Addr::from(buf))
     }
 }
@@ -1206,10 +1226,12 @@ where
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        Ok({
-            let res = T::Owned::deserialize_reader(reader);
-            if _sync { res } else { res.await }?.into()
-        })
+        if _sync {
+            T::Owned::deserialize_reader(reader)
+        } else {
+            T::Owned::deserialize_reader(reader).await
+        }
+        .map(Into::into)
     }
 }
 
@@ -1256,18 +1278,17 @@ where
         }
 
         if let Some(arr) = T::array_from_reader(reader)? {
-            Ok(arr)
-        } else {
-            let mut result = ArrayDropGuard {
-                buffer: unsafe { MaybeUninit::uninit().assume_init() },
-                init_count: 0,
-            };
-
-            result.fill_buffer(|| T::deserialize_reader(reader))?;
-
-            // SAFETY: The elements up to `i` have been initialized in `fill_buffer`.
-            Ok(unsafe { result.transmute_to_array() })
+            return Ok(arr);
         }
+        let mut result = ArrayDropGuard {
+            buffer: unsafe { MaybeUninit::uninit().assume_init() },
+            init_count: 0,
+        };
+
+        result.fill_buffer(|| T::deserialize_reader(reader))?;
+
+        // SAFETY: The elements up to `i` have been initialized in `fill_buffer`.
+        Ok(unsafe { result.transmute_to_array() })
     }
 }
 
@@ -1319,19 +1340,18 @@ where
         }
 
         if let Some(arr) = T::array_from_reader(reader).await? {
-            Ok(arr)
-        } else {
-            let mut result = ArrayDropGuard {
-                buffer: unsafe { MaybeUninit::uninit().assume_init() },
-                init_count: 0,
-                reader,
-            };
-
-            result.fill_buffer().await?;
-
-            // SAFETY: The elements up to `i` have been initialized in `fill_buffer`.
-            Ok(unsafe { result.transmute_to_array() })
+            return Ok(arr);
         }
+        let mut result = ArrayDropGuard {
+            buffer: unsafe { MaybeUninit::uninit().assume_init() },
+            init_count: 0,
+            reader,
+        };
+
+        result.fill_buffer().await?;
+
+        // SAFETY: The elements up to `i` have been initialized in `fill_buffer`.
+        Ok(unsafe { result.transmute_to_array() })
     }
 }
 
@@ -1467,10 +1487,11 @@ macro_rules! impl_range {
             #[inline]
             #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-                let [$($side,)*] = {
-                    let res = <[T; $n]>::deserialize_reader(reader);
-                    if _sync { res } else { res.await }?
-                };
+                let [$($side,)*] = if _sync {
+                    <[T; $n]>::deserialize_reader(reader)
+                } else {
+                    <[T; $n]>::deserialize_reader(reader).await
+                }?;
                 Ok($make)
             }
         }
@@ -1484,13 +1505,12 @@ impl_range!(RangeTo, ..end, 1, end);
 impl_range!(RangeToInclusive, ..=end, 1, end);
 
 /// Module is available if borsh is built with `features = ["rc"]`.
+///
+/// Module defines [`BorshDeserialize`]
+#[cfg_attr(feature = "unstable__async", doc = " and [`BorshDeserializeAsync`]")]
+/// implementation for [`alloc::rc::Rc`](std::rc::Rc) and [`alloc::sync::Arc`](std::sync::Arc).
 #[cfg(feature = "rc")]
 pub mod rc {
-    //!
-    //! Module defines [`BorshDeserialize`]
-    #![cfg_attr(feature = "unstable__async", doc = " & [`BorshDeserializeAsync`]")]
-    //! implementation for [`alloc::rc::Rc`](Rc) and [`alloc::sync::Arc`](Arc).
-
     use async_generic::async_generic;
 
     use super::BorshDeserialize;
@@ -1535,10 +1555,12 @@ pub mod rc {
         #[inline]
         #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-            Ok({
-                let res = <Box<T>>::deserialize_reader(reader);
-                if _sync { res } else { res.await }?.into()
-            })
+            if _sync {
+                <Box<T>>::deserialize_reader(reader)
+            } else {
+                <Box<T>>::deserialize_reader(reader).await
+            }
+            .map(Into::into)
         }
     }
 }
@@ -1570,8 +1592,12 @@ where
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let res = T::deserialize_reader(reader);
-        if _sync { res } else { res.await }.map(core::cell::Cell::new)
+        if _sync {
+            T::deserialize_reader(reader)
+        } else {
+            T::deserialize_reader(reader).await
+        }
+        .map(core::cell::Cell::new)
     }
 }
 
@@ -1588,8 +1614,12 @@ where
     #[inline]
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let res = T::deserialize_reader(reader);
-        if _sync { res } else { res.await }.map(core::cell::RefCell::new)
+        if _sync {
+            T::deserialize_reader(reader)
+        } else {
+            T::deserialize_reader(reader).await
+        }
+        .map(core::cell::RefCell::new)
     }
 }
 
@@ -1692,10 +1722,7 @@ use captures::Captures;
 mod captures {
     /// This is a [trick](https://github.com/rust-lang/rfcs/blob/master/text/3498-lifetime-capture-rules-2024.md#the-captures-trick),
     /// used to not over-restrict the lifetime and trait bounds of a RPIT.
-    ///
-    /// Once the MSRV is >=1.82, this should be removed and replaced with `use<>`
-    /// notation for precise capturing.
-    #[doc(hidden)]
+    // TODO: Once the MSRV is >=1.82, this should be removed and replaced with `use<>` notation for precise capturing.
     pub trait Captures<T: ?Sized> {}
 
     impl<T: ?Sized, U: ?Sized> Captures<T> for U {}

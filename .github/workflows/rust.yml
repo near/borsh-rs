@@ -63,7 +63,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Run clippy
-      run: cargo clippy --features unstable__schema --benches -- -D clippy::all
+      run: cargo clippy --features rc,ascii,unstable__schema --benches -- -D clippy::all
+    - name: Run clippy (async)
+      run: cargo clippy --features rc,ascii,unstable__schema,unstable__async --benches -- -D clippy::all
+    - name: Run clippy (tokio)
+      run: cargo clippy --features rc,ascii,unstable__schema,unstable__tokio --benches -- -D clippy::all
+    - name: Run clippy (async-std)
+      run: cargo clippy --features rc,ascii,unstable__schema,unstable__async-std --benches -- -D clippy::all
 
   cargo-fmt:
     runs-on: ubuntu-20.04
@@ -82,7 +88,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: run cargo doc
-      run: RUSTDOCFLAGS="-D warnings" cargo doc --features derive,unstable__schema,unstable__async
+      run: RUSTDOCFLAGS="-D warnings" cargo doc --features derive,rc,ascii,unstable__schema,unstable__async
 
   release-plz:
     runs-on: ubuntu-latest

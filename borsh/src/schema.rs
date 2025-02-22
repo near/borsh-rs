@@ -347,12 +347,13 @@ where
         T::declaration()
     }
 }
+
 /// Module is available if borsh is built with `features = ["rc"]`.
+///
+/// Module defines [BorshSchema] implementation for
+/// [alloc::rc::Rc](std::rc::Rc) and [alloc::sync::Arc](std::sync::Arc).
 #[cfg(feature = "rc")]
 pub mod rc {
-    //!
-    //! Module defines [BorshSchema] implementation for
-    //! [alloc::rc::Rc](std::rc::Rc) and [alloc::sync::Arc](std::sync::Arc).
     use super::{Declaration, Definition};
     use crate::{
         BorshSchema,
@@ -485,11 +486,11 @@ impl BorshSchema for str {
 }
 
 /// Module is available if borsh is built with `features = ["ascii"]`.
+///
+/// Module defines [BorshSchema] implementation for
+/// some types from [ascii](::ascii) crate.
 #[cfg(feature = "ascii")]
 pub mod ascii {
-    //!
-    //! Module defines [BorshSchema] implementation for
-    //! some types from [ascii](::ascii) crate.
     use super::{add_definition, Declaration, Definition};
     use crate::{BorshSchema, __private::maybestd::collections::BTreeMap};
 
