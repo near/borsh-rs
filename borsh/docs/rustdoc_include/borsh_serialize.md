@@ -125,6 +125,8 @@ enum B {
 ###### borsh, expressions, evaluating to `isize`, as discriminant
 This case is not supported:
 ```rust,compile_fail
+use borsh::BorshSerialize;
+
 const fn discrim() -> isize {
     0x14
 }
@@ -144,6 +146,8 @@ enum X {
 ###### borsh explicit discriminant does not support literal values outside of u8 range
 This is not supported:
 ```rust,compile_fail
+use borsh::BorshSerialize;
+
 #[derive(BorshSerialize)]
 #[borsh(use_discriminant = true)]
 enum X {
@@ -192,6 +196,7 @@ use borsh::BorshSerialize;
 use hashbrown::HashMap;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
+
 /// additional bound `T: Ord` (required by `HashMap`) is injected into
 /// derived trait implementation via attribute to avoid adding the bounds on the struct itself
 #[cfg(any(feature = "hashbrown", feature = "std"))]
@@ -208,10 +213,12 @@ struct A<T, U> {
 
 ```rust
 use borsh::BorshSerialize;
+
 trait TraitName {
     type Associated;
     fn method(&self);
 }
+
 /// derive here figures the bound erroneously as `T: borsh::ser::BorshSerialize`
 #[derive(BorshSerialize)]
 struct A<T, V>
