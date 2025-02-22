@@ -3,14 +3,16 @@ use core::future::Future;
 use crate::io::Result as BorshIoResult;
 
 /// Asynchronous read trait.
-/// 
+///
 /// `read_` methods imply little-endian byte order,
 /// otherwise it's incorrect in the context of `borsh`.
-/// 
+///
 /// Blanked implementations for `tokio` and `async-std` are provided.
 pub trait AsyncRead: Unpin + Send {
-    fn read<'a>(&'a mut self, buf: &'a mut [u8])
-        -> impl Future<Output = BorshIoResult<usize>> + Send + 'a;
+    fn read<'a>(
+        &'a mut self,
+        buf: &'a mut [u8],
+    ) -> impl Future<Output = BorshIoResult<usize>> + Send + 'a;
 
     fn read_exact<'a>(
         &'a mut self,
@@ -227,13 +229,16 @@ impl<R: async_std::io::ReadExt + Unpin + Send> AsyncRead for R {
 }
 
 /// Asynchronous write trait.
-/// 
+///
 /// `write_` methods imply little-endian byte order,
 /// otherwise it's incorrect in the context of `borsh`.
-/// 
+///
 /// Blanked implementations for `tokio` and `async-std` are provided.
 pub trait AsyncWrite: Unpin + Send {
-    fn write_all<'a>(&'a mut self, buf: &'a [u8]) -> impl Future<Output = BorshIoResult<()>> + Send + 'a;
+    fn write_all<'a>(
+        &'a mut self,
+        buf: &'a [u8],
+    ) -> impl Future<Output = BorshIoResult<()>> + Send + 'a;
 
     fn write_u8(&mut self, n: u8) -> impl Future<Output = BorshIoResult<()>> + Send {
         async move {
@@ -335,7 +340,10 @@ pub trait AsyncWrite: Unpin + Send {
 #[cfg(feature = "unstable__tokio")]
 impl<R: tokio::io::AsyncWriteExt + Unpin + Send> AsyncWrite for R {
     #[inline]
-    fn write_all<'a>(&'a mut self, buf: &'a [u8]) -> impl Future<Output = BorshIoResult<()>> + Send + 'a {
+    fn write_all<'a>(
+        &'a mut self,
+        buf: &'a [u8],
+    ) -> impl Future<Output = BorshIoResult<()>> + Send + 'a {
         tokio::io::AsyncWriteExt::write_all(self, buf)
     }
 
@@ -403,7 +411,10 @@ impl<R: tokio::io::AsyncWriteExt + Unpin + Send> AsyncWrite for R {
 #[cfg(feature = "unstable__async-std")]
 impl<R: async_std::io::WriteExt + Unpin + Send> AsyncWrite for R {
     #[inline]
-    fn write_all<'a>(&'a mut self, buf: &'a [u8]) -> impl Future<Output = BorshIoResult<()>> + Send + 'a {
+    fn write_all<'a>(
+        &'a mut self,
+        buf: &'a [u8],
+    ) -> impl Future<Output = BorshIoResult<()>> + Send + 'a {
         async_std::io::WriteExt::write_all(self, buf)
     }
 }
