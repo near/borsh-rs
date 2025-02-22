@@ -991,6 +991,7 @@ mod tests_schema {
     }
 
     #[test]
+    #[cfg(not(feature = "async"))]
     fn test_root_error() {
         let item_struct: ItemStruct = parse_quote! {
             struct A {
@@ -1009,7 +1010,49 @@ mod tests_schema {
     }
 
     #[test]
+    #[cfg(feature = "async")]
+    fn test_root_error_feature_async() {
+        let item_struct: ItemStruct = parse_quote! {
+            struct A {
+                #[borsh(boons)]
+                x: u64,
+                y: String,
+            }
+        };
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let err = match Attributes::parse(&first_field.attrs) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        local_insta_assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    #[cfg(not(feature = "async"))]
     fn test_root_bounds_and_wrong_key_combined() {
+        let item_struct: ItemStruct = parse_quote! {
+            struct A {
+                #[borsh(bound(deserialize = "K: Hash"),
+                        schhema(params = "T => <T as TraitName>::Associated, V => Vec<V>")
+                )]
+                x: u64,
+                y: String,
+            }
+        };
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+
+        let err = match Attributes::parse(&first_field.attrs) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        local_insta_assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    #[cfg(feature = "async")]
+    fn test_root_bounds_and_wrong_key_combined_feature_async() {
         let item_struct: ItemStruct = parse_quote! {
             struct A {
                 #[borsh(bound(deserialize = "K: Hash"),
