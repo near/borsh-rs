@@ -26,7 +26,9 @@ enum Variants {
     Bounds(bounds::Bounds),
     SerializeWith(syn::ExprPath),
     DeserializeWith(syn::ExprPath),
+    #[cfg(feature = "async")]
     SerializeWithAsync(syn::ExprPath),
+    #[cfg(feature = "async")]
     DeserializeWithAsync(syn::ExprPath),
     Skip(()),
     #[cfg(feature = "schema")]
