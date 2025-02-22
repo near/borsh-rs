@@ -82,7 +82,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: run cargo doc
-      run: RUSTDOCFLAGS="-D warnings" cargo doc --features derive,unstable__schema
+      run: RUSTDOCFLAGS="-D warnings" cargo doc --features derive,unstable__schema,unstable__async
 
   release-plz:
     runs-on: ubuntu-latest
