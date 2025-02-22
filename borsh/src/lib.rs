@@ -57,19 +57,24 @@ compile_error!(
 
 #[cfg(feature = "std")]
 use std::io as io_impl;
+
+/// Module is available if `borsh` is built with `features = ["unstable__async"]`.
+///
+/// Provides traits for async I/O operations.
 #[cfg(feature = "unstable__async")]
 pub mod async_io;
+
 #[cfg(not(feature = "std"))]
 mod nostd_io;
 
 #[cfg(not(feature = "std"))]
 use nostd_io as io_impl;
 
-/// Subset of `std::io` which is used as part of borsh public API.
+/// Subset of `std::io` which is used as part of `borsh` public API.
 ///
 /// When crate is built with `std` feature disabled (it’s enabled by default),
-/// the exported types are custom borsh types which try to mimic behaviour of
-/// corresponding standard types usually offering subset of features.
+/// the exported types are custom `borsh` types that try to mimic the behavior of
+/// corresponding standard types, usually offering a subset of features.
 pub mod io {
     pub use super::io_impl::{Error, ErrorKind, Read, Result, Write};
 }
