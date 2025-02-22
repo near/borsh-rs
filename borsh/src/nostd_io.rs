@@ -1,8 +1,7 @@
 //! Taken from https://github.com/bbqsrc/bare-io (with adjustments)
 
+use crate::__private::maybestd::string::String;
 use core::{convert::From, fmt, result};
-
-use crate::__private::maybestd::borrow::Cow;
 
 /// A specialized [`Result`] type for I/O operations.
 ///
@@ -68,7 +67,7 @@ enum Repr {
 #[derive(Debug)]
 struct Custom {
     kind: ErrorKind,
-    error: Cow<'static, str>,
+    error: String,
 }
 
 /// A list specifying general categories of I/O error.
@@ -227,15 +226,14 @@ impl Error {
     /// // errors can also be created from other errors
     /// let custom_error2 = Error::new(ErrorKind::Interrupted, custom_error);
     /// ```
-    #[inline]
-    pub fn new<T: Into<Cow<'static, str>>>(kind: ErrorKind, error: T) -> Error {
-        fn new(kind: ErrorKind, error: Cow<'static, str>) -> Error {
-            Error {
-                repr: Repr::Custom(Custom { kind, error }),
-            }
-        }
+    pub fn new<T: Into<String>>(kind: ErrorKind, error: T) -> Error {
+        Self::_new(kind, error.into())
+    }
 
-        new(kind, error.into())
+    fn _new(kind: ErrorKind, error: String) -> Error {
+        Error {
+            repr: Repr::Custom(Custom { kind, error }),
+        }
     }
 
     /// Returns a reference to the inner error wrapped by this error (if any).
@@ -299,7 +297,7 @@ impl Error {
     ///     print_error(Error::new(ErrorKind::Other, "oh no!"));
     /// }
     /// ```
-    pub fn into_inner(self) -> Option<Cow<'static, str>> {
+    pub fn into_inner(self) -> Option<String> {
         match self.repr {
             Repr::Simple(..) => None,
             Repr::Custom(c) => Some(c.error),
@@ -651,7 +649,7 @@ impl Write for &mut [u8] {
     #[inline]
     fn write(&mut self, data: &[u8]) -> Result<usize> {
         let amt = core::cmp::min(data.len(), self.len());
-        let (a, b) = core::mem::take(self).split_at_mut(amt);
+        let (a, b) = core::mem::replace(self, &mut []).split_at_mut(amt);
         a.copy_from_slice(&data[..amt]);
         *self = b;
         Ok(amt)
