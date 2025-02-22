@@ -1155,10 +1155,10 @@ impl BorshDeserialize for std::net::IpAddr {
     #[async_generic(async_signature<R: AsyncRead>(reader: &mut R) -> Result<Self>)]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let kind = if _sync {
-            <u8 as BorshDeserialize>::deserialize_reader(reader)
+            <u8 as BorshDeserialize>::deserialize_reader(reader)?
         } else {
-            <u8 as BorshDeserializeAsync>::deserialize_reader(reader).await
-        }?;
+            <u8 as BorshDeserializeAsync>::deserialize_reader(reader).await?
+        };
         match kind {
             0 => if _sync {
                 <std::net::Ipv4Addr as BorshDeserialize>::deserialize_reader(reader)
