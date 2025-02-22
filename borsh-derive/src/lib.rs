@@ -41,6 +41,7 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
 /// ---
 ///
 /// moved to docs of **Derive Macro** `BorshSerializeAsync` in `borsh` crate
+#[cfg(feature = "async")]
 #[proc_macro_derive(BorshSerializeAsync, attributes(borsh))]
 pub fn borsh_serialize_async(input: TokenStream) -> TokenStream {
     borsh_serialize_generic::<true>(input)
@@ -78,6 +79,7 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
 /// ---
 ///
 /// moved to docs of **Derive Macro** `BorshDeserializeAsync` in `borsh` crate
+#[cfg(feature = "async")]
 #[proc_macro_derive(BorshDeserializeAsync, attributes(borsh))]
 pub fn borsh_deserialize_async(input: TokenStream) -> TokenStream {
     borsh_deserialize_generic::<true>(input)

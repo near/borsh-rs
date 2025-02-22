@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use cfg_if::cfg_if;
 use once_cell::sync::Lazy;
 use syn::{meta::ParseNestedMeta, Attribute, WherePredicate};
 #[cfg(feature = "schema")]
@@ -12,9 +13,10 @@ use self::bounds::BOUNDS_FIELD_PARSE_MAP;
 use super::{
     get_one_attribute,
     parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys, parse_lit_into},
-    BoundType, Symbol, ASYNC_BOUND, BORSH, BOUND, DESERIALIZE_WITH, DESERIALIZE_WITH_ASYNC,
-    SERIALIZE_WITH, SERIALIZE_WITH_ASYNC, SKIP,
+    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SERIALIZE_WITH, SKIP,
 };
+#[cfg(feature = "async")]
+use super::{ASYNC_BOUND, DESERIALIZE_WITH_ASYNC, SERIALIZE_WITH_ASYNC};
 
 pub mod bounds;
 #[cfg(feature = "schema")]
@@ -43,6 +45,7 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
         Ok(Variants::Bounds(bounds_attributes))
     });
 
+    #[cfg(feature = "async")]
     let f_async_bounds: Box<ParseFn> = Box::new(|_attr_name, _meta_item_name, meta| {
         let map_result = meta_get_by_symbol_keys(ASYNC_BOUND, meta, &BOUNDS_FIELD_PARSE_MAP)?;
         let bounds_attributes: bounds::Bounds = map_result.into();
@@ -59,11 +62,13 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
             .map(Variants::DeserializeWith)
     });
 
+    #[cfg(feature = "async")]
     let f_serialize_with_async: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
         parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta)
             .map(Variants::SerializeWithAsync)
     });
 
+    #[cfg(feature = "async")]
     let f_deserialize_with_async: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
         parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta)
             .map(Variants::DeserializeWithAsync)
@@ -79,10 +84,13 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
     let f_skip: Box<ParseFn> =
         Box::new(|_attr_name, _meta_item_name, _meta| Ok(Variants::Skip(())));
     m.insert(BOUND, f_bounds);
+    #[cfg(feature = "async")]
     m.insert(ASYNC_BOUND, f_async_bounds);
     m.insert(SERIALIZE_WITH, f_serialize_with);
     m.insert(DESERIALIZE_WITH, f_deserialize_with);
+    #[cfg(feature = "async")]
     m.insert(SERIALIZE_WITH_ASYNC, f_serialize_with_async);
+    #[cfg(feature = "async")]
     m.insert(DESERIALIZE_WITH_ASYNC, f_deserialize_with_async);
     m.insert(SKIP, f_skip);
     #[cfg(feature = "schema")]
@@ -93,10 +101,13 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
 #[derive(Default, Clone)]
 pub(crate) struct Attributes {
     pub bounds: Option<bounds::Bounds>,
+    #[cfg(feature = "async")]
     pub async_bounds: Option<bounds::Bounds>,
     pub serialize_with: Option<syn::ExprPath>,
     pub deserialize_with: Option<syn::ExprPath>,
+    #[cfg(feature = "async")]
     pub serialize_with_async: Option<syn::ExprPath>,
+    #[cfg(feature = "async")]
     pub deserialize_with_async: Option<syn::ExprPath>,
     pub skip: bool,
     #[cfg(feature = "schema")]
@@ -106,10 +117,13 @@ pub(crate) struct Attributes {
 impl From<BTreeMap<Symbol, Variants>> for Attributes {
     fn from(mut map: BTreeMap<Symbol, Variants>) -> Self {
         let bounds = map.remove(&BOUND);
+        #[cfg(feature = "async")]
         let async_bounds = map.remove(&ASYNC_BOUND);
         let serialize_with = map.remove(&SERIALIZE_WITH);
         let deserialize_with = map.remove(&DESERIALIZE_WITH);
+        #[cfg(feature = "async")]
         let serialize_with_async = map.remove(&SERIALIZE_WITH_ASYNC);
+        #[cfg(feature = "async")]
         let deserialize_with_async = map.remove(&DESERIALIZE_WITH_ASYNC);
         let skip = map.remove(&SKIP);
 
@@ -118,6 +132,7 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
             _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
 
+        #[cfg(feature = "async")]
         let async_bounds = async_bounds.map(|variant| match variant {
             Variants::Bounds(bounds) => bounds,
             _ => unreachable!("only one enum variant is expected to correspond to given map key"),
@@ -133,11 +148,13 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
             _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
 
+        #[cfg(feature = "async")]
         let serialize_with_async = serialize_with_async.map(|variant| match variant {
             Variants::SerializeWithAsync(serialize_with_async) => serialize_with_async,
             _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
 
+        #[cfg(feature = "async")]
         let deserialize_with_async = deserialize_with_async.map(|variant| match variant {
             Variants::DeserializeWithAsync(deserialize_with_async) => deserialize_with_async,
             _ => unreachable!("only one enum variant is expected to correspond to given map key"),
@@ -161,10 +178,13 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
 
         Self {
             bounds,
+            #[cfg(feature = "async")]
             async_bounds,
             serialize_with,
             deserialize_with,
+            #[cfg(feature = "async")]
             serialize_with_async,
+            #[cfg(feature = "async")]
             deserialize_with_async,
             skip: skip.is_some(),
             #[cfg(feature = "schema")]
@@ -182,23 +202,42 @@ pub(crate) fn filter_attrs(
 
 impl Attributes {
     fn check(&self, attr: &Attribute) -> Result<(), syn::Error> {
-        if self.skip
-            && (self.serialize_with.is_some()
-                || self.deserialize_with.is_some()
-                || self.serialize_with_async.is_some()
-                || self.deserialize_with_async.is_some())
-        {
-            return Err(syn::Error::new_spanned(
-                attr,
-                format!(
-                    "`{}` cannot be used at the same time as `{}`, `{}`, `{}` or `{}`",
-                    SKIP.name,
-                    SERIALIZE_WITH.name,
-                    DESERIALIZE_WITH.name,
-                    SERIALIZE_WITH_ASYNC.name,
-                    DESERIALIZE_WITH_ASYNC.name
-                ),
-            ));
+        cfg_if! {
+            if #[cfg(feature = "async")] {
+                let test_serde_with = ||
+                    self.serialize_with.is_some() ||
+                    self.deserialize_with.is_some() ||
+                    self.serialize_with_async.is_some() ||
+                    self.deserialize_with_async.is_some();
+            } else {
+                let test_serde_with = ||
+                    self.serialize_with.is_some() ||
+                    self.deserialize_with.is_some();
+            }
+        }
+
+        if self.skip && test_serde_with() {
+            cfg_if! {
+                if #[cfg(feature = "async")] {
+                    let msg = format!(
+                        "`{}` cannot be used at the same time as `{}`, `{}`, `{}` or `{}`",
+                        SKIP.name,
+                        SERIALIZE_WITH.name,
+                        DESERIALIZE_WITH.name,
+                        SERIALIZE_WITH_ASYNC.name,
+                        DESERIALIZE_WITH_ASYNC.name,
+                    );
+                } else {
+                    let msg = format!(
+                        "`{}` cannot be used at the same time as `{}` or `{}`",
+                        SKIP.name,
+                        SERIALIZE_WITH.name,
+                        DESERIALIZE_WITH.name,
+                    );
+                }
+            }
+
+            return Err(syn::Error::new_spanned(attr, msg));
         }
 
         #[cfg(feature = "schema")]
@@ -227,14 +266,27 @@ impl Attributes {
     }
 
     fn get_bounds<const IS_ASYNC: bool>(&self, ty: BoundType) -> Option<Vec<WherePredicate>> {
-        let bounds = if IS_ASYNC { self.async_bounds.as_ref() } else { self.bounds.as_ref() };
+        let bounds = if IS_ASYNC {
+            cfg_if! {
+                if #[cfg(feature = "async")] {
+                    self.async_bounds.as_ref()
+                } else {
+                    None
+                }
+            }
+        } else {
+            self.bounds.as_ref()
+        };
         bounds.and_then(|bounds| match ty {
             BoundType::Serialize => bounds.serialize.clone(),
             BoundType::Deserialize => bounds.deserialize.clone(),
         })
     }
 
-    pub(crate) fn collect_bounds<const IS_ASYNC: bool>(&self, ty: BoundType) -> Vec<WherePredicate> {
+    pub(crate) fn collect_bounds<const IS_ASYNC: bool>(
+        &self,
+        ty: BoundType,
+    ) -> Vec<WherePredicate> {
         let predicates = self.get_bounds::<IS_ASYNC>(ty);
         predicates.unwrap_or_default()
     }
@@ -306,7 +358,8 @@ mod tests {
     };
 
     struct ParsedBounds {
-        common: Option<bounds::Bounds>,
+        sync: Option<bounds::Bounds>,
+        #[cfg(feature = "async")]
         r#async: Option<bounds::Bounds>,
     }
 
@@ -314,7 +367,8 @@ mod tests {
         // #[borsh(bound(serialize = "...", deserialize = "..."), async_bound(serialize = "...", deserialize = "..."))]
         let borsh_attrs = Attributes::parse(attrs)?;
         Ok(ParsedBounds {
-            common: borsh_attrs.bounds,
+            sync: borsh_attrs.bounds,
+            #[cfg(feature = "async")]
             r#async: borsh_attrs.async_bounds,
         })
     }
@@ -357,7 +411,7 @@ mod tests {
         };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let attrs = parse_bounds(&first_field.attrs).unwrap().common.unwrap();
+        let attrs = parse_bounds(&first_field.attrs).unwrap().sync.unwrap();
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.serialize));
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
     }
@@ -377,7 +431,7 @@ mod tests {
         };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let attrs = parse_bounds(&first_field.attrs).unwrap().common.unwrap();
+        let attrs = parse_bounds(&first_field.attrs).unwrap().sync.unwrap();
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.serialize));
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
     }
@@ -396,7 +450,7 @@ mod tests {
         };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let attrs = parse_bounds(&first_field.attrs).unwrap().common.unwrap();
+        let attrs = parse_bounds(&first_field.attrs).unwrap().sync.unwrap();
         assert_eq!(attrs.serialize.as_ref().unwrap().len(), 0);
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
     }
@@ -412,7 +466,7 @@ mod tests {
         };
 
         let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let attrs = parse_bounds(&first_field.attrs).unwrap().common.unwrap();
+        let attrs = parse_bounds(&first_field.attrs).unwrap().sync.unwrap();
         assert!(attrs.serialize.is_none());
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
     }
@@ -472,6 +526,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn test_async_bounds_parsing1() {
         let item_struct: ItemStruct = parse_quote! {
             struct A {
@@ -495,6 +550,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn test_async_bounds_parsing2() {
         let item_struct: ItemStruct = parse_quote! {
             struct A {
@@ -517,6 +573,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn test_async_bounds_parsing3() {
         let item_struct: ItemStruct = parse_quote! {
             struct A {
@@ -537,6 +594,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn test_async_bounds_parsing4() {
         let item_struct: ItemStruct = parse_quote! {
             struct A {
@@ -553,6 +611,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn test_async_bounds_parsing_error() {
         let item_struct: ItemStruct = parse_quote! {
             struct A {
@@ -571,6 +630,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn test_async_bounds_parsing_error2() {
         let item_struct: ItemStruct = parse_quote! {
             struct A {
@@ -589,6 +649,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn test_async_bounds_parsing_error3() {
         let item_struct: ItemStruct = parse_quote! {
             struct A {
@@ -604,6 +665,44 @@ mod tests {
             Err(err) => err,
         };
         local_insta_assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    #[cfg(feature = "async")]
+    fn test_both_bounds_parsing() {
+        let item_struct: ItemStruct = parse_quote! {
+            struct A {
+                #[borsh(
+                    bound(
+                        deserialize =
+                        "K: Hash + Ord,
+                         V: Eq + Ord",
+                        serialize =
+                        "K: Hash + Eq + Ord,
+                         V: Ord"
+                    ),
+                    async_bound(
+                        deserialize =
+                        "K: Hash + Ord + A,
+                        V: Eq + Ord + AA",
+                        serialize =
+                        "K: Hash + Eq + Ord + A,
+                        V: Ord + AA"
+                    )
+                )]
+                x: u64,
+                y: String,
+            }
+        };
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = parse_bounds(&first_field.attrs).unwrap().sync.unwrap();
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.serialize));
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
+
+        let attrs = parse_bounds(&first_field.attrs).unwrap().r#async.unwrap();
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.serialize));
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
     }
 
     #[test]
@@ -626,6 +725,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn test_async_ser_de_with_parsing1() {
         let item_struct: ItemStruct = parse_quote! {
             struct A {

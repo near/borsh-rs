@@ -1,3 +1,4 @@
+use cfg_if::cfg_if;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{Fields, ItemStruct, Lifetime, Path, Token};
@@ -97,7 +98,13 @@ fn process_field<const IS_ASYNC: bool>(
             &field.ty,
             cratename,
             if IS_ASYNC {
-                parsed.serialize_with_async
+                cfg_if! {
+                    if #[cfg(feature = "async")] {
+                        parsed.serialize_with_async
+                    } else {
+                        None
+                    }
+                }
             } else {
                 parsed.serialize_with
             },
@@ -133,8 +140,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -151,8 +161,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), crate_.clone()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, crate_).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, crate_).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -167,8 +180,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -180,8 +196,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -196,8 +215,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -212,8 +234,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -229,8 +254,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -246,8 +274,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -263,8 +294,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -279,9 +313,14 @@ mod tests {
             }
         };
 
-        let actual = process::<false>(item_struct, default_cratename()).unwrap();
-
+        let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -300,11 +339,15 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn generic_serialize_async_bound() {
         let item_struct: ItemStruct = parse_quote! {
             struct C<T: Debug, U> {
@@ -339,11 +382,15 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn async_override_generic_associated_type_wrong_derive() {
         let item_struct: ItemStruct = parse_quote! {
             struct Parametrized<T, V> where T: TraitName {
@@ -375,11 +422,15 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn check_serialize_with_async_attr() {
         let item_struct: ItemStruct = parse_quote! {
             struct A<K: Ord, V> {
@@ -397,7 +448,28 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "async"))]
     fn check_serialize_with_skip_conflict() {
+        let item_struct: ItemStruct = parse_quote! {
+            struct A<K: Ord, V> {
+                #[borsh(skip, serialize_with = "third_party_impl::serialize_third_party")]
+                x: ThirdParty<K, V>,
+                y: u64,
+            }
+        };
+
+        let actual = process::<false>(item_struct.clone(), default_cratename());
+
+        let err = match actual {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        local_insta_assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    #[cfg(feature = "async")]
+    fn check_serialize_with_skip_conflict_feature_async() {
         let item_struct: ItemStruct = parse_quote! {
             struct A<K: Ord, V> {
                 #[borsh(skip, serialize_with = "third_party_impl::serialize_third_party")]
@@ -424,6 +496,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn check_serialize_with_async_skip_conflict() {
         let item_struct: ItemStruct = parse_quote! {
             struct A<K: Ord, V> {

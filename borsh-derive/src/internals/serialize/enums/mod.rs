@@ -1,3 +1,4 @@
+use cfg_if::cfg_if;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{Fields, Ident, ItemEnum, Lifetime, Path, Token, Variant};
@@ -233,7 +234,13 @@ fn process_field<const IS_ASYNC: bool>(
             &field.ty,
             cratename,
             if IS_ASYNC {
-                parsed.serialize_with_async
+                cfg_if! {
+                    if #[cfg(feature = "async")] {
+                        parsed.serialize_with_async
+                    } else {
+                        None
+                    }
+                }
             } else {
                 parsed.serialize_with
             },
@@ -269,8 +276,11 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -291,8 +301,11 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -315,8 +328,11 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), crate_.clone()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, crate_).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, crate_).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -340,8 +356,11 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -366,8 +385,11 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -385,8 +407,11 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -404,8 +429,11 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -423,8 +451,11 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -443,8 +474,11 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -462,8 +496,11 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -485,11 +522,15 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn generic_serialize_async_bound() {
         let item_enum: ItemEnum = parse_quote! {
             enum A<T: Debug, U> {
@@ -528,11 +569,15 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn check_serialize_with_async_attr() {
         let item_enum: ItemEnum = parse_quote! {
             enum C<K: Ord, V> {
@@ -569,8 +614,11 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
     #[test]
     fn borsh_discriminant_true() {
@@ -589,8 +637,11 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -607,7 +658,10 @@ mod tests {
         let actual = process::<false>(item_enum.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_enum, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_enum, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 }

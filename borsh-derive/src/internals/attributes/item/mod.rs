@@ -1,16 +1,16 @@
 use quote::ToTokens;
-use syn::{spanned::Spanned, Attribute, DeriveInput, Error, Expr, ItemEnum, Path};
+use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum, Path};
 
 use super::{get_one_attribute, parsing};
 use crate::internals::attributes::{BORSH, CRATE, INIT, USE_DISCRIMINANT};
 
-pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
+pub fn check_attributes(derive_input: &DeriveInput) -> syn::Result<()> {
     let borsh = get_one_attribute(&derive_input.attrs)?;
 
     if let Some(attr) = borsh {
         attr.parse_nested_meta(|meta| {
             if meta.path != USE_DISCRIMINANT && meta.path != INIT && meta.path != CRATE {
-                return Err(Error::new(
+                return Err(syn::Error::new(
                     meta.path.span(),
                     "`crate`, `use_discriminant` or `init` are the only supported attributes for `borsh`",
                 ));
@@ -33,9 +33,9 @@ pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
     Ok(())
 }
 
-pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, Error> {
+pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> syn::Result<bool> {
     if input.variants.len() > 256 {
-        return Err(Error::new(
+        return Err(syn::Error::new(
             input.span(),
             "up to 256 enum variants are supported",
         ));
@@ -80,7 +80,7 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, Error>
     Ok(use_discriminant.unwrap_or(false))
 }
 
-pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
+pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> syn::Result<Option<Path>> {
     let mut res = None;
     let attr = attrs.iter().find(|attr| attr.path() == BORSH);
     if let Some(attr) = attr {
@@ -99,7 +99,7 @@ pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Pat
     Ok(res)
 }
 
-pub(crate) fn get_crate(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
+pub(crate) fn get_crate(attrs: &[Attribute]) -> syn::Result<Option<Path>> {
     let mut res = None;
     let attr = attrs.iter().find(|attr| attr.path() == BORSH);
     if let Some(attr) = attr {

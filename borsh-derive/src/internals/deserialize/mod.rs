@@ -1,3 +1,4 @@
+use cfg_if::cfg_if;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{parse_quote, ExprPath, Generics, Ident, Path, Type};
@@ -71,7 +72,13 @@ fn process_field<const IS_ASYNC: bool>(
             &field.ty,
             cratename,
             if IS_ASYNC {
-                parsed.deserialize_with_async
+                cfg_if! {
+                    if #[cfg(feature = "async")] {
+                        parsed.deserialize_with_async
+                    } else {
+                        None
+                    }
+                }
             } else {
                 parsed.deserialize_with
             },

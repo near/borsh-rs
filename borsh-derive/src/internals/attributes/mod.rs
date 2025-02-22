@@ -4,11 +4,11 @@ pub mod field;
 pub mod item;
 pub mod parsing;
 
-/// first field is attr name
-/// second field is its expected value format representation for error printing
 #[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Symbol {
+    /// Name of the attribute
     pub name: &'static str,
+    /// Expected value format representation for error printing
     pub expected: &'static str,
     support: AsyncSupport,
 }
@@ -45,8 +45,8 @@ impl Symbol {
         }
     }
 
-    pub const fn test_support<const IS_ASYNC: bool>(&self) -> bool {
-        if IS_ASYNC {
+    pub const fn test_support<const ASYNC_OR_SYNC_SWITCH: bool>(&self) -> bool {
+        if ASYNC_OR_SYNC_SWITCH {
             matches!(self.support, AsyncSupport::Async | AsyncSupport::Both)
         } else {
             matches!(self.support, AsyncSupport::Sync | AsyncSupport::Both)
@@ -57,8 +57,9 @@ impl Symbol {
 /// `borsh` - top level prefix in nested meta attribute
 pub const BORSH: Symbol = Symbol::new("borsh", "borsh(...)");
 /// `bound` - sub-borsh nested meta, field-level only; `BorshSerialize` and `BorshDeserialize` contexts
-pub const BOUND: Symbol = Symbol::new("bound", "bound(...)");
+pub const BOUND: Symbol = Symbol::new_sync("bound", "bound(...)");
 /// `async_bound` - sub-borsh nested meta, field-level only; `BorshSerializeAsync` and `BorshDeserializeAsync` contexts
+#[cfg(feature = "async")]
 pub const ASYNC_BOUND: Symbol = Symbol::new_async("async_bound", "async_bound(...)");
 ///  `use_discriminant` - sub-borsh nested meta, item-level only, enums only;
 /// `BorshSerialize`, `BorshDeserialize`, `BorshSerializeAsync` and `BorshDeserializeAsync` contexts
@@ -77,9 +78,11 @@ pub const SERIALIZE_WITH: Symbol = Symbol::new_sync("serialize_with", "serialize
 /// `deserialize_with` - sub-borsh nested meta, field-level only; `BorshDeserialize` context
 pub const DESERIALIZE_WITH: Symbol = Symbol::new_sync("deserialize_with", "deserialize_with = ...");
 /// `serialize_with_async` - sub-borsh nested meta, field-level only; `BorshSerializeAsync` context
+#[cfg(feature = "async")]
 pub const SERIALIZE_WITH_ASYNC: Symbol =
     Symbol::new_async("serialize_with_async", "serialize_with_async = ...");
 /// `deserialize_with_async` - sub-borsh nested meta, field-level only; `BorshDeserializeAsync` context
+#[cfg(feature = "async")]
 pub const DESERIALIZE_WITH_ASYNC: Symbol =
     Symbol::new_async("deserialize_with_async", "deserialize_with_async = ...");
 /// `crate` - sub-borsh nested meta, item-level only;

@@ -97,8 +97,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -115,8 +118,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), crate_.clone()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, crate_).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, crate_).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -131,8 +137,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -144,8 +153,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -160,8 +172,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -176,8 +191,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -193,8 +211,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -210,8 +231,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -227,8 +251,11 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
@@ -247,11 +274,15 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn generic_deserialize_async_bound() {
         let item_struct: ItemStruct = parse_quote! {
             struct C<T: Debug, U> {
@@ -284,11 +315,15 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn test_override_automatically_added_default_trait_async() {
         let item_struct: ItemStruct = parse_quote! {
               struct G1<K, V, U>(
@@ -318,11 +353,15 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 
     #[test]
+    #[cfg(feature = "async")]
     fn check_deserialize_with_async_attr() {
         let item_struct: ItemStruct = parse_quote! {
             struct A<K: Ord, V> {
@@ -352,7 +391,10 @@ mod tests {
         let actual = process::<false>(item_struct.clone(), default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
 
-        let actual = process::<true>(item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        #[cfg(feature = "async")]
+        {
+            let actual = process::<true>(item_struct, default_cratename()).unwrap();
+            local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
+        }
     }
 }
