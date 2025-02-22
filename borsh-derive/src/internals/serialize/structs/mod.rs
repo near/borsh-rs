@@ -87,16 +87,10 @@ fn process_field<const IS_ASYNC: bool>(
 ) -> syn::Result<()> {
     let parsed = field::Attributes::parse(&field.attrs)?;
 
-    let needs_bounds_derive = if IS_ASYNC {
-        parsed.needs_async_bounds_derive(BoundType::Serialize)
-    } else {
-        parsed.needs_bounds_derive(BoundType::Serialize)
-    };
-    generics.overrides.extend(if IS_ASYNC {
-        parsed.collect_async_bounds(BoundType::Serialize)
-    } else {
-        parsed.collect_bounds(BoundType::Serialize)
-    });
+    let needs_bounds_derive = parsed.needs_bounds_derive::<IS_ASYNC>(BoundType::Serialize);
+    generics
+        .overrides
+        .extend(parsed.collect_bounds::<IS_ASYNC>(BoundType::Serialize));
 
     if !parsed.skip {
         let delta = field_id.serialize_output::<IS_ASYNC>(

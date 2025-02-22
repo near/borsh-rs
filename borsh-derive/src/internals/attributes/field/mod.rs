@@ -221,39 +221,21 @@ impl Attributes {
         Ok(result)
     }
 
-    pub(crate) fn needs_bounds_derive(&self, ty: BoundType) -> bool {
-        let predicates = self.get_bounds(ty);
+    pub(crate) fn needs_bounds_derive<const IS_ASYNC: bool>(&self, ty: BoundType) -> bool {
+        let predicates = self.get_bounds::<IS_ASYNC>(ty);
         predicates.is_none()
     }
 
-    pub(crate) fn needs_async_bounds_derive(&self, ty: BoundType) -> bool {
-        let predicates = self.get_async_bounds(ty);
-        predicates.is_none()
-    }
-
-    fn get_bounds(&self, ty: BoundType) -> Option<Vec<WherePredicate>> {
-        let bounds = self.bounds.as_ref();
+    fn get_bounds<const IS_ASYNC: bool>(&self, ty: BoundType) -> Option<Vec<WherePredicate>> {
+        let bounds = if IS_ASYNC { self.async_bounds.as_ref() } else { self.bounds.as_ref() };
         bounds.and_then(|bounds| match ty {
             BoundType::Serialize => bounds.serialize.clone(),
             BoundType::Deserialize => bounds.deserialize.clone(),
         })
     }
 
-    fn get_async_bounds(&self, ty: BoundType) -> Option<Vec<WherePredicate>> {
-        let bounds = self.async_bounds.as_ref();
-        bounds.and_then(|bounds| match ty {
-            BoundType::Serialize => bounds.serialize.clone(),
-            BoundType::Deserialize => bounds.deserialize.clone(),
-        })
-    }
-
-    pub(crate) fn collect_bounds(&self, ty: BoundType) -> Vec<WherePredicate> {
-        let predicates = self.get_bounds(ty);
-        predicates.unwrap_or_default()
-    }
-
-    pub(crate) fn collect_async_bounds(&self, ty: BoundType) -> Vec<WherePredicate> {
-        let predicates = self.get_async_bounds(ty);
+    pub(crate) fn collect_bounds<const IS_ASYNC: bool>(&self, ty: BoundType) -> Vec<WherePredicate> {
+        let predicates = self.get_bounds::<IS_ASYNC>(ty);
         predicates.unwrap_or_default()
     }
 }
