@@ -1750,10 +1750,11 @@ pub fn from_reader<R: Read, T: BorshDeserialize>(reader: &mut R) -> Result<T> {
 #[cfg(feature = "unstable__async")]
 use captures::Captures;
 #[cfg(feature = "unstable__async")]
-mod captures {
+pub mod captures {
     /// This is a [trick](https://github.com/rust-lang/rfcs/blob/master/text/3498-lifetime-capture-rules-2024.md#the-captures-trick),
     /// used to not over-restrict the lifetime and trait bounds of a RPIT.
-    // TODO: Once the MSRV is >=1.82, this should be removed and replaced with `use<>` notation for precise capturing.
+    ///
+    /// TODO: Once the MSRV is >=1.82, this should be removed and replaced with `use<>` notation for precise capturing.
     pub trait Captures<T: ?Sized> {}
 
     impl<T: ?Sized, U: ?Sized> Captures<T> for U {}
