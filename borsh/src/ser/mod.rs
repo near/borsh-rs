@@ -271,7 +271,7 @@ macro_rules! impl_for_float {
         impl BorshSerialize for $type {
             #[inline]
             #[async_generic(
-                async_signature<'a, 'w, W: AsyncWrite>(&'a self, writer: &'w mut W) -> Result<()>
+                async_signature<'a, W: AsyncWrite>(&'a self, writer: &'a mut W) -> Result<()>
             )]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
                 if self.is_nan() {
@@ -943,6 +943,7 @@ where
     }
 }
 
+// TODO: use `core` once MSRV >= 1.77
 #[cfg(feature = "std")]
 #[async_generic(
     #[cfg(feature = "unstable__async")]
@@ -975,6 +976,7 @@ impl BorshSerialize for std::net::SocketAddr {
     }
 }
 
+// TODO: use `core` once MSRV >= 1.77
 #[cfg(feature = "std")]
 #[async_generic(
     #[cfg(feature = "unstable__async")]
@@ -994,6 +996,7 @@ impl BorshSerialize for std::net::SocketAddrV4 {
     }
 }
 
+// TODO: use `core` once MSRV >= 1.77
 #[cfg(feature = "std")]
 #[async_generic(
     #[cfg(feature = "unstable__async")]
@@ -1013,6 +1016,7 @@ impl BorshSerialize for std::net::SocketAddrV6 {
     }
 }
 
+// TODO: use `core` once MSRV >= 1.77
 #[cfg(feature = "std")]
 #[async_generic(
     #[cfg(feature = "unstable__async")]
@@ -1042,6 +1046,7 @@ impl BorshSerialize for std::net::Ipv4Addr {
     }
 }
 
+// TODO: use `core` once MSRV >= 1.77
 #[cfg(feature = "std")]
 #[async_generic(
     #[cfg(feature = "unstable__async")]
@@ -1071,6 +1076,7 @@ impl BorshSerialize for std::net::Ipv6Addr {
     }
 }
 
+// TODO: use `core` once MSRV >= 1.77
 #[cfg(feature = "std")]
 #[async_generic(
     #[cfg(feature = "unstable__async")]
