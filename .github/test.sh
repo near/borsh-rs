@@ -15,6 +15,9 @@ pushd borsh
 cargo test --no-run
 cargo test
 cargo test --features derive
+cargo test --features derive,unstable__tokio
+cargo test --features derive,unstable__async-std
+cargo test --features derive,unstable__async 'compile_derives::async_derives'
 cargo test --features unstable__schema
 ########## features = ["ascii"] group
 cargo test --features ascii 'roundtrip::test_ascii_strings'

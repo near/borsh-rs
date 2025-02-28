@@ -1,0 +1,14 @@
+---
+source: borsh-derive/src/internals/serialize/structs/mod.rs
+expression: pretty_print_syn_str(actual).unwrap()
+---
+impl borsh::ser::BorshSerializeAsync for A {
+    async fn serialize<'async_variant, __W: borsh::async_io::AsyncWrite>(
+        &'async_variant self,
+        writer: &'async_variant mut __W,
+    ) -> ::core::result::Result<(), borsh::io::Error> {
+        <u64 as borsh::BorshSerializeAsync>::serialize(&self.x, writer).await?;
+        <String as borsh::BorshSerializeAsync>::serialize(&self.y, writer).await?;
+        ::core::result::Result::Ok(())
+    }
+}

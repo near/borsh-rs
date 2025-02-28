@@ -1,10 +1,10 @@
-use crate::internals::attributes::{BORSH, CRATE, INIT, USE_DISCRIMINANT};
 use quote::ToTokens;
-use syn::{spanned::Spanned, Attribute, DeriveInput, Error, Expr, ItemEnum, Path};
+use syn::{spanned::Spanned, Attribute, DeriveInput, Expr, ItemEnum, Path};
 
 use super::{get_one_attribute, parsing};
+use crate::internals::attributes::{BORSH, CRATE, INIT, USE_DISCRIMINANT};
 
-pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
+pub fn check_attributes(derive_input: &DeriveInput) -> syn::Result<()> {
     let borsh = get_one_attribute(&derive_input.attrs)?;
 
     if let Some(attr) = borsh {
@@ -33,7 +33,7 @@ pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
     Ok(())
 }
 
-pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
+pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> syn::Result<bool> {
     if input.variants.len() > 256 {
         return Err(syn::Error::new(
             input.span(),
@@ -80,7 +80,7 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
     Ok(use_discriminant.unwrap_or(false))
 }
 
-pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
+pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> syn::Result<Option<Path>> {
     let mut res = None;
     let attr = attrs.iter().find(|attr| attr.path() == BORSH);
     if let Some(attr) = attr {
@@ -99,7 +99,7 @@ pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Pat
     Ok(res)
 }
 
-pub(crate) fn get_crate(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
+pub(crate) fn get_crate(attrs: &[Attribute]) -> syn::Result<Option<Path>> {
     let mut res = None;
     let attr = attrs.iter().find(|attr| attr.path() == BORSH);
     if let Some(attr) = attr {
@@ -120,52 +120,50 @@ pub(crate) fn get_crate(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
 
 #[cfg(test)]
 mod tests {
-    use crate::internals::test_helpers::local_insta_assert_debug_snapshot;
-    use quote::{quote, ToTokens};
-    use syn::ItemEnum;
+    use quote::ToTokens;
+    use syn::{parse_quote, ItemEnum};
 
     use super::*;
+    use crate::internals::test_helpers::local_insta_assert_debug_snapshot;
+
     #[test]
     fn test_use_discriminant() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = false)]
             enum AWithUseDiscriminantFalse {
                 X,
                 Y,
             }
-        })
-        .unwrap();
+        };
         let actual = contains_use_discriminant(&item_enum);
         assert!(!actual.unwrap());
     }
 
     #[test]
     fn test_use_discriminant_true() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = true)]
             enum AWithUseDiscriminantTrue {
                 X,
                 Y,
             }
-        })
-        .unwrap();
+        };
         let actual = contains_use_discriminant(&item_enum);
         assert!(actual.unwrap());
     }
 
     #[test]
     fn test_use_discriminant_wrong_value() {
-        let item_enum: ItemEnum = syn::parse2(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = 111)]
             enum AWithUseDiscriminantFalse {
                 X,
                 Y,
             }
-        })
-        .unwrap();
+        };
         let actual = contains_use_discriminant(&item_enum);
         let err = match actual {
             Ok(..) => unreachable!("expecting error here"),
@@ -175,64 +173,60 @@ mod tests {
     }
     #[test]
     fn test_check_attrs_use_discriminant_on_struct() {
-        let item_enum: DeriveInput = syn::parse2(quote! {
+        let derive_input: DeriveInput = parse_quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(use_discriminant = false)]
             struct AWithUseDiscriminantFalse {
                 x: X,
                 y: Y,
             }
-        })
-        .unwrap();
-        let actual = check_attributes(&item_enum);
+        };
+        let actual = check_attributes(&derive_input);
         local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
     #[test]
     fn test_check_attrs_borsh_skip_on_whole_item() {
-        let item_enum: DeriveInput = syn::parse2(quote! {
+        let derive_input: DeriveInput = parse_quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(skip)]
             struct AWithUseDiscriminantFalse {
                  x: X,
                  y: Y,
             }
-        })
-        .unwrap();
-        let actual = check_attributes(&item_enum);
+        };
+        let actual = check_attributes(&derive_input);
         local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
     #[test]
     fn test_check_attrs_borsh_invalid_on_whole_item() {
-        let item_enum: DeriveInput = syn::parse2(quote! {
+        let derive_input: DeriveInput = parse_quote! {
             #[derive(BorshDeserialize, Debug)]
             #[borsh(invalid)]
             enum AWithUseDiscriminantFalse {
                 X,
                 Y,
             }
-        })
-        .unwrap();
-        let actual = check_attributes(&item_enum);
+        };
+        let actual = check_attributes(&derive_input);
         local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
     #[test]
     fn test_check_attrs_init_function() {
-        let item_struct = syn::parse2::<DeriveInput>(quote! {
+        let derive_input: DeriveInput = parse_quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(init = initialization_method)]
             struct A<'a> {
                 x: u64,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = check_attributes(&item_struct);
+        let actual = check_attributes(&derive_input);
         assert!(actual.is_ok());
     }
 
     #[test]
     fn test_check_attrs_init_function_with_use_discriminant_reversed() {
-        let item_struct = syn::parse2::<DeriveInput>(quote! {
+        let derive_input: DeriveInput = parse_quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(use_discriminant=true, init = initialization_method)]
             enum A {
@@ -240,16 +234,15 @@ mod tests {
                 C,
                 D= 10,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = check_attributes(&item_struct);
+        let actual = check_attributes(&derive_input);
         assert!(actual.is_ok());
     }
 
     #[test]
     fn test_reject_multiple_borsh_attrs() {
-        let item_struct = syn::parse2::<DeriveInput>(quote! {
+        let derive_input: DeriveInput = parse_quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(use_discriminant=true)]
             #[borsh(init = initialization_method)]
@@ -258,16 +251,15 @@ mod tests {
                 C,
                 D= 10,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = check_attributes(&item_struct);
+        let actual = check_attributes(&derive_input);
         local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
 
     #[test]
     fn test_check_attrs_init_function_with_use_discriminant() {
-        let item_struct = syn::parse2::<DeriveInput>(quote! {
+        let derive_input: DeriveInput = parse_quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(init = initialization_method, use_discriminant=true)]
             enum A {
@@ -275,16 +267,15 @@ mod tests {
                 C,
                 D= 10,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = check_attributes(&item_struct);
+        let actual = check_attributes(&derive_input);
         assert!(actual.is_ok());
     }
 
     #[test]
     fn test_check_attrs_init_function_wrong_format() {
-        let item_struct: DeriveInput = syn::parse2(quote! {
+        let derive_input: DeriveInput = parse_quote! {
         #[derive(BorshDeserialize, Debug)]
         #[borsh(init_func = initialization_method)]
         struct A<'a> {
@@ -295,23 +286,21 @@ mod tests {
             v: Vec<String>,
 
         }
-            })
-        .unwrap();
-        let actual = check_attributes(&item_struct);
+            };
+        let actual = check_attributes(&derive_input);
         local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
     #[test]
     fn test_init_function() {
-        let item_struct = syn::parse2::<DeriveInput>(quote! {
+        let derive_input: DeriveInput = parse_quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(init = initialization_method)]
             struct A<'a> {
                 x: u64,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = contains_initialize_with(&item_struct.attrs);
+        let actual = contains_initialize_with(&derive_input.attrs);
         assert_eq!(
             actual.unwrap().to_token_stream().to_string(),
             "initialization_method"
@@ -320,16 +309,15 @@ mod tests {
 
     #[test]
     fn test_init_function_parsing_error() {
-        let item_struct = syn::parse2::<DeriveInput>(quote! {
+        let derive_input: DeriveInput = parse_quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(init={strange; blocky})]
             struct A {
                 lazy: Option<u64>,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = contains_initialize_with(&item_struct.attrs);
+        let actual = contains_initialize_with(&derive_input.attrs);
         let err = match actual {
             Ok(..) => unreachable!("expecting error here"),
             Err(err) => err,
@@ -339,7 +327,7 @@ mod tests {
 
     #[test]
     fn test_init_function_with_use_discriminant() {
-        let item_struct = syn::parse2::<ItemEnum>(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(init = initialization_method, use_discriminant=true)]
             enum A {
@@ -347,21 +335,20 @@ mod tests {
                 C,
                 D,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = contains_initialize_with(&item_struct.attrs);
+        let actual = contains_initialize_with(&item_enum.attrs);
         assert_eq!(
             actual.unwrap().to_token_stream().to_string(),
             "initialization_method"
         );
-        let actual = contains_use_discriminant(&item_struct);
+        let actual = contains_use_discriminant(&item_enum);
         assert!(actual.unwrap());
     }
 
     #[test]
     fn test_init_function_with_use_discriminant_reversed() {
-        let item_struct = syn::parse2::<ItemEnum>(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(use_discriminant=true, init = initialization_method)]
             enum A {
@@ -369,21 +356,20 @@ mod tests {
                 C,
                 D,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = contains_initialize_with(&item_struct.attrs);
+        let actual = contains_initialize_with(&item_enum.attrs);
         assert_eq!(
             actual.unwrap().to_token_stream().to_string(),
             "initialization_method"
         );
-        let actual = contains_use_discriminant(&item_struct);
+        let actual = contains_use_discriminant(&item_enum);
         assert!(actual.unwrap());
     }
 
     #[test]
     fn test_init_function_with_use_discriminant_with_crate() {
-        let item_struct = syn::parse2::<ItemEnum>(quote! {
+        let item_enum: ItemEnum = parse_quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(init = initialization_method, crate = "reexporter::borsh", use_discriminant=true)]
             enum A {
@@ -391,18 +377,17 @@ mod tests {
                 C,
                 D,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = contains_initialize_with(&item_struct.attrs);
+        let actual = contains_initialize_with(&item_enum.attrs);
         assert_eq!(
             actual.unwrap().to_token_stream().to_string(),
             "initialization_method"
         );
-        let actual = contains_use_discriminant(&item_struct);
+        let actual = contains_use_discriminant(&item_enum);
         assert!(actual.unwrap());
 
-        let crate_ = get_crate(&item_struct.attrs);
+        let crate_ = get_crate(&item_enum.attrs);
         assert_eq!(
             crate_.unwrap().to_token_stream().to_string(),
             "reexporter :: borsh"

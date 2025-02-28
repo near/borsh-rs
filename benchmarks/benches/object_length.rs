@@ -1,5 +1,5 @@
 use benchmarks::{Generate, ValidatorStake};
-use borsh::{to_vec, BorshSerialize};
+use borsh::BorshSerialize;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rand::SeedableRng;
 
@@ -11,7 +11,7 @@ where
     let mut group = c.benchmark_group(group_name);
 
     let objects: Vec<_> = (0..num_samples).map(|_| T::generate(&mut rng)).collect();
-    let borsh_datas: Vec<Vec<u8>> = objects.iter().map(|t| to_vec(t).unwrap()).collect();
+    let borsh_datas: Vec<Vec<u8>> = objects.iter().map(|t| borsh::to_vec(t).unwrap()).collect();
     let borsh_sizes: Vec<_> = borsh_datas.iter().map(|d| d.len()).collect();
 
     for i in 0..objects.len() {

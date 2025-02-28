@@ -1,0 +1,25 @@
+---
+source: borsh-derive/src/internals/serialize/enums/mod.rs
+expression: pretty_print_syn_str(actual).unwrap()
+---
+impl borsh::ser::BorshSerializeAsync for AB {
+    async fn serialize<'async_variant, __W: borsh::async_io::AsyncWrite>(
+        &'async_variant self,
+        writer: &'async_variant mut __W,
+    ) -> ::core::result::Result<(), borsh::io::Error> {
+        let variant_idx: u8 = match self {
+            AB::B { .. } => 0u8,
+            AB::NegatedVariant { .. } => 1u8,
+        };
+        writer.write_u8(variant_idx).await?;
+        match self {
+            AB::B { d, .. } => {
+                <u32 as borsh::BorshSerializeAsync>::serialize(d, writer).await?;
+            }
+            AB::NegatedVariant { beta, .. } => {
+                <String as borsh::BorshSerializeAsync>::serialize(beta, writer).await?;
+            }
+        }
+        ::core::result::Result::Ok(())
+    }
+}

@@ -1,0 +1,7 @@
+---
+source: borsh-derive/src/internals/attributes/field/mod.rs
+expression: err
+---
+Error(
+    "malformed async_bound attribute, expected `async_bound(deserialize = ..., serialize = ...)`",
+)

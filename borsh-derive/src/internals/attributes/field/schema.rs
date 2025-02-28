@@ -1,10 +1,5 @@
 use std::collections::BTreeMap;
 
-use crate::internals::attributes::{
-    parsing::{meta_get_by_symbol_keys, parse_lit_into_vec},
-    schema_keys::{DECLARATION, DEFINITIONS, PARAMS, WITH_FUNCS},
-    Symbol,
-};
 use once_cell::sync::Lazy;
 use quote::ToTokens;
 use syn::{
@@ -14,6 +9,11 @@ use syn::{
 };
 
 use self::with_funcs::{WithFuncs, WITH_FUNCS_FIELD_PARSE_MAP};
+use crate::internals::attributes::{
+    parsing::{meta_get_by_symbol_keys, parse_lit_into_vec},
+    schema_keys::{DECLARATION, DEFINITIONS, PARAMS, WITH_FUNCS},
+    Symbol,
+};
 
 pub mod with_funcs;
 
@@ -43,7 +43,7 @@ pub static SCHEMA_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::
                 &meta.path,
                 format!(
                     "both `{}` and `{}` have to be specified at the same time",
-                    DECLARATION.1, DEFINITIONS.1,
+                    DECLARATION.expected, DEFINITIONS.expected,
                 ),
             ));
         }

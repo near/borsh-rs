@@ -1,9 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use quote::{quote, ToTokens};
+use quote::ToTokens;
 use syn::{
-    punctuated::Pair, Field, GenericArgument, Generics, Ident, Macro, Path, PathArguments,
-    PathSegment, ReturnType, Type, TypeParamBound, TypePath, WhereClause, WherePredicate,
+    parse_quote, punctuated::Pair, Field, GenericArgument, Generics, Ident, Macro, Path,
+    PathArguments, PathSegment, ReturnType, Type, TypeParamBound, TypePath, WhereClause,
+    WherePredicate,
 };
 
 pub fn default_where(where_clause: Option<&WhereClause>) -> WhereClause {
@@ -20,10 +21,7 @@ pub fn compute_predicates(params: Vec<Type>, traitname: &Path) -> Vec<WherePredi
     params
         .into_iter()
         .map(|param| {
-            syn::parse2(quote! {
-                #param: #traitname
-            })
-            .unwrap()
+            parse_quote! { #param: #traitname }
         })
         .collect()
 }
@@ -31,21 +29,21 @@ pub fn compute_predicates(params: Vec<Type>, traitname: &Path) -> Vec<WherePredi
 // Remove the default from every type parameter because in the generated impls
 // they look like associated types: "error: associated type bindings are not
 // allowed here".
-pub fn without_defaults(generics: &Generics) -> Generics {
-    syn::Generics {
+pub fn without_defaults(generics: Generics) -> Generics {
+    Generics {
         params: generics
             .params
-            .iter()
+            .into_iter()
             .map(|param| match param {
                 syn::GenericParam::Type(param) => syn::GenericParam::Type(syn::TypeParam {
                     eq_token: None,
                     default: None,
-                    ..param.clone()
+                    ..param
                 }),
-                _ => param.clone(),
+                _ => param,
             })
             .collect(),
-        ..generics.clone()
+        ..generics
     }
 }
 

@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-use std::convert::TryFrom;
+use std::{collections::HashMap, convert::TryFrom};
 
 use proc_macro2::{Ident, TokenStream};
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{punctuated::Punctuated, token::Comma, Variant};
 
 pub struct Discriminants(HashMap<Ident, TokenStream>);
@@ -15,8 +14,8 @@ impl Discriminants {
 
         for variant in variants {
             let this_discriminant = variant.discriminant.clone().map_or_else(
-                || quote! { #next_discriminant_if_not_specified },
-                |(_, e)| quote! { #e },
+                || next_discriminant_if_not_specified,
+                |(_, e)| e.into_token_stream(),
             );
 
             next_discriminant_if_not_specified = quote! { #this_discriminant + 1 };
@@ -39,8 +38,7 @@ impl Discriminants {
             )
         })?;
         let result = if use_discriminant {
-            let discriminant_value = self.0.get(variant_ident).unwrap();
-            quote! { #discriminant_value }
+            self.0.get(variant_ident).unwrap().clone() // discriminant value
         } else {
             quote! { #variant_idx }
         };

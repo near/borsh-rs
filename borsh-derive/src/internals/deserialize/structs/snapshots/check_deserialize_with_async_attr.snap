@@ -1,0 +1,21 @@
+---
+source: borsh-derive/src/internals/deserialize/structs/mod.rs
+expression: pretty_print_syn_str(actual).unwrap()
+---
+impl<K: Ord, V> borsh::de::BorshDeserialize for A<K, V>
+where
+    K: borsh::de::BorshDeserialize,
+    V: borsh::de::BorshDeserialize,
+{
+    fn deserialize_reader<__R: borsh::io::Read>(
+        reader: &mut __R,
+    ) -> ::core::result::Result<Self, borsh::io::Error> {
+        ::core::result::Result::Ok(Self {
+            x: <ThirdParty<
+                K,
+                V,
+            > as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+            y: <u64 as borsh::BorshDeserialize>::deserialize_reader(reader)?,
+        })
+    }
+}

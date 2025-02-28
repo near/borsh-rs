@@ -137,9 +137,11 @@ pub mod schema_imports {
         vec::Vec,
     };
 
-    pub use borsh::schema::{
-        add_definition, BorshSchemaContainer, Declaration, Definition, Fields,
-        SchemaContainerValidateError, SchemaMaxSerializedSizeError,
+    pub use borsh::{
+        schema::{
+            add_definition, BorshSchemaContainer, Declaration, Definition, Fields,
+            SchemaContainerValidateError, SchemaMaxSerializedSizeError,
+        },
+        schema_container_of, BorshSchema,
     };
-    pub use borsh::{schema_container_of, BorshSchema};
 }
