@@ -4,6 +4,8 @@ use core::{convert::TryFrom, marker::PhantomData};
 
 use async_generic::async_generic;
 
+#[cfg(feature = "unstable__async")]
+use crate::async_io::AsyncWrite;
 use crate::{
     __private::maybestd::{
         borrow::{Cow, ToOwned},
@@ -15,8 +17,6 @@ use crate::{
     error::check_zst,
     io::{Error, ErrorKind, Result, Write},
 };
-#[cfg(feature = "unstable__async")]
-use crate::async_io::AsyncWrite;
 
 pub(crate) mod helpers;
 
