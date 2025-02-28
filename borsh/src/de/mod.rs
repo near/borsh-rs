@@ -1361,9 +1361,7 @@ where
             init_count: usize,
             reader: &'r mut R,
         }
-        impl<'r, T: BorshDeserializeAsync, const N: usize, R: AsyncRead> Drop
-            for ArrayDropGuard<'r, T, N, R>
-        {
+        impl<T: BorshDeserializeAsync, const N: usize, R: AsyncRead> Drop for ArrayDropGuard<'_, T, N, R> {
             fn drop(&mut self) {
                 let init_range = &mut self.buffer[..self.init_count];
                 // SAFETY: Elements up to self.init_count have been initialized. Assumes this value
@@ -1375,7 +1373,7 @@ where
             }
         }
 
-        impl<'r, T: BorshDeserializeAsync, const N: usize, R: AsyncRead> ArrayDropGuard<'r, T, N, R> {
+        impl<T: BorshDeserializeAsync, const N: usize, R: AsyncRead> ArrayDropGuard<'_, T, N, R> {
             unsafe fn transmute_to_array(mut self) -> [T; N] {
                 debug_assert_eq!(self.init_count, N);
                 // Set init_count to 0 so that the values do not get dropped twice.
