@@ -333,6 +333,7 @@ impl BorshDeserialize for u8 {
 macro_rules! impl_for_integer {
     ($type: ident) => {
         impl BorshDeserialize for $type {
+            #[inline]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                 let mut buf = [0u8; size_of::<$type>()];
                 reader
