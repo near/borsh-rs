@@ -14,11 +14,11 @@ use syn::{DeriveInput, Error, ItemEnum, ItemStruct, ItemUnion, Path};
 ///  by convention, local to borsh-derive crate, imports from proc_macro (1) are not allowed in `internals` module or in any of its submodules.
 mod internals;
 
-use crate::internals::attributes::item;
-
 #[cfg(feature = "schema")]
 use internals::schema;
 use internals::{cratename, deserialize, serialize};
+
+use crate::internals::attributes::item;
 
 fn check_attrs_get_cratename(input: &TokenStream) -> Result<Path, Error> {
     let input = input.clone();
@@ -35,6 +35,19 @@ fn check_attrs_get_cratename(input: &TokenStream) -> Result<Path, Error> {
 /// moved to docs of **Derive Macro** `BorshSerialize` in `borsh` crate
 #[proc_macro_derive(BorshSerialize, attributes(borsh))]
 pub fn borsh_serialize(input: TokenStream) -> TokenStream {
+    borsh_serialize_generic::<false>(input)
+}
+
+/// ---
+///
+/// moved to docs of **Derive Macro** `BorshSerializeAsync` in `borsh` crate
+#[cfg(feature = "async")]
+#[proc_macro_derive(BorshSerializeAsync, attributes(borsh))]
+pub fn borsh_serialize_async(input: TokenStream) -> TokenStream {
+    borsh_serialize_generic::<true>(input)
+}
+
+fn borsh_serialize_generic<const IS_ASYNC: bool>(input: TokenStream) -> TokenStream {
     let cratename = match check_attrs_get_cratename(&input) {
         Ok(cratename) => cratename,
         Err(err) => {
@@ -43,19 +56,16 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     };
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        serialize::structs::process(&input, cratename)
+        serialize::structs::process::<IS_ASYNC>(input, cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        serialize::enums::process(&input, cratename)
+        serialize::enums::process::<IS_ASYNC>(input, cratename)
     } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
-        serialize::unions::process(&input, cratename)
+        serialize::unions::process::<IS_ASYNC>(input, cratename)
     } else {
         // Derive macros can only be defined on structs, enums, and unions.
         unreachable!()
     };
-    TokenStream::from(match res {
-        Ok(res) => res,
-        Err(err) => err.to_compile_error(),
-    })
+    TokenStream::from(res.unwrap_or_else(|err| err.to_compile_error()))
 }
 
 /// ---
@@ -63,6 +73,19 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
 /// moved to docs of **Derive Macro** `BorshDeserialize` in `borsh` crate
 #[proc_macro_derive(BorshDeserialize, attributes(borsh))]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
+    borsh_deserialize_generic::<false>(input)
+}
+
+/// ---
+///
+/// moved to docs of **Derive Macro** `BorshDeserializeAsync` in `borsh` crate
+#[cfg(feature = "async")]
+#[proc_macro_derive(BorshDeserializeAsync, attributes(borsh))]
+pub fn borsh_deserialize_async(input: TokenStream) -> TokenStream {
+    borsh_deserialize_generic::<true>(input)
+}
+
+fn borsh_deserialize_generic<const IS_ASYNC: bool>(input: TokenStream) -> TokenStream {
     let cratename = match check_attrs_get_cratename(&input) {
         Ok(cratename) => cratename,
         Err(err) => {
@@ -71,19 +94,16 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     };
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        deserialize::structs::process(&input, cratename)
+        deserialize::structs::process::<IS_ASYNC>(input, cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        deserialize::enums::process(&input, cratename)
+        deserialize::enums::process::<IS_ASYNC>(input, cratename)
     } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
-        deserialize::unions::process(&input, cratename)
+        deserialize::unions::process::<IS_ASYNC>(input, cratename)
     } else {
         // Derive macros can only be defined on structs, enums, and unions.
         unreachable!()
     };
-    TokenStream::from(match res {
-        Ok(res) => res,
-        Err(err) => err.to_compile_error(),
-    })
+    TokenStream::from(res.unwrap_or_else(|err| err.to_compile_error()))
 }
 
 /// ---
@@ -100,11 +120,11 @@ pub fn borsh_schema(input: TokenStream) -> TokenStream {
     };
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        schema::structs::process(&input, cratename)
+        schema::structs::process(input, cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        schema::enums::process(&input, cratename)
+        schema::enums::process(input, cratename)
     } else if syn::parse::<ItemUnion>(input).is_ok() {
-        Err(syn::Error::new(
+        Err(Error::new(
             Span::call_site(),
             "Borsh schema does not support unions yet.",
         ))
@@ -112,8 +132,5 @@ pub fn borsh_schema(input: TokenStream) -> TokenStream {
         // Derive macros can only be defined on structs, enums, and unions.
         unreachable!()
     };
-    TokenStream::from(match res {
-        Ok(res) => res,
-        Err(err) => err.to_compile_error(),
-    })
+    TokenStream::from(res.unwrap_or_else(|err| err.to_compile_error()))
 }

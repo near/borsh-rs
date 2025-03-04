@@ -1,0 +1,32 @@
+---
+source: borsh-derive/src/internals/serialize/enums/mod.rs
+expression: pretty_print_syn_str(actual).unwrap()
+---
+impl<T: Debug, U> borsh::ser::BorshSerializeAsync for A<T, U>
+where
+    T: borsh::ser::BorshSerializeAsync + PartialOrd,
+    U: borsh::ser::BorshSerializeAsync,
+{
+    async fn serialize<'async_variant, __W: borsh::async_io::AsyncWrite>(
+        &'async_variant self,
+        writer: &'async_variant mut __W,
+    ) -> ::core::result::Result<(), borsh::io::Error> {
+        let variant_idx: u8 = match self {
+            A::C { .. } => 0u8,
+            A::D(..) => 1u8,
+        };
+        writer.write_u8(variant_idx).await?;
+        match self {
+            A::C { a, b, .. } => {
+                <String as borsh::BorshSerializeAsync>::serialize(a, writer).await?;
+                <HashMap<T, U> as borsh::BorshSerializeAsync>::serialize(b, writer)
+                    .await?;
+            }
+            A::D(id0, id1) => {
+                <u32 as borsh::BorshSerializeAsync>::serialize(id0, writer).await?;
+                <u32 as borsh::BorshSerializeAsync>::serialize(id1, writer).await?;
+            }
+        }
+        ::core::result::Result::Ok(())
+    }
+}

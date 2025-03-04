@@ -1,14 +1,15 @@
 //! This library contains data structures used for benchmarking.
 
+extern crate speedy_derive;
+
 use borsh::{BorshDeserialize, BorshSerialize};
 use rand::distributions::{Alphanumeric, Distribution, Standard};
 use rand::Rng;
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
-extern crate speedy_derive;
 use speedy::{Context, Readable, Reader, Writable, Writer};
 
 pub trait Generate {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self;
+    fn generate<R: Rng>(rng: &mut R) -> Self;
 }
 
 #[derive(
@@ -16,7 +17,7 @@ pub trait Generate {
 )]
 pub struct CryptoHash([u8; 32]);
 impl Generate for CryptoHash {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         let mut res = [0u8; 32];
         rng.fill_bytes(&mut res);
         CryptoHash(res)
@@ -27,7 +28,7 @@ impl<'a, C> Readable<'a, C> for CryptoHash
 where
     C: Context,
 {
-    fn read_from<R: Reader<'a, C>>(reader: &mut R) -> std::result::Result<Self, std::io::Error> {
+    fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, std::io::Error> {
         let mut data = [0u8; 32];
         reader.read_bytes(&mut data)?;
         Ok(Self(data))
@@ -38,7 +39,7 @@ impl<C: Context> Writable<C> for CryptoHash {
     fn write_to<'a, T: ?Sized + Writer<'a, C>>(
         &'a self,
         writer: &mut T,
-    ) -> std::result::Result<(), std::io::Error> {
+    ) -> Result<(), std::io::Error> {
         writer.write_bytes(&self.0).map(|_| ())
     }
 }
@@ -48,7 +49,7 @@ impl<C: Context> Writable<C> for CryptoHash {
 )]
 pub struct MerkleHash([u8; 32]);
 impl Generate for MerkleHash {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         let mut res = [0u8; 32];
         rng.fill_bytes(&mut res);
         MerkleHash(res)
@@ -59,7 +60,7 @@ impl<'a, C> Readable<'a, C> for MerkleHash
 where
     C: Context,
 {
-    fn read_from<R: Reader<'a, C>>(reader: &mut R) -> std::result::Result<Self, std::io::Error> {
+    fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, std::io::Error> {
         let mut data = [0u8; 32];
         reader.read_bytes(&mut data)?;
         Ok(Self(data))
@@ -70,7 +71,7 @@ impl<C: Context> Writable<C> for MerkleHash {
     fn write_to<'a, T: ?Sized + Writer<'a, C>>(
         &'a self,
         writer: &mut T,
-    ) -> std::result::Result<(), std::io::Error> {
+    ) -> Result<(), std::io::Error> {
         writer.write_bytes(&self.0).map(|_| ())
     }
 }
@@ -80,7 +81,7 @@ impl<C: Context> Writable<C> for MerkleHash {
 )]
 pub struct Signature([u8; 32]);
 impl Generate for Signature {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         let mut res = [0u8; 32];
         rng.fill_bytes(&mut res);
         Signature(res)
@@ -91,7 +92,7 @@ impl<'a, C> Readable<'a, C> for Signature
 where
     C: Context,
 {
-    fn read_from<R: Reader<'a, C>>(reader: &mut R) -> std::result::Result<Self, std::io::Error> {
+    fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, std::io::Error> {
         let mut data = [0u8; 32];
         reader.read_bytes(&mut data)?;
         Ok(Self(data))
@@ -102,7 +103,7 @@ impl<C: Context> Writable<C> for Signature {
     fn write_to<'a, T: ?Sized + Writer<'a, C>>(
         &'a self,
         writer: &mut T,
-    ) -> std::result::Result<(), std::io::Error> {
+    ) -> Result<(), std::io::Error> {
         writer.write_bytes(&self.0).map(|_| ())
     }
 }
@@ -122,7 +123,7 @@ impl<C: Context> Writable<C> for Signature {
 )]
 pub struct PublicKey([u8; 32]);
 impl Generate for PublicKey {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         let mut res = [0u8; 32];
         rng.fill_bytes(&mut res);
         PublicKey(res)
@@ -130,7 +131,7 @@ impl Generate for PublicKey {
 }
 
 impl Generate for (PublicKey, PublicKey) {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         (PublicKey::generate(rng), PublicKey::generate(rng))
     }
 }
@@ -139,7 +140,7 @@ impl<'a, C> Readable<'a, C> for PublicKey
 where
     C: Context,
 {
-    fn read_from<R: Reader<'a, C>>(reader: &mut R) -> std::result::Result<Self, std::io::Error> {
+    fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, std::io::Error> {
         let mut data = [0u8; 32];
         reader.read_bytes(&mut data)?;
         Ok(Self(data))
@@ -150,7 +151,7 @@ impl<C: Context> Writable<C> for PublicKey {
     fn write_to<'a, T: ?Sized + Writer<'a, C>>(
         &'a self,
         writer: &mut T,
-    ) -> std::result::Result<(), std::io::Error> {
+    ) -> Result<(), std::io::Error> {
         writer.write_bytes(&self.0).map(|_| ())
     }
 }
@@ -169,20 +170,20 @@ impl<C: Context> Writable<C> for PublicKey {
 )]
 pub struct AccountId(String);
 impl Generate for String {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         let len: usize = rng.gen_range(5, 200);
         rng.sample_iter(&Alphanumeric).take(len).collect::<String>()
     }
 }
 
 impl Generate for (String, String) {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         (String::generate(rng), String::generate(rng))
     }
 }
 
 impl Generate for AccountId {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         AccountId(String::generate(rng))
     }
 }
@@ -208,7 +209,7 @@ pub struct ValidatorStake {
 }
 
 impl Generate for ValidatorStake {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             account_id: AccountId::generate(rng),
             public_key: PublicKey::generate(rng),
@@ -223,7 +224,7 @@ pub type Weight = u64;
 pub fn generate_vec_primitives<T, R>(rng: &mut R, min_number: usize, max_number: usize) -> Vec<T>
 where
     Standard: Distribution<T>,
-    R: rand::Rng,
+    R: Rng,
 {
     let num: usize = rng.gen_range(min_number, max_number + 1);
     let mut res = vec![];
@@ -233,7 +234,7 @@ where
     res
 }
 
-pub fn generate_vec<T: Generate, R: rand::Rng>(
+pub fn generate_vec<T: Generate, R: Rng>(
     rng: &mut R,
     min_number: usize,
     max_number: usize,
@@ -272,7 +273,7 @@ pub struct BlockHeaderInner {
 }
 
 impl Generate for BlockHeaderInner {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             height: u64::generate(rng),
             epoch_hash: CryptoHash::generate(rng),
@@ -307,7 +308,7 @@ pub struct BlockHeader {
 }
 
 impl Generate for BlockHeader {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             inner: BlockHeaderInner::generate(rng),
             signature: Signature::generate(rng),
@@ -334,7 +335,7 @@ pub struct Block {
 }
 
 impl Generate for Block {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             header: BlockHeader::generate(rng),
             transactions: generate_vec(rng, 0, 1000),
@@ -361,7 +362,7 @@ pub struct SignedTransaction {
 }
 
 impl Generate for SignedTransaction {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             transaction: Transaction::generate(rng),
             signature: Signature::generate(rng),
@@ -393,7 +394,7 @@ pub struct Transaction {
 }
 
 impl Generate for Transaction {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             signer_id: AccountId::generate(rng),
             public_key: PublicKey::generate(rng),
@@ -428,7 +429,7 @@ pub enum Action {
 }
 
 impl Generate for Action {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         use Action::*;
         // Deploy contract action is 1000 times less frequent than other actions.
         if u64::generate(rng) % 1000 == 0 {
@@ -462,7 +463,7 @@ impl Generate for Action {
 )]
 pub struct CreateAccountAction {}
 impl Generate for CreateAccountAction {
-    fn generate<R: rand::Rng>(_rng: &mut R) -> Self {
+    fn generate<R: Rng>(_rng: &mut R) -> Self {
         Self {}
     }
 }
@@ -483,7 +484,7 @@ pub struct DeployContractAction {
     code: Vec<u8>,
 }
 
-pub fn generate_vec_u8<R: rand::Rng>(rng: &mut R, min_number: usize, max_number: usize) -> Vec<u8> {
+pub fn generate_vec_u8<R: Rng>(rng: &mut R, min_number: usize, max_number: usize) -> Vec<u8> {
     let num: usize = rng.gen_range(min_number, max_number + 1);
     let mut res = vec![0u8; num];
     rng.fill_bytes(&mut res);
@@ -491,7 +492,7 @@ pub fn generate_vec_u8<R: rand::Rng>(rng: &mut R, min_number: usize, max_number:
 }
 
 impl Generate for DeployContractAction {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             // Between 20KiB and 1MiB.
             code: generate_vec_u8(rng, 20 * 2usize.pow(10), 2usize.pow(20)),
@@ -521,7 +522,7 @@ pub struct FunctionCallAction {
 }
 
 impl Generate for FunctionCallAction {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             method_name: String::generate(rng),
             args: generate_vec_u8(rng, 0, 1000),
@@ -546,7 +547,7 @@ pub struct TransferAction {
     deposit: Balance,
 }
 impl Generate for TransferAction {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             deposit: u64::generate(rng),
         }
@@ -571,7 +572,7 @@ pub struct StakeAction {
 }
 
 impl Generate for StakeAction {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             stake: u64::generate(rng),
             public_key: PublicKey::generate(rng),
@@ -597,7 +598,7 @@ pub struct AddKeyAction {
 }
 
 impl Generate for AddKeyAction {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             public_key: PublicKey::generate(rng),
             access_key: AccessKey::generate(rng),
@@ -622,7 +623,7 @@ pub struct DeleteKeyAction {
 }
 
 impl Generate for DeleteKeyAction {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             public_key: PublicKey::generate(rng),
         }
@@ -646,7 +647,7 @@ pub struct DeleteAccountAction {
 }
 
 impl Generate for DeleteAccountAction {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             beneficiary_id: AccountId::generate(rng),
         }
@@ -671,7 +672,7 @@ pub struct AccessKey {
 }
 
 impl Generate for AccessKey {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             nonce: u64::generate(rng),
             permission: AccessKeyPermission::generate(rng),
@@ -697,7 +698,7 @@ pub enum AccessKeyPermission {
 }
 
 impl Generate for AccessKeyPermission {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         if u64::generate(rng) % 2 == 0 {
             AccessKeyPermission::FunctionCall(FunctionCallPermission::generate(rng))
         } else {
@@ -724,7 +725,7 @@ pub struct FunctionCallPermission {
     method_names: Vec<String>,
 }
 
-fn generate_option<T: Generate, R: rand::Rng>(rng: &mut R) -> Option<T> {
+fn generate_option<T: Generate, R: Rng>(rng: &mut R) -> Option<T> {
     if u64::generate(rng) % 2 == 0 {
         None
     } else {
@@ -733,13 +734,13 @@ fn generate_option<T: Generate, R: rand::Rng>(rng: &mut R) -> Option<T> {
 }
 
 impl Generate for u64 {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         rng.next_u64()
     }
 }
 
 impl Generate for FunctionCallPermission {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             allowance: generate_option(rng),
             receiver_id: AccountId::generate(rng),
@@ -769,7 +770,7 @@ pub struct Account {
 }
 
 impl Generate for Account {
-    fn generate<R: rand::Rng>(rng: &mut R) -> Self {
+    fn generate<R: Rng>(rng: &mut R) -> Self {
         Self {
             amount: u64::generate(rng),
             staked: u64::generate(rng),

@@ -1,9 +1,9 @@
-use borsh::{from_reader, to_vec, BorshDeserialize, BorshSerialize};
-
 use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
+
+use borsh::{from_reader, to_vec, BorshDeserialize, BorshSerialize};
 
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";

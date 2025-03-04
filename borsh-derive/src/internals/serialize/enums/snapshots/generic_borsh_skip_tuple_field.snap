@@ -1,6 +1,6 @@
 ---
 source: borsh-derive/src/internals/serialize/enums/mod.rs
-expression: pretty_print_syn_str(&actual).unwrap()
+expression: pretty_print_syn_str(actual).unwrap()
 ---
 impl<K: Key, V, U> borsh::ser::BorshSerialize for A<K, V, U>
 where
@@ -19,13 +19,13 @@ where
         writer.write_all(&variant_idx.to_le_bytes())?;
         match self {
             A::B { x, y, .. } => {
-                borsh::BorshSerialize::serialize(x, writer)?;
-                borsh::BorshSerialize::serialize(y, writer)?;
+                <HashMap<K, V> as borsh::BorshSerialize>::serialize(x, writer)?;
+                <String as borsh::BorshSerialize>::serialize(y, writer)?;
             }
             A::C(id0, _id1) => {
-                borsh::BorshSerialize::serialize(id0, writer)?;
+                <K as borsh::BorshSerialize>::serialize(id0, writer)?;
             }
         }
-        Ok(())
+        ::core::result::Result::Ok(())
     }
 }

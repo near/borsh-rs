@@ -14,8 +14,8 @@ where
         + BorshDeserialize
         + SerdeSerialize
         + SerdeDeserialize<'a>
-        + Readable<'a, speedy::Endianness>
-        + Writable<speedy::Endianness>
+        + Readable<'a, Endianness>
+        + Writable<Endianness>
         + 'static,
 {
     let mut rng = rand_xorshift::XorShiftRng::from_seed([0u8; 16]);
@@ -71,8 +71,8 @@ where
         + BorshDeserialize
         + SerdeSerialize
         + SerdeDeserialize<'a>
-        + Readable<'a, speedy::Endianness>
-        + Writable<speedy::Endianness>
+        + Readable<'a, Endianness>
+        + Writable<Endianness>
         + 'static,
 {
     let mut rng = rand_xorshift::XorShiftRng::from_seed([0u8; 16]);

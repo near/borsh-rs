@@ -1,5 +1,4 @@
-use super::{is_zero_size, ZeroSizeError};
-use super::{BorshSchemaContainer, Declaration, Definition, Fields};
+use super::{is_zero_size, BorshSchemaContainer, Declaration, Definition, Fields, ZeroSizeError};
 use crate::__private::maybestd::{string::ToString, vec::Vec};
 
 impl BorshSchemaContainer {

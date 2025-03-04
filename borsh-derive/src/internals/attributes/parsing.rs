@@ -27,7 +27,7 @@ fn get_lit_str2(
             expr,
             format!(
                 "expected borsh {} attribute to be a string: `{} = \"...\"`",
-                attr_name.0, meta_item_name.0
+                attr_name.name, meta_item_name.name
             ),
         ))
     }
@@ -77,11 +77,11 @@ where
         }
     }
     if !match_ {
-        let keys_strs = map.keys().map(|symbol| symbol.1).collect::<Vec<_>>();
+        let keys_strs = map.keys().map(|symbol| symbol.expected).collect::<Vec<_>>();
         let keys_strs = keys_strs.join(", ");
         return Err(meta.error(format_args!(
             "malformed {0} attribute, expected `{0}({1})`",
-            attr_name.0, keys_strs
+            attr_name.name, keys_strs
         )));
     }
     Ok(())

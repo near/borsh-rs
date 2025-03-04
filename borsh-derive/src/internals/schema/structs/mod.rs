@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens};
-use syn::{ExprPath, Fields, Ident, ItemStruct, Path, Type};
+use syn::{parse_quote, ExprPath, Fields, Ident, ItemStruct, Path, Type};
 
 use crate::internals::{attributes::field, generics, schema};
 
@@ -13,10 +13,9 @@ fn field_declaration_output(
     cratename: &Path,
     declaration_override: Option<ExprPath>,
 ) -> TokenStream2 {
-    let default_path: ExprPath =
-        syn::parse2(quote! { <#field_type as #cratename::BorshSchema>::declaration }).unwrap();
+    let default_path = || parse_quote! { <#field_type as #cratename::BorshSchema>::declaration };
 
-    let path = declaration_override.unwrap_or(default_path);
+    let path = declaration_override.unwrap_or_else(default_path);
 
     if let Some(field_name) = field_name {
         let field_name = field_name.to_token_stream().to_string();
@@ -37,21 +36,19 @@ fn field_definitions_output(
     cratename: &Path,
     definitions_override: Option<ExprPath>,
 ) -> TokenStream2 {
-    let default_path: ExprPath = syn::parse2(
-        quote! { <#field_type as #cratename::BorshSchema>::add_definitions_recursively },
-    )
-    .unwrap();
-    let path = definitions_override.unwrap_or(default_path);
+    let default_path =
+        || parse_quote! { <#field_type as #cratename::BorshSchema>::add_definitions_recursively };
+    let path = definitions_override.unwrap_or_else(default_path);
 
     quote! {
         #path(definitions);
     }
 }
 
-pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2> {
+pub fn process(input: ItemStruct, cratename: Path) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let struct_name = name.to_token_stream().to_string();
-    let generics = generics::without_defaults(&input.generics);
+    let generics = generics::without_defaults(input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let mut where_clause = generics::default_where(where_clause);
     let mut generics_output = schema::GenericsOutput::new(&generics);
@@ -135,6 +132,7 @@ fn process_fields(
     }
     Ok((struct_fields, add_definitions_recursively))
 }
+
 fn process_field(
     field: &syn::Field,
     cratename: &Path,
@@ -162,103 +160,97 @@ fn process_field(
 
 #[cfg(test)]
 mod tests {
+    use syn::parse_quote;
+
+    use super::*;
     use crate::internals::test_helpers::{
         default_cratename, local_insta_assert_debug_snapshot, local_insta_assert_snapshot,
         pretty_print_syn_str,
     };
 
-    use super::*;
-
     #[test]
     fn unit_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A;
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process(item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn wrapper_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A<T>(T);
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process(item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn tuple_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A(u64, String);
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process(item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn tuple_struct_params() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A<K, V>(K, V);
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process(item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn simple_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process(item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn simple_struct_with_custom_crate() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A {
                 x: u64,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
-        let crate_: Path = syn::parse2(quote! { reexporter::borsh }).unwrap();
-        let actual = process(&item_struct, crate_).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let crate_: Path = parse_quote! { reexporter::borsh };
+        let actual = process(item_struct, crate_).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn simple_generics() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A<K, V> {
                 x: HashMap<K, V>,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process(item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn trailing_comma_generics() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A<K, V>
             where
                 K: Display + Debug,
@@ -266,130 +258,121 @@ mod tests {
                 x: HashMap<K, V>,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process(item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn tuple_struct_whole_skip() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A(#[borsh(skip)] String);
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process(item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn tuple_struct_partial_skip() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A(#[borsh(skip)] u64, String);
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        let actual = process(item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn generic_tuple_struct_borsh_skip1() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct G<K, V, U> (
                 #[borsh(skip)]
                 HashMap<K, V>,
                 U,
             );
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(item_struct, default_cratename()).unwrap();
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn generic_tuple_struct_borsh_skip2() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct G<K, V, U> (
                 HashMap<K, V>,
                 #[borsh(skip)]
                 U,
             );
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(item_struct, default_cratename()).unwrap();
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn generic_tuple_struct_borsh_skip3() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct G<U, K, V> (
                 #[borsh(skip)]
                 HashMap<K, V>,
                 U,
                 K,
             );
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(item_struct, default_cratename()).unwrap();
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn generic_tuple_struct_borsh_skip4() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct ASalad<C>(Tomatoes, #[borsh(skip)] C, Oil);
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(item_struct, default_cratename()).unwrap();
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn generic_named_fields_struct_borsh_skip() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct G<K, V, U> {
                 #[borsh(skip)]
                 x: HashMap<K, V>,
                 y: U,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(item_struct, default_cratename()).unwrap();
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn recursive_struct() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct CRecC {
                 a: String,
                 b: HashMap<String, CRecC>,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(item_struct, default_cratename()).unwrap();
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn generic_associated_type() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct Parametrized<V, T: Debug>
             where
                 T: TraitName,
@@ -397,17 +380,16 @@ mod tests {
                 field: T::Associated,
                 another: V,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(item_struct, default_cratename()).unwrap();
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn generic_associated_type_param_override() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct Parametrized<V, T>
             where
                 T: TraitName,
@@ -418,17 +400,16 @@ mod tests {
                 field: <T as TraitName>::Associated,
                 another: V,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(item_struct, default_cratename()).unwrap();
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn generic_associated_type_param_override2() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct Parametrized<V, T>
             where
                 T: TraitName,
@@ -439,17 +420,16 @@ mod tests {
                 field: (<T as TraitName>::Associated, T),
                 another: V,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(item_struct, default_cratename()).unwrap();
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn generic_associated_type_param_override_conflict() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct Parametrized<V, T>
             where
                 T: TraitName,
@@ -460,17 +440,16 @@ mod tests {
                 field: <T as TraitName>::Associated,
                 another: V,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename());
+        let actual = process(item_struct, default_cratename());
 
         local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
 
     #[test]
     fn check_with_funcs_skip_conflict() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A<K, V> {
                 #[borsh(skip,schema(with_funcs(
                     declaration = "third_party_impl::declaration::<K, V>",
@@ -479,17 +458,16 @@ mod tests {
                 x: ThirdParty<K, V>,
                 y: u64,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename());
+        let actual = process(item_struct, default_cratename());
 
         local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
 
     #[test]
     fn with_funcs_attr() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A<K, V> {
                 #[borsh(schema(with_funcs(
                     declaration = "third_party_impl::declaration::<K, V>",
@@ -498,17 +476,16 @@ mod tests {
                 x: ThirdParty<K, V>,
                 y: u64,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(item_struct, default_cratename()).unwrap();
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 
     #[test]
     fn schema_param_override3() {
-        let item_struct: ItemStruct = syn::parse2(quote! {
+        let item_struct: ItemStruct = parse_quote! {
             struct A<K: EntityRef, V> {
                 #[borsh(
                     schema(
@@ -518,11 +495,10 @@ mod tests {
                 x: PrimaryMap<K, V>,
                 y: String,
             }
-        })
-        .unwrap();
+        };
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(item_struct, default_cratename()).unwrap();
 
-        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        local_insta_assert_snapshot!(pretty_print_syn_str(actual).unwrap());
     }
 }

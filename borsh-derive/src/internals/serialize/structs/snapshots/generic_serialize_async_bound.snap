@@ -1,0 +1,18 @@
+---
+source: borsh-derive/src/internals/serialize/structs/mod.rs
+expression: pretty_print_syn_str(actual).unwrap()
+---
+impl<T: Debug, U> borsh::ser::BorshSerialize for C<T, U>
+where
+    T: borsh::ser::BorshSerialize,
+    U: borsh::ser::BorshSerialize,
+{
+    fn serialize<__W: borsh::io::Write>(
+        &self,
+        writer: &mut __W,
+    ) -> ::core::result::Result<(), borsh::io::Error> {
+        <String as borsh::BorshSerialize>::serialize(&self.a, writer)?;
+        <HashMap<T, U> as borsh::BorshSerialize>::serialize(&self.b, writer)?;
+        ::core::result::Result::Ok(())
+    }
+}

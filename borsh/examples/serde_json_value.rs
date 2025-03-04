@@ -3,14 +3,18 @@ use std::collections::HashMap;
 use borsh::{BorshDeserialize, BorshSerialize};
 
 mod serde_json_value {
+    #[allow(unused_imports)] // used in attribute
     pub use de::deserialize_value;
+    #[allow(unused_imports)] // used in attribute
     pub use ser::serialize_value;
+
     mod ser {
+        use core::convert::TryFrom;
+
         use borsh::{
             io::{ErrorKind, Result, Write},
             BorshSerialize,
         };
-        use core::convert::TryFrom;
 
         /// this is mutually recursive with `serialize_array` and `serialize_map`
         pub fn serialize_value<W: Write>(value: &serde_json::Value, writer: &mut W) -> Result<()> {
