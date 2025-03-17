@@ -37,7 +37,7 @@ jobs:
     - name: print rustc version
       run: rustc --version
     - name: downgrade `serde_bytes` crate to support older Rust toolchain
-      if: matrix.rust_version == '1.67.0'
+      if: matrix.rust_version == '1.67'
       run: |
         cargo update -p serde_bytes --precise 0.11.16
     - name: Run tests
@@ -52,8 +52,8 @@ jobs:
       uses: dtolnay/rust-toolchain@nightly
     # a failure on this check means, that some of `syn` crate's enums have been extended
     # with new variants.
-    # consult https://github.com/serde-rs/serde/blob/master/serde_derive/src/bound.rs#L100 , 
-    # the implementation of `FindTyParams` may have been updated already 
+    # consult https://github.com/serde-rs/serde/blob/master/serde_derive/src/bound.rs#L100 ,
+    # the implementation of `FindTyParams` may have been updated already
     - name: Run exhaustive check tests
       run: RUSTFLAGS="-A unused_imports -D warnings" cargo check --workspace --features force_exhaustive_checks
 
