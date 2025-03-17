@@ -23,6 +23,10 @@ cargo test --features ascii,unstable__schema 'schema::test_ascii_strings'
 ########## features = ["rc"] group
 cargo test --features rc 'roundtrip::test_rc'
 cargo test --features rc,unstable__schema 'schema::test_rc'
+########## features = ["indexmap"] group
+cargo test --features indexmap 'roundtrip::test_indexmap'
+# checking with `derive` too just for the sake of redundancy https://github.com/near/borsh-rs/pull/346
+cargo test --features indexmap,derive 'roundtrip::test_indexmap'
 ########## features = ["de_strict_order"] group
 cargo test --features de_strict_order 'roundtrip::test_hash_map'
 cargo test --features de_strict_order 'roundtrip::test_btree_map'
@@ -44,6 +48,10 @@ cargo test --no-default-features --features ascii,unstable__schema 'schema::test
 ########## features = ["rc"] group
 cargo test --no-default-features --features rc 'roundtrip::test_rc'
 cargo test --no-default-features --features rc,unstable__schema 'schema::test_rc'
+########## features = ["indexmap"] group
+cargo test --no-default-features --features indexmap 'roundtrip::test_indexmap'
+# checking with `derive` too just for the sake of redundancy https://github.com/near/borsh-rs/pull/346
+cargo test --no-default-features --features indexmap,derive 'roundtrip::test_indexmap'
 ########## features = ["hashbrown"] group
 cargo test --no-default-features --features hashbrown
 cargo test --no-default-features --features hashbrown,derive
