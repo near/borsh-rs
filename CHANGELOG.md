@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.6](https://github.com/near/borsh-rs/compare/borsh-v1.5.5...borsh-v1.5.6) - 2025-03-18
+
+### Fixed
+
+- add `indexmap` support ([#346](https://github.com/near/borsh-rs/pull/346))
+
+### Other
+
+- add mention of `indexmap` feature ([#349](https://github.com/near/borsh-rs/pull/349))
+
 ## [1.5.5](https://github.com/near/borsh-rs/compare/borsh-v1.5.4...borsh-v1.5.5) - 2025-01-18
 
 ### Other
