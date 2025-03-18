@@ -52,6 +52,8 @@ mod roundtrip {
     mod test_cells;
     #[cfg(feature = "rc")]
     mod test_rc;
+    #[cfg(feature = "indexmap")]
+    mod test_indexmap;
 
     #[cfg(feature = "derive")]
     mod requires_derive_category {

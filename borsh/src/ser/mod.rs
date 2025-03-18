@@ -317,6 +317,58 @@ impl BorshSerialize for bson::oid::ObjectId {
     }
 }
 
+#[cfg(feature = "indexmap")]
+// Taken from https://github.com/indexmap-rs/indexmap/blob/dd06e5773e4f91748396c67d00c83637f5c0dd49/src/borsh.rs#L74C1-L86C2
+// license: MIT OR Apache-2.0
+impl<T, S> BorshSerialize for indexmap::IndexSet<T, S>
+where
+    T: BorshSerialize,
+{
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        check_zst::<T>()?;
+
+        let iterator = self.iter();
+
+        u32::try_from(iterator.len())
+            .map_err(|_| ErrorKind::InvalidData)?
+            .serialize(writer)?;
+
+        for item in iterator {
+            item.serialize(writer)?;
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(feature = "indexmap")]
+// Taken from https://github.com/indexmap-rs/indexmap/blob/dd06e5773e4f91748396c67d00c83637f5c0dd49/src/borsh.rs#L15
+// license: MIT OR Apache-2.0
+impl<K, V, S> BorshSerialize for indexmap::IndexMap<K, V, S>
+where
+    K: BorshSerialize,
+    V: BorshSerialize,
+{
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        check_zst::<K>()?;
+
+        let iterator = self.iter();
+
+        u32::try_from(iterator.len())
+            .map_err(|_| ErrorKind::InvalidData)?
+            .serialize(writer)?;
+
+        for (key, value) in iterator {
+            key.serialize(writer)?;
+            value.serialize(writer)?;
+        }
+
+        Ok(())
+    }
+}
+
 impl<T> BorshSerialize for VecDeque<T>
 where
     T: BorshSerialize,
