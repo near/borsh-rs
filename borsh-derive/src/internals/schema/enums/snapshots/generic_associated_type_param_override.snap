@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/schema/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl<T, K, V> borsh::BorshSchema for EnumParametrized<T, K, V>
 where
     K: TraitName,
@@ -72,4 +73,3 @@ where
         );
     }
 }
-

@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/schema/structs/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl<C> borsh::BorshSchema for ASalad<C> {
     fn declaration() -> borsh::schema::Declaration {
         "ASalad".to_string()
@@ -35,4 +36,3 @@ impl<C> borsh::BorshSchema for ASalad<C> {
         }
     }
 }
-

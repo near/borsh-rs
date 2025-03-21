@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/serialize/structs/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl borsh::ser::BorshSerialize for CRecC {
     fn serialize<__W: borsh::io::Write>(
         &self,

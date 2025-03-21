@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/deserialize/structs/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl borsh::de::BorshDeserialize for A {
     fn deserialize_reader<__R: borsh::io::Read>(
         reader: &mut __R,

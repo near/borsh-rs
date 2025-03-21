@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/schema/structs/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl<V, T> borsh::BorshSchema for Parametrized<V, T>
 where
     T: TraitName,
@@ -50,4 +51,3 @@ where
         }
     }
 }
-

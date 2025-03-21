@@ -74,6 +74,7 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
     let (predicates, declaration) = generics_output.result(&struct_name, &cratename);
     where_clause.predicates.extend(predicates);
     Ok(quote! {
+        #[automatically_derived]
         impl #impl_generics #cratename::BorshSchema for #name #ty_generics #where_clause {
             fn declaration() -> #cratename::schema::Declaration {
                 #declaration

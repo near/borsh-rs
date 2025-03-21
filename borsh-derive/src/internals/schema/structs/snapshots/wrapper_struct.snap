@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/schema/structs/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl<T> borsh::BorshSchema for A<T>
 where
     T: borsh::BorshSchema,
@@ -37,4 +38,3 @@ where
         }
     }
 }
-
