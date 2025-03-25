@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.7](https://github.com/near/borsh-rs/compare/borsh-v1.5.6...borsh-v1.5.7) - 2025-03-25
+
+### Other
+
+- replace `Result::unwrap` err msg with `proc_macro_crate::crate_name` tag ([#351](https://github.com/near/borsh-rs/pull/351))
+
 ## [1.5.6](https://github.com/near/borsh-rs/compare/borsh-v1.5.5...borsh-v1.5.6) - 2025-03-18
 
 ### Fixed
