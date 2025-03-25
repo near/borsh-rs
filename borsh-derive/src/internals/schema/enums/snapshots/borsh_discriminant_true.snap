@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/schema/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl borsh::BorshSchema for X {
     fn declaration() -> borsh::schema::Declaration {
         "X".to_string()
@@ -62,4 +63,3 @@ impl borsh::BorshSchema for X {
         );
     }
 }
-

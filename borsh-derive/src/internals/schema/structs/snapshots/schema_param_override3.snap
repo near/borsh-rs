@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/schema/structs/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl<K: EntityRef, V> borsh::BorshSchema for A<K, V>
 where
     V: borsh::BorshSchema,
@@ -45,4 +46,3 @@ where
         }
     }
 }
-

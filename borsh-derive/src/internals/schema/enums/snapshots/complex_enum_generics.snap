@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/schema/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl<C, W> borsh::BorshSchema for A<C, W>
 where
     C: borsh::BorshSchema,
@@ -61,4 +62,3 @@ where
         );
     }
 }
-

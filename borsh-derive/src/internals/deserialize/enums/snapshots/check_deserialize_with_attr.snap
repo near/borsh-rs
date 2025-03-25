@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/deserialize/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl<K: Ord, V> borsh::de::BorshDeserialize for C<K, V>
 where
     K: borsh::de::BorshDeserialize,
@@ -14,6 +15,7 @@ where
         <Self as borsh::de::EnumExt>::deserialize_variant(reader, tag)
     }
 }
+#[automatically_derived]
 impl<K: Ord, V> borsh::de::EnumExt for C<K, V>
 where
     K: borsh::de::BorshDeserialize,

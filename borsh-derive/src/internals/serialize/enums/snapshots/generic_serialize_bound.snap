@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/serialize/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl<T: Debug, U> borsh::ser::BorshSerialize for A<T, U>
 where
     T: borsh::ser::BorshSerialize + PartialOrd,

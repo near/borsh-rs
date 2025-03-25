@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/schema/structs/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl<K, V, U> borsh::BorshSchema for G<K, V, U>
 where
     U: borsh::BorshSchema,
@@ -39,4 +40,3 @@ where
         }
     }
 }
-
