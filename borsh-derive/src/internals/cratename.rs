@@ -18,7 +18,8 @@ pub(crate) fn get(attrs: &[Attribute]) -> Result<Path, Error> {
 }
 
 pub(crate) fn get_from_cargo() -> Ident {
-    let name = &crate_name(BORSH).unwrap();
+    let name = &crate_name(BORSH)
+        .unwrap_or_else(|err| panic!("`proc_macro_crate::crate_name` call error: {:#?}", err));
     let name = match name {
         FoundCrate::Itself => BORSH,
         FoundCrate::Name(name) => name.as_str(),
