@@ -2,6 +2,7 @@
 source: borsh-derive/src/internals/serialize/enums/mod.rs
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
+#[automatically_derived]
 impl reexporter::borsh::ser::BorshSerialize for AB {
     fn serialize<__W: reexporter::borsh::io::Write>(
         &self,
