@@ -42,6 +42,7 @@ jobs:
         cargo update -p serde_bytes --precise 0.11.16
         cargo update -p toml_edit --precise 0.23.5
         cargo update -p toml_parser --precise 1.0.2
+        cargo update -p indexmap@2.12.0 --precise 2.11.4
     - name: Run tests
       run: ./.github/test.sh
 
