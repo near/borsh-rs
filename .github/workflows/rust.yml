@@ -36,10 +36,12 @@ jobs:
       run: rustup default ${{ matrix.rust_version }}
     - name: print rustc version
       run: rustc --version
-    - name: downgrade `serde_bytes` crate to support older Rust toolchain
+    - name: downgrade `serde_bytes`, `toml_edit`, and `toml_parser` crates to support older Rust toolchain
       if: matrix.rust_version == '1.67'
       run: |
         cargo update -p serde_bytes --precise 0.11.16
+        cargo update -p toml_edit --precise 0.23.5
+        cargo update -p toml_parser --precise 1.0.2
     - name: Run tests
       run: ./.github/test.sh
 
