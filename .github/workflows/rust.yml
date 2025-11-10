@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         rust_version: [1.67, stable]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
     - uses: actions/checkout@v4
@@ -36,16 +36,23 @@ jobs:
       run: rustup default ${{ matrix.rust_version }}
     - name: print rustc version
       run: rustc --version
-    - name: downgrade `serde_bytes` crate to support older Rust toolchain
+    - name: downgrade `serde_bytes`, `toml_edit`, and `toml_parser` crates to support older Rust toolchain
       if: matrix.rust_version == '1.67'
       run: |
         cargo update -p serde_bytes --precise 0.11.16
+        cargo update -p toml_edit --precise 0.23.5
+        cargo update -p toml_parser --precise 1.0.2
+        cargo update -p toml_datetime --precise 0.7.1
+        cargo update -p indexmap@2.12.0 --precise 2.11.4
+        cargo update -p syn@2.0.110 --precise 2.0.106
+        cargo update -p quote --precise 1.0.41
+        cargo update -p time --precise 0.3.41
     - name: Run tests
       run: ./.github/test.sh
 
   # remove this job when https://github.com/rust-lang/rust/issues/89554 stabilizes
   test_exhaustive_checks:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - name: Install nightly for exhaustive check tests
@@ -58,7 +65,7 @@ jobs:
       run: RUSTFLAGS="-A unused_imports -D warnings" cargo check --workspace --features force_exhaustive_checks
 
   clippy:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
     - uses: actions/checkout@v4
@@ -66,7 +73,7 @@ jobs:
       run: cargo clippy --features unstable__schema --benches -- -D clippy::all
 
   cargo-fmt:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
     - uses: actions/checkout@v4
@@ -77,7 +84,7 @@ jobs:
   # won't look as expected, when rendered, and sometimes errors, which will prevent doc from being
   # generated at release time altogether.
   cargo-doc:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
     - uses: actions/checkout@v4
