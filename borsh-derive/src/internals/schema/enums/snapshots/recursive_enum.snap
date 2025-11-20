@@ -1,5 +1,6 @@
 ---
 source: borsh-derive/src/internals/schema/enums/mod.rs
+assertion_line: 400
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 #[automatically_derived]
@@ -23,9 +24,10 @@ where
         >,
     ) {
         #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct AB<K: Key, V>
+        struct A__B<K: Key, V>
         where
             V: Value,
         {
@@ -33,16 +35,17 @@ where
             y: String,
         }
         #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct AC<K: Key>(K, Vec<A>);
-        <AB<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <AC<K> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        struct A__C<K: Key>(K, Vec<A>);
+        <A__B<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <A__C<K> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "B".into(), < AB < K, V > as borsh::BorshSchema >
-                ::declaration()), (u8::from(1u8) as i64, "C".into(), < AC < K > as
+                (u8::from(0u8) as i64, "B".into(), < A__B < K, V > as borsh::BorshSchema
+                > ::declaration()), (u8::from(1u8) as i64, "C".into(), < A__C < K > as
                 borsh::BorshSchema > ::declaration())
             ],
         };

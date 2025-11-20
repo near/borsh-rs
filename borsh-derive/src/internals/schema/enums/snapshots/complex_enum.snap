@@ -1,5 +1,6 @@
 ---
 source: borsh-derive/src/internals/schema/enums/mod.rs
+assertion_line: 287
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 #[automatically_derived]
@@ -14,37 +15,41 @@ impl borsh::BorshSchema for A {
         >,
     ) {
         #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct ABacon;
+        struct A__Bacon;
         #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct AEggs;
+        struct A__Eggs;
         #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct ASalad(Tomatoes, Cucumber, Oil);
+        struct A__Salad(Tomatoes, Cucumber, Oil);
         #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct ASausage {
+        struct A__Sausage {
             wrapper: Wrapper,
             filling: Filling,
         }
-        <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <AEggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <ASalad as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <ASausage as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <A__Bacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <A__Eggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <A__Salad as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <A__Sausage as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "Bacon".into(), < ABacon as borsh::BorshSchema >
-                ::declaration()), (u8::from(1u8) as i64, "Eggs".into(), < AEggs as
+                (u8::from(0u8) as i64, "Bacon".into(), < A__Bacon as borsh::BorshSchema >
+                ::declaration()), (u8::from(1u8) as i64, "Eggs".into(), < A__Eggs as
                 borsh::BorshSchema > ::declaration()), (u8::from(2u8) as i64, "Salad"
-                .into(), < ASalad as borsh::BorshSchema > ::declaration()),
-                (u8::from(3u8) as i64, "Sausage".into(), < ASausage as borsh::BorshSchema
-                > ::declaration())
+                .into(), < A__Salad as borsh::BorshSchema > ::declaration()),
+                (u8::from(3u8) as i64, "Sausage".into(), < A__Sausage as
+                borsh::BorshSchema > ::declaration())
             ],
         };
         borsh::schema::add_definition(

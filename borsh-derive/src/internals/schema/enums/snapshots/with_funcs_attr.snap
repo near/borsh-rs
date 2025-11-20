@@ -1,5 +1,6 @@
 ---
 source: borsh-derive/src/internals/schema/enums/mod.rs
+assertion_line: 516
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 #[automatically_derived]
@@ -22,13 +23,15 @@ where
         >,
     ) {
         #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct CC3(u64, u64);
+        struct C__C3(u64, u64);
         #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct CC4<K, V>(
+        struct C__C4<K, V>(
             u64,
             #[borsh(
                 schema(
@@ -40,13 +43,13 @@ where
             )]
             ThirdParty<K, V>,
         );
-        <CC3 as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <CC4<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <C__C3 as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <C__C4<K, V> as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "C3".into(), < CC3 as borsh::BorshSchema >
-                ::declaration()), (u8::from(1u8) as i64, "C4".into(), < CC4 < K, V > as
+                (u8::from(0u8) as i64, "C3".into(), < C__C3 as borsh::BorshSchema >
+                ::declaration()), (u8::from(1u8) as i64, "C4".into(), < C__C4 < K, V > as
                 borsh::BorshSchema > ::declaration())
             ],
         };
