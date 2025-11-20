@@ -9,23 +9,23 @@ expression: "format!(\"{:#?}\", defs)"
             (
                 0,
                 "V4",
-                "IpAddrV4",
+                "IpAddr__V4",
             ),
             (
                 1,
                 "V6",
-                "IpAddrV6",
+                "IpAddr__V6",
             ),
         ],
     },
-    "IpAddrV4": Struct {
+    "IpAddr__V4": Struct {
         fields: UnnamedFields(
             [
                 "Ipv4Addr",
             ],
         ),
     },
-    "IpAddrV6": Struct {
+    "IpAddr__V6": Struct {
         fields: UnnamedFields(
             [
                 "Ipv6Addr",
