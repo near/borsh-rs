@@ -871,6 +871,7 @@ mod ip_addr_std_derive_impl {
     }
 }
 
+#[cfg(feature = "std")]
 impl BorshSchema for core::net::Ipv4Addr {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         <ip_addr_std_derive_impl::Ipv4Addr>::add_definitions_recursively(definitions);
@@ -881,6 +882,7 @@ impl BorshSchema for core::net::Ipv4Addr {
     }
 }
 
+#[cfg(feature = "std")]
 impl BorshSchema for core::net::Ipv6Addr {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         <ip_addr_std_derive_impl::Ipv6Addr>::add_definitions_recursively(definitions);
@@ -891,6 +893,7 @@ impl BorshSchema for core::net::Ipv6Addr {
     }
 }
 
+#[cfg(feature = "std")]
 impl BorshSchema for core::net::IpAddr {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         <ip_addr_std_derive_impl::IpAddr>::add_definitions_recursively(definitions);
