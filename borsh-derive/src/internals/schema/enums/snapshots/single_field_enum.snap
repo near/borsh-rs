@@ -1,5 +1,6 @@
 ---
 source: borsh-derive/src/internals/schema/enums/mod.rs
+assertion_line: 271
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 #[automatically_derived]
@@ -14,14 +15,15 @@ impl borsh::BorshSchema for A {
         >,
     ) {
         #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct ABacon;
-        <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        struct A__Bacon;
+        <A__Bacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "Bacon".into(), < ABacon as borsh::BorshSchema >
+                (u8::from(0u8) as i64, "Bacon".into(), < A__Bacon as borsh::BorshSchema >
                 ::declaration())
             ],
         };

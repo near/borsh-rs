@@ -1,5 +1,6 @@
 ---
 source: borsh-derive/src/internals/schema/enums/mod.rs
+assertion_line: 382
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 #[automatically_derived]
@@ -22,38 +23,45 @@ where
         >,
     ) {
         #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct ABacon;
+        struct A__Bacon;
         #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct AEggs;
+        struct A__Eggs;
         #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct ASalad<C>(Tomatoes, C, Oil);
+        struct A__Salad<C>(Tomatoes, C, Oil);
         #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
         #[derive(borsh::BorshSchema)]
         #[borsh(crate = "borsh")]
-        struct ASausage<W, U> {
+        struct A__Sausage<W, U> {
             #[borsh(skip)]
             wrapper: W,
             filling: Filling,
             unexpected: U,
         }
-        <ABacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <AEggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <ASalad<C> as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        <ASausage<W, U> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <A__Bacon as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <A__Eggs as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <A__Salad<C> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <A__Sausage<
+            W,
+            U,
+        > as borsh::BorshSchema>::add_definitions_recursively(definitions);
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "Bacon".into(), < ABacon as borsh::BorshSchema >
-                ::declaration()), (u8::from(1u8) as i64, "Eggs".into(), < AEggs as
+                (u8::from(0u8) as i64, "Bacon".into(), < A__Bacon as borsh::BorshSchema >
+                ::declaration()), (u8::from(1u8) as i64, "Eggs".into(), < A__Eggs as
                 borsh::BorshSchema > ::declaration()), (u8::from(2u8) as i64, "Salad"
-                .into(), < ASalad < C > as borsh::BorshSchema > ::declaration()),
-                (u8::from(3u8) as i64, "Sausage".into(), < ASausage < W, U > as
+                .into(), < A__Salad < C > as borsh::BorshSchema > ::declaration()),
+                (u8::from(3u8) as i64, "Sausage".into(), < A__Sausage < W, U > as
                 borsh::BorshSchema > ::declaration())
             ],
         };
