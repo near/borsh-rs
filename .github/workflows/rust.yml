@@ -20,7 +20,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        rust_version: [1.67, stable]
+        rust_version: [1.77, stable]
     runs-on: ubuntu-24.04
 
     steps:
@@ -36,16 +36,10 @@ jobs:
       run: rustup default ${{ matrix.rust_version }}
     - name: print rustc version
       run: rustc --version
-    - name: downgrade `serde_bytes`, `toml_edit`, and `toml_parser` crates to support older Rust toolchain
-      if: matrix.rust_version == '1.67'
+    - name: downgrade crates to support older Rust toolchain
+      if: matrix.rust_version == '1.77'
       run: |
-        cargo update -p serde_bytes --precise 0.11.16
-        cargo update -p toml_edit --precise 0.23.5
-        cargo update -p toml_parser --precise 1.0.2
-        cargo update -p toml_datetime --precise 0.7.1
-        cargo update -p indexmap@2.12.0 --precise 2.11.4
-        cargo update -p syn@2.0.110 --precise 2.0.106
-        cargo update -p quote --precise 1.0.41
+        cargo update -p indexmap@2.12.1 --precise 2.11.4
         cargo update -p time --precise 0.3.41
     - name: Run tests
       run: ./.github/test.sh
