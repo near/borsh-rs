@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0](https://github.com/near/borsh-rs/compare/borsh-v1.5.7...borsh-v1.6.0) - 2025-11-25
+
+### Added
+
+- Use core::net instead of std::net; bumped MSRV to 1.77 ([#356](https://github.com/near/borsh-rs/pull/356))
+
+### Fixed
+
+- Avoid variant name shadowing in BorshSchema derive ([#361](https://github.com/near/borsh-rs/pull/361))
+
+### Other
+
+- Upgrade the CI base image to use ubuntu-24.04 instead of the deprecated ubuntu-20.04 ([#359](https://github.com/near/borsh-rs/pull/359))
+- Include license files in published crates ([#354](https://github.com/near/borsh-rs/pull/354))
+- add automatically_derived attribute to derive macros ([#341](https://github.com/near/borsh-rs/pull/341))
+
 ## [1.5.7](https://github.com/near/borsh-rs/compare/borsh-v1.5.6...borsh-v1.5.7) - 2025-03-25
 
 ### Other
