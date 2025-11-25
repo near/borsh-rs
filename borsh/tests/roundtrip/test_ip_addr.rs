@@ -1,4 +1,5 @@
 use core::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use alloc::{vec, vec::Vec};
 
 #[test]
 fn test_ipv4_addr_roundtrip_enum() {
