@@ -715,7 +715,7 @@ where
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self.try_borrow() {
             Ok(ref value) => value.serialize(writer),
-            Err(_) => Err(Error::new(ErrorKind::Other, "already mutably borrowed")),
+            Err(_) => Err(Error::other("already mutably borrowed")),
         }
     }
 }
