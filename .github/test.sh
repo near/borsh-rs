@@ -56,6 +56,8 @@ cargo test --no-default-features --features indexmap,derive 'roundtrip::test_ind
 cargo test --no-default-features --features hashbrown
 cargo test --no-default-features --features hashbrown,derive
 cargo test --no-default-features --features hashbrown,unstable__schema
+########## features = ["bytes"] group
+cargo test --no-default-features --features bytes,derive 'roundtrip::requires_derive_category::test_ultimate_many_features_combined'
 popd
 pushd borsh-derive
 ############################ borsh-derive group #########################
