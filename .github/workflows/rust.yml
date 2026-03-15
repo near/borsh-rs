@@ -39,8 +39,11 @@ jobs:
     - name: downgrade crates to support older Rust toolchain
       if: matrix.rust_version == '1.77'
       run: |
-        cargo update -p indexmap@2.13.0 --precise 2.11.4
+        cargo update -p indexmap --precise 2.11.4
         cargo update -p time --precise 0.3.41
+        cargo update -p tempfile --precise 3.20.0
+        cargo update -p proc-macro-crate --precise 3.2.0
+        cargo update -p uuid --precise 1.17.0
     - name: Run tests
       run: ./.github/test.sh
 
