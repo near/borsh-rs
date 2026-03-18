@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1](https://github.com/near/borsh-rs/compare/borsh-v1.6.0...borsh-v1.6.1) - 2026-03-15
+
+### Fixed
+
+- keep bytes no_std unless borsh std is enabled ([#364](https://github.com/near/borsh-rs/pull/364))
+
 ## [1.6.0](https://github.com/near/borsh-rs/compare/borsh-v1.5.7...borsh-v1.6.0) - 2025-11-25
 
 ### Added
