@@ -53,6 +53,8 @@ mod roundtrip {
     mod test_rc;
     #[cfg(feature = "indexmap")]
     mod test_indexmap;
+    #[cfg(feature = "uuid")]
+    mod test_uuid;
 
     #[cfg(feature = "derive")]
     mod requires_derive_category {

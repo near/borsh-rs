@@ -486,6 +486,15 @@ where
     }
 }
 
+#[cfg(feature = "uuid")]
+impl BorshDeserialize for uuid::Uuid {
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        Ok(uuid::Uuid::from_bytes(
+            BorshDeserialize::deserialize_reader(reader)?,
+        ))
+    }
+}
+
 impl<T> BorshDeserialize for Cow<'_, T>
 where
     T: ToOwned + ?Sized,
