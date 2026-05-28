@@ -453,6 +453,16 @@ impl BorshDeserialize for bson::oid::ObjectId {
     }
 }
 
+#[cfg(feature = "uuid")]
+impl BorshDeserialize for uuid::Uuid {
+    #[inline]
+    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        Ok(uuid::Uuid::from_bytes(<[u8; 16]>::deserialize_reader(
+            reader,
+        )?))
+    }
+}
+
 #[cfg(feature = "indexmap")]
 // Taken from https://github.com/indexmap-rs/indexmap/blob/dd06e5773e4f91748396c67d00c83637f5c0dd49/src/borsh.rs#L39
 // license: MIT OR Apache-2.0

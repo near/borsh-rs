@@ -317,6 +317,14 @@ impl BorshSerialize for bson::oid::ObjectId {
     }
 }
 
+#[cfg(feature = "uuid")]
+impl BorshSerialize for uuid::Uuid {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        self.as_bytes().serialize(writer)
+    }
+}
+
 #[cfg(feature = "indexmap")]
 // Taken from https://github.com/indexmap-rs/indexmap/blob/dd06e5773e4f91748396c67d00c83637f5c0dd49/src/borsh.rs#L74C1-L86C2
 // license: MIT OR Apache-2.0
