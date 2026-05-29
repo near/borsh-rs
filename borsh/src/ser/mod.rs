@@ -432,7 +432,7 @@ pub mod hashes {
             check_zst::<K>()?;
 
             let mut vec = self.iter().collect::<Vec<_>>();
-            vec.sort_by(|(a, _), (b, _)| a.cmp(b));
+            vec.sort_by_key(|(a, _)| *a);
             u32::try_from(vec.len())
                 .map_err(|_| ErrorKind::InvalidData)?
                 .serialize(writer)?;
