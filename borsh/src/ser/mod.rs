@@ -413,8 +413,8 @@ pub mod hashes {
     use crate::__private::maybestd::vec::Vec;
     use crate::error::check_zst;
     use crate::{
-        BorshSerialize,
         __private::maybestd::collections::{HashMap, HashSet},
+        BorshSerialize,
     };
     use core::convert::TryFrom;
     use core::hash::BuildHasher;
@@ -432,7 +432,7 @@ pub mod hashes {
             check_zst::<K>()?;
 
             let mut vec = self.iter().collect::<Vec<_>>();
-            vec.sort_by(|(a, _), (b, _)| a.cmp(b));
+            vec.sort_by_key(|(a, _)| *a);
             u32::try_from(vec.len())
                 .map_err(|_| ErrorKind::InvalidData)?
                 .serialize(writer)?;
