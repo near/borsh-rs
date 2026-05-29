@@ -413,8 +413,8 @@ pub mod hashes {
     use crate::__private::maybestd::vec::Vec;
     use crate::error::check_zst;
     use crate::{
-        BorshSerialize,
         __private::maybestd::collections::{HashMap, HashSet},
+        BorshSerialize,
     };
     use core::convert::TryFrom;
     use core::hash::BuildHasher;
