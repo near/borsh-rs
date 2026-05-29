@@ -1,7 +1,7 @@
 [workspace]
 members = ["borsh", "borsh-derive", "fuzz/fuzz-run", "benchmarks"]
 # benchmarks and fuzz need extra features to build, so keep them out of bare
-# `cargo` invocations from the workspace root; the test scripts target them explicitly.
+# `cargo` invocations from the workspace root.
 default-members = ["borsh", "borsh-derive"]
 
 [workspace.package]
