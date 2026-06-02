@@ -50,8 +50,13 @@ pub fn without_defaults(generics: &Generics) -> Generics {
 }
 
 #[cfg(feature = "schema")]
-pub fn type_contains_some_param(type_: &Type, params: &HashSet<Ident>) -> bool {
+pub fn type_contains_some_param(
+    type_: &Type,
+    params: &HashSet<Ident>,
+    include_phantom_data: bool,
+) -> bool {
     let mut find: FindTyParams = FindTyParams::from_params(params.iter());
+    find.include_phantom_data = include_phantom_data;
 
     find.visit_type_top_level(type_);
 
@@ -71,6 +76,8 @@ pub struct FindTyParams {
 
     // [Param] => [Type, containing Param] mapping
     associated_type_params_usage: HashMap<Ident, Vec<Type>>,
+
+    include_phantom_data: bool,
 }
 
 fn ungroup(mut ty: &Type) -> &Type {
@@ -97,6 +104,7 @@ impl FindTyParams {
             all_type_params_ordered,
             relevant_type_params: HashSet::new(),
             associated_type_params_usage: HashMap::new(),
+            include_phantom_data: false,
         }
     }
     pub fn process_for_bounds(self) -> Vec<Type> {
@@ -142,7 +150,14 @@ impl FindTyParams {
             all_type_params_ordered,
             relevant_type_params: HashSet::new(),
             associated_type_params_usage: HashMap::new(),
+            include_phantom_data: false,
         }
+    }
+
+    pub fn new_including_phantom_data(generics: &Generics) -> Self {
+        let mut find = Self::new(generics);
+        find.include_phantom_data = true;
+        find
     }
 
     pub fn process_for_params(self) -> Vec<Ident> {
@@ -235,7 +250,7 @@ impl FindTyParams {
 
     fn visit_path(&mut self, path: &Path) {
         if let Some(seg) = path.segments.last() {
-            if seg.ident == "PhantomData" {
+            if seg.ident == "PhantomData" && !self.include_phantom_data {
                 // Hardcoded exception, because PhantomData<T> implements
                 // Serialize and Deserialize and Schema whether or not T implements it.
                 return;

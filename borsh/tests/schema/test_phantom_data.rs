@@ -45,3 +45,37 @@ pub fn generic_struct_with_phantom_data_derived() {
         defs
     );
 }
+
+#[test]
+pub fn generic_enum_variant_with_phantom_data_derived() {
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    enum Parametrized<T> {
+        Item(PhantomData<T>),
+    }
+
+    struct Marker;
+
+    assert_eq!(
+        "Parametrized".to_string(),
+        <Parametrized<Marker>>::declaration()
+    );
+
+    let mut defs = Default::default();
+    <Parametrized<Marker>>::add_definitions_recursively(&mut defs);
+    assert_eq!(
+        schema_map! {
+            "Parametrized" => Definition::Enum {
+                tag_width: 1,
+                variants: vec![
+                    (0, "Item".to_string(), "Parametrized__Item".to_string()),
+                ],
+            },
+            "Parametrized__Item" => Definition::Struct {
+                fields: Fields::UnnamedFields(vec!["()".to_string()])
+            },
+            "()" => Definition::Primitive(0)
+        },
+        defs
+    );
+}

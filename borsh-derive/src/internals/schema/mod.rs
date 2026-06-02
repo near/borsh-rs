@@ -85,6 +85,7 @@ fn filter_used_params(generics: &Generics, not_skipped_type_params: HashSet<Iden
                     WherePredicate::Type(predicate_type) => generics::type_contains_some_param(
                         &predicate_type.bounded_ty,
                         &not_skipped_type_params,
+                        true,
                     ),
 
                     _ => true,
