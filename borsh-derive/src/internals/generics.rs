@@ -283,6 +283,7 @@ impl FindTyParams {
         }
     }
 
+    #[cfg(feature = "schema")]
     fn visit_where_predicate(&mut self, predicate: &WherePredicate) {
         #[cfg_attr(
             feature = "force_exhaustive_checks",
