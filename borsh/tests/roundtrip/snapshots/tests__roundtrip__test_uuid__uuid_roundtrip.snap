@@ -1,0 +1,22 @@
+---
+source: borsh/tests/roundtrip/test_uuid.rs
+expression: serialized_uuid
+---
+[
+    161,
+    162,
+    163,
+    164,
+    177,
+    178,
+    193,
+    194,
+    209,
+    210,
+    211,
+    212,
+    213,
+    214,
+    215,
+    216,
+]

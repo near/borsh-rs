@@ -369,6 +369,15 @@ where
     }
 }
 
+#[cfg(feature = "uuid")]
+impl BorshSerialize for uuid::Uuid {
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        BorshSerialize::serialize(&self.as_bytes(), writer)?;
+
+        Ok(())
+    }
+}
+
 impl<T> BorshSerialize for VecDeque<T>
 where
     T: BorshSerialize,
