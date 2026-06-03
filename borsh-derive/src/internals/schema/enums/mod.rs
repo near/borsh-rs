@@ -152,7 +152,8 @@ fn inner_struct_definition(
 ) -> (TokenStream2, Generics) {
     let transformed_fields = transform_variant_fields(variant.fields.clone());
 
-    let mut variant_schema_params_visitor = generics::FindTyParams::new(enum_generics);
+    let mut variant_schema_params_visitor =
+        generics::FindTyParams::new_including_phantom_data(enum_generics);
     schema::visit_struct_fields_unconditional(&variant.fields, &mut variant_schema_params_visitor);
     let variant_not_skipped_params = variant_schema_params_visitor
         .process_for_params()
