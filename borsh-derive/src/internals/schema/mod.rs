@@ -60,6 +60,10 @@ fn declaration(ident_str: &str, cratename: Path, params_for_bounds: Vec<Type>) -
 }
 
 fn filter_used_params(generics: &Generics, not_skipped_type_params: HashSet<Ident>) -> Generics {
+    let all_type_params = generics
+        .type_params()
+        .map(|param| param.ident.clone())
+        .collect::<HashSet<_>>();
     let new_params = generics
         .params
         .clone()
@@ -82,8 +86,9 @@ fn filter_used_params(generics: &Generics, not_skipped_type_params: HashSet<Iden
                 )]
                 match predicate {
                     WherePredicate::Lifetime(..) => true,
-                    WherePredicate::Type(predicate_type) => generics::type_contains_some_param(
-                        &predicate_type.bounded_ty,
+                    WherePredicate::Type(..) => generics::where_predicate_contains_only_params(
+                        predicate,
+                        &all_type_params,
                         &not_skipped_type_params,
                         true,
                     ),

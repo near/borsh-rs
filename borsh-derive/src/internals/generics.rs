@@ -50,17 +50,22 @@ pub fn without_defaults(generics: &Generics) -> Generics {
 }
 
 #[cfg(feature = "schema")]
-pub fn type_contains_some_param(
-    type_: &Type,
-    params: &HashSet<Ident>,
+pub fn where_predicate_contains_only_params(
+    predicate: &WherePredicate,
+    all_params: &HashSet<Ident>,
+    allowed_params: &HashSet<Ident>,
     include_phantom_data: bool,
 ) -> bool {
-    let mut find: FindTyParams = FindTyParams::from_params(params.iter());
+    let mut find = FindTyParams::from_params(all_params.iter());
     find.include_phantom_data = include_phantom_data;
 
-    find.visit_type_top_level(type_);
+    find.visit_where_predicate(predicate);
 
-    find.at_least_one_hit()
+    let used_params = find.process_for_params();
+    !used_params.is_empty()
+        && used_params
+            .iter()
+            .all(|param| allowed_params.contains(param))
 }
 
 /// a Visitor-like struct, which helps determine, if a type parameter is found in field
@@ -178,9 +183,6 @@ impl FindTyParams {
         });
         params
     }
-    pub fn at_least_one_hit(&self) -> bool {
-        !self.relevant_type_params.is_empty() || !self.associated_type_params_usage.is_empty()
-    }
 }
 
 impl FindTyParams {
@@ -280,6 +282,24 @@ impl FindTyParams {
             _ => {}
         }
     }
+
+    fn visit_where_predicate(&mut self, predicate: &WherePredicate) {
+        #[cfg_attr(
+            feature = "force_exhaustive_checks",
+            deny(non_exhaustive_omitted_patterns)
+        )]
+        match predicate {
+            WherePredicate::Type(predicate_type) => {
+                self.visit_type_top_level(&predicate_type.bounded_ty);
+                for bound in &predicate_type.bounds {
+                    self.visit_type_param_bound(bound);
+                }
+            }
+            WherePredicate::Lifetime(_) => {}
+            _ => {}
+        }
+    }
+
     // Type parameter should not be considered used by a macro path.
     //
     //     struct TypeMacro<T> {
