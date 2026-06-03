@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0](https://github.com/near/borsh-rs/compare/borsh-v1.6.1...borsh-v1.7.0) - 2026-06-03
+
+### Added
+
+- impl `BorshSerialize` and `BorshDeserialize` for `Uuid` ([#366](https://github.com/near/borsh-rs/pull/366))
+
+### Fixed
+
+- handle PhantomData in enum schema derive ([#369](https://github.com/near/borsh-rs/pull/369))
+
+### Other
+
+- fix the build on current toolchains ([#368](https://github.com/near/borsh-rs/pull/368))
+
 ## [1.6.1](https://github.com/near/borsh-rs/compare/borsh-v1.6.0...borsh-v1.6.1) - 2026-03-15
 
 ### Fixed
