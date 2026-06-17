@@ -6,5 +6,5 @@ default-members = ["borsh", "borsh-derive"]
 
 [workspace.package]
 # shared version of all public crates in the workspace
-version = "1.6.1"
+version = "1.7.0"
 rust-version = "1.77.0"
