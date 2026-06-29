@@ -117,3 +117,37 @@ fn test_overriden_struct_multiple_attrs_schema() {
     // block takes effect: `x` resolves to the custom `ThirdParty` declaration.
     assert!(defs.contains_key("ThirdParty<u64, String>"));
 }
+
+// Item-level merge through the real derive macro: `use_discriminant` lives in
+// one `#[borsh(...)]` attribute and `init` in a separate one. Both have to take
+// effect for the assertions below to hold.
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Debug)]
+#[borsh(use_discriminant = true)]
+#[borsh(init = initialization_method)]
+enum WithSplitItemAttrs {
+    A,
+    B = 10,
+    C,
+}
+
+impl WithSplitItemAttrs {
+    fn initialization_method(&mut self) {
+        *self = WithSplitItemAttrs::C;
+    }
+}
+
+#[test]
+fn test_item_level_multiple_attrs() {
+    let value = WithSplitItemAttrs::B;
+    let data = to_vec(&value).unwrap();
+
+    // `use_discriminant = true` (first attribute) honors the explicit
+    // discriminant: `B = 10` serializes its tag as the byte `10`, not the
+    // positional index `1`.
+    assert_eq!(data, [10]);
+
+    // `init = initialization_method` (second attribute) runs after decoding, so
+    // the deserialized value is rewritten to `C`.
+    let decoded = from_slice::<WithSplitItemAttrs>(&data).unwrap();
+    assert_eq!(decoded, WithSplitItemAttrs::C);
+}
