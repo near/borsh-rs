@@ -295,6 +295,28 @@ mod tests {
     }
 
     #[test]
+    fn test_reject_duplicate_key_within_single_borsh_attr() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(
+                    serialize_with = "third_party_impl::serialize_third_party",
+                    serialize_with = "third_party_impl::serialize_third_party",
+                )]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let err = match Attributes::parse(&first_field.attrs) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        local_insta_assert_debug_snapshot!(err);
+    }
+
+    #[test]
     fn test_bounds_parsing1() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct A {
