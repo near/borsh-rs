@@ -71,6 +71,9 @@ where
     let mut match_ = false;
     for (symbol_key, func) in map.iter() {
         if meta.path == *symbol_key {
+            if result.contains_key(symbol_key) {
+                return Err(meta.error(format_args!("duplicate `{}` attribute", symbol_key.0)));
+            }
             let v = func(attr_name, *symbol_key, &meta)?;
             result.insert(*symbol_key, v);
             match_ = true;
@@ -107,9 +110,15 @@ where
     Ok(result)
 }
 
-pub(super) fn attr_get_by_symbol_keys<T, F>(
+/// Parses the nested meta of every given `#[borsh(...)]` attribute, folding
+/// them into a single shared map.
+///
+/// Disjoint top-level keys spread across multiple attributes merge cleanly. A
+/// top-level key supplied more than once (whether within one attribute or
+/// across several) is reported as a duplicate by [`get_nested_meta_logic`].
+pub(super) fn attrs_get_by_symbol_keys<T, F>(
     attr_name: Symbol,
-    attr: &Attribute,
+    attrs: &[&Attribute],
     map: &BTreeMap<Symbol, F>,
 ) -> syn::Result<BTreeMap<Symbol, T>>
 where
@@ -117,7 +126,9 @@ where
 {
     let mut result = BTreeMap::new();
 
-    attr.parse_nested_meta(|meta| get_nested_meta_logic(attr_name, meta, map, &mut result))?;
+    for attr in attrs {
+        attr.parse_nested_meta(|meta| get_nested_meta_logic(attr_name, meta, map, &mut result))?;
+    }
 
     Ok(result)
 }
