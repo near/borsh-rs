@@ -65,6 +65,7 @@ mod roundtrip {
         mod test_recursive_structs;
         mod test_recursive_enums;
         mod test_serde_with_third_party;
+        mod test_multiple_borsh_attrs;
         mod test_enum_discriminants;
         #[cfg(feature = "bytes")]
         mod test_ultimate_many_features_combined;

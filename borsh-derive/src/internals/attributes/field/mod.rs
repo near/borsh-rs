@@ -6,8 +6,8 @@ use syn::{meta::ParseNestedMeta, Attribute, WherePredicate};
 use self::bounds::BOUNDS_FIELD_PARSE_MAP;
 
 use super::{
-    get_one_attribute,
-    parsing::{attr_get_by_symbol_keys, meta_get_by_symbol_keys, parse_lit_into},
+    collect_borsh_attributes,
+    parsing::{attrs_get_by_symbol_keys, meta_get_by_symbol_keys, parse_lit_into},
     BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SERIALIZE_WITH, SKIP,
 };
 
@@ -152,11 +152,12 @@ impl Attributes {
         Ok(())
     }
     pub(crate) fn parse(attrs: &[Attribute]) -> Result<Self, syn::Error> {
-        let borsh = get_one_attribute(attrs)?;
+        let borsh_attrs = collect_borsh_attributes(attrs);
 
-        let result: Self = if let Some(attr) = borsh {
-            let result: Self = attr_get_by_symbol_keys(BORSH, attr, &BORSH_FIELD_PARSE_MAP)?.into();
-            result.check(attr)?;
+        let result: Self = if let Some(first_attr) = borsh_attrs.first() {
+            let result: Self =
+                attrs_get_by_symbol_keys(BORSH, &borsh_attrs, &BORSH_FIELD_PARSE_MAP)?.into();
+            result.check(first_attr)?;
             result
         } else {
             BTreeMap::new().into()
@@ -256,15 +257,29 @@ mod tests {
     use super::{bounds, Attributes};
 
     #[test]
-    fn test_reject_multiple_borsh_attrs() {
+    fn test_merge_multiple_borsh_attrs() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct A {
-                #[borsh(skip)]
-                #[borsh(bound(deserialize = "K: Hash + Ord,
-                     V: Eq + Ord",
-                    serialize = "K: Hash + Eq + Ord,
-                     V: Ord"
-                ))]
+                #[borsh(serialize_with = "third_party_impl::serialize_third_party")]
+                #[borsh(deserialize_with = "third_party_impl::deserialize_third_party")]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = Attributes::parse(&first_field.attrs).unwrap();
+        local_insta_assert_snapshot!(debug_print_tokenizable(attrs.serialize_with.as_ref()));
+        local_insta_assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
+    }
+
+    #[test]
+    fn test_reject_duplicate_key_across_borsh_attrs() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(serialize_with = "third_party_impl::serialize_third_party")]
+                #[borsh(serialize_with = "third_party_impl::serialize_third_party")]
                 x: u64,
                 y: String,
             }

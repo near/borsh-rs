@@ -3,5 +3,5 @@ source: borsh-derive/src/internals/attributes/item/mod.rs
 expression: actual.unwrap_err()
 ---
 Error(
-    "multiple `borsh` attributes not allowed",
+    "duplicate `init` attribute",
 )

@@ -2,12 +2,15 @@ use crate::internals::attributes::{BORSH, CRATE, INIT, USE_DISCRIMINANT};
 use quote::ToTokens;
 use syn::{spanned::Spanned, Attribute, DeriveInput, Error, Expr, ItemEnum, Path};
 
-use super::{get_one_attribute, parsing};
+use super::{collect_borsh_attributes, parsing};
 
 pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
-    let borsh = get_one_attribute(&derive_input.attrs)?;
+    let borsh_attrs = collect_borsh_attributes(&derive_input.attrs);
 
-    if let Some(attr) = borsh {
+    // top-level keys seen so far, shared across all `#[borsh(...)]` attributes,
+    // so a key supplied twice (within one attribute or across several) errors.
+    let mut seen_keys: Vec<&'static str> = Vec::new();
+    for attr in borsh_attrs {
         attr.parse_nested_meta(|meta| {
             if meta.path != USE_DISCRIMINANT && meta.path != INIT && meta.path != CRATE {
                 return Err(syn::Error::new(
@@ -15,6 +18,17 @@ pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
                     "`crate`, `use_discriminant` or `init` are the only supported attributes for `borsh`",
                 ));
             }
+            let key = if meta.path == USE_DISCRIMINANT {
+                USE_DISCRIMINANT.0
+            } else if meta.path == INIT {
+                INIT.0
+            } else {
+                CRATE.0
+            };
+            if seen_keys.contains(&key) {
+                return Err(meta.error(format_args!("duplicate `{}` attribute", key)));
+            }
+            seen_keys.push(key);
             if meta.path == USE_DISCRIMINANT {
                 let _expr: Expr = meta.value()?.parse()?;
                 if let syn::Data::Struct(ref _data) = derive_input.data {
@@ -43,8 +57,7 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
 
     let attrs = &input.attrs;
     let mut use_discriminant = None;
-    let attr = attrs.iter().find(|attr| attr.path() == BORSH);
-    if let Some(attr) = attr {
+    for attr in collect_borsh_attributes(attrs) {
         attr.parse_nested_meta(|meta| {
             if meta.path == USE_DISCRIMINANT {
                 let value_expr: Expr = meta.value()?.parse()?;
@@ -82,8 +95,7 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
 
 pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
     let mut res = None;
-    let attr = attrs.iter().find(|attr| attr.path() == BORSH);
-    if let Some(attr) = attr {
+    for attr in collect_borsh_attributes(attrs) {
         attr.parse_nested_meta(|meta| {
             if meta.path == INIT {
                 let value_expr: Path = meta.value()?.parse()?;
@@ -101,8 +113,7 @@ pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Pat
 
 pub(crate) fn get_crate(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
     let mut res = None;
-    let attr = attrs.iter().find(|attr| attr.path() == BORSH);
-    if let Some(attr) = attr {
+    for attr in collect_borsh_attributes(attrs) {
         attr.parse_nested_meta(|meta| {
             if meta.path == CRATE {
                 let value_expr: Path = parsing::parse_lit_into(BORSH, CRATE, &meta)?;
@@ -248,10 +259,48 @@ mod tests {
     }
 
     #[test]
-    fn test_reject_multiple_borsh_attrs() {
-        let item_struct = syn::parse2::<DeriveInput>(quote! {
+    fn test_merge_multiple_borsh_attrs() {
+        let item_enum = syn::parse2::<ItemEnum>(quote! {
             #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
             #[borsh(use_discriminant=true)]
+            #[borsh(init = initialization_method)]
+            enum A {
+                B,
+                C,
+                D= 10,
+            }
+        })
+        .unwrap();
+
+        let derive_input = syn::parse2::<DeriveInput>(quote! {
+            #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+            #[borsh(use_discriminant=true)]
+            #[borsh(init = initialization_method)]
+            enum A {
+                B,
+                C,
+                D= 10,
+            }
+        })
+        .unwrap();
+
+        assert!(check_attributes(&derive_input).is_ok());
+        assert!(contains_use_discriminant(&item_enum).unwrap());
+        assert_eq!(
+            contains_initialize_with(&item_enum.attrs)
+                .unwrap()
+                .unwrap()
+                .to_token_stream()
+                .to_string(),
+            "initialization_method"
+        );
+    }
+
+    #[test]
+    fn test_reject_duplicate_key_across_borsh_attrs() {
+        let item_struct = syn::parse2::<DeriveInput>(quote! {
+            #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+            #[borsh(init = initialization_method)]
             #[borsh(init = initialization_method)]
             enum A {
                 B,
