@@ -89,7 +89,7 @@ struct A<K, V> {
 }
 
 #[test]
-fn test_overriden_struct_multiple_attrs() {
+fn test_overridden_struct_multiple_attrs() {
     let mut m = BTreeMap::<u64, String>::new();
     m.insert(0, "0th element".to_string());
     m.insert(1, "1st element".to_string());
@@ -104,7 +104,7 @@ fn test_overriden_struct_multiple_attrs() {
 
 #[cfg(feature = "unstable__schema")]
 #[test]
-fn test_overriden_struct_multiple_attrs_schema() {
+fn test_overridden_struct_multiple_attrs_schema() {
     use borsh::BorshSchema;
 
     assert_eq!(
