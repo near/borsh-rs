@@ -1,5 +1,6 @@
 use crate::internals::attributes::{BORSH, CRATE, INIT, USE_DISCRIMINANT};
 use quote::ToTokens;
+use std::collections::HashSet;
 use syn::{spanned::Spanned, Attribute, DeriveInput, Error, Expr, ItemEnum, Path};
 
 use super::{collect_borsh_attributes, parsing};
@@ -25,10 +26,9 @@ pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
             } else {
                 CRATE.0
             };
-            if seen_keys.contains(&key) {
+            if !seen_keys.insert(key) {
                 return Err(meta.error(format_args!("duplicate `{}` attribute", key)));
             }
-            seen_keys.push(key);
             if meta.path == USE_DISCRIMINANT {
                 let _expr: Expr = meta.value()?.parse()?;
                 if let syn::Data::Struct(ref _data) = derive_input.data {
