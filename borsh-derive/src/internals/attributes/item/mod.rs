@@ -9,7 +9,7 @@ pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
 
     // top-level keys seen so far, shared across all `#[borsh(...)]` attributes,
     // so a key supplied twice (within one attribute or across several) errors.
-    let mut seen_keys: Vec<&'static str> = Vec::new();
+    let mut seen_keys: HashSet<&'static str> = HashSet::new();
     for attr in borsh_attrs {
         attr.parse_nested_meta(|meta| {
             if meta.path != USE_DISCRIMINANT && meta.path != INIT && meta.path != CRATE {
