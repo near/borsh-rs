@@ -64,14 +64,11 @@ impl<'a> PartialEq<Symbol> for &'a Path {
     }
 }
 
-fn get_one_attribute(attrs: &[Attribute]) -> syn::Result<Option<&Attribute>> {
-    let count = attrs.iter().filter(|attr| attr.path() == BORSH).count();
-    let borsh = attrs.iter().find(|attr| attr.path() == BORSH);
-    if count > 1 {
-        return Err(syn::Error::new_spanned(
-            borsh.unwrap(),
-            format!("multiple `{}` attributes not allowed", BORSH.0),
-        ));
-    }
-    Ok(borsh)
+/// Collects all `#[borsh(...)]` attributes present on a field or item.
+///
+/// Multiple `#[borsh(...)]` attributes are allowed and their contents are
+/// merged by the callers. This makes it possible to split disjoint top-level
+/// keys across several attributes, e.g. behind separate `#[cfg_attr(...)]`.
+fn collect_borsh_attributes(attrs: &[Attribute]) -> Vec<&Attribute> {
+    attrs.iter().filter(|attr| attr.path() == BORSH).collect()
 }
