@@ -71,6 +71,23 @@ where
     let mut match_ = false;
     for (symbol_key, func) in map.iter() {
         if meta.path == *symbol_key {
+            // This duplicate check runs at every nesting level: at the top
+            // level (via `attrs_get_by_symbol_keys` / `meta_get_by_symbol_keys`)
+            // and again for keys nested inside a group such as `schema(...)`,
+            // whose `func` recurses through `meta_get_by_symbol_keys` with its
+            // own `result`. So a key repeated at the same level is rejected here
+            // -- whether it is a top-level key spread across several
+            // `#[borsh(...)]` attributes or a nested key such as
+            // `schema(params = ...)` supplied twice.
+            //
+            // Merging is per key at a single level, not a deep merge: `schema`
+            // is itself one top-level key, so two separate `schema(...)` groups
+            // collide rather than having their inner keys combined -- inner keys
+            // must be written together inside one group.
+            //
+            // Before this check a repeated key silently kept the last `v`
+            // produced by `func` (the `insert` below overwrote the earlier one);
+            // it is now an error instead.
             if result.contains_key(symbol_key) {
                 return Err(meta.error(format_args!("duplicate `{}` attribute", symbol_key.0)));
             }
