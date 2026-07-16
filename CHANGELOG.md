@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0](https://github.com/near/borsh-rs/compare/borsh-v1.7.0...borsh-v1.8.0) - 2026-07-16
+
+### Added
+
+- merge multiple `#[borsh(...)]` attributes instead of rejecting them ([#373](https://github.com/near/borsh-rs/pull/373))
+
 ### Changed
 
 - merge multiple `#[borsh(...)]` attributes instead of rejecting them ([#373](https://github.com/near/borsh-rs/pull/373))
