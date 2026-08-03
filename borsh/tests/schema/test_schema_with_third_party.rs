@@ -10,7 +10,7 @@ mod third_party_impl {
 
     pub(super) fn declaration<K: borsh::BorshSchema, V: borsh::BorshSchema>(
     ) -> borsh::schema::Declaration {
-        let params = vec![<K>::declaration(), <V>::declaration()];
+        let params = [<K>::declaration(), <V>::declaration()];
         format!(r"{}<{}>", "ThirdParty", params.join(", "))
     }
 
@@ -60,7 +60,7 @@ pub fn struct_overriden() {
         "A<u64, String>".to_string(),
         <A<u64, String>>::declaration()
     );
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <A<u64, String>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -95,7 +95,7 @@ pub fn enum_overriden() {
         "C<u64, String>".to_string(),
         <C<u64, String>>::declaration()
     );
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <C<u64, String>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {

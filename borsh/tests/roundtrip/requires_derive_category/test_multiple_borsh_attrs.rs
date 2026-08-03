@@ -47,7 +47,7 @@ mod third_party_impl {
     #[cfg(feature = "unstable__schema")]
     pub(super) fn declaration<K: borsh::BorshSchema, V: borsh::BorshSchema>(
     ) -> borsh::schema::Declaration {
-        let params = vec![<K>::declaration(), <V>::declaration()];
+        let params = [<K>::declaration(), <V>::declaration()];
         format!(r"{}<{}>", "ThirdParty", params.join(", "))
     }
 

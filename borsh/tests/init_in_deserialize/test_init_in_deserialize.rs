@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used)]
+
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 #[borsh(init=init)]
@@ -36,7 +38,7 @@ enum AEnum {
 
 impl AEnum {
     pub fn initialization_method(&mut self) {
-        *self = AEnum::C;
+        *self = Self::C;
     }
 }
 

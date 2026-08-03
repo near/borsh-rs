@@ -2,7 +2,6 @@ use crate::common_macro::schema_imports::*;
 use alloc::{
     collections::{BTreeMap, BTreeSet},
     format,
-    string::ToString,
     vec::Vec,
 };
 
@@ -24,7 +23,7 @@ impl BorshSchema for ConflictingSchema {
 #[test]
 #[should_panic(expected = "Redefining type schema for i64")]
 fn test_conflict() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <Vec<i64> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
 
     <ConflictingSchema as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
@@ -33,7 +32,7 @@ fn test_conflict() {
 #[test]
 #[should_panic(expected = "Redefining type schema for i64")]
 fn test_implicit_conflict_vec() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <Vec<i64> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
     <Vec<ConflictingSchema> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
 }
@@ -41,7 +40,7 @@ fn test_implicit_conflict_vec() {
 #[test]
 #[should_panic(expected = "Redefining type schema for i64")]
 fn test_implicit_conflict_range() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <core::ops::Range<i64> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
     <core::ops::Range<ConflictingSchema> as borsh::BorshSchema>::add_definitions_recursively(
         &mut defs,
@@ -51,7 +50,7 @@ fn test_implicit_conflict_range() {
 #[test]
 #[should_panic(expected = "Redefining type schema for i64")]
 fn test_implicit_conflict_slice() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <[i64] as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
     <[ConflictingSchema] as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
 }
@@ -59,7 +58,7 @@ fn test_implicit_conflict_slice() {
 #[test]
 #[should_panic(expected = "Redefining type schema for i64")]
 fn test_implicit_conflict_array() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <[i64; 10] as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
     <[ConflictingSchema; 10] as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
 }
@@ -67,7 +66,7 @@ fn test_implicit_conflict_array() {
 #[test]
 #[should_panic(expected = "Redefining type schema for i64")]
 fn test_implicit_conflict_option() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <Option<i64> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
     <Option<ConflictingSchema> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
 }
@@ -80,7 +79,7 @@ struct GenericStruct<T> {
 
 #[test]
 fn test_implicit_conflict_struct() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <GenericStruct<i64> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
     <GenericStruct<ConflictingSchema> as borsh::BorshSchema>::add_definitions_recursively(
         &mut defs,
@@ -99,7 +98,7 @@ struct SelfConflictingStruct {
 #[test]
 #[should_panic(expected = "Redefining type schema for i64")]
 fn test_implicit_conflict_self_conflicting_struct() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <SelfConflictingStruct as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
 }
 
@@ -112,7 +111,7 @@ enum GenericEnum<T> {
 
 #[test]
 fn test_implicit_conflict_enum() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <GenericEnum<i64> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
     <GenericEnum<ConflictingSchema> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
     // NOTE: the contents of `defs` depend on the order of 2 above lines
@@ -129,14 +128,14 @@ enum SelfConflictingEnum {
 #[test]
 #[should_panic(expected = "Redefining type schema for i64")]
 fn test_implicit_conflict_self_conflicting_enum() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <SelfConflictingEnum as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
 }
 
 #[test]
 #[should_panic(expected = "Redefining type schema for i64")]
 fn test_implicit_conflict_result() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <Result<u8, i64> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
     <Result<u8, ConflictingSchema> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
 }
@@ -144,7 +143,7 @@ fn test_implicit_conflict_result() {
 #[test]
 #[should_panic(expected = "Redefining type schema for i64")]
 fn test_implicit_conflict_btreemap() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <BTreeMap<i64, u8> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
     <BTreeMap<ConflictingSchema, u8> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
 }
@@ -152,7 +151,7 @@ fn test_implicit_conflict_btreemap() {
 #[test]
 #[should_panic(expected = "Redefining type schema for i64")]
 fn test_implicit_conflict_btreeset() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <BTreeSet<i64> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
     <BTreeSet<ConflictingSchema> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
 }
@@ -160,7 +159,7 @@ fn test_implicit_conflict_btreeset() {
 #[test]
 #[should_panic(expected = "Redefining type schema for i64")]
 fn test_implicit_conflict_tuple() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <(i64, u8) as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
     <(ConflictingSchema, u8) as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
 }

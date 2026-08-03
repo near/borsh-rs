@@ -4,12 +4,12 @@ use crate::common_macro::schema_imports::*;
 #[derive(borsh::BorshSchema)]
 enum ERecD {
     B { x: String, y: i32 },
-    C(u8, Vec<ERecD>),
+    C(u8, Vec<Self>),
 }
 
 #[test]
 pub fn recursive_enum_schema() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     ERecD::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {

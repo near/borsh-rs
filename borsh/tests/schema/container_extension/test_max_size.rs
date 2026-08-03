@@ -108,7 +108,7 @@ fn max_serialized_size_derived_types() {
 
     #[derive(BorshSchema)]
     #[allow(unused)]
-    struct Recursive(Option<Box<Recursive>>);
+    struct Recursive(Option<Box<Self>>);
 
     test_ok::<Empty>(0);
     test_ok::<Named>(23);
@@ -165,7 +165,7 @@ fn max_serialized_size_bound_vec() {
 
     impl<const W: u8, const N: u64> BorshSchema for BoundVec<W, N> {
         fn declaration() -> Declaration {
-            format!("BoundVec<{}, {}>", W, N)
+            format!("BoundVec<{W}, {N}>")
         }
         fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
             let definition = Definition::Sequence {
@@ -203,7 +203,7 @@ fn max_serialized_size_small_vec() {
         fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
             let definition = Definition::Sequence {
                 length_width: 1,
-                length_range: 0..=u8::MAX as u64,
+                length_range: 0..=u64::from(u8::MAX),
                 elements: T::declaration(),
             };
             add_definition(Self::declaration(), definition, definitions);

@@ -4,12 +4,12 @@ use crate::common_macro::schema_imports::*;
 #[derive(borsh::BorshSchema)]
 struct CRecC {
     a: String,
-    b: BTreeMap<String, CRecC>,
+    b: BTreeMap<String, Self>,
 }
 
 #[test]
 pub fn recursive_struct_schema() {
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     CRecC::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {

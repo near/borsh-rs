@@ -1,7 +1,6 @@
 use crate::common_macro::schema_imports::*;
 
-use alloc::{boxed::Box, collections::BTreeMap, format, string::ToString, vec::Vec};
-
+use alloc::{boxed::Box, collections::BTreeMap, format, vec::Vec};
 
 #[track_caller]
 fn test_ok<T: BorshSchema>() {
@@ -32,16 +31,16 @@ fn validate_for_derived_types() {
 
     #[derive(BorshSchema)]
     #[allow(unused)]
-    struct Recursive(Option<Box<Recursive>>);
+    struct Recursive(Option<Box<Self>>);
 
     #[derive(BorshSchema)]
     #[allow(unused)]
-    struct RecursiveSequence(Vec<RecursiveSequence>);
+    struct RecursiveSequence(Vec<Self>);
 
     // thankfully, this one cannot be constructed
     #[derive(BorshSchema)]
     #[allow(unused)]
-    struct RecursiveArray(Box<[RecursiveArray; 3]>);
+    struct RecursiveArray(Box<[Self; 3]>);
 
     test_ok::<Empty>();
     test_ok::<Named>();
@@ -71,7 +70,7 @@ fn validate_bound_vec() {
 
     impl<const W: u8, const N: u64> BorshSchema for BoundVec<W, N> {
         fn declaration() -> Declaration {
-            format!("BoundVec<{}, {}>", W, N)
+            format!("BoundVec<{W}, {N}>")
         }
         fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
             let definition = Definition::Sequence {

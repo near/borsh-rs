@@ -213,8 +213,7 @@ pub fn generic_associated_item1() {
     #[derive(borsh::BorshSchema)]
     enum EnumParametrized<T, K, V>
     where
-        K: TraitName,
-        K: core::cmp::Ord,
+        K: TraitName + core::cmp::Ord,
         V: core::cmp::Ord,
     {
         B {
@@ -252,8 +251,7 @@ pub fn generic_associated_item2() {
     #[derive(borsh::BorshSchema)]
     enum EnumParametrized<T, K, V>
     where
-        K: TraitName,
-        K: core::cmp::Ord,
+        K: TraitName + core::cmp::Ord,
         V: core::cmp::Ord,
     {
         B {

@@ -1,4 +1,6 @@
-use alloc::string::ToString;
+#![expect(clippy::unwrap_used)]
+
+use alloc::string::ToString as _;
 use borsh::from_slice;
 
 #[test]
