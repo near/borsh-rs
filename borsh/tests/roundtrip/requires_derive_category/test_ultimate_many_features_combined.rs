@@ -1,10 +1,12 @@
+#![allow(clippy::unwrap_used)]
+
 use core::{ops, result::Result};
 
 use alloc::{
     borrow,
     boxed::Box,
     collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
-    string::{String, ToString},
+    string::{String, ToString as _},
     vec,
     vec::Vec,
 };
@@ -14,6 +16,7 @@ use bytes::{Bytes, BytesMut};
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[allow(clippy::linkedlist)]
 struct A<'a> {
     x: u64,
     b: B,

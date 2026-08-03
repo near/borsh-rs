@@ -1,0 +1,7 @@
+[cargo]
+features = [
+  "ascii", "borsh-derive", "bson", "bytes", "de_strict_order",
+  "derive", "std", "indexmap", "rc", "unstable__schema", "uuid",
+  "schema",
+]
+noDefaultFeatures = true

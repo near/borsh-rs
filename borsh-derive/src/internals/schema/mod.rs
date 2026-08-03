@@ -22,6 +22,9 @@ impl GenericsOutput {
             params_visitor: generics::FindTyParams::new(generics),
         }
     }
+
+    // TODO: replace with expect or use result
+    #[allow(clippy::unwrap_used)]
     fn result(self, item_name: &str, cratename: &Path) -> (Vec<WherePredicate>, TokenStream2) {
         let trait_path: Path = syn::parse2(quote! { #cratename::BorshSchema }).unwrap();
         let predicates = generics::compute_predicates(
@@ -31,7 +34,7 @@ impl GenericsOutput {
         // Generate function that returns the name of the type.
         let declaration = declaration(
             item_name,
-            cratename.clone(),
+            &cratename.clone(),
             self.params_visitor.process_for_bounds(),
         );
 
@@ -39,7 +42,7 @@ impl GenericsOutput {
     }
 }
 
-fn declaration(ident_str: &str, cratename: Path, params_for_bounds: Vec<Type>) -> TokenStream2 {
+fn declaration(ident_str: &str, cratename: &Path, params_for_bounds: Vec<Type>) -> TokenStream2 {
     // Generate function that returns the name of the type.
     let mut declaration_params = vec![];
     for type_param in params_for_bounds {
@@ -59,7 +62,7 @@ fn declaration(ident_str: &str, cratename: Path, params_for_bounds: Vec<Type>) -
     }
 }
 
-fn filter_used_params(generics: &Generics, not_skipped_type_params: HashSet<Ident>) -> Generics {
+fn filter_used_params(generics: &Generics, not_skipped_type_params: &HashSet<Ident>) -> Generics {
     let all_type_params = generics
         .type_params()
         .map(|param| param.ident.clone())
@@ -85,15 +88,13 @@ fn filter_used_params(generics: &Generics, not_skipped_type_params: HashSet<Iden
                     deny(non_exhaustive_omitted_patterns)
                 )]
                 match predicate {
-                    WherePredicate::Lifetime(..) => true,
                     WherePredicate::Type(..) => generics::where_predicate_contains_only_params(
                         predicate,
                         &all_type_params,
-                        &not_skipped_type_params,
+                        not_skipped_type_params,
                         true,
                     ),
-
-                    _ => true,
+                    WherePredicate::Lifetime(..) | &&_ => true,
                 }
             })
             .cloned()

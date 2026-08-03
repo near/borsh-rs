@@ -23,9 +23,9 @@ pub const DESERIALIZE: Symbol = Symbol("deserialize", "deserialize = ...");
 pub const SKIP: Symbol = Symbol("skip", "skip");
 /// init - sub-borsh nested meta, item-level only attribute  `BorshDeserialize` context
 pub const INIT: Symbol = Symbol("init", "init = ...");
-/// serialize_with - sub-borsh nested meta, field-level only, `BorshSerialize` context
+/// `serialize_with` - sub-borsh nested meta, field-level only, `BorshSerialize` context
 pub const SERIALIZE_WITH: Symbol = Symbol("serialize_with", "serialize_with = ...");
-/// deserialize_with - sub-borsh nested meta, field-level only, `BorshDeserialize` context
+/// `deserialize_with` - sub-borsh nested meta, field-level only, `BorshDeserialize` context
 pub const DESERIALIZE_WITH: Symbol = Symbol("deserialize_with", "deserialize_with = ...");
 /// crate - sub-borsh nested meta, item-level only, `BorshSerialize`, `BorshDeserialize`, `BorshSchema` contexts
 pub const CRATE: Symbol = Symbol("crate", "crate = ...");
@@ -38,8 +38,8 @@ pub mod schema_keys {
     pub const SCHEMA: Symbol = Symbol("schema", "schema(...)");
     /// params - sub-schema nested meta, field-level only attribute
     pub const PARAMS: Symbol = Symbol("params", "params = ...");
-    /// serialize_with - sub-borsh nested meta, field-level only, `BorshSerialize` context
-    /// with_funcs - sub-schema nested meta, field-level only attribute
+    /// `serialize_with` - sub-borsh nested meta, field-level only, `BorshSerialize` context
+    /// `with_funcs` - sub-schema nested meta, field-level only attribute
     pub const WITH_FUNCS: Symbol = Symbol("with_funcs", "with_funcs(...)");
     /// declaration - sub-with_funcs nested meta, field-level only attribute
     pub const DECLARATION: Symbol = Symbol("declaration", "declaration = ...");
@@ -58,7 +58,7 @@ impl PartialEq<Symbol> for Path {
     }
 }
 
-impl<'a> PartialEq<Symbol> for &'a Path {
+impl PartialEq<Symbol> for &Path {
     fn eq(&self, word: &Symbol) -> bool {
         self.is_ident(word.0)
     }

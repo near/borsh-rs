@@ -71,7 +71,7 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
 });
 
 #[derive(Default, Clone)]
-pub(crate) struct Attributes {
+pub struct Attributes {
     pub bounds: Option<bounds::Bounds>,
     pub serialize_with: Option<syn::ExprPath>,
     pub deserialize_with: Option<syn::ExprPath>,
@@ -128,9 +128,7 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
 }
 
 #[cfg(feature = "schema")]
-pub(crate) fn filter_attrs(
-    attrs: impl Iterator<Item = Attribute>,
-) -> impl Iterator<Item = Attribute> {
+pub fn filter_attrs(attrs: impl Iterator<Item = Attribute>) -> impl Iterator<Item = Attribute> {
     attrs.filter(|attr| attr.path() == BORSH)
 }
 
@@ -210,7 +208,7 @@ impl Attributes {
         Ok(())
     }
 
-    pub(crate) fn needs_schema_params_derive(&self) -> bool {
+    pub const fn needs_schema_params_derive(&self) -> bool {
         if let Some(ref schema) = self.schema {
             if schema.params.is_some() {
                 return false;
@@ -238,6 +236,7 @@ impl Attributes {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use quote::quote;
@@ -268,7 +267,7 @@ mod tests {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
         let attrs = Attributes::parse(&first_field.attrs).unwrap();
         local_insta_assert_snapshot!(debug_print_tokenizable(attrs.serialize_with.as_ref()));
         local_insta_assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
@@ -286,10 +285,9 @@ mod tests {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let err = match Attributes::parse(&first_field.attrs) {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
+        let Err(err) = Attributes::parse(&first_field.attrs) else {
+            unreachable!("expecting error here")
         };
         local_insta_assert_debug_snapshot!(err);
     }
@@ -308,10 +306,9 @@ mod tests {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let err = match Attributes::parse(&first_field.attrs) {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
+        let Err(err) = Attributes::parse(&first_field.attrs) else {
+            unreachable!("expecting error here")
         };
         local_insta_assert_debug_snapshot!(err);
     }
@@ -331,7 +328,7 @@ mod tests {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
         let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.serialize.clone()));
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
@@ -352,7 +349,7 @@ mod tests {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
         let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.serialize.clone()));
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
@@ -372,7 +369,7 @@ mod tests {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
         let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
         assert_eq!(attrs.serialize.as_ref().unwrap().len(), 0);
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
@@ -389,7 +386,7 @@ mod tests {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
         let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
         assert!(attrs.serialize.is_none());
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
@@ -406,10 +403,9 @@ mod tests {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let err = match parse_bounds(&first_field.attrs) {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
+        let Err(err) = parse_bounds(&first_field.attrs) else {
+            unreachable!("expecting error here")
         };
         local_insta_assert_debug_snapshot!(err);
     }
@@ -425,10 +421,9 @@ mod tests {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let err = match parse_bounds(&first_field.attrs) {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
+        let Err(err) = parse_bounds(&first_field.attrs) else {
+            unreachable!("expecting error here")
         };
         local_insta_assert_debug_snapshot!(err);
     }
@@ -444,10 +439,9 @@ mod tests {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let err = match parse_bounds(&first_field.attrs) {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
+        let Err(err) = parse_bounds(&first_field.attrs) else {
+            unreachable!("expecting error here")
         };
         local_insta_assert_debug_snapshot!(err);
     }
@@ -466,7 +460,7 @@ mod tests {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
         let attrs = Attributes::parse(&first_field.attrs).unwrap();
         local_insta_assert_snapshot!(debug_print_tokenizable(attrs.serialize_with.as_ref()));
         local_insta_assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with));
@@ -482,7 +476,7 @@ mod tests {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
 
         let result = Attributes::parse(&first_field.attrs).unwrap();
         assert!(result.skip);
@@ -497,13 +491,14 @@ mod tests {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
 
         let result = Attributes::parse(&first_field.attrs).unwrap();
         assert!(!result.skip);
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(feature = "schema")]
 #[cfg(test)]
 mod tests_schema {
@@ -540,7 +535,7 @@ mod tests_schema {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
 
         let attrs = Attributes::parse(&first_field.attrs).unwrap();
         let bounds = attrs.bounds.clone().unwrap();
@@ -568,7 +563,7 @@ mod tests_schema {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
         let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(schema_attrs.unwrap().params));
     }
@@ -588,10 +583,9 @@ mod tests_schema {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let err = match parse_schema_attrs(&first_field.attrs) {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
+        let Err(err) = parse_schema_attrs(&first_field.attrs) else {
+            unreachable!("expecting error here")
         };
         local_insta_assert_debug_snapshot!(err);
     }
@@ -612,10 +606,9 @@ mod tests_schema {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let err = match parse_schema_attrs(&first_field.attrs) {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
+        let Err(err) = parse_schema_attrs(&first_field.attrs) else {
+            unreachable!("expecting error here")
         };
         local_insta_assert_debug_snapshot!(err);
     }
@@ -636,7 +629,7 @@ mod tests_schema {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
         let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(schema_attrs.unwrap().params));
     }
@@ -654,7 +647,7 @@ mod tests_schema {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
         let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
         assert_eq!(schema_attrs.unwrap().params.unwrap().len(), 0);
     }
@@ -672,7 +665,7 @@ mod tests_schema {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
         let schema_attrs = parse_schema_attrs(&first_field.attrs).unwrap();
         assert!(schema_attrs.is_none());
     }
@@ -691,7 +684,7 @@ mod tests_schema {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
         let attrs = Attributes::parse(&first_field.attrs).unwrap();
         let schema = attrs.schema.unwrap();
         let with_funcs = schema.with_funcs.unwrap();
@@ -714,12 +707,11 @@ mod tests_schema {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
         let attrs = Attributes::parse(&first_field.attrs);
 
-        let err = match attrs {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
+        let Err(err) = attrs else {
+            unreachable!("expecting error here")
         };
         local_insta_assert_debug_snapshot!(err);
     }
@@ -735,10 +727,9 @@ mod tests_schema {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
-        let err = match Attributes::parse(&first_field.attrs) {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
+        let Err(err) = Attributes::parse(&first_field.attrs) else {
+            unreachable!("expecting error here")
         };
         local_insta_assert_debug_snapshot!(err);
     }
@@ -756,11 +747,10 @@ mod tests_schema {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
 
-        let err = match Attributes::parse(&first_field.attrs) {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
+        let Err(err) = Attributes::parse(&first_field.attrs) else {
+            unreachable!("expecting error here")
         };
         local_insta_assert_debug_snapshot!(err);
     }

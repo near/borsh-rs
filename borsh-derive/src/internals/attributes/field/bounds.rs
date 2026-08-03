@@ -41,11 +41,15 @@ impl From<BTreeMap<Symbol, Variants>> for Bounds {
         let deserialize = map.remove(&DESERIALIZE);
         let serialize = serialize.map(|variant| match variant {
             Variants::Serialize(ser) => ser,
-            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
+            Variants::Deserialize(_) => {
+                unreachable!("only one enum variant is expected to correspond to given map key")
+            }
         });
         let deserialize = deserialize.map(|variant| match variant {
             Variants::Deserialize(de) => de,
-            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
+            Variants::Serialize(_) => {
+                unreachable!("only one enum variant is expected to correspond to given map key")
+            }
         });
         Self {
             serialize,

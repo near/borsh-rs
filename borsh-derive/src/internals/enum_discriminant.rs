@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::convert::TryFrom;
+use std::convert::TryFrom as _;
 
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
@@ -8,7 +8,7 @@ use syn::{punctuated::Punctuated, token::Comma, Variant};
 pub struct Discriminants(HashMap<Ident, TokenStream>);
 impl Discriminants {
     /// Calculates the discriminant that will be assigned by the compiler.
-    /// See: https://doc.rust-lang.org/reference/items/enumerations.html#assigning-discriminant-values
+    /// See: <https://doc.rust-lang.org/reference/items/enumerations.html#assigning-discriminant-values>
     pub fn new(variants: &Punctuated<Variant, Comma>) -> Self {
         let mut map = HashMap::new();
         let mut next_discriminant_if_not_specified = quote! {0};
@@ -26,6 +26,8 @@ impl Discriminants {
         Self(map)
     }
 
+    // TODO: don't use .unwrap, maybe make error compatible with syn::Result?
+    #[allow(clippy::unwrap_used)]
     pub fn get(
         &self,
         variant_ident: &Ident,
@@ -35,7 +37,7 @@ impl Discriminants {
         let variant_idx = u8::try_from(variant_idx).map_err(|err| {
             syn::Error::new(
                 variant_ident.span(),
-                format!("up to 256 enum variants are supported: {}", err),
+                format!("up to 256 enum variants are supported: {err}"),
             )
         })?;
         let result = if use_discriminant {

@@ -1,4 +1,6 @@
-use alloc::string::ToString;
+#![allow(clippy::unwrap_used)]
+
+use alloc::string::ToString as _;
 
 #[test]
 fn test_ref_cell_try_borrow_error() {

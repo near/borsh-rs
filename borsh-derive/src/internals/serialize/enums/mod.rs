@@ -8,7 +8,7 @@ use crate::internals::{
     generics, serialize,
 };
 
-pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
+pub fn process(input: &ItemEnum, cratename: &Path) -> syn::Result<TokenStream2> {
     let enum_ident = &input.ident;
     let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
@@ -27,7 +27,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
             variant,
             enum_ident,
             &discriminant_value,
-            &cratename,
+            cratename,
             &mut generics_output,
         )?;
         all_variants_idx_body.extend(variant_output.variant_idx_body);
@@ -41,7 +41,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
         }
     }
     let fields_body = optimize_fields_body(fields_body, has_unit_variant);
-    generics_output.extend(&mut where_clause, &cratename);
+    generics_output.extend(&mut where_clause, cratename);
 
     Ok(quote! {
         #[automatically_derived]
@@ -96,7 +96,7 @@ impl VariantFields {
     fn named_header(self) -> Self {
         let header = self.header;
 
-        VariantFields {
+        Self {
             // `..` pattern matching works even if all fields were specified
             header: quote! { { #header.. }},
             body: self.body,
@@ -105,7 +105,7 @@ impl VariantFields {
     fn unnamed_header(self) -> Self {
         let header = self.header;
 
-        VariantFields {
+        Self {
             header: quote! { ( #header )},
             body: self.body,
         }
@@ -124,6 +124,8 @@ struct VariantOutput {
     variant_idx_body: TokenStream2,
 }
 
+// TODO: swap to expect or make result compatible
+#[allow(clippy::unwrap_used)]
 fn process_variant(
     variant: &Variant,
     enum_ident: &Ident,
@@ -137,7 +139,7 @@ fn process_variant(
             let mut variant_fields = VariantFields::default();
             for field in &fields.named {
                 let field_id = serialize::FieldId::Enum(field.ident.clone().unwrap());
-                process_field(field, field_id, cratename, generics, &mut variant_fields)?;
+                process_field(field, &field_id, cratename, generics, &mut variant_fields)?;
             }
             VariantOutput {
                 body: VariantBody::Fields(variant_fields.named_header()),
@@ -150,7 +152,7 @@ fn process_variant(
             let mut variant_fields = VariantFields::default();
             for (field_idx, field) in fields.unnamed.iter().enumerate() {
                 let field_id = serialize::FieldId::new_enum_unnamed(field_idx)?;
-                process_field(field, field_id, cratename, generics, &mut variant_fields)?;
+                process_field(field, &field_id, cratename, generics, &mut variant_fields)?;
             }
             VariantOutput {
                 body: VariantBody::Fields(variant_fields.unnamed_header()),
@@ -171,7 +173,7 @@ fn process_variant(
 
 fn process_field(
     field: &syn::Field,
-    field_id: serialize::FieldId,
+    field_id: &serialize::FieldId,
     cratename: &Path,
     generics: &mut serialize::GenericsOutput,
     output: &mut VariantFields,
@@ -198,6 +200,7 @@ fn process_field(
     Ok(())
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use crate::internals::test_helpers::{
@@ -217,7 +220,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -238,7 +241,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -260,7 +263,7 @@ mod tests {
         .unwrap();
 
         let crate_: Path = syn::parse2(quote! { reexporter::borsh }).unwrap();
-        let actual = process(&item_enum, crate_).unwrap();
+        let actual = process(&item_enum, &crate_).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -284,7 +287,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -309,7 +312,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -327,7 +330,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -344,7 +347,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -361,7 +364,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -380,7 +383,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -398,7 +401,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -420,7 +423,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -439,7 +442,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -458,7 +461,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -476,7 +479,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -492,7 +495,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }

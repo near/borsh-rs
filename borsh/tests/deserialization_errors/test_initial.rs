@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use borsh::from_slice;
 
 #[cfg(feature = "derive")]
@@ -5,7 +7,7 @@ use borsh::BorshDeserialize;
 
 use alloc::{
     format,
-    string::{String, ToString},
+    string::{String, ToString as _},
     vec,
     vec::Vec,
 };
@@ -85,7 +87,7 @@ fn test_invalid_bool() {
         let bytes = [i];
         assert_eq!(
             from_slice::<bool>(&bytes).unwrap_err().to_string(),
-            format!("Invalid bool representation: {}", i)
+            format!("Invalid bool representation: {i}")
         );
     }
 }
@@ -96,10 +98,7 @@ fn test_invalid_option() {
         let bytes = [i, 32];
         assert_eq!(
             from_slice::<Option<u8>>(&bytes).unwrap_err().to_string(),
-            format!(
-                "Invalid Option representation: {}. The first byte must be 0 or 1",
-                i
-            )
+            format!("Invalid Option representation: {i}. The first byte must be 0 or 1",)
         );
     }
 }
@@ -112,10 +111,7 @@ fn test_invalid_result() {
             from_slice::<Result<u64, String>>(&bytes)
                 .unwrap_err()
                 .to_string(),
-            format!(
-                "Invalid Result representation: {}. The first byte must be 0 or 1",
-                i
-            )
+            format!("Invalid Result representation: {i}. The first byte must be 0 or 1",)
         );
     }
 }

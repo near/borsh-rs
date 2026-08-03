@@ -1,4 +1,6 @@
-use alloc::{string::ToString, vec, vec::Vec};
+#![allow(clippy::unwrap_used)]
+
+use alloc::{string::ToString as _, vec, vec::Vec};
 
 #[cfg(feature = "std")]
 use std::collections::{HashMap, HashSet};

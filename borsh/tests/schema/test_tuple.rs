@@ -3,7 +3,7 @@ use crate::common_macro::schema_imports::*;
 #[test]
 fn test_unary_tuple_schema() {
     assert_eq!("(bool,)", <(bool,)>::declaration());
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <(bool,)>::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {

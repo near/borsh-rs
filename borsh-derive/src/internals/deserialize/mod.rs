@@ -25,6 +25,8 @@ impl GenericsOutput {
             default_visitor: generics::FindTyParams::new(generics),
         }
     }
+    // TODO: don't use unwrap (swap to expect or result)
+    #[allow(clippy::unwrap_used)]
     fn extend(self, where_clause: &mut syn::WhereClause, cratename: &Path) {
         let de_trait: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
         let default_trait: Path = syn::parse2(quote! { core::default::Default }).unwrap();
@@ -67,8 +69,10 @@ fn process_field(
     Ok(())
 }
 
-/// function which computes derive output [proc_macro2::TokenStream]
+/// function which computes derive output [`proc_macro2::TokenStream`]
 /// of code, which deserializes single field
+// TODO: use expect or results instead
+#[allow(clippy::unwrap_used)]
 fn field_output(
     field_name: Option<&Ident>,
     cratename: &Path,
@@ -77,25 +81,29 @@ fn field_output(
     let default_path: ExprPath =
         syn::parse2(quote! { #cratename::BorshDeserialize::deserialize_reader }).unwrap();
     let path: ExprPath = deserialize_with.unwrap_or(default_path);
-    if let Some(field_name) = field_name {
-        quote! {
-            #field_name: #path(reader)?,
-        }
-    } else {
-        quote! {
-            #path(reader)?,
-        }
-    }
+    field_name.map_or_else(
+        || {
+            quote! {
+                #path(reader)?,
+            }
+        },
+        |field_name| {
+            quote! {
+                #field_name: #path(reader)?,
+            }
+        },
+    )
 }
 
-/// function which computes derive output [proc_macro2::TokenStream]
+/// function which computes derive output [`proc_macro2::TokenStream`]
 /// of code, which deserializes single skipped field
 fn field_default_output(field_name: Option<&Ident>) -> TokenStream2 {
-    if let Some(field_name) = field_name {
-        quote! {
-            #field_name: core::default::Default::default(),
-        }
-    } else {
-        quote! { core::default::Default::default(), }
-    }
+    field_name.map_or_else(
+        || quote! { core::default::Default::default(), },
+        |field_name| {
+            quote! {
+                #field_name: core::default::Default::default(),
+            }
+        },
+    )
 }

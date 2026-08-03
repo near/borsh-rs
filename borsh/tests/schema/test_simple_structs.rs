@@ -13,7 +13,7 @@ pub fn unit_struct() {
         }
     }
     assert_eq!("A".to_string(), <A as borsh::BorshSchema>::declaration());
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -31,7 +31,7 @@ pub fn simple_struct() {
         _f2: String,
     }
     assert_eq!("A".to_string(), A::declaration());
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -57,7 +57,7 @@ pub fn tuple_struct() {
     #[allow(unused)]
     struct A(u64, String);
     assert_eq!("A".to_string(), A::declaration());
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -85,7 +85,7 @@ pub fn boxed() {
         _f3: Box<[u8]>,
     }
     assert_eq!("A".to_string(), A::declaration());
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {

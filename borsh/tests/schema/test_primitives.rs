@@ -13,7 +13,7 @@ fn isize_schema() {
 
             }
         )
-    )
+    );
 }
 
 #[test]
@@ -29,5 +29,5 @@ fn usize_schema() {
 
             }
         )
-    )
+    );
 }

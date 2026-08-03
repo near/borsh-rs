@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use crate::common_macro::schema_imports::*;
 
 use borsh::{try_from_slice_with_schema, try_to_vec_with_schema};
@@ -18,7 +20,7 @@ pub fn simple_enum() {
         }
     }
     assert_eq!("A".to_string(), <A as borsh::BorshSchema>::declaration());
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -47,7 +49,7 @@ pub fn shadow_enum() {
         "State".to_string(),
         <State as borsh::BorshSchema>::declaration()
     );
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     State::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -72,7 +74,7 @@ pub fn single_field_enum() {
         Bacon,
     }
     assert_eq!("A".to_string(), A::declaration());
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -145,15 +147,15 @@ pub fn complex_enum_with_schema() {
 
     impl Default for A {
         fn default() -> Self {
-            A::Sausage {
-                wrapper: Default::default(),
-                filling: Default::default(),
+            Self::Sausage {
+                wrapper: Wrapper,
+                filling: Filling,
             }
         }
     }
     // First check schema.
     assert_eq!("A".to_string(), A::declaration());
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     A::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {

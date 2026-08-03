@@ -45,11 +45,15 @@ impl From<BTreeMap<Symbol, Variants>> for WithFuncs {
         let definitions = map.remove(&DEFINITIONS);
         let declaration = declaration.map(|variant| match variant {
             Variants::Declaration(declaration) => declaration,
-            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
+            Variants::Definitions(_) => {
+                unreachable!("only one enum variant is expected to correspond to given map key")
+            }
         });
         let definitions = definitions.map(|variant| match variant {
             Variants::Definitions(definitions) => definitions,
-            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
+            Variants::Declaration(_) => {
+                unreachable!("only one enum variant is expected to correspond to given map key")
+            }
         });
         Self {
             declaration,

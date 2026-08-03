@@ -1,7 +1,10 @@
 use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::{quote, ToTokens};
+use quote::{quote, ToTokens as _};
 use std::collections::HashSet;
-use syn::{Fields, Generics, Ident, ItemEnum, ItemStruct, Path, Variant, Visibility};
+use syn::{
+    token::{Semi, Struct},
+    Fields, Generics, Ident, ItemEnum, ItemStruct, Path, Variant, Visibility,
+};
 
 use crate::internals::{
     attributes::{field, item},
@@ -23,12 +26,12 @@ fn transform_variant_fields(mut input: Fields) -> Fields {
                 field.attrs = field_attrs;
             }
         }
-        _ => {}
+        Fields::Unit => {}
     }
     input
 }
 
-pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
+pub fn process(input: &ItemEnum, cratename: &Path) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let enum_name = name.to_token_stream().to_string();
     let generics = generics::without_defaults(&input.generics);
@@ -51,7 +54,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
         let variant_output = process_variant(
             variant,
             discriminant_info,
-            &cratename,
+            cratename,
             &enum_name,
             &generics,
             &mut generics_output,
@@ -73,7 +76,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
         }
     };
 
-    let (predicates, declaration) = generics_output.result(&enum_name, &cratename);
+    let (predicates, declaration) = generics_output.result(&enum_name, cratename);
     where_clause.predicates.extend(predicates);
     Ok(quote! {
         #[automatically_derived]
@@ -95,6 +98,7 @@ struct VariantOutput {
     variant_entry: TokenStream2,
 }
 
+#[derive(Clone, Copy)]
 struct DiscriminantInfo<'a> {
     variant_idx: usize,
     discriminants: &'a Discriminants,
@@ -118,7 +122,7 @@ fn process_variant(
     generics_output: &mut schema::GenericsOutput,
 ) -> syn::Result<VariantOutput> {
     let variant_name = variant.ident.to_token_stream().to_string();
-    let full_variant_name = format!("{}__{}", enum_name, variant_name);
+    let full_variant_name = format!("{enum_name}__{variant_name}");
     let full_variant_ident = Ident::new(&full_variant_name, Span::call_site());
 
     schema::visit_struct_fields(&variant.fields, &mut generics_output.params_visitor)?;
@@ -160,16 +164,16 @@ fn inner_struct_definition(
         .into_iter()
         .collect::<HashSet<_>>();
     let inner_struct_generics =
-        schema::filter_used_params(enum_generics, variant_not_skipped_params);
+        schema::filter_used_params(enum_generics, &variant_not_skipped_params);
 
     let inner_struct = ItemStruct {
         attrs: vec![],
         vis: Visibility::Inherited,
-        struct_token: Default::default(),
+        struct_token: Struct::default(),
         ident: inner_struct_ident.clone(),
         generics: inner_struct_generics.clone(),
         fields: transformed_fields,
-        semi_token: Some(Default::default()),
+        semi_token: Some(Semi::default()),
     };
     let crate_str = syn::LitStr::new(&cratename.to_token_stream().to_string(), Span::call_site());
     let inner_struct = quote! {
@@ -182,6 +186,7 @@ fn inner_struct_definition(
     (inner_struct, inner_struct_generics)
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use crate::internals::test_helpers::{
@@ -201,7 +206,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -217,7 +222,7 @@ mod tests {
         .unwrap();
 
         let crate_: Path = syn::parse2(quote! { reexporter::borsh }).unwrap();
-        let actual = process(&item_enum, crate_).unwrap();
+        let actual = process(&item_enum, &crate_).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -236,7 +241,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -254,7 +259,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -268,7 +273,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -284,7 +289,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -300,7 +305,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -318,7 +323,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -341,7 +346,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -358,7 +363,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -379,7 +384,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -396,7 +401,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -421,7 +426,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -446,7 +451,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -468,7 +473,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename());
+        let actual = process(&item_struct, &default_cratename());
 
         local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
@@ -490,7 +495,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename());
+        let actual = process(&item_struct, &default_cratename());
 
         local_insta_assert_debug_snapshot!(actual.unwrap_err());
     }
@@ -512,7 +517,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }

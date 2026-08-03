@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 #![recursion_limit = "128"]
 #![cfg_attr(
     feature = "force_exhaustive_checks",
@@ -11,7 +12,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::{DeriveInput, Error, ItemEnum, ItemStruct, ItemUnion, Path};
 
-///  by convention, local to borsh-derive crate, imports from proc_macro (1) are not allowed in `internals` module or in any of its submodules.
+///  by convention, local to borsh-derive crate, imports from `proc_macro` (1) are not allowed in `internals` module or in any of its submodules.
 mod internals;
 
 use crate::internals::attributes::item;
@@ -43,9 +44,9 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     };
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        serialize::structs::process(&input, cratename)
+        serialize::structs::process(&input, &cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        serialize::enums::process(&input, cratename)
+        serialize::enums::process(&input, &cratename)
     } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
         serialize::unions::process(&input, cratename)
     } else {
@@ -71,9 +72,9 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     };
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        deserialize::structs::process(&input, cratename)
+        deserialize::structs::process(&input, &cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        deserialize::enums::process(&input, cratename)
+        deserialize::enums::process(&input, &cratename)
     } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
         deserialize::unions::process(&input, cratename)
     } else {
@@ -99,19 +100,25 @@ pub fn borsh_schema(input: TokenStream) -> TokenStream {
         }
     };
 
-    let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        schema::structs::process(&input, cratename)
-    } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        schema::enums::process(&input, cratename)
-    } else if syn::parse::<ItemUnion>(input).is_ok() {
-        Err(syn::Error::new(
-            Span::call_site(),
-            "Borsh schema does not support unions yet.",
-        ))
-    } else {
-        // Derive macros can only be defined on structs, enums, and unions.
-        unreachable!()
-    };
+    let res = syn::parse::<ItemStruct>(input.clone()).map_or_else(
+        |_| {
+            syn::parse::<ItemEnum>(input.clone()).map_or_else(
+                |_| {
+                    if syn::parse::<ItemUnion>(input).is_ok() {
+                        Err(syn::Error::new(
+                            Span::call_site(),
+                            "Borsh schema does not support unions yet.",
+                        ))
+                    } else {
+                        // Derive macros can only be defined on structs, enums, and unions.
+                        unreachable!()
+                    }
+                },
+                |input| schema::enums::process(&input, &cratename),
+            )
+        },
+        |input| schema::structs::process(&input, &cratename),
+    );
     TokenStream::from(match res {
         Ok(res) => res,
         Err(err) => err.to_compile_error(),

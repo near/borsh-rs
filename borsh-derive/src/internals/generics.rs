@@ -1,21 +1,25 @@
 use std::collections::{HashMap, HashSet};
 
-use quote::{quote, ToTokens};
+use quote::{quote, ToTokens as _};
 use syn::{
-    punctuated::Pair, Field, GenericArgument, Generics, Ident, Macro, Path, PathArguments,
-    PathSegment, ReturnType, Type, TypeParamBound, TypePath, WhereClause, WherePredicate,
+    punctuated::{Pair, Punctuated},
+    token::Where,
+    Field, GenericArgument, Generics, Ident, Macro, Path, PathArguments, PathSegment, ReturnType,
+    Type, TypeParamBound, TypePath, WhereClause, WherePredicate,
 };
 
 pub fn default_where(where_clause: Option<&WhereClause>) -> WhereClause {
     where_clause.map_or_else(
         || WhereClause {
-            where_token: Default::default(),
-            predicates: Default::default(),
+            where_token: Where::default(),
+            predicates: Punctuated::default(),
         },
         Clone::clone,
     )
 }
 
+// TODO: don't use unwrap (replace with expect or error)
+#[allow(clippy::unwrap_used)]
 pub fn compute_predicates(params: Vec<Type>, traitname: &Path) -> Vec<WherePredicate> {
     params
         .into_iter()
@@ -104,7 +108,7 @@ impl FindTyParams {
             .map(|param| param.ident.clone())
             .collect();
 
-        FindTyParams {
+        Self {
             all_type_params,
             all_type_params_ordered,
             relevant_type_params: HashSet::new(),
@@ -125,17 +129,15 @@ impl FindTyParams {
                     path: param.clone().into(),
                 });
                 let ty_str_repr = ty.to_token_stream().to_string();
-                if !new_predicates_set.contains(&ty_str_repr) {
+                if new_predicates_set.insert(ty_str_repr) {
                     new_predicates.push(ty);
-                    new_predicates_set.insert(ty_str_repr);
                 }
             }
             if let Some(vec_type) = associated_type_params_usage.get(param) {
                 for type_ in vec_type {
                     let ty_str_repr = type_.to_token_stream().to_string();
-                    if !new_predicates_set.contains(&ty_str_repr) {
+                    if new_predicates_set.insert(ty_str_repr) {
                         new_predicates.push(type_.clone());
-                        new_predicates_set.insert(ty_str_repr);
                     }
                 }
             }
@@ -150,7 +152,7 @@ impl FindTyParams {
     pub fn from_params<'a>(params: impl Iterator<Item = &'a Ident>) -> Self {
         let all_type_params_ordered: Vec<Ident> = params.cloned().collect();
         let all_type_params = all_type_params_ordered.clone().into_iter().collect();
-        FindTyParams {
+        Self {
             all_type_params,
             all_type_params_ordered,
             relevant_type_params: HashSet::new(),
@@ -236,8 +238,8 @@ impl FindTyParams {
                         GenericArgument::Lifetime(_)
                         | GenericArgument::Const(_)
                         | GenericArgument::AssocConst(_)
-                        | GenericArgument::Constraint(_) => {}
-                        _ => {}
+                        | GenericArgument::Constraint(_)
+                        | &_ => {}
                     }
                 }
             }
@@ -274,12 +276,8 @@ impl FindTyParams {
             feature = "force_exhaustive_checks",
             deny(non_exhaustive_omitted_patterns)
         )]
-        match bound {
-            TypeParamBound::Trait(bound) => self.visit_path(&bound.path),
-            TypeParamBound::Lifetime(_)
-            | TypeParamBound::Verbatim(_)
-            | TypeParamBound::PreciseCapture(_) => {}
-            _ => {}
+        if let TypeParamBound::Trait(bound) = bound {
+            self.visit_path(&bound.path);
         }
     }
 
@@ -289,15 +287,11 @@ impl FindTyParams {
             feature = "force_exhaustive_checks",
             deny(non_exhaustive_omitted_patterns)
         )]
-        match predicate {
-            WherePredicate::Type(predicate_type) => {
-                self.visit_type_top_level(&predicate_type.bounded_ty);
-                for bound in &predicate_type.bounds {
-                    self.visit_type_param_bound(bound);
-                }
+        if let WherePredicate::Type(predicate_type) = predicate {
+            self.visit_type_top_level(&predicate_type.bounded_ty);
+            for bound in &predicate_type.bounds {
+                self.visit_type_param_bound(bound);
             }
-            WherePredicate::Lifetime(_) => {}
-            _ => {}
         }
     }
 
@@ -307,6 +301,8 @@ impl FindTyParams {
     //         mac: T!(),
     //         marker: PhantomData<T>,
     //     }
+    #[allow(clippy::unused_self)]
+    #[allow(clippy::needless_pass_by_ref_mut)]
     fn visit_macro(&mut self, _mac: &Macro) {}
 
     fn visit_type(&mut self, ty: &Type) {
@@ -350,9 +346,7 @@ impl FindTyParams {
                 }
             }
 
-            Type::Infer(_) | Type::Never(_) | Type::Verbatim(_) => {}
-
-            _ => {}
+            Type::Infer(_) | Type::Never(_) | Type::Verbatim(_) | &_ => {}
         }
     }
 }

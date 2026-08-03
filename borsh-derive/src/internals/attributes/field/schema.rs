@@ -66,7 +66,7 @@ pub struct ParameterOverride {
 
 impl Parse for ParameterOverride {
     fn parse(input: ParseStream) -> Result<Self, syn::Error> {
-        Ok(ParameterOverride {
+        Ok(Self {
             order_param: input.parse()?,
             arrow_token: input.parse()?,
             override_type: input.parse()?,
@@ -84,7 +84,7 @@ impl ToTokens for ParameterOverride {
 
 #[allow(unused)]
 #[derive(Default, Clone)]
-pub(crate) struct Attributes {
+pub struct Attributes {
     pub params: Option<Vec<ParameterOverride>>,
     pub with_funcs: Option<WithFuncs>,
 }
@@ -94,13 +94,17 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
         let params = map.remove(&PARAMS);
         let params = params.map(|variant| match variant {
             Variants::Params(params) => params,
-            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
+            Variants::WithFuncs(_) => {
+                unreachable!("only one enum variant is expected to correspond to given map key")
+            }
         });
 
         let with_funcs = map.remove(&WITH_FUNCS);
         let with_funcs = with_funcs.map(|variant| match variant {
             Variants::WithFuncs(with_funcs) => with_funcs,
-            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
+            Variants::Params(_) => {
+                unreachable!("only one enum variant is expected to correspond to given map key")
+            }
         });
         Self { params, with_funcs }
     }

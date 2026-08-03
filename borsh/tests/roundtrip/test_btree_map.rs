@@ -1,11 +1,11 @@
 use alloc::{
     collections::{BTreeMap, BTreeSet},
-    string::{String, ToString},
+    string::{String, ToString as _},
     vec,
     vec::Vec,
 };
 
-use borsh::{from_slice, BorshSerialize};
+use borsh::{from_slice, BorshSerialize as _};
 
 macro_rules! btreeset_test_template [
     [$test_name: ident, $($key: expr),* ] => [

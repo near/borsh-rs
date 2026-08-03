@@ -7,6 +7,7 @@ edition = "2018"
 license = "Apache-2.0"
 readme = "README.md"
 categories = ["encoding", "network-programming"]
+keywords = ["encoding", "macros", "serialization"]
 repository = "https://github.com/near/borsh-rs"
 homepage = "https://borsh.io"
 description = """
@@ -38,3 +39,6 @@ targets = ["x86_64-unknown-linux-gnu"]
 default = []
 schema = []
 force_exhaustive_checks = []
+
+[lints]
+workspace = true

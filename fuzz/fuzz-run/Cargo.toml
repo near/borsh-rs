@@ -13,3 +13,6 @@ path = "src/main.rs"
 [dependencies]
 honggfuzz = "0.5"
 borsh = { path = "../../borsh" }
+
+[lints]
+workspace = true

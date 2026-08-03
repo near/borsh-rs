@@ -29,16 +29,17 @@ pub fn try_to_vec_with_schema<T: BorshSerialize + BorshSchema + ?Sized>(
     Ok(res)
 }
 
-/// generate [BorshSchemaContainer] for type `T`
+/// generate [`BorshSchemaContainer`] for type `T`
 ///
-/// this is an alias of [BorshSchemaContainer::for_type]
+/// this is an alias of [`BorshSchemaContainer::for_type`]
+#[must_use]
 pub fn schema_container_of<T: BorshSchema + ?Sized>() -> BorshSchemaContainer {
     BorshSchemaContainer::for_type::<T>()
 }
 
 /// Returns the largest possible size of a serialised object based solely on its type `T`.
 ///
-/// this is a shortcut for using [BorshSchemaContainer::max_serialized_size]
+/// this is a shortcut for using [`BorshSchemaContainer::max_serialized_size`]
 /// # Example
 ///
 /// ```

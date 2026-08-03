@@ -1,10 +1,11 @@
 #![allow(clippy::float_cmp)]
+#![allow(clippy::unwrap_used)]
 
 use borsh::{from_slice, to_vec};
 #[cfg(feature = "derive")]
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use alloc::string::{String, ToString};
+use alloc::string::{String, ToString as _};
 
 macro_rules! test_array {
     ($v: expr, $t: ty, $len: expr) => {
@@ -40,14 +41,14 @@ macro_rules! test_arrays {
 
 test_arrays!(test_array_u8, 100u8, u8);
 test_arrays!(test_array_i8, 100i8, i8);
-test_arrays!(test_array_u32, 1000000000u32, u32);
-test_arrays!(test_array_u64, 1000000000000000000u64, u64);
+test_arrays!(test_array_u32, 1_000_000_000_u32, u32);
+test_arrays!(test_array_u64, 1_000_000_000_000_000_000_u64, u64);
 test_arrays!(
     test_array_u128,
-    1000000000000000000000000000000000000u128,
+    1_000_000_000_000_000_000_000_000_000_000_000_000_u128,
     u128
 );
-test_arrays!(test_array_f32, 1000000000.0f32, f32);
+test_arrays!(test_array_f32, 1_000_000_000.0_f32, f32);
 test_arrays!(test_array_array_u8, [100u8; 32], [u8; 32]);
 test_arrays!(test_array_zst, (), ());
 

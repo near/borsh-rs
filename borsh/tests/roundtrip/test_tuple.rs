@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use borsh::{from_slice, to_vec};
 
 #[test]

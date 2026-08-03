@@ -1,7 +1,9 @@
+#![allow(clippy::unwrap_used)]
+
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
 use alloc::{
-    string::{String, ToString},
+    string::{String, ToString as _},
     vec,
     vec::Vec,
 };
@@ -17,7 +19,7 @@ fn test_generic_enum() {
     let b: B<String, u64> = B::X {
         f: vec!["one".to_string(), "two".to_string(), "three".to_string()],
     };
-    let c: B<String, u64> = B::Y(656556u64);
+    let c: B<String, u64> = B::Y(656_556_u64);
 
     let list = vec![b, c];
     let data = to_vec(&list).unwrap();

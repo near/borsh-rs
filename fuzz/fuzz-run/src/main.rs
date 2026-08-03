@@ -1,7 +1,9 @@
+#![allow(missing_docs)]
+
 use borsh::BorshDeserialize;
+use honggfuzz::fuzz;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-#[macro_use]
 extern crate honggfuzz;
 
 macro_rules! fuzz_types {

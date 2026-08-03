@@ -16,7 +16,7 @@ enum XY {
 #[test]
 fn test_schema_discriminant_no_unit_type() {
     assert_eq!("XY".to_string(), XY::declaration());
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     XY::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -68,7 +68,7 @@ fn test_schema_discriminant_no_unit_type_no_use_discriminant() {
         "XYNoDiscriminant".to_string(),
         XYNoDiscriminant::declaration()
     );
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     XYNoDiscriminant::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {

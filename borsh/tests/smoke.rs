@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+#![allow(clippy::unwrap_used)]
 #![cfg_attr(not(feature = "std"), no_std)]
 // Smoke tests that ensure that we don't accidentally remove top-level
 // re-exports in a minor release.
@@ -19,11 +21,12 @@ fn test_to_vec() {
     let seriazeble = (schema_container_of::<u8>(), value);
     let serialized = borsh::to_vec(&seriazeble).unwrap();
     #[cfg(feature = "std")]
-    println!("serialized: {:?}", serialized);
+    println!("serialized: {serialized:?}");
     let deserialized = try_from_slice_with_schema::<u8>(&serialized).unwrap();
     assert_eq!(value, deserialized);
 }
 
+#[allow(clippy::unwrap_used)]
 #[test]
 fn test_to_writer() {
     let value = 42u8;

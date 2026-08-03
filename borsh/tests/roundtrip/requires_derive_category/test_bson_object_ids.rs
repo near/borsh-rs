@@ -1,4 +1,5 @@
 #![allow(clippy::float_cmp)]
+#![allow(clippy::unwrap_used)]
 
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 use bson::oid::ObjectId;

@@ -1,4 +1,6 @@
-use alloc::string::{String, ToString};
+#![allow(clippy::unwrap_used)]
+
+use alloc::string::{String, ToString as _};
 
 #[test]
 fn test_cell_roundtrip() {
