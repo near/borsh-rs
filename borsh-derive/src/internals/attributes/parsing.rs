@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, iter::FromIterator};
+use std::{collections::BTreeMap, iter::FromIterator as _};
 
 use syn::{
     meta::ParseNestedMeta, punctuated::Punctuated, token::Paren, Attribute, Expr, Lit, LitStr,
@@ -61,7 +61,7 @@ pub(super) fn parse_lit_into_vec<T: syn::parse::Parse>(
 
 fn get_nested_meta_logic<T, F>(
     attr_name: Symbol,
-    meta: ParseNestedMeta,
+    meta: &ParseNestedMeta,
     map: &BTreeMap<Symbol, F>,
     result: &mut BTreeMap<Symbol, T>,
 ) -> syn::Result<()>
@@ -69,7 +69,7 @@ where
     F: Fn(Symbol, Symbol, &ParseNestedMeta) -> syn::Result<T>,
 {
     let mut match_ = false;
-    for (symbol_key, func) in map.iter() {
+    for (symbol_key, func) in map {
         if meta.path == *symbol_key {
             // This duplicate check runs at every nesting level: at the top
             // level (via `attrs_get_by_symbol_keys` / `meta_get_by_symbol_keys`)
@@ -91,7 +91,7 @@ where
             if result.contains_key(symbol_key) {
                 return Err(meta.error(format_args!("duplicate `{}` attribute", symbol_key.0)));
             }
-            let v = func(attr_name, *symbol_key, &meta)?;
+            let v = func(attr_name, *symbol_key, meta)?;
             result.insert(*symbol_key, v);
             match_ = true;
         }
@@ -119,7 +119,7 @@ where
 
     let lookahead = meta.input.lookahead1();
     if lookahead.peek(Paren) {
-        meta.parse_nested_meta(|meta| get_nested_meta_logic(attr_name, meta, map, &mut result))?;
+        meta.parse_nested_meta(|meta| get_nested_meta_logic(attr_name, &meta, map, &mut result))?;
     } else {
         return Err(lookahead.error());
     }
@@ -144,7 +144,7 @@ where
     let mut result = BTreeMap::new();
 
     for attr in attrs {
-        attr.parse_nested_meta(|meta| get_nested_meta_logic(attr_name, meta, map, &mut result))?;
+        attr.parse_nested_meta(|meta| get_nested_meta_logic(attr_name, &meta, map, &mut result))?;
     }
 
     Ok(result)

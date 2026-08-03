@@ -1,7 +1,7 @@
 use crate::internals::attributes::{BORSH, CRATE, INIT, USE_DISCRIMINANT};
-use quote::ToTokens;
+use quote::ToTokens as _;
 use std::collections::HashSet;
-use syn::{spanned::Spanned, Attribute, DeriveInput, Error, Expr, ItemEnum, Path};
+use syn::{spanned::Spanned as _, Attribute, DeriveInput, Error, Expr, ItemEnum, Path};
 
 use super::{collect_borsh_attributes, parsing};
 
@@ -27,7 +27,7 @@ pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
                 CRATE.0
             };
             if !seen_keys.insert(key) {
-                return Err(meta.error(format_args!("duplicate `{}` attribute", key)));
+                return Err(meta.error(format_args!("duplicate `{key}` attribute")));
             }
             if meta.path == USE_DISCRIMINANT {
                 let _expr: Expr = meta.value()?.parse()?;
@@ -47,7 +47,7 @@ pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
     Ok(())
 }
 
-pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
+pub fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::Error> {
     if input.variants.len() > 256 {
         return Err(syn::Error::new(
             input.span(),
@@ -73,7 +73,7 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
                             "`use_discriminant` accepts only `true` or `false`",
                         ));
                     }
-                };
+                }
             } else if meta.path == INIT || meta.path == CRATE {
                 let _value_expr: Expr = meta.value()?.parse()?;
             }
@@ -93,7 +93,7 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
     Ok(use_discriminant.unwrap_or(false))
 }
 
-pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
+pub fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
     let mut res = None;
     for attr in collect_borsh_attributes(attrs) {
         attr.parse_nested_meta(|meta| {
@@ -111,7 +111,7 @@ pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Pat
     Ok(res)
 }
 
-pub(crate) fn get_crate(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
+pub fn get_crate(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
     let mut res = None;
     for attr in collect_borsh_attributes(attrs) {
         attr.parse_nested_meta(|meta| {
@@ -130,9 +130,10 @@ pub(crate) fn get_crate(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used)]
 mod tests {
     use crate::internals::test_helpers::local_insta_assert_debug_snapshot;
-    use quote::{quote, ToTokens};
+    use quote::quote;
     use syn::ItemEnum;
 
     use super::*;
@@ -178,9 +179,8 @@ mod tests {
         })
         .unwrap();
         let actual = contains_use_discriminant(&item_enum);
-        let err = match actual {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
+        let Err(err) = actual else {
+            unreachable!("expecting error here")
         };
         local_insta_assert_debug_snapshot!(err);
     }
@@ -379,9 +379,8 @@ mod tests {
         .unwrap();
 
         let actual = contains_initialize_with(&item_struct.attrs);
-        let err = match actual {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
+        let Err(err) = actual else {
+            unreachable!("expecting error here")
         };
         local_insta_assert_debug_snapshot!(err);
     }

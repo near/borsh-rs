@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used)]
+
 #[test]
 fn test_ranges() {
     let want = (1..2, 3..=4, 5.., ..6, ..=7, ..);

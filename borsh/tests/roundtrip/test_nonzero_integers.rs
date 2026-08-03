@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used)]
+
 use borsh::from_slice;
 use core::num::*;
 

@@ -1,7 +1,7 @@
 use borsh::{from_slice, to_vec};
 
 use alloc::{
-    string::{String, ToString},
+    string::{String, ToString as _},
     vec,
     vec::Vec,
 };
@@ -34,8 +34,8 @@ macro_rules! test_vecs {
 
 test_vecs!(test_vec_u8, 100u8, u8);
 test_vecs!(test_vec_i8, 100i8, i8);
-test_vecs!(test_vec_u32, 1000000000u32, u32);
-test_vecs!(test_vec_f32, 1000000000.0f32, f32);
+test_vecs!(test_vec_u32, 1_000_000_000_u32, u32);
+test_vecs!(test_vec_f32, 1_000_000_000.0_f32, f32);
 test_vecs!(test_vec_string, "a".to_string(), String);
 test_vecs!(test_vec_vec_u8, vec![100u8; 10], Vec<u8>);
 test_vecs!(test_vec_vec_u32, vec![100u32; 10], Vec<u32>);

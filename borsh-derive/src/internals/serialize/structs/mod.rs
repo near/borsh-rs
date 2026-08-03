@@ -7,7 +7,9 @@ use crate::internals::{
     generics, serialize,
 };
 
-pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2> {
+// TODO: replace with expect or make result type compatible
+#[expect(clippy::unwrap_used)]
+pub fn process(input: &ItemStruct, cratename: &Path) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
@@ -19,19 +21,19 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
             for field in &fields.named {
                 let field_id = serialize::FieldId::Struct(field.ident.clone().unwrap());
 
-                process_field(field, field_id, &cratename, &mut generics_output, &mut body)?;
+                process_field(field, &field_id, cratename, &mut generics_output, &mut body)?;
             }
         }
         Fields::Unnamed(fields) => {
             for (field_idx, field) in fields.unnamed.iter().enumerate() {
                 let field_id = serialize::FieldId::new_struct_unnamed(field_idx)?;
 
-                process_field(field, field_id, &cratename, &mut generics_output, &mut body)?;
+                process_field(field, &field_id, cratename, &mut generics_output, &mut body)?;
             }
         }
         Fields::Unit => {}
     }
-    generics_output.extend(&mut where_clause, &cratename);
+    generics_output.extend(&mut where_clause, cratename);
 
     Ok(quote! {
         #[automatically_derived]
@@ -46,7 +48,7 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
 
 fn process_field(
     field: &syn::Field,
-    field_id: serialize::FieldId,
+    field_id: &serialize::FieldId,
     cratename: &Path,
     generics: &mut serialize::GenericsOutput,
     body: &mut TokenStream2,
@@ -68,6 +70,7 @@ fn process_field(
     Ok(())
 }
 
+#[expect(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use crate::internals::test_helpers::{
@@ -87,7 +90,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -103,7 +106,7 @@ mod tests {
         .unwrap();
 
         let crate_: Path = syn::parse2(quote! { reexporter::borsh }).unwrap();
-        let actual = process(&item_struct, crate_).unwrap();
+        let actual = process(&item_struct, &crate_).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -118,7 +121,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -129,7 +132,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -143,7 +146,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -157,7 +160,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -173,7 +176,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -189,7 +192,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -205,7 +208,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -223,7 +226,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -242,7 +245,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -260,7 +263,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -276,7 +279,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -292,11 +295,10 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename());
+        let actual = process(&item_struct, &default_cratename());
 
-        let err = match actual {
-            Ok(..) => unreachable!("expecting error here"),
-            Err(err) => err,
+        let Err(err) = actual else {
+            unreachable!("expecting error here")
         };
         local_insta_assert_debug_snapshot!(err);
     }

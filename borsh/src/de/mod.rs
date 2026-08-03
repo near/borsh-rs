@@ -1,7 +1,7 @@
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use core::{
-    convert::{TryFrom, TryInto},
+    convert::{TryFrom as _, TryInto as _},
     mem::size_of,
 };
 
@@ -13,7 +13,7 @@ use crate::__private::maybestd::{
     boxed::Box,
     collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
     format,
-    string::{String, ToString},
+    string::{String, ToString as _},
     vec,
     vec::Vec,
 };
@@ -165,7 +165,7 @@ impl BorshDeserialize for u8 {
         let mut pos = 0;
         while pos < len {
             if pos == vec.len() {
-                vec.resize(vec.len().saturating_mul(2).min(len), 0)
+                vec.resize(vec.len().saturating_mul(2).min(len), 0);
             }
             // TODO(mina86): Convert this to read_buf once that stabilises.
             match reader.read(&mut vec.as_mut_slice()[pos..])? {
@@ -247,7 +247,7 @@ impl_for_nonzero_integer!(core::num::NonZeroUsize);
 impl BorshDeserialize for isize {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let i: i64 = BorshDeserialize::deserialize_reader(reader)?;
-        let i = isize::try_from(i).map_err(|_| {
+        let i = Self::try_from(i).map_err(|_| {
             Error::new(
                 ErrorKind::InvalidData,
                 ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_ISIZE,
@@ -260,7 +260,7 @@ impl BorshDeserialize for isize {
 impl BorshDeserialize for usize {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let u: u64 = BorshDeserialize::deserialize_reader(reader)?;
-        let u = usize::try_from(u).map_err(|_| {
+        let u = Self::try_from(u).map_err(|_| {
             Error::new(
                 ErrorKind::InvalidData,
                 ERROR_OVERFLOW_ON_MACHINE_WITH_32_BIT_USIZE,
@@ -306,7 +306,7 @@ impl BorshDeserialize for bool {
         } else if b == 1 {
             Ok(true)
         } else {
-            let msg = format!("Invalid bool representation: {}", b);
+            let msg = format!("Invalid bool representation: {b}");
 
             Err(Error::new(ErrorKind::InvalidData, msg))
         }
@@ -325,10 +325,8 @@ where
         } else if flag == 1 {
             Ok(Some(T::deserialize_reader(reader)?))
         } else {
-            let msg = format!(
-                "Invalid Option representation: {}. The first byte must be 0 or 1",
-                flag
-            );
+            let msg =
+                format!("Invalid Option representation: {flag}. The first byte must be 0 or 1");
 
             Err(Error::new(ErrorKind::InvalidData, msg))
         }
@@ -348,10 +346,8 @@ where
         } else if flag == 1 {
             Ok(Ok(T::deserialize_reader(reader)?))
         } else {
-            let msg = format!(
-                "Invalid Result representation: {}. The first byte must be 0 or 1",
-                flag
-            );
+            let msg =
+                format!("Invalid Result representation: {flag}. The first byte must be 0 or 1");
 
             Err(Error::new(ErrorKind::InvalidData, msg))
         }
@@ -361,7 +357,7 @@ where
 impl BorshDeserialize for String {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        String::from_utf8(Vec::<u8>::deserialize_reader(reader)?).map_err(|err| {
+        Self::from_utf8(Vec::<u8>::deserialize_reader(reader)?).map_err(|err| {
             let msg = err.to_string();
             Error::new(ErrorKind::InvalidData, msg)
         })
@@ -407,12 +403,12 @@ where
 
         let len = u32::deserialize_reader(reader)?;
         if len == 0 {
-            Ok(Vec::new())
+            Ok(Self::new())
         } else if let Some(vec_bytes) = T::vec_from_reader(len, reader)? {
             Ok(vec_bytes)
         } else {
             // TODO(16): return capacity allocation when we can safely do that.
-            let mut result = Vec::with_capacity(hint::cautious::<T>(len));
+            let mut result = Self::with_capacity(hint::cautious::<T>(len));
             for _ in 0..len {
                 result.push(T::deserialize_reader(reader)?);
             }
@@ -524,14 +520,14 @@ where
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let vec = <Vec<T>>::deserialize_reader(reader)?;
-        Ok(vec.into_iter().collect::<LinkedList<T>>())
+        Ok(vec.into_iter().collect::<Self>())
     }
 }
 
 /// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
 ///
-/// Module defines [BorshDeserialize] implementation for
-/// [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
+/// Module defines [`BorshDeserialize`] implementation for
+/// [`HashMap`](std::collections::HashMap)/[`HashSet`](std::collections::HashSet).
 #[cfg(hash_collections)]
 pub mod hashes {
     use core::hash::{BuildHasher, Hash};
@@ -576,7 +572,7 @@ pub mod hashes {
                 }
             }
 
-            Ok(vec.into_iter().collect::<HashSet<T, H>>())
+            Ok(vec.into_iter().collect::<Self>())
         }
     }
 
@@ -611,7 +607,7 @@ pub mod hashes {
                 }
             }
 
-            Ok(vec.into_iter().collect::<HashMap<K, V, H>>())
+            Ok(vec.into_iter().collect::<Self>())
         }
     }
 }
@@ -645,7 +641,7 @@ where
         }
         // NOTE: BTreeSet has an optimization inside of impl <T> FromIterator<T> for BTreeSet<T, Global>,
         // based on BTreeMap::bulk_build_from_sorted_iter
-        Ok(vec.into_iter().collect::<BTreeSet<T>>())
+        Ok(vec.into_iter().collect::<Self>())
     }
 }
 
@@ -681,7 +677,7 @@ where
 
         // NOTE: BTreeMap has an optimization inside of impl<K, V> FromIterator<(K, V)> for BTreeMap<K, V, Global>,
         // based on BTreeMap::bulk_build_from_sorted_iter
-        Ok(vec.into_iter().collect::<BTreeMap<K, V>>())
+        Ok(vec.into_iter().collect::<Self>())
     }
 }
 
@@ -694,7 +690,7 @@ impl BorshDeserialize for core::net::SocketAddr {
             1 => core::net::SocketAddrV6::deserialize_reader(reader).map(core::net::SocketAddr::V6),
             value => Err(Error::new(
                 ErrorKind::InvalidData,
-                format!("Invalid SocketAddr variant: {}", value),
+                format!("Invalid SocketAddr variant: {value}"),
             )),
         }
     }
@@ -708,16 +704,16 @@ impl BorshDeserialize for core::net::IpAddr {
             0u8 => {
                 // Deserialize an Ipv4Addr and convert it to IpAddr::V4
                 let ipv4_addr = core::net::Ipv4Addr::deserialize_reader(reader)?;
-                Ok(core::net::IpAddr::V4(ipv4_addr))
+                Ok(Self::V4(ipv4_addr))
             }
             1u8 => {
                 // Deserialize an Ipv6Addr and convert it to IpAddr::V6
                 let ipv6_addr = core::net::Ipv6Addr::deserialize_reader(reader)?;
-                Ok(core::net::IpAddr::V6(ipv6_addr))
+                Ok(Self::V6(ipv6_addr))
             }
             value => Err(Error::new(
                 ErrorKind::InvalidData,
-                format!("Invalid IpAddr variant: {}", value),
+                format!("Invalid IpAddr variant: {value}"),
             )),
         }
     }
@@ -728,7 +724,7 @@ impl BorshDeserialize for core::net::SocketAddrV4 {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let ip = core::net::Ipv4Addr::deserialize_reader(reader)?;
         let port = u16::deserialize_reader(reader)?;
-        Ok(core::net::SocketAddrV4::new(ip, port))
+        Ok(Self::new(ip, port))
     }
 }
 
@@ -737,7 +733,7 @@ impl BorshDeserialize for core::net::SocketAddrV6 {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let ip = core::net::Ipv6Addr::deserialize_reader(reader)?;
         let port = u16::deserialize_reader(reader)?;
-        Ok(core::net::SocketAddrV6::new(ip, port, 0, 0))
+        Ok(Self::new(ip, port, 0, 0))
     }
 }
 
@@ -748,7 +744,7 @@ impl BorshDeserialize for core::net::Ipv4Addr {
         reader
             .read_exact(&mut buf)
             .map_err(unexpected_eof_to_unexpected_length_of_input)?;
-        Ok(core::net::Ipv4Addr::from(buf))
+        Ok(Self::from(buf))
     }
 }
 
@@ -759,13 +755,13 @@ impl BorshDeserialize for core::net::Ipv6Addr {
         reader
             .read_exact(&mut buf)
             .map_err(unexpected_eof_to_unexpected_length_of_input)?;
-        Ok(core::net::Ipv6Addr::from(buf))
+        Ok(Self::from(buf))
     }
 }
 
 impl<T, U> BorshDeserialize for Box<T>
 where
-    U: Into<Box<T>> + Borrow<T>,
+    U: Into<Self> + Borrow<T>,
     T: ToOwned<Owned = U> + ?Sized,
     T::Owned: BorshDeserialize,
 {
@@ -805,12 +801,12 @@ where
                 //         const generics https://github.com/rust-lang/rust/issues/61956. This
                 //         array is guaranteed to be initialized by this point.
                 let buffer: *const [MaybeUninit<T>; N] = &self.buffer;
-                core::ptr::read(buffer as *const [T; N])
+                core::ptr::read(buffer.cast::<[T; N]>())
             }
             fn fill_buffer(&mut self, mut f: impl FnMut() -> Result<T>) -> Result<()> {
                 // TODO: replace with `core::array::try_from_fn` when stabilized to avoid manually
                 // dropping uninitialized values through the guard drop.
-                for elem in self.buffer.iter_mut() {
+                for elem in &mut self.buffer {
                     elem.write(f()?);
                     self.init_count += 1;
                 }
@@ -822,6 +818,8 @@ where
             Ok(arr)
         } else {
             let mut result = ArrayDropGuard {
+                // SAFETY: the `MaybeUninit::uninit()` is for a slice type which
+                // is fine to assume initialised here as each element is `MaybeUninit<T>`
                 buffer: unsafe { MaybeUninit::uninit().assume_init() },
                 init_count: 0,
             };
@@ -834,6 +832,7 @@ where
     }
 }
 
+#[expect(clippy::unwrap_used)]
 #[test]
 fn array_deserialization_doesnt_leak() {
     use core::sync::atomic::{AtomicUsize, Ordering};
@@ -847,10 +846,8 @@ fn array_deserialization_doesnt_leak() {
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
             let val = u8::deserialize_reader(reader)?;
             let v = DESERIALIZE_COUNT.fetch_add(1, Ordering::SeqCst);
-            if v >= 7 {
-                panic!("panic in deserialize");
-            }
-            Ok(MyType(val))
+            assert!(v < 7, "panic in deserialize");
+            Ok(Self(val))
         }
     }
     impl Drop for MyType {
@@ -985,7 +982,7 @@ pub mod rc {
 
 impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
     fn deserialize_reader<R: Read>(_: &mut R) -> Result<Self> {
-        Ok(PhantomData)
+        Ok(Self)
     }
 }
 
@@ -994,7 +991,7 @@ where
     T: BorshDeserialize + Copy,
 {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        <T as BorshDeserialize>::deserialize_reader(reader).map(core::cell::Cell::new)
+        <T as BorshDeserialize>::deserialize_reader(reader).map(Self::new)
     }
 }
 
@@ -1003,7 +1000,7 @@ where
     T: BorshDeserialize,
 {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        <T as BorshDeserialize>::deserialize_reader(reader).map(core::cell::RefCell::new)
+        <T as BorshDeserialize>::deserialize_reader(reader).map(Self::new)
     }
 }
 

@@ -4,7 +4,7 @@ use syn::{Fields, ItemEnum, Path, Variant};
 
 use crate::internals::{attributes::item, deserialize, enum_discriminant::Discriminants, generics};
 
-pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
+pub fn process(input: &ItemEnum, cratename: &Path) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
@@ -15,7 +15,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let mut generics_output = deserialize::GenericsOutput::new(&generics);
 
     for (variant_idx, variant) in input.variants.iter().enumerate() {
-        let variant_body = process_variant(variant, &cratename, &mut generics_output)?;
+        let variant_body = process_variant(variant, cratename, &mut generics_output)?;
         let variant_ident = &variant.ident;
 
         let discriminant_value = discriminants.get(variant_ident, use_discriminant, variant_idx)?;
@@ -23,14 +23,15 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
             if variant_tag == #discriminant_value { #name::#variant_ident #variant_body } else
         });
     }
-    let init = if let Some(method_ident) = item::contains_initialize_with(&input.attrs)? {
-        quote! {
-            return_value.#method_ident();
-        }
-    } else {
-        quote! {}
-    };
-    generics_output.extend(&mut where_clause, &cratename);
+    let init = item::contains_initialize_with(&input.attrs)?.map_or_else(
+        || quote! {},
+        |method_ident| {
+            quote! {
+                return_value.#method_ident();
+            }
+        },
+    );
+    generics_output.extend(&mut where_clause, cratename);
 
     Ok(quote! {
         #[automatically_derived]
@@ -75,7 +76,7 @@ fn process_variant(
             body = quote! { { #body }};
         }
         Fields::Unnamed(fields) => {
-            for field in fields.unnamed.iter() {
+            for field in &fields.unnamed {
                 deserialize::process_field(field, cratename, &mut body, generics)?;
             }
             body = quote! { ( #body )};
@@ -85,10 +86,14 @@ fn process_variant(
     Ok(body)
 }
 
+#[expect(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
-    use crate::internals::test_helpers::{
-        default_cratename, local_insta_assert_snapshot, pretty_print_syn_str,
+    use crate::{
+        cratename::BORSH,
+        internals::test_helpers::{
+            default_cratename, local_insta_assert_snapshot, pretty_print_syn_str,
+        },
     };
 
     use super::*;
@@ -108,7 +113,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -125,7 +130,11 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, {
+            let cratename = syn::Ident::new(BORSH, proc_macro2::Span::call_site());
+            &cratename.into()
+        })
+        .unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -144,7 +153,7 @@ mod tests {
         .unwrap();
 
         let crate_: Path = syn::parse2(quote! { reexporter::borsh }).unwrap();
-        let actual = process(&item_struct, crate_).unwrap();
+        let actual = process(&item_struct, &crate_).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -161,7 +170,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -178,7 +187,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 
@@ -195,7 +204,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -213,7 +222,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -231,7 +240,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -253,7 +262,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -272,7 +281,7 @@ mod tests {
         })
         .unwrap();
 
-        let actual = process(&item_struct, default_cratename()).unwrap();
+        let actual = process(&item_struct, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -291,7 +300,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -309,7 +318,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
@@ -327,7 +336,7 @@ mod tests {
             }
         })
         .unwrap();
-        let actual = process(&item_enum, default_cratename()).unwrap();
+        let actual = process(&item_enum, &default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 }

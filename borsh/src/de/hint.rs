@@ -1,5 +1,6 @@
 #[inline]
 pub fn cautious<T>(hint: u32) -> usize {
+    #[expect(clippy::cast_possible_truncation)]
     let el_size = core::mem::size_of::<T>() as u32;
     core::cmp::max(core::cmp::min(hint, 4096 / el_size), 1) as usize
 }

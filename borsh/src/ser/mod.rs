@@ -1,4 +1,4 @@
-use core::convert::TryFrom;
+use core::convert::TryFrom as _;
 use core::marker::PhantomData;
 
 use crate::__private::maybestd::{
@@ -415,8 +415,8 @@ where
 
 /// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
 ///
-/// Module defines [BorshSerialize] implementation for
-/// [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
+/// Module defines [`BorshSerialize`] implementation for
+/// [`HashMap`](std::collections::HashMap)/[`HashSet`](std::collections::HashSet).
 #[cfg(hash_collections)]
 pub mod hashes {
     use crate::__private::maybestd::vec::Vec;
@@ -425,7 +425,7 @@ pub mod hashes {
         __private::maybestd::collections::{HashMap, HashSet},
         BorshSerialize,
     };
-    use core::convert::TryFrom;
+    use core::convert::TryFrom as _;
     use core::hash::BuildHasher;
 
     use crate::io::{ErrorKind, Result, Write};
@@ -519,11 +519,11 @@ impl BorshSerialize for core::net::SocketAddr {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         match *self {
-            core::net::SocketAddr::V4(ref addr) => {
+            Self::V4(ref addr) => {
                 0u8.serialize(writer)?;
                 addr.serialize(writer)
             }
-            core::net::SocketAddr::V6(ref addr) => {
+            Self::V6(ref addr) => {
                 1u8.serialize(writer)?;
                 addr.serialize(writer)
             }
@@ -565,11 +565,11 @@ impl BorshSerialize for core::net::IpAddr {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self {
-            core::net::IpAddr::V4(ipv4) => {
+            Self::V4(ipv4) => {
                 writer.write_all(&0u8.to_le_bytes())?;
                 ipv4.serialize(writer)
             }
-            core::net::IpAddr::V6(ipv6) => {
+            Self::V6(ipv6) => {
                 writer.write_all(&1u8.to_le_bytes())?;
                 ipv6.serialize(writer)
             }
@@ -593,7 +593,7 @@ where
         } else if let Some(u8_slice) = T::u8_slice(self) {
             writer.write_all(u8_slice)?;
         } else {
-            for el in self.iter() {
+            for el in self {
                 el.serialize(writer)?;
             }
         }
@@ -722,9 +722,9 @@ where
     T: BorshSerialize + Sized,
 {
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        match self.try_borrow() {
-            Ok(ref value) => value.serialize(writer),
-            Err(_) => Err(Error::other("already mutably borrowed")),
-        }
+        self.try_borrow().as_ref().map_or_else(
+            |_| Err(Error::other("already mutably borrowed")),
+            |value| value.serialize(writer),
+        )
     }
 }

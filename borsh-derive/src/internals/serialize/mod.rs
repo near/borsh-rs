@@ -1,6 +1,6 @@
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use std::convert::TryFrom;
+use std::convert::TryFrom as _;
 use syn::{Expr, ExprPath, Generics, Ident, Index, Path};
 
 use super::generics;
@@ -21,6 +21,8 @@ impl GenericsOutput {
             serialize_visitor: generics::FindTyParams::new(generics),
         }
     }
+    // TODO: replace with expect or result
+    #[expect(clippy::unwrap_used)]
     fn extend(self, where_clause: &mut syn::WhereClause, cratename: &Path) {
         let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
         let predicates =
@@ -42,7 +44,7 @@ impl FieldId {
         let index = u32::try_from(field_idx).map_err(|err| {
             syn::Error::new(
                 Span::call_site(),
-                format!("up to 2^32 fields are supported {}", err),
+                format!("up to 2^32 fields are supported {err}"),
             )
         })?;
         Ok(Index {
@@ -63,6 +65,8 @@ impl FieldId {
 }
 
 impl FieldId {
+    // TODO: replace with expect or result
+    #[expect(clippy::unwrap_used)]
     fn serialize_arg(&self) -> Expr {
         match self {
             Self::Struct(name) => syn::parse2(quote! { &self.#name }).unwrap(),
@@ -74,7 +78,7 @@ impl FieldId {
             }
         }
     }
-    /// function which computes derive output [proc_macro2::TokenStream]
+    /// function which computes derive output [`proc_macro2::TokenStream`]
     /// of code, which serializes single field
     pub fn serialize_output(
         &self,
@@ -82,11 +86,10 @@ impl FieldId {
         serialize_with: Option<ExprPath>,
     ) -> TokenStream2 {
         let arg: Expr = self.serialize_arg();
-        if let Some(func) = serialize_with {
-            quote! { #func(#arg, writer)?; }
-        } else {
-            quote! { #cratename::BorshSerialize::serialize(#arg, writer)?; }
-        }
+        serialize_with.map_or_else(
+            || quote! { #cratename::BorshSerialize::serialize(#arg, writer)?; },
+            |func| quote! { #func(#arg, writer)?; },
+        )
     }
     pub fn enum_variant_header(&self, skipped: bool) -> Option<TokenStream2> {
         match self {

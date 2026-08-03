@@ -33,9 +33,10 @@ macro_rules! set_wrong_order_test [
 
         #[test]
         fn $test_name() {
+            use std::convert::TryFrom;
             let mut data = vec![];
             let arr_key = ["various".to_string(), "foo".to_string(), "many".to_string()];
-            let len = arr_key.len() as u32;
+            let len = u32::try_from(arr_key.len()).expect("cast precision loss");
             u32::serialize(&len, &mut data).expect("no error");
 
             for key in &arr_key {
@@ -72,6 +73,7 @@ macro_rules! map_wrong_order_test [
 
         #[test]
         fn $test_name() {
+            use std::convert::TryFrom;
             let mut data = vec![];
             let arr_key = ["various".to_string(), "foo".to_string(), "many".to_string()];
             let arr_val = [
@@ -79,7 +81,7 @@ macro_rules! map_wrong_order_test [
                 "different".to_string(),
                 "unexp".to_string(),
             ];
-            let len = arr_key.len() as u32;
+            let len = u32::try_from(arr_key.len()).expect("cast precision loss");
             u32::serialize(&len, &mut data).expect("no error");
 
             let entries = IntoIterator::into_iter(arr_key.clone())

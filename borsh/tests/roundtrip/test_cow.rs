@@ -1,6 +1,8 @@
+#![expect(clippy::unwrap_used)]
+
+use alloc::string::ToString as _;
 use borsh::{from_slice, to_vec};
-use core::{matches, ops::Deref};
-use alloc::string::ToString;
+use core::matches;
 
 use alloc::{borrow::Cow, vec};
 
@@ -56,7 +58,7 @@ fn test_cow_slice_of_cow_str() {
 
     assert!(matches!(out, Cow::Owned(..)));
 
-    for element in out.deref() {
+    for element in &*out {
         assert!(matches!(element, Cow::Owned(..)));
     }
 

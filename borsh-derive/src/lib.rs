@@ -12,7 +12,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::{DeriveInput, Error, ItemEnum, ItemStruct, ItemUnion, Path};
 
-///  by convention, local to borsh-derive crate, imports from proc_macro (1) are not allowed in `internals` module or in any of its submodules.
+///  by convention, local to borsh-derive crate, imports from `proc_macro` (1) are not allowed in `internals` module or in any of its submodules.
 mod internals;
 
 use crate::internals::attributes::item;
@@ -44,9 +44,9 @@ pub fn borsh_serialize(input: TokenStream) -> TokenStream {
     };
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        serialize::structs::process(&input, cratename)
+        serialize::structs::process(&input, &cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        serialize::enums::process(&input, cratename)
+        serialize::enums::process(&input, &cratename)
     } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
         serialize::unions::process(&input, cratename)
     } else {
@@ -72,9 +72,9 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     };
 
     let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        deserialize::structs::process(&input, cratename)
+        deserialize::structs::process(&input, &cratename)
     } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        deserialize::enums::process(&input, cratename)
+        deserialize::enums::process(&input, &cratename)
     } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
         deserialize::unions::process(&input, cratename)
     } else {

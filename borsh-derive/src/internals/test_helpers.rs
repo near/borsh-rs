@@ -1,8 +1,11 @@
+// only for tests so unwrap is ok
+#![expect(clippy::unwrap_used)]
+
 use super::cratename::BORSH;
 use proc_macro2::Span;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use std::fmt::Write;
+use std::fmt::Write as _;
 use syn::{Ident, Path};
 
 pub fn pretty_print_syn_str(input: &TokenStream) -> syn::Result<String> {
@@ -52,7 +55,7 @@ macro_rules! local_insta_assert_snapshot {
     }};
 }
 
-pub(crate) fn default_cratename() -> Path {
+pub fn default_cratename() -> Path {
     let cratename = Ident::new(BORSH, Span::call_site());
     cratename.into()
 }

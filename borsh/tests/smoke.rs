@@ -25,6 +25,7 @@ fn test_to_vec() {
     assert_eq!(value, deserialized);
 }
 
+#[expect(clippy::unwrap_used)]
 #[test]
 fn test_to_writer() {
     let value = 42u8;
