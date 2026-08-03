@@ -1,4 +1,4 @@
-//! Taken from https://github.com/bbqsrc/bare-io (with adjustments)
+//! Taken from <https://github.com/bbqsrc/bare-io> (with adjustments)
 
 use crate::__private::maybestd::string::String;
 use core::{convert::From, fmt, result};
@@ -158,33 +158,33 @@ pub enum ErrorKind {
 }
 
 impl ErrorKind {
-    pub(crate) fn as_str(&self) -> &'static str {
-        match *self {
-            ErrorKind::NotFound => "entity not found",
-            ErrorKind::PermissionDenied => "permission denied",
-            ErrorKind::ConnectionRefused => "connection refused",
-            ErrorKind::ConnectionReset => "connection reset",
-            ErrorKind::ConnectionAborted => "connection aborted",
-            ErrorKind::NotConnected => "not connected",
-            ErrorKind::AddrInUse => "address in use",
-            ErrorKind::AddrNotAvailable => "address not available",
-            ErrorKind::BrokenPipe => "broken pipe",
-            ErrorKind::AlreadyExists => "entity already exists",
-            ErrorKind::WouldBlock => "operation would block",
-            ErrorKind::InvalidInput => "invalid input parameter",
-            ErrorKind::InvalidData => "invalid data",
-            ErrorKind::TimedOut => "timed out",
-            ErrorKind::WriteZero => "write zero",
-            ErrorKind::Interrupted => "operation interrupted",
-            ErrorKind::Other => "other os error",
-            ErrorKind::UnexpectedEof => "unexpected end of file",
-            ErrorKind::OutOfMemory => "out of memory",
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::NotFound => "entity not found",
+            Self::PermissionDenied => "permission denied",
+            Self::ConnectionRefused => "connection refused",
+            Self::ConnectionReset => "connection reset",
+            Self::ConnectionAborted => "connection aborted",
+            Self::NotConnected => "not connected",
+            Self::AddrInUse => "address in use",
+            Self::AddrNotAvailable => "address not available",
+            Self::BrokenPipe => "broken pipe",
+            Self::AlreadyExists => "entity already exists",
+            Self::WouldBlock => "operation would block",
+            Self::InvalidInput => "invalid input parameter",
+            Self::InvalidData => "invalid data",
+            Self::TimedOut => "timed out",
+            Self::WriteZero => "write zero",
+            Self::Interrupted => "operation interrupted",
+            Self::Other => "other os error",
+            Self::UnexpectedEof => "unexpected end of file",
+            Self::OutOfMemory => "out of memory",
         }
     }
 }
 
 /// Intended for use for errors not exposed to the user, where allocating onto
-/// the heap (for normal construction via Error::new) is too costly.
+/// the heap (for normal construction via `Error::new`) is too costly.
 impl From<ErrorKind> for Error {
     /// Converts an [`ErrorKind`] into an [`Error`].
     ///
@@ -200,8 +200,8 @@ impl From<ErrorKind> for Error {
     /// assert_eq!("entity not found", format!("{}", error));
     /// ```
     #[inline]
-    fn from(kind: ErrorKind) -> Error {
-        Error {
+    fn from(kind: ErrorKind) -> Self {
+        Self {
             repr: Repr::Simple(kind),
         }
     }
@@ -234,7 +234,7 @@ impl Error {
     /// let eof_error = Error::from(ErrorKind::UnexpectedEof);
     /// ```
     #[inline(never)]
-    pub fn new<E>(kind: ErrorKind, error: E) -> Error
+    pub fn new<E>(kind: ErrorKind, error: E) -> Self
     where
         E: Into<String>,
     {
@@ -258,15 +258,15 @@ impl Error {
     /// // errors can also be created from other errors
     /// let custom_error2 = Error::other(custom_error);
     /// ```
-    pub fn other<E>(error: E) -> Error
+    pub fn other<E>(error: E) -> Self
     where
         E: Into<String>,
     {
         Self::_new(ErrorKind::Other, error.into())
     }
 
-    fn _new(kind: ErrorKind, error: String) -> Error {
-        Error {
+    const fn _new(kind: ErrorKind, error: String) -> Self {
+        Self {
             repr: Repr::Custom(Custom { kind, error }),
         }
     }
@@ -363,7 +363,7 @@ impl Error {
     /// ```
     #[must_use]
     #[inline]
-    pub fn kind(&self) -> ErrorKind {
+    pub const fn kind(&self) -> ErrorKind {
         match self.repr {
             Repr::Custom(ref c) => c.kind,
             Repr::Simple(kind) => kind,
@@ -374,8 +374,8 @@ impl Error {
 impl fmt::Debug for Repr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Repr::Custom(ref c) => fmt::Debug::fmt(&c, fmt),
-            Repr::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
+            Self::Custom(ref c) => fmt::Debug::fmt(&c, fmt),
+            Self::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
         }
     }
 }
@@ -389,9 +389,9 @@ impl fmt::Display for Error {
     }
 }
 
-fn _assert_error_is_sync_send() {
-    fn _is_sync_send<T: Sync + Send>() {}
-    _is_sync_send::<Error>();
+const fn _assert_error_is_sync_send() {
+    const fn is_sync_send<T: Sync + Send>() {}
+    is_sync_send::<Error>();
 }
 
 /// A trait for objects which are byte-oriented sinks.
@@ -690,7 +690,7 @@ impl Write for &mut [u8] {
     #[inline]
     fn write(&mut self, data: &[u8]) -> Result<usize> {
         let amt = core::cmp::min(data.len(), self.len());
-        let (a, b) = core::mem::replace(self, &mut []).split_at_mut(amt);
+        let (a, b) = core::mem::take(self).split_at_mut(amt);
         a.copy_from_slice(&data[..amt]);
         *self = b;
         Ok(amt)
@@ -830,7 +830,7 @@ pub trait Read {
     /// It is not an error if the returned value `n` is smaller than the buffer size,
     /// even when the reader is not at the end of the stream yet.
     /// This may happen for example because fewer bytes are actually available right now
-    /// (e. g. being close to end-of-file) or because read() was interrupted by a signal.
+    /// (e. g. being close to end-of-file) or because `read()` was interrupted by a signal.
     ///
     /// As this trait is safe to implement, callers cannot rely on `n <= buf.len()` for safety.
     /// Extra care needs to be taken when `unsafe` functions are used to access the read bytes.
@@ -994,13 +994,13 @@ fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [u8]) -> Res
             Err(e) => return Err(e),
         }
     }
-    if !buf.is_empty() {
+    if buf.is_empty() {
+        Ok(())
+    } else {
         Err(Error::new(
             ErrorKind::UnexpectedEof,
             "failed to fill whole buffer",
         ))
-    } else {
-        Ok(())
     }
 }
 

@@ -1,6 +1,6 @@
 use super::{is_zero_size, ZeroSizeError};
 use super::{BorshSchemaContainer, Declaration, Definition, Fields};
-use crate::__private::maybestd::{string::ToString, vec::Vec};
+use crate::__private::maybestd::vec::Vec;
 
 impl BorshSchemaContainer {
     /// Validates container for violation of any well-known rules with
@@ -43,11 +43,10 @@ pub enum Error {
 
 fn check_length_width(declaration: &Declaration, width: u8, max: u64) -> Result<(), Error> {
     match width {
-        0 => Ok(()),
         3 | 5 | 6 | 7 => Err(Error::TagNotPowerOfTwo(declaration.clone())),
         1..=7 if max < 1 << (width * 8) => Ok(()),
         1..=7 => Err(Error::TagTooNarrow(declaration.clone())),
-        8 => Ok(()),
+        0 | 8 => Ok(()),
         _ => Err(Error::TagTooWide(declaration.clone())),
     }
 }
@@ -59,11 +58,8 @@ fn validate_impl<'a>(
     schema: &'a BorshSchemaContainer,
     stack: &mut Vec<&'a Declaration>,
 ) -> core::result::Result<(), Error> {
-    let definition = match schema.get_definition(declaration) {
-        Some(definition) => definition,
-        None => {
-            return Err(Error::MissingDefinition(declaration.to_string()));
-        }
+    let Some(definition) = schema.get_definition(declaration) else {
+        return Err(Error::MissingDefinition(declaration.clone()));
     };
     if stack.contains(&declaration) {
         return Ok(());
@@ -79,7 +75,7 @@ fn validate_impl<'a>(
         } if *length_width == Definition::ARRAY_LENGTH_WIDTH
             && length_range.clone().count() == 1 =>
         {
-            validate_impl(elements, schema, stack)?
+            validate_impl(elements, schema, stack)?;
         }
         Definition::Sequence {
             length_width,
@@ -92,11 +88,10 @@ fn validate_impl<'a>(
             check_length_width(declaration, *length_width, *length_range.end())?;
             match is_zero_size(elements, schema) {
                 Ok(true) => return Err(Error::ZSTSequence(declaration.clone())),
-                Ok(false) => (),
                 // a recursive type either has no exit, so it cannot be instantiated
                 // or it uses `Definiotion::Enum` or `Definition::Sequence` to exit from recursion
                 // which make it non-zero size
-                Err(ZeroSizeError::Recursive) => (),
+                Ok(false) | Err(ZeroSizeError::Recursive) => (),
                 Err(ZeroSizeError::MissingDefinition(declaration)) => {
                     return Err(Error::MissingDefinition(declaration));
                 }
@@ -108,7 +103,7 @@ fn validate_impl<'a>(
             variants,
         } => {
             if *tag_width > U64_LEN {
-                return Err(Error::TagTooWide(declaration.to_string()));
+                return Err(Error::TagTooWide(declaration.clone()));
             }
             for (_, _, variant) in variants {
                 validate_impl(variant, schema, stack)?;
@@ -132,7 +127,7 @@ fn validate_impl<'a>(
             }
             Fields::Empty => {}
         },
-    };
+    }
     stack.pop();
     Ok(())
 }
@@ -140,7 +135,7 @@ fn validate_impl<'a>(
 #[cfg(test)]
 mod tests {
     use super::{check_length_width, Error};
-    use crate::__private::maybestd::string::ToString;
+    use crate::__private::maybestd::string::ToString as _;
 
     #[test]
     fn test_check_tag_width() {
@@ -149,13 +144,13 @@ mod tests {
 
         for (width, max, want) in [
             (0, u64::MAX, Ok(())),
-            (1, u8::MAX as u64, Ok(())),
-            (1, u8::MAX as u64 + 1, narrow_err.clone()),
-            (2, u16::MAX as u64, Ok(())),
-            (2, u16::MAX as u64 + 1, narrow_err.clone()),
+            (1, u64::from(u8::MAX), Ok(())),
+            (1, u64::from(u8::MAX) + 1, narrow_err.clone()),
+            (2, u64::from(u16::MAX), Ok(())),
+            (2, u64::from(u16::MAX) + 1, narrow_err.clone()),
             (3, 100, power_of_two_err.clone()),
-            (4, u32::MAX as u64, Ok(())),
-            (4, u32::MAX as u64 + 1, narrow_err),
+            (4, u64::from(u32::MAX), Ok(())),
+            (4, u64::from(u32::MAX) + 1, narrow_err),
             (5, 100, power_of_two_err.clone()),
             (6, 100, power_of_two_err.clone()),
             (7, 100, power_of_two_err),

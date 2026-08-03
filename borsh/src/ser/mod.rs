@@ -1,3 +1,5 @@
+#![allow(clippy::mixed_attributes_style)]
+
 use core::convert::TryFrom as _;
 use core::marker::PhantomData;
 
@@ -211,7 +213,7 @@ impl BorshSerialize for String {
 #[cfg(feature = "ascii")]
 pub mod ascii {
     //!
-    //! Module defines [BorshSerialize] implementation for
+    //! Module defines [`BorshSerialize`] implementation for
     //! some types from [ascii](::ascii) crate.
     use super::BorshSerialize;
     use crate::io::{Result, Write};
@@ -671,8 +673,8 @@ impl_range!(RangeToInclusive, this, &this.end);
 #[cfg(feature = "rc")]
 pub mod rc {
     //!
-    //! Module defines [BorshSerialize] implementation for
-    //! [alloc::rc::Rc](std::rc::Rc) and [alloc::sync::Arc](std::sync::Arc).
+    //! Module defines [`BorshSerialize`] implementation for
+    //! [`alloc::rc::Rc`](std::rc::Rc) and [`alloc::sync::Arc`](std::sync::Arc).
     use crate::__private::maybestd::{rc::Rc, sync::Arc};
     use crate::io::{Result, Write};
     use crate::BorshSerialize;

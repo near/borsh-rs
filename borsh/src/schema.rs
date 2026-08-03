@@ -12,13 +12,14 @@
 //! * `BorshSchemaContainer` is used to store all declarations and definitions that are needed to work with a single type.
 
 #![allow(dead_code)] // Unclear why rust check complains on fields of `Definition` variants.
+#![allow(clippy::mixed_attributes_style)]
 use crate as borsh; // For `#[derive(BorshSerialize, BorshDeserialize)]`.
 use crate::__private::maybestd::{
     borrow,
     boxed::Box,
     collections::{btree_map::Entry, BTreeMap, BTreeSet, LinkedList, VecDeque},
     format,
-    string::{String, ToString},
+    string::{String, ToString as _},
     vec,
     vec::Vec,
 };
@@ -91,7 +92,10 @@ pub enum Definition {
 
     /// A fixed-size tuple with the length known at the compile time and the elements of different
     /// types.
-    Tuple { elements: Vec<Declaration> },
+    Tuple {
+        /// Type of each element of the tuple.
+        elements: Vec<Declaration>,
+    },
 
     /// A possibly tagged union, a.k.a enum.
     ///
@@ -118,7 +122,10 @@ pub enum Definition {
     },
 
     /// A structure, structurally similar to a tuple.
-    Struct { fields: Fields },
+    Struct {
+        /// Fields of the struct.
+        fields: Fields,
+    },
 }
 
 impl Definition {
@@ -162,27 +169,38 @@ pub struct BorshSchemaContainer {
 }
 
 impl BorshSchemaContainer {
-    pub fn new(declaration: Declaration, definitions: BTreeMap<Declaration, Definition>) -> Self {
+    /// Creates a new [`BorshSchemaContainer`] from a declaration and its definitions.
+    #[must_use]
+    pub const fn new(
+        declaration: Declaration,
+        definitions: BTreeMap<Declaration, Definition>,
+    ) -> Self {
         Self {
             declaration,
             definitions,
         }
     }
 
-    /// generate [BorshSchemaContainer] for type `T`
+    /// Generate [`BorshSchemaContainer`] for type `T`.
+    #[must_use]
     pub fn for_type<T: BorshSchema + ?Sized>() -> Self {
-        let mut definitions = Default::default();
+        let mut definitions = BTreeMap::default();
         T::add_definitions_recursively(&mut definitions);
         Self::new(T::declaration(), definitions)
     }
 
-    pub fn declaration(&self) -> &Declaration {
+    /// Returns the declarations of the top-level type this schema describes.
+    #[must_use]
+    pub const fn declaration(&self) -> &Declaration {
         &self.declaration
     }
+
+    /// Returns an iterator over all the declaration/definition pairs known to this schema.
     pub fn definitions(&self) -> impl Iterator<Item = (&'_ Declaration, &'_ Definition)> {
         self.definitions.iter()
     }
 
+    /// Looks up the definition for a given declaration, if one is present.
     pub fn get_definition<Q>(&self, declaration: &Q) -> Option<&Definition>
     where
         Declaration: Borrow<Q>,
@@ -191,6 +209,7 @@ impl BorshSchemaContainer {
         self.definitions.get(declaration)
     }
 
+    /// Looks up the definition for a given declaration, returning a mutable reference if present.
     pub fn get_mut_definition<Q>(&mut self, declaration: &Q) -> Option<&mut Definition>
     where
         Declaration: Borrow<Q>,
@@ -199,6 +218,8 @@ impl BorshSchemaContainer {
         self.definitions.get_mut(declaration)
     }
 
+    /// Inserts a definition for the given declaration, returning the previous definition if one was
+    /// present.
     pub fn insert_definition(
         &mut self,
         declaration: Declaration,
@@ -206,6 +227,8 @@ impl BorshSchemaContainer {
     ) -> Option<Definition> {
         self.definitions.insert(declaration, definition)
     }
+
+    /// Removes and returns the definition for the given declaration, if present.
     pub fn remove_definition<Q>(&mut self, declaration: &Q) -> Option<Definition>
     where
         Declaration: Borrow<Q>,
@@ -243,6 +266,10 @@ where
 }
 
 /// Helper method to add a single type definition to the map.
+///
+/// # Panics
+///
+/// Panics if there is an attempt to redefine the type schema for an existing definition.
 pub fn add_definition(
     declaration: Declaration,
     definition: Definition,
@@ -348,8 +375,8 @@ where
 #[cfg(feature = "rc")]
 pub mod rc {
     //!
-    //! Module defines [BorshSchema] implementation for
-    //! [alloc::rc::Rc](std::rc::Rc) and [alloc::sync::Arc](std::sync::Arc).
+    //! Module defines [`BorshSchema`] implementation for
+    //! [`alloc::rc::Rc`](std::rc::Rc) and [`alloc::sync::Arc`](std::sync::Arc).
     use crate::BorshSchema;
 
     use super::{Declaration, Definition};
@@ -485,7 +512,7 @@ impl BorshSchema for str {
 #[cfg(feature = "ascii")]
 pub mod ascii {
     //!
-    //! Module defines [BorshSchema] implementation for
+    //! Module defines [`BorshSchema`] implementation for
     //! some types from [ascii](::ascii) crate.
     use crate::BorshSchema;
 
@@ -574,8 +601,10 @@ impl<T, const N: usize> BorshSchema for [T; N]
 where
     T: BorshSchema,
 {
+    // TODO: replace with expect or use result
+    #[expect(clippy::unwrap_used)]
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        use core::convert::TryFrom;
+        use core::convert::TryFrom as _;
         let length = u64::try_from(N).unwrap();
         let definition = Definition::Sequence {
             length_width: Definition::ARRAY_LENGTH_WIDTH,
@@ -586,7 +615,7 @@ where
         T::add_definitions_recursively(definitions);
     }
     fn declaration() -> Declaration {
-        format!(r#"[{}; {}]"#, T::declaration(), N)
+        format!(r"[{}; {}]", T::declaration(), N)
     }
 }
 
@@ -598,8 +627,8 @@ where
         let definition = Definition::Enum {
             tag_width: 1,
             variants: vec![
-                (0u8 as i64, "None".to_string(), <()>::declaration()),
-                (1u8 as i64, "Some".to_string(), T::declaration()),
+                (i64::from(0u8), "None".to_string(), <()>::declaration()),
+                (i64::from(1u8), "Some".to_string(), T::declaration()),
             ],
         };
         add_definition(Self::declaration(), definition, definitions);
@@ -608,7 +637,7 @@ where
     }
 
     fn declaration() -> Declaration {
-        format!(r#"Option<{}>"#, T::declaration())
+        format!(r"Option<{}>", T::declaration())
     }
 }
 
@@ -621,8 +650,8 @@ where
         let definition = Definition::Enum {
             tag_width: 1,
             variants: vec![
-                (1u8 as i64, "Ok".to_string(), T::declaration()),
-                (0u8 as i64, "Err".to_string(), E::declaration()),
+                (i64::from(1u8), "Ok".to_string(), T::declaration()),
+                (i64::from(0u8), "Err".to_string(), E::declaration()),
             ],
         };
         add_definition(Self::declaration(), definition, definitions);
@@ -631,7 +660,7 @@ where
     }
 
     fn declaration() -> Declaration {
-        format!(r#"Result<{}, {}>"#, T::declaration(), E::declaration())
+        format!(r"Result<{}, {}>", T::declaration(), E::declaration())
     }
 }
 
@@ -652,7 +681,7 @@ macro_rules! impl_for_vec_like_collection {
             }
 
             fn declaration() -> Declaration {
-                format!(r#"{}<{}>"#, stringify!($type), T::declaration())
+                format!(r"{}<{}>", stringify!($type), T::declaration())
             }
         }
     };
@@ -677,14 +706,14 @@ where
     }
 
     fn declaration() -> Declaration {
-        format!(r#"Vec<{}>"#, T::declaration())
+        format!(r"Vec<{}>", T::declaration())
     }
 }
 
 /// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
 ///
-/// Module defines [BorshSchema] implementation for
-/// [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
+/// Module defines [`BorshSchema`] implementation for
+/// [`HashMap`](std::collections::HashMap)/[`HashSet`](std::collections::HashSet).
 #[cfg(hash_collections)]
 pub mod hashes {
     use crate::BorshSchema;
@@ -716,7 +745,7 @@ pub mod hashes {
         }
 
         fn declaration() -> Declaration {
-            format!(r#"HashMap<{}, {}>"#, K::declaration(), V::declaration())
+            format!(r"HashMap<{}, {}>", K::declaration(), V::declaration())
         }
     }
 
@@ -735,7 +764,7 @@ pub mod hashes {
         }
 
         fn declaration() -> Declaration {
-            format!(r#"HashSet<{}>"#, T::declaration())
+            format!(r"HashSet<{}>", T::declaration())
         }
     }
 }
@@ -756,7 +785,7 @@ where
     }
 
     fn declaration() -> Declaration {
-        format!(r#"BTreeMap<{}, {}>"#, K::declaration(), V::declaration())
+        format!(r"BTreeMap<{}, {}>", K::declaration(), V::declaration())
     }
 }
 
@@ -775,7 +804,7 @@ where
     }
 
     fn declaration() -> Declaration {
-        format!(r#"BTreeSet<{}>"#, T::declaration())
+        format!(r"BTreeSet<{}>", T::declaration())
     }
 }
 
@@ -810,9 +839,9 @@ macro_rules! impl_tuple {
         fn declaration() -> Declaration {
             let params = vec![$($name::declaration()),+];
             if params.len() == 1 {
-                format!(r#"({},)"#, params[0])
+                format!(r"({},)", params[0])
             } else {
-                format!(r#"({})"#, params.join(", "))
+                format!(r"({})", params.join(", "))
             }
         }
     }
@@ -863,6 +892,7 @@ mod ip_addr_std_derive_impl {
 
     #[derive(BorshSchemaMacro)]
     #[borsh(crate = "crate")]
+    #[expect(variant_size_differences)]
     pub enum IpAddr {
         /// An IPv4 address.
         V4(core::net::Ipv4Addr),

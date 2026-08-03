@@ -38,8 +38,8 @@ pub mod schema_keys {
     pub const SCHEMA: Symbol = Symbol("schema", "schema(...)");
     /// params - sub-schema nested meta, field-level only attribute
     pub const PARAMS: Symbol = Symbol("params", "params = ...");
-    /// serialize_with - sub-borsh nested meta, field-level only, `BorshSerialize` context
-    /// with_funcs - sub-schema nested meta, field-level only attribute
+    /// `serialize_with` - sub-borsh nested meta, field-level only, `BorshSerialize` context
+    /// `with_funcs` - sub-schema nested meta, field-level only attribute
     pub const WITH_FUNCS: Symbol = Symbol("with_funcs", "with_funcs(...)");
     /// declaration - sub-with_funcs nested meta, field-level only attribute
     pub const DECLARATION: Symbol = Symbol("declaration", "declaration = ...");

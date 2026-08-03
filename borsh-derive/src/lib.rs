@@ -100,19 +100,25 @@ pub fn borsh_schema(input: TokenStream) -> TokenStream {
         }
     };
 
-    let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
-        schema::structs::process(&input, cratename)
-    } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
-        schema::enums::process(&input, cratename)
-    } else if syn::parse::<ItemUnion>(input).is_ok() {
-        Err(syn::Error::new(
-            Span::call_site(),
-            "Borsh schema does not support unions yet.",
-        ))
-    } else {
-        // Derive macros can only be defined on structs, enums, and unions.
-        unreachable!()
-    };
+    let res = syn::parse::<ItemStruct>(input.clone()).map_or_else(
+        |_| {
+            syn::parse::<ItemEnum>(input.clone()).map_or_else(
+                |_| {
+                    if syn::parse::<ItemUnion>(input).is_ok() {
+                        Err(syn::Error::new(
+                            Span::call_site(),
+                            "Borsh schema does not support unions yet.",
+                        ))
+                    } else {
+                        // Derive macros can only be defined on structs, enums, and unions.
+                        unreachable!()
+                    }
+                },
+                |input| schema::enums::process(&input, &cratename),
+            )
+        },
+        |input| schema::structs::process(&input, &cratename),
+    );
     TokenStream::from(match res {
         Ok(res) => res,
         Err(err) => err.to_compile_error(),

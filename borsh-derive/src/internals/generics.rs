@@ -152,7 +152,7 @@ impl FindTyParams {
     pub fn from_params<'a>(params: impl Iterator<Item = &'a Ident>) -> Self {
         let all_type_params_ordered: Vec<Ident> = params.cloned().collect();
         let all_type_params = all_type_params_ordered.clone().into_iter().collect();
-        FindTyParams {
+        Self {
             all_type_params,
             all_type_params_ordered,
             relevant_type_params: HashSet::new(),
@@ -287,15 +287,11 @@ impl FindTyParams {
             feature = "force_exhaustive_checks",
             deny(non_exhaustive_omitted_patterns)
         )]
-        match predicate {
-            WherePredicate::Type(predicate_type) => {
-                self.visit_type_top_level(&predicate_type.bounded_ty);
-                for bound in &predicate_type.bounds {
-                    self.visit_type_param_bound(bound);
-                }
+        if let WherePredicate::Type(predicate_type) = predicate {
+            self.visit_type_top_level(&predicate_type.bounded_ty);
+            for bound in &predicate_type.bounds {
+                self.visit_type_param_bound(bound);
             }
-            WherePredicate::Lifetime(_) => {}
-            _ => {}
         }
     }
 

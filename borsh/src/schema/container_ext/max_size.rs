@@ -1,11 +1,10 @@
 use super::{BorshSchemaContainer, Declaration, Definition, Fields};
-use crate::__private::maybestd::{string::ToString, vec::Vec};
+use crate::__private::maybestd::{string::ToString as _, vec::Vec};
 
 use core::num::NonZeroUsize;
 
-/// NonZeroUsize of value one.
-// TODO: Replace usage by NonZeroUsize::MIN once MSRV is 1.70+.
-const ONE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(1) };
+/// `NonZeroUsize` of value one.
+const ONE: NonZeroUsize = NonZeroUsize::MIN;
 
 impl BorshSchemaContainer {
     /// Returns the largest possible size of a serialised object based solely on its type.
@@ -66,10 +65,11 @@ fn max_serialized_size_impl<'a>(
     schema: &'a BorshSchemaContainer,
     stack: &mut Vec<&'a str>,
 ) -> Result<usize, Error> {
-    use core::convert::TryFrom;
+    use core::convert::TryFrom as _;
 
     /// Maximum number of elements in a vector or length of a string which can
     /// be serialised.
+    // SAFETY: u32::MAX is > 0
     const MAX_LEN: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(u32::MAX as usize) };
 
     fn add(x: usize, y: usize) -> Result<usize, Error> {
@@ -266,14 +266,14 @@ mod tests {
 
     // this is not integration test module, so can use __private for ease of imports;
     // it cannot be made integration, as it tests `is_zero_size` function, chosen to be non-pub
-    use crate::__private::maybestd::{boxed::Box, string::ToString};
+    use crate::__private::maybestd::boxed::Box;
 
     #[test]
     fn test_is_zero_size_recursive_check_bypassed() {
         use crate as borsh;
 
         #[derive(::borsh_derive::BorshSchema)]
-        struct RecursiveExitSequence(Vec<RecursiveExitSequence>);
+        struct RecursiveExitSequence(Vec<Self>);
 
         let schema = BorshSchemaContainer::for_type::<RecursiveExitSequence>();
         assert_eq!(Ok(false), is_zero_size(schema.declaration(), &schema));
@@ -284,7 +284,7 @@ mod tests {
         use crate as borsh;
 
         #[derive(::borsh_derive::BorshSchema)]
-        struct RecursiveNoExitStructUnnamed(Box<RecursiveNoExitStructUnnamed>);
+        struct RecursiveNoExitStructUnnamed(Box<Self>);
 
         let schema = BorshSchemaContainer::for_type::<RecursiveNoExitStructUnnamed>();
         assert_eq!(

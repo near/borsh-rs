@@ -1,3 +1,5 @@
+#![allow(clippy::mixed_attributes_style)]
+
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use core::{
@@ -6,7 +8,7 @@ use core::{
 };
 
 #[cfg(feature = "bytes")]
-use bytes::{BufMut, BytesMut};
+use bytes::BufMut as _;
 
 use crate::__private::maybestd::{
     borrow::{Borrow, Cow, ToOwned},
@@ -368,9 +370,9 @@ impl BorshDeserialize for String {
 #[cfg(feature = "ascii")]
 pub mod ascii {
     //!
-    //! Module defines [BorshDeserialize] implementation for
+    //! Module defines [`BorshDeserialize`] implementation for
     //! some types from [ascii](::ascii) crate.
-    use crate::__private::maybestd::{string::ToString, vec::Vec};
+    use crate::__private::maybestd::{string::ToString as _, vec::Vec};
     use crate::io::{Error, ErrorKind, Read, Result};
     use crate::BorshDeserialize;
 
@@ -378,7 +380,7 @@ pub mod ascii {
         #[inline]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
             let bytes = Vec::<u8>::deserialize_reader(reader)?;
-            ascii::AsciiString::from_ascii(bytes)
+            Self::from_ascii(bytes)
                 .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string()))
         }
     }
@@ -387,7 +389,7 @@ pub mod ascii {
         #[inline]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
             let byte = u8::deserialize_reader(reader)?;
-            ascii::AsciiChar::from_ascii(byte)
+            Self::from_ascii(byte)
                 .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string()))
         }
     }
@@ -431,7 +433,7 @@ impl BorshDeserialize for bytes::BytesMut {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let len = u32::deserialize_reader(reader)?;
-        let mut out = BytesMut::with_capacity(hint::cautious::<u8>(len));
+        let mut out = Self::with_capacity(hint::cautious::<u8>(len));
         for _ in 0..len {
             out.put_u8(u8::deserialize_reader(reader)?);
         }
@@ -445,7 +447,7 @@ impl BorshDeserialize for bson::oid::ObjectId {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let mut buf = [0u8; 12];
         reader.read_exact(&mut buf)?;
-        Ok(bson::oid::ObjectId::from_bytes(buf))
+        Ok(Self::from_bytes(buf))
     }
 }
 
@@ -462,7 +464,7 @@ where
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         check_zst::<K>()?;
         let vec = <Vec<(K, V)>>::deserialize_reader(reader)?;
-        Ok(vec.into_iter().collect::<indexmap::IndexMap<K, V, S>>())
+        Ok(vec.into_iter().collect::<Self>())
     }
 }
 
@@ -478,16 +480,16 @@ where
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         check_zst::<T>()?;
         let vec = <Vec<T>>::deserialize_reader(reader)?;
-        Ok(vec.into_iter().collect::<indexmap::IndexSet<T, S>>())
+        Ok(vec.into_iter().collect::<Self>())
     }
 }
 
 #[cfg(feature = "uuid")]
 impl BorshDeserialize for uuid::Uuid {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        Ok(uuid::Uuid::from_bytes(
-            BorshDeserialize::deserialize_reader(reader)?,
-        ))
+        Ok(Self::from_bytes(BorshDeserialize::deserialize_reader(
+            reader,
+        )?))
     }
 }
 
@@ -945,8 +947,8 @@ impl_range!(RangeToInclusive, ..=end, end);
 #[cfg(feature = "rc")]
 pub mod rc {
     //!
-    //! Module defines [BorshDeserialize] implementation for
-    //! [alloc::rc::Rc](std::rc::Rc) and [alloc::sync::Arc](std::sync::Arc).
+    //! Module defines [`BorshDeserialize`] implementation for
+    //! [`alloc::rc::Rc`](std::rc::Rc) and [`alloc::sync::Arc`](std::sync::Arc).
     use crate::__private::maybestd::{boxed::Box, rc::Rc, sync::Arc};
     use crate::io::{Read, Result};
     use crate::BorshDeserialize;
