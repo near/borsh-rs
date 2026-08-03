@@ -8,3 +8,55 @@ default-members = ["borsh", "borsh-derive"]
 # shared version of all public crates in the workspace
 version = "1.8.0"
 rust-version = "1.77.0"
+
+[workspace.lints.rust]
+# Error on warning
+warnings = { level = "deny", priority = -1 }
+
+# Basic good practices
+non_ascii_idents = "forbid"
+unsafe_code = "warn"
+
+# Other opinionated lints
+macro_use_extern_crate = "deny"
+absolute_paths_not_starting_with_crate = "deny"
+explicit_outlives_requirements = "warn"
+missing_abi = "deny"
+single_use_lifetimes = "warn"
+unused_lifetimes = "warn"
+unused_macro_rules = "warn"
+meta_variable_misuse = "warn" # may have false positives
+keyword_idents_2024 = "warn"
+missing_docs = "warn"
+redundant_lifetimes = "warn"
+unit_bindings = "warn"
+trivial_casts = "warn" # may have false positives
+trivial_numeric_casts = "warn"
+unsafe_attr_outside_unsafe = "warn"
+unused_import_braces = "warn"
+variant_size_differences = "warn" # should be assessed case-by-case
+
+[workspace.lints.clippy]
+cargo = { level = "warn", priority = -1 }
+wildcard_dependencies = "warn"
+cargo_common_metadata = "warn"
+multiple_crate_versions = "allow"
+
+allow_attributes = "warn"
+clone_on_ref_ptr = "warn"
+implicit_clone = "warn"
+create_dir = "warn"
+dbg_macro = "warn"
+exit = "warn"
+undocumented_unsafe_blocks = "warn"
+unused_result_ok = "warn"
+unused_trait_names = "warn"
+unwrap_used = "warn"
+
+# Nursery
+nursery = { level = "warn", priority = -1 }
+# missing_const_for_fn = "allow" # const still being worked on so may give false positives
+
+# Pedantic
+pedantic = { level = "warn", priority = -1 }
+
