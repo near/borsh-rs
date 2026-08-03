@@ -61,3 +61,6 @@ std = ["bytes?/std"]
 # Be sure that this is what you want before enabling this feature.
 rc = []
 de_strict_order = []
+
+[lints]
+workspace = true
