@@ -15,7 +15,7 @@ warnings = { level = "deny", priority = -1 }
 
 # Basic good practices
 non_ascii_idents = "forbid"
-unsafe_code = "warn"
+# unsafe_code = "warn" # uncomment this to find unsafe blocks
 
 # Other opinionated lints
 macro_use_extern_crate = "deny"
