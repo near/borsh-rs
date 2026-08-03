@@ -1,3 +1,4 @@
+#![expect(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 // Smoke tests that ensure that we don't accidentally remove top-level
 // re-exports in a minor release.

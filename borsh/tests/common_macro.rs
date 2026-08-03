@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 #[allow(unused)]
 macro_rules! set_insert_deser_assert_macro [
 

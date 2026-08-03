@@ -791,7 +791,8 @@ where
                 //         is only incremented in `fill_buffer`, which writes the element before
                 //         increasing the init_count.
                 unsafe {
-                    core::ptr::drop_in_place(init_range as *mut _ as *mut [T]);
+                    let init_range: *mut [MaybeUninit<T>] = init_range;
+                    core::ptr::drop_in_place(init_range as *mut [T]);
                 };
             }
         }
@@ -803,7 +804,8 @@ where
                 // SAFETY: This cast is required because `mem::transmute` does not work with
                 //         const generics https://github.com/rust-lang/rust/issues/61956. This
                 //         array is guaranteed to be initialized by this point.
-                core::ptr::read(&self.buffer as *const _ as *const [T; N])
+                let buffer: *const [MaybeUninit<T>; N] = &self.buffer;
+                core::ptr::read(buffer as *const [T; N])
             }
             fn fill_buffer(&mut self, mut f: impl FnMut() -> Result<T>) -> Result<()> {
                 // TODO: replace with `core::array::try_from_fn` when stabilized to avoid manually

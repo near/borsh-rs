@@ -1,3 +1,4 @@
+#![expect(missing_docs)]
 #![recursion_limit = "128"]
 #![cfg_attr(
     feature = "force_exhaustive_checks",
