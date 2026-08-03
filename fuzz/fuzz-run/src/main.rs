@@ -1,6 +1,7 @@
 #![allow(missing_docs)]
 
 use borsh::BorshDeserialize;
+use honggfuzz::fuzz;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 extern crate honggfuzz;
