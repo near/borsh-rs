@@ -1,4 +1,4 @@
-#![expect(missing_docs)]
+#![allow(missing_docs)]
 
 use cfg_aliases::cfg_aliases;
 
