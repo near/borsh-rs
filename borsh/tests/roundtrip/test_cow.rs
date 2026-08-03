@@ -1,4 +1,4 @@
-#![expect(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used)]
 
 use alloc::string::ToString as _;
 use borsh::{from_slice, to_vec};

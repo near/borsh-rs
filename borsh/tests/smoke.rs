@@ -1,5 +1,5 @@
-#![expect(missing_docs)]
-#![expect(clippy::unwrap_used)]
+#![allow(missing_docs)]
+#![allow(clippy::unwrap_used)]
 #![cfg_attr(not(feature = "std"), no_std)]
 // Smoke tests that ensure that we don't accidentally remove top-level
 // re-exports in a minor release.
@@ -26,7 +26,7 @@ fn test_to_vec() {
     assert_eq!(value, deserialized);
 }
 
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 #[test]
 fn test_to_writer() {
     let value = 42u8;

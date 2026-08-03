@@ -1,4 +1,4 @@
-#![expect(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used)]
 
 use core::{ops, result::Result};
 
@@ -16,7 +16,7 @@ use bytes::{Bytes, BytesMut};
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-#[expect(clippy::linkedlist)]
+#[allow(clippy::linkedlist)]
 struct A<'a> {
     x: u64,
     b: B,

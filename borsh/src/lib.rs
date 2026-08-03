@@ -16,7 +16,7 @@ pub use borsh_derive::BorshDeserialize;
 #[cfg(feature = "derive")]
 pub use borsh_derive::BorshSerialize;
 
-#[expect(missing_docs)]
+#[allow(missing_docs)]
 pub mod de;
 
 // See `hash_collections` alias definition in build.rs
@@ -25,7 +25,7 @@ pub mod de;
 pub mod schema;
 #[cfg(feature = "unstable__schema")]
 pub(crate) mod schema_helpers;
-#[expect(missing_docs)]
+#[allow(missing_docs)]
 pub mod ser;
 
 pub use de::BorshDeserialize;
@@ -38,7 +38,7 @@ pub use schema_helpers::{
 };
 pub use ser::helpers::{object_length, to_vec, to_writer};
 pub use ser::BorshSerialize;
-#[expect(missing_docs)]
+#[allow(missing_docs)]
 pub mod error;
 
 #[cfg(all(feature = "std", feature = "hashbrown"))]

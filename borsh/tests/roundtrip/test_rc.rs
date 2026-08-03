@@ -1,4 +1,4 @@
-#![expect(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used)]
 
 pub use alloc::{rc, sync};
 

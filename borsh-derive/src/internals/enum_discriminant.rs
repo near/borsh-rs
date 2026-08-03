@@ -27,7 +27,7 @@ impl Discriminants {
     }
 
     // TODO: don't use .unwrap, maybe make error compatible with syn::Result?
-    #[expect(clippy::unwrap_used)]
+    #[allow(clippy::unwrap_used)]
     pub fn get(
         &self,
         variant_ident: &Ident,

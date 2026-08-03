@@ -8,7 +8,7 @@ use crate::internals::{
 };
 
 // TODO: replace with expect or make result type compatible
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 pub fn process(input: &ItemStruct, cratename: &Path) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let generics = generics::without_defaults(&input.generics);
@@ -70,7 +70,7 @@ fn process_field(
     Ok(())
 }
 
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use crate::internals::test_helpers::{

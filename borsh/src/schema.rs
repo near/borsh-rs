@@ -602,7 +602,7 @@ where
     T: BorshSchema,
 {
     // TODO: replace with expect or use result
-    #[expect(clippy::unwrap_used)]
+    #[allow(clippy::unwrap_used)]
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
         use core::convert::TryFrom as _;
         let length = u64::try_from(N).unwrap();
@@ -892,7 +892,7 @@ mod ip_addr_std_derive_impl {
 
     #[derive(BorshSchemaMacro)]
     #[borsh(crate = "crate")]
-    #[expect(variant_size_differences)]
+    #[allow(variant_size_differences)]
     pub enum IpAddr {
         /// An IPv4 address.
         V4(core::net::Ipv4Addr),

@@ -186,7 +186,7 @@ fn inner_struct_definition(
     (inner_struct, inner_struct_generics)
 }
 
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use crate::internals::test_helpers::{

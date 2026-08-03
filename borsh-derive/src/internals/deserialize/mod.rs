@@ -26,7 +26,7 @@ impl GenericsOutput {
         }
     }
     // TODO: don't use unwrap (swap to expect or result)
-    #[expect(clippy::unwrap_used)]
+    #[allow(clippy::unwrap_used)]
     fn extend(self, where_clause: &mut syn::WhereClause, cratename: &Path) {
         let de_trait: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
         let default_trait: Path = syn::parse2(quote! { core::default::Default }).unwrap();
@@ -72,7 +72,7 @@ fn process_field(
 /// function which computes derive output [`proc_macro2::TokenStream`]
 /// of code, which deserializes single field
 // TODO: use expect or results instead
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 fn field_output(
     field_name: Option<&Ident>,
     cratename: &Path,

@@ -130,7 +130,7 @@ pub fn get_crate(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use crate::internals::test_helpers::local_insta_assert_debug_snapshot;
     use quote::quote;

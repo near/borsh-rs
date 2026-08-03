@@ -56,7 +56,7 @@ pub fn process(input: &ItemStruct, cratename: &Path) -> syn::Result<TokenStream2
         }))
 }
 
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use crate::internals::test_helpers::{

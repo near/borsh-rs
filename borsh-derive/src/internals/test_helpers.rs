@@ -1,5 +1,5 @@
 // only for tests so unwrap is ok
-#![expect(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used)]
 
 use super::cratename::BORSH;
 use proc_macro2::Span;

@@ -19,7 +19,7 @@ pub fn default_where(where_clause: Option<&WhereClause>) -> WhereClause {
 }
 
 // TODO: don't use unwrap (replace with expect or error)
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 pub fn compute_predicates(params: Vec<Type>, traitname: &Path) -> Vec<WherePredicate> {
     params
         .into_iter()
@@ -301,8 +301,8 @@ impl FindTyParams {
     //         mac: T!(),
     //         marker: PhantomData<T>,
     //     }
-    #[expect(clippy::unused_self)]
-    #[expect(clippy::needless_pass_by_ref_mut)]
+    #[allow(clippy::unused_self)]
+    #[allow(clippy::needless_pass_by_ref_mut)]
     fn visit_macro(&mut self, _mac: &Macro) {}
 
     fn visit_type(&mut self, ty: &Type) {

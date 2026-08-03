@@ -8,7 +8,7 @@ use crate::internals::{attributes::field, generics, schema};
 /// of code, which computes declaration of a single field, which is later added to
 /// the struct's definition as a whole  
 // TODO: replace with expect or use result
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 fn field_declaration_output(
     field_name: Option<&Ident>,
     field_type: &Type,
@@ -38,7 +38,7 @@ fn field_declaration_output(
 /// function which computes derive output [`proc_macro2::TokenStream`]
 /// of code, which adds definitions of a field to the output `definitions: &mut BTreeMap`
 // TODO: replace with expect or use result
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 fn field_definitions_output(
     field_type: &Type,
     cratename: &Path,
@@ -168,7 +168,7 @@ fn process_field(
     Ok(())
 }
 
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use crate::internals::test_helpers::{

@@ -1,4 +1,4 @@
-#![expect(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used)]
 
 use borsh::{from_slice, to_vec};
 
@@ -40,7 +40,7 @@ test_ascii_string!(test_x_65535, "x".repeat(65535), false);
 test_ascii_string!(test_hello_10, "hello world!".repeat(30), true);
 test_ascii_string!(test_hello_1000, "hello Achilles!".repeat(1000), false);
 
-#[expect(clippy::string_lit_as_bytes)]
+#[allow(clippy::string_lit_as_bytes)]
 #[test]
 fn test_ascii_char() {
     use ascii::AsciiChar;

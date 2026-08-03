@@ -22,7 +22,7 @@ impl GenericsOutput {
         }
     }
     // TODO: replace with expect or result
-    #[expect(clippy::unwrap_used)]
+    #[allow(clippy::unwrap_used)]
     fn extend(self, where_clause: &mut syn::WhereClause, cratename: &Path) {
         let trait_path: Path = syn::parse2(quote! { #cratename::ser::BorshSerialize }).unwrap();
         let predicates =
@@ -66,7 +66,7 @@ impl FieldId {
 
 impl FieldId {
     // TODO: replace with expect or result
-    #[expect(clippy::unwrap_used)]
+    #[allow(clippy::unwrap_used)]
     fn serialize_arg(&self) -> Expr {
         match self {
             Self::Struct(name) => syn::parse2(quote! { &self.#name }).unwrap(),

@@ -1,5 +1,5 @@
-#![expect(clippy::unwrap_used)]
-#![expect(clippy::float_cmp)]
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::float_cmp)]
 
 use borsh::{from_reader, to_vec, BorshDeserialize, BorshSerialize};
 

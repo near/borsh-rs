@@ -125,7 +125,7 @@ struct VariantOutput {
 }
 
 // TODO: swap to expect or make result compatible
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 fn process_variant(
     variant: &Variant,
     enum_ident: &Ident,
@@ -200,7 +200,7 @@ fn process_field(
     Ok(())
 }
 
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use crate::internals::test_helpers::{

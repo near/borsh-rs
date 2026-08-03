@@ -236,7 +236,7 @@ impl Attributes {
     }
 }
 
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use quote::quote;
@@ -498,7 +498,7 @@ mod tests {
     }
 }
 
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 #[cfg(feature = "schema")]
 #[cfg(test)]
 mod tests_schema {

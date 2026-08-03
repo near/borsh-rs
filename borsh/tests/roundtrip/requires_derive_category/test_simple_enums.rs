@@ -1,11 +1,11 @@
-#![expect(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used)]
 
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
 use alloc::vec;
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-#[expect(variant_size_differences)]
+#[allow(variant_size_differences)]
 enum MixedWithUnitVariants {
     A(u16),
     B,

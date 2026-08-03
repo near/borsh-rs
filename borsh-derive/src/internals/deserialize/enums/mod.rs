@@ -86,7 +86,7 @@ fn process_variant(
     Ok(body)
 }
 
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use crate::{

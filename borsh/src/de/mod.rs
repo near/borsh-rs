@@ -834,7 +834,7 @@ where
     }
 }
 
-#[expect(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used)]
 #[test]
 fn array_deserialization_doesnt_leak() {
     use core::sync::atomic::{AtomicUsize, Ordering};

@@ -1,4 +1,4 @@
-#![expect(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used)]
 
 use borsh::BorshDeserialize;
 use uuid::Uuid;

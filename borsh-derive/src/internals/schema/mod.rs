@@ -24,7 +24,7 @@ impl GenericsOutput {
     }
 
     // TODO: replace with expect or use result
-    #[expect(clippy::unwrap_used)]
+    #[allow(clippy::unwrap_used)]
     fn result(self, item_name: &str, cratename: &Path) -> (Vec<WherePredicate>, TokenStream2) {
         let trait_path: Path = syn::parse2(quote! { #cratename::BorshSchema }).unwrap();
         let predicates = generics::compute_predicates(
