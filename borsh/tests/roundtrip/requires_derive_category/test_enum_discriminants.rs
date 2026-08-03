@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used)]
+
 use alloc::vec;
 
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
@@ -29,7 +31,7 @@ enum XYNoDiscriminant {
 
 #[test]
 fn test_discriminant_serde_no_unit_type() {
-    let values = vec![XY::A, XY::B, XY::C, XY::E, XY::D(12, 14), XY::F(35325423)];
+    let values = vec![XY::A, XY::B, XY::C, XY::E, XY::D(12, 14), XY::F(35_325_423)];
     let expected_discriminants = [0u8, 20, 21, 10, 22, 11];
 
     for (ind, value) in values.iter().enumerate() {
@@ -47,7 +49,7 @@ fn test_discriminant_serde_no_unit_type_no_use_discriminant() {
         XYNoDiscriminant::C,
         XYNoDiscriminant::D(12, 14),
         XYNoDiscriminant::E,
-        XYNoDiscriminant::F(35325423),
+        XYNoDiscriminant::F(35_325_423),
     ];
     let expected_discriminants = [0u8, 1, 2, 3, 4, 5];
 

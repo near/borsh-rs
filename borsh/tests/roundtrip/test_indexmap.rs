@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used)]
+
 use borsh::BorshDeserialize;
 use indexmap::{IndexMap, IndexSet};
 
@@ -26,9 +28,10 @@ fn test_indexmap_roundtrip() {
 // license: MIT OR Apache-2.0
 fn test_indexset_roundtrip() {
     let mut original_set = IndexSet::new();
-    [1, 2, 3, 4, 5, 6].iter().for_each(|&i| {
+
+    for &i in &[1, 2, 3, 4, 5, 6] {
         original_set.insert(i);
-    });
+    }
 
     let serialized_set = borsh::to_vec(&original_set).unwrap();
 

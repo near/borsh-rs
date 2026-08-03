@@ -24,7 +24,7 @@ pub fn generic_struct_with_phantom_data_derived() {
         <Parametrized<String, u32>>::declaration()
     );
 
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <Parametrized<String, u32>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -61,7 +61,7 @@ pub fn generic_enum_variant_with_phantom_data_derived() {
         <Parametrized<Marker>>::declaration()
     );
 
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <Parametrized<Marker>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -99,7 +99,7 @@ pub fn generic_enum_variant_with_mixed_phantom_data_predicate_derived() {
         <Parametrized<Marker, Marker>>::declaration()
     );
 
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <Parametrized<Marker, Marker>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {

@@ -1,5 +1,5 @@
 use crate::common_macro::schema_imports::*;
-use alloc::collections::{VecDeque, LinkedList};
+use alloc::collections::{LinkedList, VecDeque};
 
 macro_rules! test_vec_like_collection_schema {
     [$test_name: ident, $type: ident] => [
@@ -72,7 +72,7 @@ fn slice_schema_container() {
 
             }
         )
-    )
+    );
 }
 
 #[test]
@@ -93,5 +93,5 @@ fn vec_schema_container() {
 
             }
         )
-    )
+    );
 }

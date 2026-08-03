@@ -1,10 +1,16 @@
+#![expect(clippy::unwrap_used)]
+
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
-use alloc::{string::{String, ToString}, vec::Vec, vec};
+use alloc::{
+    string::{String, ToString as _},
+    vec,
+    vec::Vec,
+};
 #[derive(Debug, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
 struct CRecB {
     a: String,
-    b: Vec<CRecB>,
+    b: Vec<Self>,
 }
 
 #[test]

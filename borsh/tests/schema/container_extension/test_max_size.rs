@@ -128,7 +128,7 @@ fn max_serialized_size_custom_enum() {
 
     impl<const N: u8, T: BorshSchema> BorshSchema for Maybe<N, T> {
         fn declaration() -> Declaration {
-            let res = format!(r#"Maybe<{}, {}>"#, N, T::declaration());
+            let res = format!(r"Maybe<{}, {}>", N, T::declaration());
             res
         }
         fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
@@ -198,7 +198,7 @@ fn max_serialized_size_small_vec() {
 
     impl<T: BorshSchema> BorshSchema for SmallVec<T> {
         fn declaration() -> Declaration {
-            format!(r#"SmallVec<{}>"#, T::declaration())
+            format!(r"SmallVec<{}>", T::declaration())
         }
         fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
             let definition = Definition::Sequence {

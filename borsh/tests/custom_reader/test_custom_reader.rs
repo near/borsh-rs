@@ -1,7 +1,10 @@
+#![expect(clippy::unwrap_used)]
+#![expect(clippy::float_cmp)]
+
 use borsh::{from_reader, to_vec, BorshDeserialize, BorshSerialize};
 
 use alloc::{
-    string::{String, ToString},
+    string::{String, ToString as _},
     vec::Vec,
 };
 

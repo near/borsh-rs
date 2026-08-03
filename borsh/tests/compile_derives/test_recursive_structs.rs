@@ -6,17 +6,16 @@ use hashbrown::HashMap;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
+use alloc::{boxed::Box, string::String};
 #[cfg(hash_collections)]
 use core::{cmp::Eq, hash::Hash};
-use alloc::{boxed::Box, string::String};
-
 
 #[cfg(hash_collections)]
 #[allow(unused)]
 #[derive(BorshSerialize, BorshDeserialize)]
 struct CRec<U: Ord + Hash + Eq> {
     a: String,
-    b: HashMap<U, CRec<U>>,
+    b: HashMap<U, Self>,
 }
 
 //  `impl<T, U> BorshDeserialize for Box<T>` pulls in => `ToOwned`
@@ -25,14 +24,13 @@ struct CRec<U: Ord + Hash + Eq> {
 #[derive(Clone, BorshSerialize, BorshDeserialize)]
 struct CRecA {
     a: String,
-    b: Box<CRecA>,
+    b: Box<Self>,
 }
-
 
 #[cfg(hash_collections)]
 #[allow(unused)]
 #[derive(BorshSerialize, BorshDeserialize)]
 struct CRecC {
     a: String,
-    b: HashMap<String, CRecC>,
+    b: HashMap<String, Self>,
 }

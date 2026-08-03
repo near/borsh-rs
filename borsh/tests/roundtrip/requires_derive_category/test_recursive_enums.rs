@@ -1,5 +1,7 @@
+#![expect(clippy::unwrap_used)]
+
 use alloc::{
-    string::{String, ToString},
+    string::{String, ToString as _},
     vec,
     vec::Vec,
 };
@@ -8,14 +10,14 @@ use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 enum ERecD {
     B { x: String, y: i32 },
-    C(u8, Vec<ERecD>),
+    C(u8, Vec<Self>),
 }
 
 #[test]
 fn test_recursive_enum() {
     let one = ERecD::B {
         x: "one".to_string(),
-        y: 3213123,
+        y: 3_213_123,
     };
     let two = ERecD::C(10, vec![]);
 

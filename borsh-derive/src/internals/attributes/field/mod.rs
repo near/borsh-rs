@@ -727,7 +727,7 @@ mod tests_schema {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().nth(0).unwrap();
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
         let Err(err) = Attributes::parse(&first_field.attrs) else {
             unreachable!("expecting error here")
         };
@@ -747,7 +747,7 @@ mod tests_schema {
         })
         .unwrap();
 
-        let first_field = &item_struct.fields.into_iter().nth(0).unwrap();
+        let first_field = &item_struct.fields.into_iter().next().unwrap();
 
         let Err(err) = Attributes::parse(&first_field.attrs) else {
             unreachable!("expecting error here")

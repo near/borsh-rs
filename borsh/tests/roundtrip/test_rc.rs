@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used)]
+
 pub use alloc::{rc, sync};
 
 use borsh::{from_slice, to_vec};

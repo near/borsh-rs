@@ -1,9 +1,8 @@
+#![expect(clippy::unwrap_used)]
+
 use borsh::{from_slice, to_vec};
 
-use alloc::{
-    string::String,
-    vec::Vec,
-};
+use alloc::{string::String, vec::Vec};
 
 /// Verifies serialisation and deserialisation of an ASCII string `value`.
 fn check_ascii(value: &str) -> Vec<u8> {
@@ -41,6 +40,7 @@ test_ascii_string!(test_x_65535, "x".repeat(65535), false);
 test_ascii_string!(test_hello_10, "hello world!".repeat(30), true);
 test_ascii_string!(test_hello_1000, "hello Achilles!".repeat(1000), false);
 
+#[expect(clippy::string_lit_as_bytes)]
 #[test]
 fn test_ascii_char() {
     use ascii::AsciiChar;
@@ -49,5 +49,5 @@ fn test_ascii_char() {
     assert_eq!(".".as_bytes(), buf);
     assert_eq!(AsciiChar::Dot, from_slice::<AsciiChar>(&buf).unwrap());
 
-    from_slice::<AsciiChar>(&[b'\x80']).unwrap_err();
+    from_slice::<AsciiChar>(b"\x80").unwrap_err();
 }

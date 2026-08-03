@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used)]
+
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 use core::marker::PhantomData;
 
@@ -11,7 +13,7 @@ use core::{cmp::Eq, hash::Hash};
 use std::collections::HashMap;
 
 use alloc::{
-    string::{ToString, String},
+    string::{String, ToString as _},
     vec,
     vec::Vec,
 };
@@ -36,7 +38,7 @@ struct A<T, F, G> {
 fn test_generic_struct() {
     let a = A::<String, u64, String> {
         x: vec!["foo".to_string(), "bar".to_string()],
-        pd: Default::default(),
+        pd: PhantomData,
         y: "world".to_string(),
         b: B::X { f: vec![1, 2] },
         c: Err("error".to_string()),

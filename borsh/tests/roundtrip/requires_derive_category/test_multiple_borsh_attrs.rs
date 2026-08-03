@@ -1,6 +1,8 @@
+#![expect(clippy::unwrap_used)]
+
 use alloc::{
     collections::BTreeMap,
-    string::{String, ToString},
+    string::{String, ToString as _},
 };
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
@@ -46,7 +48,7 @@ mod third_party_impl {
     pub(super) fn declaration<K: borsh::BorshSchema, V: borsh::BorshSchema>(
     ) -> borsh::schema::Declaration {
         let params = vec![<K>::declaration(), <V>::declaration()];
-        format!(r#"{}<{}>"#, "ThirdParty", params.join(", "))
+        format!(r"{}<{}>", "ThirdParty", params.join(", "))
     }
 
     #[cfg(feature = "unstable__schema")]
@@ -105,13 +107,13 @@ fn test_overridden_struct_multiple_attrs() {
 #[cfg(feature = "unstable__schema")]
 #[test]
 fn test_overridden_struct_multiple_attrs_schema() {
-    use borsh::BorshSchema;
+    use borsh::BorshSchema as _;
 
     assert_eq!(
         "A<u64, String>".to_string(),
         <A<u64, String>>::declaration()
     );
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <A<u64, String>>::add_definitions_recursively(&mut defs);
     // the schema-only `with_funcs` attribute from the separate `#[borsh(...)]`
     // block takes effect: `x` resolves to the custom `ThirdParty` declaration.
@@ -132,7 +134,7 @@ enum WithSplitItemAttrs {
 
 impl WithSplitItemAttrs {
     fn initialization_method(&mut self) {
-        *self = WithSplitItemAttrs::C;
+        *self = Self::C;
     }
 }
 

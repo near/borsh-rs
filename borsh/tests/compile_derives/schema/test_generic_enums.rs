@@ -16,7 +16,7 @@ enum AWithSkip<C, W> {
     },
 }
 
-/// test: inner structs in BorshSchema derive don't need any bounds, unrelated to BorshSchema
+/// test: inner structs in `BorshSchema` derive don't need any bounds, unrelated to `BorshSchema`
 // #[derive(borsh::BorshSchema)]
 // struct SideLeft<A>(
 //     A,

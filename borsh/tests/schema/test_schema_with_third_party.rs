@@ -11,7 +11,7 @@ mod third_party_impl {
     pub(super) fn declaration<K: borsh::BorshSchema, V: borsh::BorshSchema>(
     ) -> borsh::schema::Declaration {
         let params = vec![<K>::declaration(), <V>::declaration()];
-        format!(r#"{}<{}>"#, "ThirdParty", params.join(", "))
+        format!(r"{}<{}>", "ThirdParty", params.join(", "))
     }
 
     pub(super) fn add_definitions_recursively<K: borsh::BorshSchema, V: borsh::BorshSchema>(

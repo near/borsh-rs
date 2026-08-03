@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 use std::collections::HashMap;
 
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -8,9 +9,9 @@ mod serde_json_value {
     mod ser {
         use borsh::{
             io::{ErrorKind, Result, Write},
-            BorshSerialize,
+            BorshSerialize as _,
         };
-        use core::convert::TryFrom;
+        use core::convert::TryFrom as _;
 
         /// this is mutually recursive with `serialize_array` and `serialize_map`
         pub fn serialize_value<W: Write>(value: &serde_json::Value, writer: &mut W) -> Result<()> {
@@ -75,7 +76,7 @@ mod serde_json_value {
                 &(u32::try_from(array.len()).map_err(|_| ErrorKind::InvalidData)?).to_le_bytes(),
             )?;
             for item in array {
-                serialize_value(&item, writer)?;
+                serialize_value(item, writer)?;
             }
             Ok(())
         }
@@ -92,7 +93,7 @@ mod serde_json_value {
 
             for (key, value) in map {
                 key.serialize(writer)?;
-                serialize_value(&value, writer)?;
+                serialize_value(value, writer)?;
             }
 
             Ok(())
@@ -104,8 +105,9 @@ mod serde_json_value {
             BorshDeserialize,
         };
 
-        /// this is copy-paste of https://github.com/near/borsh-rs/blob/master/borsh/src/de/hint.rs#L2-L5
+        /// this is copy-paste of <https://github.com/near/borsh-rs/blob/master/borsh/src/de/hint.rs#L2-L5>
         fn hint_cautious<T>(hint: u32) -> usize {
+            #[expect(clippy::cast_possible_truncation)]
             let el_size = core::mem::size_of::<T>() as u32;
             core::cmp::max(core::cmp::min(hint, 4096 / el_size), 1) as usize
         }
@@ -137,8 +139,7 @@ mod serde_json_value {
                 }
                 _ => {
                     let msg = format!(
-                        "Invalid JSON value representation: {}. The first byte must be 0-5",
-                        flag
+                        "Invalid JSON value representation: {flag}. The first byte must be 0-5"
                     );
 
                     Err(Error::new(ErrorKind::InvalidData, msg))
@@ -162,15 +163,14 @@ mod serde_json_value {
                     // This returns None if the number is a NaN or +/-Infinity,
                     // which are not valid JSON numbers.
                     serde_json::Number::from_f64(f).ok_or_else(|| {
-                        let msg = format!("Invalid JSON number: {}", f);
+                        let msg = format!("Invalid JSON number: {f}");
 
                         Error::new(ErrorKind::InvalidData, msg)
                     })
                 }
                 _ => {
                     let msg = format!(
-                        "Invalid JSON number representation: {}. The first byte must be 0-2",
-                        flag
+                        "Invalid JSON number representation: {flag}. The first byte must be 0-2"
                     );
 
                     Err(Error::new(ErrorKind::InvalidData, msg))
@@ -249,6 +249,8 @@ struct SerdeJsonAsField {
     pub examples: HashMap<String, SerdeJsonBorshWrapper>,
 }
 
+#[expect(clippy::unreadable_literal)]
+#[expect(clippy::unwrap_used)]
 fn main() {
     // original code is from https://github.com/near/borsh-rs/pull/312
     let original = serde_json::json!({

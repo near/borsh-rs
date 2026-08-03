@@ -29,7 +29,7 @@ pub fn complex_enum_generics() {
         "A<Cucumber, Wrapper>".to_string(),
         <A<Cucumber, Wrapper>>::declaration()
     );
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <A<Cucumber, Wrapper>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -97,7 +97,7 @@ pub fn complex_enum_generics2() {
         "A<Cucumber, Wrapper<String>>".to_string(),
         <A<Cucumber, Wrapper<String>>>::declaration()
     );
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <A<Cucumber, Wrapper<String>>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -230,7 +230,7 @@ pub fn generic_associated_item1() {
         <EnumParametrized<String, u32, u16>>::declaration()
     );
 
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <EnumParametrized<String, u32, u16>>::add_definitions_recursively(&mut defs);
     assert_eq!(common_map_associated(), defs);
 }
@@ -270,7 +270,7 @@ pub fn generic_associated_item2() {
         <EnumParametrized<String, u32, u16>>::declaration()
     );
 
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <EnumParametrized<String, u32, u16>>::add_definitions_recursively(&mut defs);
 
     assert_eq!(common_map_associated(), defs);
@@ -292,7 +292,7 @@ pub fn generic_enum_with_predicate_bound_referencing_filtered_param() {
         "Parametrized<u64, u32>".to_string(),
         <Parametrized<u64, u32>>::declaration()
     );
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <Parametrized<u64, u32>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {

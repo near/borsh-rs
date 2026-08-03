@@ -21,7 +21,7 @@ fn test_to_vec() {
     let seriazeble = (schema_container_of::<u8>(), value);
     let serialized = borsh::to_vec(&seriazeble).unwrap();
     #[cfg(feature = "std")]
-    println!("serialized: {:?}", serialized);
+    println!("serialized: {serialized:?}");
     let deserialized = try_from_slice_with_schema::<u8>(&serialized).unwrap();
     assert_eq!(value, deserialized);
 }

@@ -11,7 +11,7 @@ pub fn wrapper_struct() {
     #[derive(borsh::BorshSchema)]
     struct A<T>(T);
     assert_eq!("A<u64>".to_string(), <A<u64>>::declaration());
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <A<u64>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -30,7 +30,7 @@ pub fn tuple_struct_params() {
         "A<u64, String>".to_string(),
         <A<u64, String>>::declaration()
     );
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <A<u64, String>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -61,7 +61,7 @@ pub fn simple_generics() {
         "A<u64, String>".to_string(),
         <A<u64, String>>::declaration()
     );
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <A<u64, String>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -136,7 +136,7 @@ pub fn generic_associated_item() {
         <Parametrized<String, u32>>::declaration()
     );
 
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <Parametrized<String, u32>>::add_definitions_recursively(&mut defs);
     assert_eq!(common_map_associated(), defs);
 }
@@ -170,7 +170,7 @@ pub fn generic_associated_item2() {
         <Parametrized<String, u32>>::declaration()
     );
 
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <Parametrized<String, u32>>::add_definitions_recursively(&mut defs);
     assert_eq!(common_map_associated(), defs);
 }
@@ -204,7 +204,7 @@ pub fn generic_associated_item3() {
         <Parametrized<String, u32>>::declaration()
     );
 
-    let mut defs = Default::default();
+    let mut defs = BTreeMap::default();
     <Parametrized<String, u32>>::add_definitions_recursively(&mut defs);
     assert_eq!(
         schema_map! {
@@ -229,4 +229,3 @@ pub fn generic_associated_item3() {
         defs
     );
 }
-

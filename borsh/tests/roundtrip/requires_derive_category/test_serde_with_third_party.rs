@@ -1,6 +1,8 @@
+#![expect(clippy::unwrap_used)]
+
 use alloc::{
     collections::BTreeMap,
-    string::{String, ToString},
+    string::{String, ToString as _},
 };
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
