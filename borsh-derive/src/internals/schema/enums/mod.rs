@@ -28,11 +28,40 @@ fn transform_variant_fields(mut input: Fields) -> Fields {
     input
 }
 
+/// Rewrites every bare `Self` type in the folded node to the concrete enum type.
+///
+/// Each enum variant is lowered to a synthesized inner struct that derives
+/// `BorshSchema` (e.g. `ERecD::C(u8, Vec<Self>)` becomes `struct ERecD__C(u8, Vec<Self>)`).
+/// Without this substitution a bare `Self` in a variant field rebinds to that inner
+/// struct rather than the enum, so the emitted schema describes recursion against the
+/// untagged inner struct (`Vec<ERecD__C>`) while the wire format nests the full,
+/// 1-byte-tagged enum (`Vec<ERecD>`). Replacing `Self` with the concrete enum type
+/// before the inner struct is built keeps the schema and the bytes in agreement.
+///
+/// Only a standalone `Self` is rewritten; qualified paths such as `Self::Assoc` or
+/// `<Self as Trait>::Assoc` are left untouched.
+struct ReplaceSelf {
+    concrete: syn::Type,
+}
+
+impl syn::fold::Fold for ReplaceSelf {
+    fn fold_type(&mut self, ty: syn::Type) -> syn::Type {
+        if let syn::Type::Path(ref type_path) = ty {
+            if type_path.qself.is_none() && type_path.path.is_ident("Self") {
+                return self.concrete.clone();
+            }
+        }
+        syn::fold::fold_type(self, ty)
+    }
+}
+
 pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let enum_name = name.to_token_stream().to_string();
     let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    // Concrete type a bare `Self` in a variant field resolves to (`ERecD`, `Enum<T>`, ...).
+    let self_ty: syn::Type = syn::parse2(quote! { #name #ty_generics })?;
     let mut where_clause = generics::default_where(where_clause);
     let mut generics_output = schema::GenericsOutput::new(&generics);
     let use_discriminant = item::contains_use_discriminant(input)?;
@@ -53,6 +82,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
             discriminant_info,
             &cratename,
             &enum_name,
+            &self_ty,
             &generics,
             &mut generics_output,
         )?;
@@ -114,6 +144,7 @@ fn process_variant(
     discriminant_info: DiscriminantInfo,
     cratename: &Path,
     enum_name: &str,
+    self_ty: &syn::Type,
     enum_generics: &Generics,
     generics_output: &mut schema::GenericsOutput,
 ) -> syn::Result<VariantOutput> {
@@ -121,9 +152,22 @@ fn process_variant(
     let full_variant_name = format!("{}__{}", enum_name, variant_name);
     let full_variant_ident = Ident::new(&full_variant_name, Span::call_site());
 
-    schema::visit_struct_fields(&variant.fields, &mut generics_output.params_visitor)?;
-    let (inner_struct, inner_struct_generics) =
-        inner_struct_definition(variant, cratename, &full_variant_ident, enum_generics);
+    // Rewrite bare `Self` to the concrete enum type before the fields feed either the
+    // outer-enum generics visitor or the synthesized inner struct, so recursion is
+    // described against the enum (matching the wire format), and any generic param a
+    // `Vec<Self>` reaches through (e.g. `T` in `Enum<T>`) stays used consistently.
+    let mut replace_self = ReplaceSelf {
+        concrete: self_ty.clone(),
+    };
+    let variant_fields = syn::fold::fold_fields(&mut replace_self, variant.fields.clone());
+
+    schema::visit_struct_fields(&variant_fields, &mut generics_output.params_visitor)?;
+    let (inner_struct, inner_struct_generics) = inner_struct_definition(
+        &variant_fields,
+        cratename,
+        &full_variant_ident,
+        enum_generics,
+    );
     let (_ig, inner_struct_ty_generics, _wc) = inner_struct_generics.split_for_impl();
 
     let variant_type = quote! {
@@ -145,16 +189,16 @@ fn process_variant(
 }
 
 fn inner_struct_definition(
-    variant: &Variant,
+    fields: &Fields,
     cratename: &Path,
     inner_struct_ident: &Ident,
     enum_generics: &Generics,
 ) -> (TokenStream2, Generics) {
-    let transformed_fields = transform_variant_fields(variant.fields.clone());
+    let transformed_fields = transform_variant_fields(fields.clone());
 
     let mut variant_schema_params_visitor =
         generics::FindTyParams::new_including_phantom_data(enum_generics);
-    schema::visit_struct_fields_unconditional(&variant.fields, &mut variant_schema_params_visitor);
+    schema::visit_struct_fields_unconditional(fields, &mut variant_schema_params_visitor);
     let variant_not_skipped_params = variant_schema_params_visitor
         .process_for_params()
         .into_iter()
