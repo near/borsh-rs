@@ -38,7 +38,6 @@ pub fn without_defaults(generics: &Generics) -> Generics {
             .iter()
             .map(|param| match param {
                 syn::GenericParam::Type(param) => syn::GenericParam::Type(syn::TypeParam {
-                    eq_token: None,
                     default: None,
                     ..param.clone()
                 }),
@@ -121,6 +120,7 @@ impl FindTyParams {
         self.all_type_params_ordered.iter().for_each(|param| {
             if relevant_type_params.contains(param) {
                 let ty = Type::Path(TypePath {
+                    attrs: vec![],
                     qself: None,
                     path: param.clone().into(),
                 });
@@ -243,7 +243,7 @@ impl FindTyParams {
             }
             PathArguments::Parenthesized(arguments) => {
                 for argument in &arguments.inputs {
-                    self.visit_type(argument);
+                    self.visit_type(&argument.ty);
                 }
                 self.visit_return_type(&arguments.output);
             }
@@ -316,7 +316,7 @@ impl FindTyParams {
         )]
         match ty {
             Type::Array(ty) => self.visit_type(&ty.elem),
-            Type::BareFn(ty) => {
+            Type::FnPtr(ty) => {
                 for arg in &ty.inputs {
                     self.visit_type(&arg.ty);
                 }
