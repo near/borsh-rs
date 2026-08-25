@@ -28,18 +28,11 @@ fn transform_variant_fields(mut input: Fields) -> Fields {
     input
 }
 
-/// Rewrites every bare `Self` type in the folded node to the concrete enum type.
+/// Replaces `Self` before enum variant fields are moved into a helper struct.
 ///
-/// Each enum variant is lowered to a synthesized inner struct that derives
-/// `BorshSchema` (e.g. `ERecD::C(u8, Vec<Self>)` becomes `struct ERecD__C(u8, Vec<Self>)`).
-/// Without this substitution a bare `Self` in a variant field rebinds to that inner
-/// struct rather than the enum, so the emitted schema describes recursion against the
-/// untagged inner struct (`Vec<ERecD__C>`) while the wire format nests the full,
-/// 1-byte-tagged enum (`Vec<ERecD>`). Replacing `Self` with the concrete enum type
-/// before the inner struct is built keeps the schema and the bytes in agreement.
-///
-/// Only a standalone `Self` is rewritten; qualified paths such as `Self::Assoc` or
-/// `<Self as Trait>::Assoc` are left untouched.
+/// Every `Self` in type position is rewritten, including the self type of a qualified path
+/// (`<Self as Trait>::Assoc` becomes `<Enum as Trait>::Assoc`), while `Self::Assoc` is left
+/// alone, because there `Self` is a path segment rather than a type.
 struct ReplaceSelf {
     concrete: syn::Type,
 }
@@ -152,10 +145,8 @@ fn process_variant(
     let full_variant_name = format!("{}__{}", enum_name, variant_name);
     let full_variant_ident = Ident::new(&full_variant_name, Span::call_site());
 
-    // Rewrite bare `Self` to the concrete enum type before the fields feed either the
-    // outer-enum generics visitor or the synthesized inner struct, so recursion is
-    // described against the enum (matching the wire format), and any generic param a
-    // `Vec<Self>` reaches through (e.g. `T` in `Enum<T>`) stays used consistently.
+    // The rewritten fields, not `variant.fields`, feed generic parameter discovery below, so
+    // a param reached only through `Vec<Self>` stays used and the inner struct stays generic.
     let mut replace_self = ReplaceSelf {
         concrete: self_ty.clone(),
     };
