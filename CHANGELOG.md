@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.1](https://github.com/near/borsh-rs/compare/borsh-v1.8.0...borsh-v1.8.1) - 2026-08-26
+
+### Fixed
+
+- BorshSchema derive resolves bare `Self` in enum variant fields to the enum, not the inner struct ([#378](https://github.com/near/borsh-rs/pull/378))
+- *(borsh-derive)* upgrade to syn v3 ([#380](https://github.com/near/borsh-rs/pull/380))
+
 ## [1.8.0](https://github.com/near/borsh-rs/compare/borsh-v1.7.0...borsh-v1.8.0) - 2026-07-16
 
 ### Added
