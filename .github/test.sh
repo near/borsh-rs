@@ -34,6 +34,7 @@ cargo test --features de_strict_order 'roundtrip::test_btree_map'
 cargo test --features bson,derive 'roundtrip::requires_derive_category::test_bson_object_ids'
 ########## features = ["bytes"] group
 cargo test --features bytes,derive 'roundtrip::requires_derive_category::test_ultimate_many_features_combined'
+cargo test --features bytes,unstable__schema 'schema::test_bytes'
 ########## features = ["uuid"] group
 cargo test --features uuid,derive 'roundtrip::test_uuid'
 
@@ -59,6 +60,7 @@ cargo test --no-default-features --features hashbrown,derive
 cargo test --no-default-features --features hashbrown,unstable__schema
 ########## features = ["bytes"] group
 cargo test --no-default-features --features bytes,derive 'roundtrip::requires_derive_category::test_ultimate_many_features_combined'
+cargo test --no-default-features --features bytes,unstable__schema 'schema::test_bytes'
 ########## features = ["uuid"] group
 cargo test --no-default-features --features uuid,derive 'roundtrip::test_uuid'
 popd
