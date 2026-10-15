@@ -48,7 +48,7 @@ insta = "1.29.0"
 serde_json = { version = "1" }
 
 [package.metadata.docs.rs]
-features = ["derive", "unstable__schema", "rc"]
+features = ["derive", "unstable__schema", "rc", "de_limit"]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [features]
@@ -61,3 +61,5 @@ std = ["bytes?/std"]
 # Be sure that this is what you want before enabling this feature.
 rc = []
 de_strict_order = []
+# Opt into `from_slice_with_limit` and `from_reader_with_limit`.
+de_limit = ["std"]

@@ -126,6 +126,12 @@ mod deserialization_errors {
     mod test_initial;
 }
 
+#[cfg(feature = "de_limit")]
+mod memory_limit {
+    mod cases;
+    mod test_memory_limit;
+}
+
 mod init_in_deserialize {
     #[cfg(feature = "derive")]
     mod test_init_in_deserialize;
