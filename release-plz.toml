@@ -6,7 +6,7 @@ changelog_update = false
 name = "borsh"
 changelog_update = true
 # release-plz checks all features, doesn't make sense for us in case of `std` + `hashbrown`.
-# We check use `cargo-semver-checks` in CI
+# We run `cargo-semver-checks` in CI instead
 semver_check = false
 changelog_path = "./CHANGELOG.md"
 changelog_include = ["borsh-derive"]
