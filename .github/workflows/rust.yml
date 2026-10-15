@@ -112,7 +112,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/chcekout@v4
+        uses: actions/checkout@v4
       - name: Manual `cargo-semver-checks` - ${{ matrix.name }}
         uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
