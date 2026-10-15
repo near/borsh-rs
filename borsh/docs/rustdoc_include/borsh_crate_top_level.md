@@ -59,6 +59,9 @@
   and [Ord] for btree ones. Deserialization emits error otherwise.
 
   If this feature is not enabled, it is possible that two different byte slices could deserialize into the same `HashMap`/`HashSet` object.
+* **de_limit** -
+  Gates `from_slice_with_limit` and `from_reader_with_limit`, which cap the
+  vector buffers allocated while deserializing. Implies **std**.
 
 ### Config aliases
 

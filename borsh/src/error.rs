@@ -8,3 +8,21 @@ pub(crate) fn check_zst<T>() -> Result<()> {
     }
     Ok(())
 }
+
+/// Inner error of the [`ErrorKind::OutOfMemory`] error returned when a decode
+/// would exceed the memory limit given to
+/// [`from_slice_with_limit`](crate::from_slice_with_limit) or
+/// [`from_reader_with_limit`](crate::from_reader_with_limit).
+#[cfg(feature = "de_limit")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LimitExceeded;
+
+#[cfg(feature = "de_limit")]
+impl core::fmt::Display for LimitExceeded {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("Memory limit exceeded")
+    }
+}
+
+#[cfg(feature = "de_limit")]
+impl std::error::Error for LimitExceeded {}

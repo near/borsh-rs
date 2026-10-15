@@ -39,3 +39,12 @@ test_vecs!(test_vec_f32, 1000000000.0f32, f32);
 test_vecs!(test_vec_string, "a".to_string(), String);
 test_vecs!(test_vec_vec_u8, vec![100u8; 10], Vec<u8>);
 test_vecs!(test_vec_vec_u32, vec![100u32; 10], Vec<u32>);
+
+#[test]
+fn test_decoded_byte_vector_capacity_equals_length() {
+    for len in [1, (1 << 20) - 1, 1 << 20, (1 << 20) + 1, 3 << 20] {
+        let decoded = from_slice::<Vec<u8>>(&to_vec(&vec![7u8; len]).unwrap()).unwrap();
+        assert_eq!(decoded.len(), len);
+        assert_eq!(decoded.capacity(), len);
+    }
+}

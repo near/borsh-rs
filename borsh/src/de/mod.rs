@@ -22,6 +22,7 @@ use crate::io::{Error, ErrorKind, Read, Result};
 use crate::error::check_zst;
 
 mod hint;
+mod limit;
 
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
@@ -161,11 +162,17 @@ impl BorshDeserialize for u8 {
         // less efficient (since we need to loop and reallocate) but it protects
         // us from someone sending us [0xff, 0xff, 0xff, 0xff] and forcing us to
         // allocate 4GiB of memory.
-        let mut vec = vec![0u8; len.min(1024 * 1024)];
+        let initial_len = len.min(1024 * 1024);
+        limit::charge::<u8>(initial_len)?;
+        let mut vec = vec![0u8; initial_len];
         let mut pos = 0;
         while pos < len {
             if pos == vec.len() {
-                vec.resize(vec.len().saturating_mul(2).min(len), 0)
+                let new_len = vec.len().saturating_mul(2).min(len);
+                let additional = new_len - vec.len();
+                limit::charge::<u8>(additional)?;
+                vec.reserve_exact(additional);
+                vec.resize(new_len, 0);
             }
             // TODO(mina86): Convert this to read_buf once that stabilises.
             match reader.read(&mut vec.as_mut_slice()[pos..])? {
@@ -412,9 +419,20 @@ where
             Ok(vec_bytes)
         } else {
             // TODO(16): return capacity allocation when we can safely do that.
-            let mut result = Vec::with_capacity(hint::cautious::<T>(len));
+            let capacity = hint::cautious::<T>(len);
+            limit::charge::<T>(capacity)?;
+            let mut result = Vec::with_capacity(capacity);
             for _ in 0..len {
-                result.push(T::deserialize_reader(reader)?);
+                // Decoding before growing makes truncated input fail as
+                // truncated, not as over the limit. `reserve_exact` keeps the
+                // charge equal to the capacity requested. Without `de_limit`,
+                // `push` grows the vector the same way.
+                let element = T::deserialize_reader(reader)?;
+                if cfg!(feature = "de_limit") && result.len() == result.capacity() {
+                    limit::charge::<T>(result.capacity())?;
+                    result.reserve_exact(result.capacity());
+                }
+                result.push(element);
             }
             Ok(result)
         }
@@ -1074,4 +1092,82 @@ pub fn from_reader<R: Read, T: BorshDeserialize>(reader: &mut R) -> Result<T> {
         Err(f) if f.kind() == ErrorKind::UnexpectedEof => Ok(result),
         _ => Err(Error::new(ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ)),
     }
+}
+
+/// Like [`from_slice`], but fails once the vector buffers borsh allocates for
+/// the value would exceed `limit` bytes.
+///
+/// Borsh's own impls charge the capacity they request, including growth,
+/// before allocating it. A charge that does not fit fails before the
+/// allocation, however many elements the input claims.
+///
+/// Charged:
+/// - `Vec<T>` buffers allocated by borsh's impls, including the vectors that
+///   `String`, `Box<[T]>`, `Box<str>`, `VecDeque`, `Cow`, `bytes::Bytes`,
+///   `ascii::AsciiString`, maps, sets and `LinkedList` are decoded through.
+///
+/// For a successful decode, each `Vec<T>` buffer holding `n` elements is
+/// charged at most `2 * n * size_of::<T>()` bytes. A byte buffer, including a
+/// string's, is charged exactly its length in bytes. Nested vectors are charged
+/// separately.
+///
+/// Not charged:
+/// - allocations when converting vectors, including shrinking into `Box`,
+///   map and set storage, list nodes and `Bytes` metadata;
+/// - other allocations in borsh's impls, including storage for `Box<T>`,
+///   `Rc<T>`, `Arc<T>` and `BytesMut`;
+/// - direct allocations in `#[borsh(init = ...)]` functions and hand-written
+///   impls.
+///
+/// Uncharged allocations can exceed `limit`. All `BytesMut` allocations are
+/// uncharged. Leave headroom: future versions may charge more allocations.
+///
+/// The budget belongs to the calling thread. Nested limited calls on that
+/// thread may lower the remaining budget, but cannot raise it. Their charges
+/// also consume the outer budget. Nested plain [`from_slice`] and
+/// [`from_reader`] calls on the same thread consume it too, including calls
+/// from hand-written impls. Freed memory does not refund charges:
+/// the budget caps total charged bytes, not peak memory use.
+///
+/// A byte vector whose input ends exactly where its buffer would grow can
+/// report the limit error instead of truncated input.
+///
+/// Allocator failure still aborts the process. Requires the `de_limit` feature.
+///
+/// # Example
+/// ```
+/// use borsh::{from_slice_with_limit, io::ErrorKind, to_vec};
+///
+/// let encoded = to_vec(&vec![7u64; 1000]).unwrap();
+///
+/// let decoded = from_slice_with_limit::<Vec<u64>>(&encoded, 64 * 1024).unwrap();
+/// assert_eq!(decoded.len(), 1000);
+///
+/// let err = from_slice_with_limit::<Vec<u64>>(&encoded, 1024).unwrap_err();
+/// assert_eq!(err.kind(), ErrorKind::OutOfMemory);
+/// assert!(err.get_ref().is_some_and(|e| e.is::<borsh::error::LimitExceeded>()));
+/// ```
+/// # Errors
+/// [`ErrorKind::OutOfMemory`] with a
+/// [`LimitExceeded`](crate::error::LimitExceeded) inner error if the limit is
+/// exceeded, otherwise the errors of [`from_slice`].
+#[cfg(feature = "de_limit")]
+pub fn from_slice_with_limit<T: BorshDeserialize>(v: &[u8], limit: usize) -> Result<T> {
+    limit::with_limit(limit, || from_slice(v))
+}
+
+/// Like [`from_reader`], but fails once the vector buffers borsh allocates for
+/// the value would exceed `limit` bytes. See [`from_slice_with_limit`] for
+/// what is charged.
+///
+/// # Errors
+/// [`ErrorKind::OutOfMemory`] with a
+/// [`LimitExceeded`](crate::error::LimitExceeded) inner error if the limit is
+/// exceeded, otherwise the errors of [`from_reader`].
+#[cfg(feature = "de_limit")]
+pub fn from_reader_with_limit<R: Read, T: BorshDeserialize>(
+    reader: &mut R,
+    limit: usize,
+) -> Result<T> {
+    limit::with_limit(limit, || from_reader(reader))
 }

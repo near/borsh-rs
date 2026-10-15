@@ -34,6 +34,9 @@ cargo test --features de_strict_order 'roundtrip::test_btree_map'
 cargo test --features bson,derive 'roundtrip::requires_derive_category::test_bson_object_ids'
 ########## features = ["bytes"] group
 cargo test --features bytes,derive 'roundtrip::requires_derive_category::test_ultimate_many_features_combined'
+########## features = ["de_limit"] group
+cargo test --features de_limit
+cargo test --features de_limit,bytes,ascii,indexmap 'memory_limit'
 ########## features = ["uuid"] group
 cargo test --features uuid,derive 'roundtrip::test_uuid'
 

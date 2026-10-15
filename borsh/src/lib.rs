@@ -28,6 +28,8 @@ pub mod ser;
 
 pub use de::BorshDeserialize;
 pub use de::{from_reader, from_slice};
+#[cfg(feature = "de_limit")]
+pub use de::{from_reader_with_limit, from_slice_with_limit};
 #[cfg(feature = "unstable__schema")]
 pub use schema::BorshSchema;
 #[cfg(feature = "unstable__schema")]
