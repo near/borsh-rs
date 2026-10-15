@@ -5,8 +5,11 @@ changelog_update = false
 [[package]]
 name = "borsh"
 changelog_update = true
+# release-plz checks all features, doesn't make sense for us in case of `std` + `hashbrown`.
+# We check use `cargo-semver-checks` in CI
+semver_check = false
 changelog_path = "./CHANGELOG.md"
-changelog_include = ["borsh-derive"] 
+changelog_include = ["borsh-derive"]
 
 [[package]]
 name = "borsh-fuzz"
