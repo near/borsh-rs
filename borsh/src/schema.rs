@@ -532,6 +532,52 @@ pub mod ascii {
     }
 }
 
+#[cfg(feature = "bytes")]
+pub mod bytes {
+    //! Module is available if borsh is built with `features = ["bytes"]`.
+    //!
+    //! Module defines [BorshSchema] implementation for
+    //! some types from [bytes] crate.
+    use crate::BorshSchema;
+
+    use super::{add_definition, Declaration, Definition};
+    use crate::__private::maybestd::collections::BTreeMap;
+
+    impl BorshSchema for bytes::Bytes {
+        #[inline]
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+            let definition = Definition::Sequence {
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: u8::declaration(),
+            };
+            add_definition(Self::declaration(), definition, definitions);
+            u8::add_definitions_recursively(definitions);
+        }
+        #[inline]
+        fn declaration() -> Declaration {
+            "bytes::Bytes".into()
+        }
+    }
+
+    impl BorshSchema for bytes::BytesMut {
+        #[inline]
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+            let definition = Definition::Sequence {
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: u8::declaration(),
+            };
+            add_definition(Self::declaration(), definition, definitions);
+            u8::add_definitions_recursively(definitions);
+        }
+        #[inline]
+        fn declaration() -> Declaration {
+            "bytes::BytesMut".into()
+        }
+    }
+}
+
 impl BorshSchema for core::ops::RangeFull {
     #[inline]
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
