@@ -276,8 +276,8 @@ impl FindTyParams {
                                 self.visit_type(ty);
                             }
                         }
+                        return;
                     }
-                    return;
                 }
             }
             if seg.ident == "PhantomData" && !self.include_phantom_data {

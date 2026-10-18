@@ -181,3 +181,24 @@ fn test_skipped_hashmap_retains_default_hasher_bound() {
         .unwrap();
     assert!(actual.map.is_empty());
 }
+
+#[test]
+fn test_skipped_type_parameters_named_like_collections() {
+    #[derive(BorshDeserialize)]
+    struct Skipped<Vec, Option, HashMap, BTreeMap> {
+        #[borsh(skip)]
+        vec: Vec,
+        #[borsh(skip)]
+        option: Option,
+        #[borsh(skip)]
+        hash: HashMap,
+        #[borsh(skip)]
+        tree: BTreeMap,
+    }
+
+    let actual = from_slice::<Skipped<u8, u16, u32, u64>>(&[]).unwrap();
+    assert_eq!(actual.vec, 0);
+    assert_eq!(actual.option, 0);
+    assert_eq!(actual.hash, 0);
+    assert_eq!(actual.tree, 0);
+}
