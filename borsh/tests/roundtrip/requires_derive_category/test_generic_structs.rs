@@ -108,3 +108,76 @@ fn test_generic_struct_hashmap() {
     assert_eq!(actual_a.b.get(&14), Some("value".to_string()).as_ref());
     assert_eq!(actual_a.b.get(&34), Some("another".to_string()).as_ref());
 }
+
+#[test]
+fn test_skipped_collections_do_not_require_default_elements() {
+    struct NoDefault;
+
+    #[derive(BorshDeserialize)]
+    struct Skipped<T> {
+        value: u8,
+        #[borsh(skip)]
+        vec: Vec<T>,
+        #[borsh(skip)]
+        option: Option<T>,
+        #[borsh(skip)]
+        tree: alloc::collections::BTreeMap<T, T>,
+        #[cfg(hash_collections)]
+        #[borsh(skip)]
+        hash: HashMap<T, T>,
+    }
+
+    let actual = from_slice::<Skipped<NoDefault>>(&[42]).unwrap();
+    assert_eq!(actual.value, 42);
+    assert!(actual.vec.is_empty());
+    assert!(actual.option.is_none());
+    assert!(actual.tree.is_empty());
+    #[cfg(hash_collections)]
+    assert!(actual.hash.is_empty());
+}
+
+#[test]
+fn test_skipped_collection_enum() {
+    struct NoDefault;
+
+    #[derive(BorshDeserialize)]
+    enum Skipped<T> {
+        Named {
+            value: u8,
+            #[borsh(skip)]
+            tree: alloc::collections::BTreeMap<T, T>,
+        },
+        Tuple(#[borsh(skip)] Option<Vec<T>>, u8),
+    }
+
+    match from_slice::<Skipped<NoDefault>>(&[0, 42]).unwrap() {
+        Skipped::Named { value, tree } => {
+            assert_eq!(value, 42);
+            assert!(tree.is_empty());
+        }
+        _ => panic!("unexpected variant"),
+    }
+    match from_slice::<Skipped<NoDefault>>(&[1, 43]).unwrap() {
+        Skipped::Tuple(option, value) => {
+            assert_eq!(value, 43);
+            assert!(option.is_none());
+        }
+        _ => panic!("unexpected variant"),
+    }
+}
+
+#[cfg(feature = "std")]
+#[test]
+fn test_skipped_hashmap_retains_default_hasher_bound() {
+    struct NoDefault;
+
+    #[derive(BorshDeserialize)]
+    struct Skipped<T, S> {
+        #[borsh(skip)]
+        map: HashMap<T, T, S>,
+    }
+
+    let actual = from_slice::<Skipped<NoDefault, std::collections::hash_map::RandomState>>(&[])
+        .unwrap();
+    assert!(actual.map.is_empty());
+}
