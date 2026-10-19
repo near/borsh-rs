@@ -27,7 +27,8 @@ pub(crate) mod schema_helpers;
 pub mod ser;
 
 pub use de::BorshDeserialize;
-pub use de::{from_reader, from_slice};
+pub use de::BorshDeserializeBounded;
+pub use de::{from_reader, from_reader_bounded, from_slice, from_slice_bounded};
 #[cfg(feature = "unstable__schema")]
 pub use schema::BorshSchema;
 #[cfg(feature = "unstable__schema")]

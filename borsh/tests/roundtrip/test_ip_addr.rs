@@ -8,6 +8,7 @@ fn test_ipv4_addr_roundtrip_enum() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(encoded);
     let decoded = borsh::from_slice::<IpAddr>(&encoded).expect("Deserialization failed");
+    crate::common_macro::assert_bounded_parity::<IpAddr>(&encoded);
     assert_eq!(original, decoded);
 }
 
@@ -18,6 +19,7 @@ fn test_ipv4_addr_roundtrip() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(encoded);
     let decoded = borsh::from_slice::<Ipv4Addr>(&encoded).expect("Deserialization failed");
+    crate::common_macro::assert_bounded_parity::<Ipv4Addr>(&encoded);
     assert_eq!(original, decoded);
 }
 
@@ -28,6 +30,7 @@ fn test_ipv6_addr_roundtrip_enum() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(encoded);
     let decoded = borsh::from_slice::<IpAddr>(&encoded).expect("Deserialization failed");
+    crate::common_macro::assert_bounded_parity::<IpAddr>(&encoded);
     assert_eq!(original, decoded);
 }
 
@@ -38,6 +41,7 @@ fn test_ipv6_addr_roundtrip() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(encoded);
     let decoded = borsh::from_slice::<Ipv6Addr>(&encoded).expect("Deserialization failed");
+    crate::common_macro::assert_bounded_parity::<Ipv6Addr>(&encoded);
     assert_eq!(original, decoded);
 }
 
@@ -52,5 +56,6 @@ fn test_ipaddr_vec_roundtrip() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(encoded);
     let decoded = borsh::from_slice::<Vec<IpAddr>>(&encoded).expect("Deserialization failed");
+    crate::common_macro::assert_bounded_parity::<Vec<IpAddr>>(&encoded);
     assert_eq!(original, decoded);
 }

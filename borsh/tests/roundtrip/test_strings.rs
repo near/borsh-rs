@@ -11,6 +11,7 @@ fn check_string(value: &str) -> alloc::vec::Vec<u8> {
     assert_eq!(buf, to_vec(&String::from(value)).unwrap());
     // Check round trip.
     assert_eq!(value, from_slice::<String>(&buf).unwrap());
+    crate::common_macro::assert_bounded_parity::<String>(&buf);
     buf
 }
 

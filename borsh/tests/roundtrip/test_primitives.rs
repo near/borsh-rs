@@ -10,6 +10,7 @@ macro_rules! test_primitive {
             #[cfg(feature = "std")]
             insta::assert_debug_snapshot!(buf);
             let actual = from_slice::<$t>(&buf).expect("failed to deserialize");
+            crate::common_macro::assert_bounded_parity::<$t>(&buf);
             assert_eq!(actual, expected);
         }
     };

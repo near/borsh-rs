@@ -119,6 +119,12 @@ mod schema {
     }
 }
 
+#[rustfmt::skip]
+mod bounded {
+    mod cases;
+    mod test_exact_charge;
+}
+
 mod deserialization_errors {
     #[cfg(feature = "ascii")]
     mod test_ascii_strings;
