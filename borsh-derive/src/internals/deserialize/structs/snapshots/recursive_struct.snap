@@ -4,6 +4,9 @@ expression: pretty_print_syn_str(&actual).unwrap()
 ---
 #[automatically_derived]
 impl borsh::de::BorshDeserialize for CRecC {
+    const ENCODES_TO_ZERO_BYTES: bool = borsh::__private::encodes_to_zero_bytes_de::<
+        String,
+    >() && borsh::__private::encodes_to_zero_bytes_de::<HashMap<String, CRecC>>();
     fn deserialize_reader<__R: borsh::io::Read>(
         reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {

@@ -8,6 +8,7 @@ where
     K: borsh::ser::BorshSerialize,
     V: borsh::ser::BorshSerialize,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = false;
     fn serialize<__W: borsh::io::Write>(
         &self,
         writer: &mut __W,

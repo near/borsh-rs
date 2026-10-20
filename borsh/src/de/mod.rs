@@ -19,7 +19,8 @@ use crate::__private::maybestd::{
 };
 use crate::io::{Error, ErrorKind, Read, Result};
 
-use crate::error::check_zst;
+use crate::__private::encodes_to_zero_bytes_de as zero_bytes;
+use crate::error::check_zst_de;
 
 #[cfg(feature = "unstable__bounded")]
 pub(crate) mod bounded;
@@ -82,6 +83,16 @@ pub trait BorshDeserialize: Sized {
         let _ = reader;
         Ok(None)
     }
+
+    /// Whether deserializing this type always consumes zero bytes of input.
+    ///
+    /// Collections reject such element types, because a length prefix alone could otherwise
+    /// drive an unbounded number of iterations and allocations. Collections also reject any
+    /// element type that is zero-sized in memory, so the default `false` keeps the behaviour of
+    /// manual impls unchanged. Types that wrap another value transparently (such as `Box<T>`)
+    /// forward the inner type's answer.
+    #[doc(hidden)]
+    const ENCODES_TO_ZERO_BYTES: bool = false;
 }
 
 /// Additional methods offered on enums which is used by `[derive(BorshDeserialize)]`.
@@ -412,7 +423,7 @@ where
 {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        check_zst::<T>()?;
+        check_zst_de::<T>()?;
 
         let len = u32::deserialize_reader(reader)?;
         if len == 0 {
@@ -473,7 +484,7 @@ where
 {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        check_zst::<K>()?;
+        check_zst_de::<K>()?;
         let vec = <Vec<(K, V)>>::deserialize_reader(reader)?;
         Ok(vec.into_iter().collect::<indexmap::IndexMap<K, V, S>>())
     }
@@ -489,7 +500,7 @@ where
 {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        check_zst::<T>()?;
+        check_zst_de::<T>()?;
         let vec = <Vec<T>>::deserialize_reader(reader)?;
         Ok(vec.into_iter().collect::<indexmap::IndexSet<T, S>>())
     }
@@ -509,6 +520,8 @@ where
     T: ToOwned + ?Sized,
     T::Owned: BorshDeserialize,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T::Owned>();
+
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         Ok(Cow::Owned(BorshDeserialize::deserialize_reader(reader)?))
@@ -552,7 +565,7 @@ pub mod hashes {
 
     #[cfg(feature = "de_strict_order")]
     const ERROR_WRONG_ORDER_OF_KEYS: &str = "keys were not serialized in ascending order";
-    use crate::error::check_zst;
+    use crate::error::check_zst_de;
     #[cfg(feature = "de_strict_order")]
     use crate::io::{Error, ErrorKind};
 
@@ -597,7 +610,7 @@ pub mod hashes {
     {
         #[inline]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-            check_zst::<K>()?;
+            check_zst_de::<K>()?;
             // NOTE: deserialize-as-you-go approach as once was in HashSet is better in the sense
             // that it allows to fail early, and not allocate memory for all the entries
             // which may fail `cmp()` checks
@@ -665,7 +678,7 @@ where
 {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        check_zst::<K>()?;
+        check_zst_de::<K>()?;
         // NOTE: deserialize-as-you-go approach as once was in HashSet is better in the sense
         // that it allows to fail early, and not allocate memory for all the entries
         // which may fail `cmp()` checks
@@ -778,6 +791,8 @@ where
     T: ToOwned<Owned = U> + ?Sized,
     T::Owned: BorshDeserialize,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T::Owned>();
+
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         Ok(T::Owned::deserialize_reader(reader)?.into())
     }
@@ -787,6 +802,8 @@ impl<T, const N: usize> BorshDeserialize for [T; N]
 where
     T: BorshDeserialize,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = N == 0 || zero_bytes::<T>();
+
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         struct ArrayDropGuard<T, const N: usize> {
@@ -889,6 +906,8 @@ fn array_deserialization_doesnt_leak() {
 macro_rules! impl_tuple {
     (@unit $name:ty) => {
         impl BorshDeserialize for $name {
+            const ENCODES_TO_ZERO_BYTES: bool = true;
+
             #[inline]
             fn deserialize_reader<R: Read>(_reader: &mut R) -> Result<Self> {
                 Ok(<$name>::default())
@@ -900,6 +919,8 @@ macro_rules! impl_tuple {
       impl<$($name),+> BorshDeserialize for ($($name,)+)
       where $($name: BorshDeserialize,)+
       {
+        const ENCODES_TO_ZERO_BYTES: bool = $(zero_bytes::<$name>())&&+;
+
         #[inline]
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
 
@@ -936,6 +957,8 @@ impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T1
 macro_rules! impl_range {
     ($type:ident, $make:expr, $($side:ident),*) => {
         impl<T: BorshDeserialize> BorshDeserialize for core::ops::$type<T> {
+            const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T>();
+
             #[inline]
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                 let ($($side,)*) = <_>::deserialize_reader(reader)?;
@@ -970,6 +993,8 @@ pub mod rc {
     where
         Box<T>: BorshDeserialize,
     {
+        const ENCODES_TO_ZERO_BYTES: bool = crate::__private::encodes_to_zero_bytes_de::<Box<T>>();
+
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
             Ok(Box::<T>::deserialize_reader(reader)?.into())
         }
@@ -984,6 +1009,8 @@ pub mod rc {
     where
         Box<T>: BorshDeserialize,
     {
+        const ENCODES_TO_ZERO_BYTES: bool = crate::__private::encodes_to_zero_bytes_de::<Box<T>>();
+
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
             Ok(Box::<T>::deserialize_reader(reader)?.into())
         }
@@ -991,6 +1018,8 @@ pub mod rc {
 }
 
 impl<T: ?Sized> BorshDeserialize for PhantomData<T> {
+    const ENCODES_TO_ZERO_BYTES: bool = true;
+
     fn deserialize_reader<R: Read>(_: &mut R) -> Result<Self> {
         Ok(PhantomData)
     }
@@ -1000,6 +1029,8 @@ impl<T> BorshDeserialize for core::cell::Cell<T>
 where
     T: BorshDeserialize + Copy,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T>();
+
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         <T as BorshDeserialize>::deserialize_reader(reader).map(core::cell::Cell::new)
     }
@@ -1009,6 +1040,8 @@ impl<T> BorshDeserialize for core::cell::RefCell<T>
 where
     T: BorshDeserialize,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T>();
+
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         <T as BorshDeserialize>::deserialize_reader(reader).map(core::cell::RefCell::new)
     }

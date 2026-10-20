@@ -8,6 +8,9 @@ where
     T: borsh::ser::BorshSerialize + PartialOrd,
     U: borsh::ser::BorshSerialize,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = borsh::__private::encodes_to_zero_bytes_ser::<
+        String,
+    >() && borsh::__private::encodes_to_zero_bytes_ser::<HashMap<T, U>>();
     fn serialize<__W: borsh::io::Write>(
         &self,
         writer: &mut __W,
