@@ -26,7 +26,7 @@ to plain decoding. `BorshDeserialize` is not a supertrait, and plain decoding is
 # How charging works
 
 - A charge is made before the allocation it pays for, and it is never refunded.
-- The limit caps the total of all charges in one decode, not the peak memory.
+- The limit caps the total of all charges made against one budget, not the peak memory.
 - A collection charges for all its elements as soon as it has read its length prefix, so a
   length that cannot fit fails before any element is read.
 - Charges only depend on the input, never on how much of the budget is left.

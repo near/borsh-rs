@@ -3,7 +3,7 @@ use core::fmt;
 
 use crate::io::{Error, ErrorKind, Result};
 
-/// The memory a bounded decode may still charge.
+/// The memory that bounded decoding may still charge.
 ///
 /// [`from_slice_bounded`](crate::from_slice_bounded) and
 /// [`from_reader_bounded`](crate::from_reader_bounded) take one. Every
