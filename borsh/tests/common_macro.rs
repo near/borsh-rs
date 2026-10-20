@@ -153,24 +153,30 @@ pub use bounded_helpers::*;
 pub fn assert_bounded_parity<T>(_buf: &[u8]) {}
 
 #[cfg(bounded)]
+#[allow(unused)]
 mod bounded_helpers {
     // Cargo also builds this file as a test target of its own, without `tests.rs`.
     extern crate alloc;
 
+    use alloc::string::ToString;
+    use alloc::{vec, vec::Vec};
+    use core::fmt::{Debug, Display};
+
+    use borsh::de::Budget;
+    use borsh::io::{Error, ErrorKind, Read, Result};
+    use borsh::{BorshDeserialize, BorshDeserializeBounded};
+
     /// The limit for the parity checks: more than any honest fixture charges.
-    #[allow(unused)]
     pub const PARITY_LIMIT: usize = 64 * 1024 * 1024;
 
-    #[allow(unused)]
-    pub fn is_limit_exceeded(err: &borsh::io::Error) -> bool {
+    pub fn is_limit_exceeded(err: &Error) -> bool {
         limit_exceeded(err).is_some()
     }
 
     /// The `(limit, requested, remaining)` of a limit error. Without `std`, the numbers are
     /// parsed back from the message.
-    #[allow(unused)]
-    pub fn limit_exceeded(err: &borsh::io::Error) -> Option<(usize, usize, usize)> {
-        if err.kind() != borsh::io::ErrorKind::OutOfMemory {
+    pub fn limit_exceeded(err: &Error) -> Option<(usize, usize, usize)> {
+        if err.kind() != ErrorKind::OutOfMemory {
             return None;
         }
         #[cfg(feature = "std")]
@@ -182,7 +188,7 @@ mod bounded_helpers {
         }
         #[cfg(not(feature = "std"))]
         {
-            use alloc::string::ToString;
+            // No inner error to downcast, and the `#[non_exhaustive]` struct cannot be built here.
             let message = err.to_string();
             let rest = message.strip_prefix("Memory limit exceeded: ")?;
             let (requested, rest) = rest.split_once(" bytes requested, ")?;
@@ -196,30 +202,21 @@ mod bounded_helpers {
         }
     }
 
-    #[allow(unused)]
     pub struct OneByteReader<'a>(pub &'a [u8]);
 
-    impl borsh::io::Read for OneByteReader<'_> {
-        fn read(&mut self, buf: &mut [u8]) -> borsh::io::Result<usize> {
-            match (buf.first_mut(), self.0.split_first()) {
-                (Some(out), Some((byte, rest))) => {
-                    *out = *byte;
-                    self.0 = rest;
-                    Ok(1)
-                }
-                _ => Ok(0),
-            }
+    impl Read for OneByteReader<'_> {
+        fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+            let len = buf.len().min(1);
+            self.0.read(&mut buf[..len])
         }
     }
 
-    #[allow(unused)]
     #[track_caller]
-    pub fn assert_same_outcome<T: PartialEq + core::fmt::Debug>(
-        plain: &borsh::io::Result<T>,
-        bounded: &borsh::io::Result<T>,
-        context: impl core::fmt::Display,
+    pub fn assert_same_outcome<T: PartialEq + Debug>(
+        plain: &Result<T>,
+        bounded: &Result<T>,
+        context: impl Display,
     ) {
-        use alloc::string::ToString;
         match (plain, bounded) {
             (Ok(plain), Ok(bounded)) => assert_eq!(plain, bounded, "{}", context),
             (Err(plain), Err(bounded)) => assert_eq!(
@@ -232,70 +229,57 @@ mod bounded_helpers {
         }
     }
 
-    /// Checks parity under `PARITY_LIMIT` through both entry points, two readers, and mutations.
-    /// Errors must match by kind and message, except that malformed inputs may exceed the
-    /// limit because a false length prefix can claim more than `PARITY_LIMIT` bytes.
-    #[allow(unused)]
+    /// Checks that bounded decoding under `PARITY_LIMIT` matches plain decoding on `buf` and on
+    /// mutations of it, through both entry points and a reader that returns one byte per read.
+    /// Errors must match by kind and message. Only where plain decoding fails may bounded
+    /// decoding fail with a limit error instead, since a false length prefix can claim more
+    /// than `PARITY_LIMIT` bytes.
     pub fn assert_bounded_parity<T>(buf: &[u8])
     where
-        T: borsh::BorshDeserialize + borsh::BorshDeserializeBounded + PartialEq + core::fmt::Debug,
+        T: BorshDeserialize + BorshDeserializeBounded + PartialEq + Debug,
     {
-        use alloc::vec::Vec;
-        use borsh::de::Budget;
-
-        fn check<T: PartialEq + core::fmt::Debug>(
-            buf: &[u8],
+        fn check<T: PartialEq + Debug>(
+            input: &[u8],
             how: &str,
-            plain: borsh::io::Result<T>,
-            bounded: borsh::io::Result<T>,
-            limit_error_allowed: bool,
+            plain: Result<T>,
+            bounded: Result<T>,
         ) {
             match &bounded {
-                Err(err) if limit_error_allowed && is_limit_exceeded(err) => {}
-                _ => assert_same_outcome(&plain, &bounded, format_args!("{} on {:?}", how, buf)),
+                Err(err) if plain.is_err() && is_limit_exceeded(err) => {}
+                _ => assert_same_outcome(&plain, &bounded, format_args!("{} on {:?}", how, input)),
             }
         }
 
-        let plain = borsh::from_slice::<T>(buf);
-        let limit_error_allowed = plain.is_err();
-        let bounded = borsh::from_slice_bounded::<T>(buf, &mut Budget::new(PARITY_LIMIT));
-        check(buf, "from_slice", plain, bounded, limit_error_allowed);
-
-        let plain = borsh::from_reader::<_, T>(&mut &buf[..]);
-        let bounded =
-            borsh::from_reader_bounded::<_, T>(&mut &buf[..], &mut Budget::new(PARITY_LIMIT));
-        check(buf, "from_reader", plain, bounded, limit_error_allowed);
-
-        let plain = borsh::from_reader::<_, T>(&mut OneByteReader(buf));
-        let bounded = borsh::from_reader_bounded::<_, T>(
-            &mut OneByteReader(buf),
-            &mut Budget::new(PARITY_LIMIT),
-        );
-        check(
-            buf,
-            "one byte per read",
-            plain,
-            bounded,
-            limit_error_allowed,
-        );
-
-        let mut mutations: Vec<Vec<u8>> = Vec::new();
+        let mut inputs = vec![buf.to_vec()];
         if !buf.is_empty() {
-            mutations.push(buf[..buf.len() - 1].to_vec());
-            mutations.push(buf[..buf.len() / 2].to_vec());
+            inputs.push(buf[..buf.len() - 1].to_vec());
+            inputs.push(buf[..buf.len() / 2].to_vec());
             for offset in [0, buf.len() / 2, buf.len() - 1] {
                 let mut mutated = buf.to_vec();
                 mutated[offset] = !mutated[offset];
-                mutations.push(mutated);
+                inputs.push(mutated);
             }
         }
         let mut appended = buf.to_vec();
         appended.push(0);
-        mutations.push(appended);
-        for mutated in &mutations {
-            let plain = borsh::from_slice::<T>(mutated);
-            let bounded = borsh::from_slice_bounded::<T>(mutated, &mut Budget::new(PARITY_LIMIT));
-            check(mutated, "mutation", plain, bounded, true);
+        inputs.push(appended);
+
+        for input in &inputs {
+            let plain = borsh::from_slice::<T>(input);
+            let bounded = borsh::from_slice_bounded::<T>(input, &mut Budget::new(PARITY_LIMIT));
+            check(input, "from_slice", plain, bounded);
+
+            let plain = borsh::from_reader::<_, T>(&mut &input[..]);
+            let bounded =
+                borsh::from_reader_bounded::<_, T>(&mut &input[..], &mut Budget::new(PARITY_LIMIT));
+            check(input, "from_reader", plain, bounded);
+
+            let plain = borsh::from_reader::<_, T>(&mut OneByteReader(input));
+            let bounded = borsh::from_reader_bounded::<_, T>(
+                &mut OneByteReader(input),
+                &mut Budget::new(PARITY_LIMIT),
+            );
+            check(input, "one byte per read", plain, bounded);
         }
     }
 }

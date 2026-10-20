@@ -124,6 +124,7 @@ mod schema {
 mod bounded {
     mod cases;
     mod test_exact_charge;
+    mod test_box;
 }
 
 mod deserialization_errors {

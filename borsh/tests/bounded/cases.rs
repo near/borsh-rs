@@ -9,8 +9,8 @@ use alloc::{boxed::Box, string::String, vec, vec::Vec};
 use core::mem::size_of;
 
 use borsh::de::Budget;
-use borsh::io::{Error, ErrorKind, Result};
-use borsh::{to_vec, BorshDeserializeBounded, BorshSerialize};
+use borsh::io::Result;
+use borsh::{from_slice_bounded, to_vec, BorshDeserializeBounded, BorshSerialize};
 
 pub const MIB: usize = 1024 * 1024;
 
@@ -26,13 +26,7 @@ pub struct Case {
 }
 
 pub fn decode<T: BorshDeserializeBounded>(input: &[u8], budget: &mut Budget) -> Result<()> {
-    let mut reader = input;
-    let value = T::deserialize_bounded(&mut reader, budget)?;
-    if !reader.is_empty() {
-        return Err(Error::new(ErrorKind::InvalidData, "Not all bytes read"));
-    }
-    drop(value);
-    Ok(())
+    from_slice_bounded::<T>(input, budget).map(drop)
 }
 
 fn case<T: BorshSerialize + BorshDeserializeBounded>(
@@ -103,6 +97,19 @@ pub fn cases() -> Vec<Case> {
             &vec![7u8; 5000].into_boxed_slice(),
             5000,
             single(5000),
+        ),
+        // The box is charged after its contents, so the box charge is the one that fails.
+        case(
+            "Box<Vec<u8>> of 10".into(),
+            &Box::new(vec![7u8; 10]),
+            10 + size_of::<Vec<u8>>(),
+            Some((size_of::<Vec<u8>>(), size_of::<Vec<u8>>() - 1)),
+        ),
+        case(
+            "empty Box<Vec<u8>>".into(),
+            &Box::new(Vec::<u8>::new()),
+            size_of::<Vec<u8>>(),
+            single(size_of::<Vec<u8>>()),
         ),
     ]
 }

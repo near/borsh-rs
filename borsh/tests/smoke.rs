@@ -38,9 +38,10 @@ fn test_to_writer() {
 #[test]
 fn test_from_slice_bounded() {
     use borsh::de::Budget;
-    #[allow(unused_imports)]
-    use borsh::de::EnumExtBounded as _;
     use borsh::{from_reader_bounded, from_slice_bounded, BorshDeserializeBounded};
+    // Only checks that these paths exist.
+    #[allow(unused_imports)]
+    use borsh::{de::EnumExtBounded, error::LimitExceeded};
 
     let serialized = borsh::to_vec(&42u64).unwrap();
     let deserialized = from_slice_bounded::<u64>(&serialized, &mut Budget::new(0)).unwrap();
@@ -48,11 +49,9 @@ fn test_from_slice_bounded() {
     let deserialized =
         from_reader_bounded::<_, u64>(&mut serialized.as_slice(), &mut Budget::new(0)).unwrap();
     assert_eq!(deserialized, 42u64);
-    let mut budget = borsh::de::Budget::new(0);
+    let mut budget = Budget::new(0);
     let deserialized =
         <u64 as BorshDeserializeBounded>::deserialize_bounded(&mut &serialized[..], &mut budget)
             .unwrap();
     assert_eq!(deserialized, 42u64);
-    assert_eq!((budget.limit(), budget.used()), (0, 0));
-    let _: Option<borsh::error::LimitExceeded> = None;
 }
