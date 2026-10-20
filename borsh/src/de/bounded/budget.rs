@@ -6,7 +6,7 @@ use crate::io::{Error, ErrorKind, Result};
 /// The memory a bounded decode may still charge.
 ///
 /// [`from_slice_bounded`](crate::from_slice_bounded) and
-/// [`from_reader_bounded`](crate::from_reader_bounded) create one per decode. Every
+/// [`from_reader_bounded`](crate::from_reader_bounded) take one. Every
 /// [`BorshDeserializeBounded`](crate::BorshDeserializeBounded) implementation charges it
 /// before it allocates, and a charge that does not fit fails with
 /// [`LimitExceeded`](crate::error::LimitExceeded). Charges are never refunded.
@@ -14,10 +14,12 @@ use crate::io::{Error, ErrorKind, Result};
 /// Rules for implementations:
 /// - pass on the budget you were given;
 /// - never create a `Budget` inside an implementation;
-/// - never let what you decode depend on [`remaining`](Budget::remaining).
+/// - never let what you decode depend on [`limit`](Budget::limit), [`used`](Budget::used) or
+///   [`remaining`](Budget::remaining).
 ///
-/// To share one limit across several values, create a budget yourself and call
-/// [`deserialize_bounded`](crate::BorshDeserializeBounded::deserialize_bounded) on each:
+/// To share one limit across several values, pass the same budget to each decode, for example
+/// to [`deserialize_bounded`](crate::BorshDeserializeBounded::deserialize_bounded) for values
+/// that follow each other in one reader:
 ///
 /// ```
 /// use borsh::de::Budget;
@@ -49,6 +51,16 @@ impl Budget {
     /// The bytes that can still be charged.
     pub const fn remaining(&self) -> usize {
         self.remaining
+    }
+
+    /// The limit this budget was created with.
+    pub const fn limit(&self) -> usize {
+        self.limit
+    }
+
+    /// The bytes charged so far: [`limit`](Budget::limit) minus [`remaining`](Budget::remaining).
+    pub const fn used(&self) -> usize {
+        self.limit - self.remaining
     }
 
     /// Charges `bytes`. Fails with [`LimitExceeded`] only when `bytes` is more than
@@ -101,11 +113,12 @@ impl Budget {
 /// With the `std` feature, it is the error's inner error:
 ///
 /// ```
+/// use borsh::de::Budget;
 /// use borsh::error::LimitExceeded;
 ///
 /// // Claims 1000 `u64`s, which need 8000 bytes.
 /// let input = 1000u32.to_le_bytes();
-/// let err = borsh::from_slice_bounded::<Vec<u64>>(&input, 100).unwrap_err();
+/// let err = borsh::from_slice_bounded::<Vec<u64>>(&input, &mut Budget::new(100)).unwrap_err();
 /// # #[cfg(feature = "std")]
 /// # {
 /// let exceeded = err
@@ -122,7 +135,7 @@ impl Budget {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct LimitExceeded {
-    /// The limit the decode started with.
+    /// The limit the budget was created with.
     pub limit: usize,
     /// The bytes the failed charge asked for. `usize::MAX` when the amount overflowed or is
     /// not a valid allocation size.
@@ -244,6 +257,72 @@ mod tests {
         budget.charge_array::<()>(1_000_000).unwrap();
         budget.charge_array::<[u8; 3]>(5).unwrap();
         assert_eq!(budget.remaining(), 1000 - 80 - 15);
+    }
+
+    #[test]
+    fn fresh_budget_has_its_limit_and_nothing_used() {
+        for limit in [0, 1, 100, usize::MAX] {
+            let budget = Budget::new(limit);
+            assert_eq!((budget.limit(), budget.used()), (limit, 0));
+        }
+        const BUDGET: Budget = Budget::new(7);
+        const LIMIT_AND_USED: (usize, usize) = (BUDGET.limit(), BUDGET.used());
+        assert_eq!(LIMIT_AND_USED, (7, 0));
+    }
+
+    #[test]
+    fn used_is_the_sum_of_charges() {
+        let mut budget = Budget::new(100);
+        budget.charge(10).unwrap();
+        assert_eq!(budget.used(), 10);
+        budget.charge_array::<u32>(5).unwrap();
+        budget.charge(0).unwrap();
+        assert_eq!(budget.used(), 10 + 20);
+        budget.charge(70).unwrap();
+        assert_eq!((budget.limit(), budget.used()), (100, 100));
+
+        let mut budget = Budget::new(usize::MAX);
+        budget.charge(usize::MAX).unwrap();
+        assert_eq!((budget.limit(), budget.used()), (usize::MAX, usize::MAX));
+    }
+
+    #[test]
+    fn failed_charge_leaves_used_unchanged() {
+        let mut budget = Budget::new(100);
+        budget.charge(40).unwrap();
+        assert_exceeded(budget.charge(61), 100, 61, 60);
+        assert_eq!(budget.used(), 40);
+        assert_exceeded(budget.charge_array::<u64>(usize::MAX), 100, usize::MAX, 60);
+        assert_eq!((budget.limit(), budget.used()), (100, 40));
+    }
+
+    #[test]
+    fn entry_points_charge_the_budget_they_are_given() {
+        use crate::__private::maybestd::vec::Vec;
+        use crate::{from_reader_bounded, from_slice_bounded};
+
+        let input = [3, 0, 0, 0, 1, 2, 3, 0];
+        let (exact, trailing) = (&input[..7], &input[..]);
+        let mut budget = Budget::new(20);
+        assert_eq!(
+            from_slice_bounded::<Vec<u8>>(exact, &mut budget).unwrap(),
+            [1, 2, 3]
+        );
+        assert_eq!(
+            from_reader_bounded::<_, Vec<u8>>(&mut &exact[..], &mut budget).unwrap(),
+            [1, 2, 3]
+        );
+        assert_eq!(budget.used(), 6);
+        // Each call still rejects trailing bytes, and keeps the charge made before.
+        let err = from_slice_bounded::<Vec<u8>>(trailing, &mut budget).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidData);
+        let err = from_reader_bounded::<_, Vec<u8>>(&mut &trailing[..], &mut budget).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidData);
+        assert_eq!(budget.used(), 12);
+        let claims_100 = 100u32.to_le_bytes();
+        let result = from_slice_bounded::<Vec<u8>>(&claims_100, &mut budget);
+        assert_exceeded(result.map(drop), 20, 100, 8);
+        assert_eq!(budget.used(), 12);
     }
 
     #[test]

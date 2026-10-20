@@ -121,12 +121,21 @@ pub trait EnumExtBounded: BorshDeserializeBounded {
     ///
     /// use borsh::from_slice_bounded;
     /// let data = b"\0";
-    /// assert_eq!(MyEnum::Zero, from_slice_bounded::<MyEnum>(&data[..], 0).unwrap());
-    /// assert_eq!(MyEnum::Zero, from_slice_bounded::<OneOrZero>(&data[..], 0).unwrap().0);
+    /// assert_eq!(
+    ///     MyEnum::Zero,
+    ///     from_slice_bounded::<MyEnum>(&data[..], &mut Budget::new(0)).unwrap()
+    /// );
+    /// assert_eq!(
+    ///     MyEnum::Zero,
+    ///     from_slice_bounded::<OneOrZero>(&data[..], &mut Budget::new(0)).unwrap().0
+    /// );
     ///
     /// let data = b"\x02\0\0\0\0";
-    /// assert_eq!(MyEnum::Many(Vec::new()), from_slice_bounded::<MyEnum>(&data[..], 0).unwrap());
-    /// assert!(from_slice_bounded::<OneOrZero>(&data[..], 0).is_err());
+    /// assert_eq!(
+    ///     MyEnum::Many(Vec::new()),
+    ///     from_slice_bounded::<MyEnum>(&data[..], &mut Budget::new(0)).unwrap()
+    /// );
+    /// assert!(from_slice_bounded::<OneOrZero>(&data[..], &mut Budget::new(0)).is_err());
     /// ```
     fn deserialize_variant_bounded<R: Read>(
         reader: &mut R,
@@ -312,29 +321,41 @@ where
 }
 
 /// Deserializes an object from a slice of bytes, failing with
-/// [`LimitExceeded`](crate::error::LimitExceeded) when decoding would charge more than
-/// `limit` bytes.
+/// [`LimitExceeded`](crate::error::LimitExceeded) when decoding would charge more than is
+/// left in `budget`.
 ///
-/// `limit` is also the largest buffer a single false length prefix can make the decoder
-/// allocate before the input runs out, so pick an amount of memory the process can
+/// The common call is `from_slice_bounded::<T>(&bytes, &mut Budget::new(limit))`. One budget
+/// can be passed to several calls to share one limit across several values, each still
+/// checked for trailing bytes. On error, the budget keeps the charges made before the error.
+/// Afterwards, [`budget.used()`](Budget::used) tells how much has been charged.
+///
+/// What is left in the budget is also the largest buffer a single false length prefix can
+/// make the decoder allocate before the input runs out, so pick a limit the process can
 /// actually provide. What is charged is documented on
 /// [`BorshDeserializeBounded`](crate::BorshDeserializeBounded).
 ///
 /// # Example
 /// ```
+/// use borsh::de::Budget;
 /// use borsh::{from_slice_bounded, to_vec};
 ///
-/// let encoded = to_vec(&vec![1u64, 2, 3]).unwrap();
-/// // Three `u64`s need 24 bytes.
-/// assert_eq!(from_slice_bounded::<Vec<u64>>(&encoded, 24).unwrap(), vec![1, 2, 3]);
-/// let err = from_slice_bounded::<Vec<u64>>(&encoded, 23).unwrap_err();
+/// let numbers = to_vec(&vec![1u64, 2, 3]).unwrap();
+/// let text = to_vec(&String::from("abc")).unwrap();
+/// // One limit for both values: three `u64`s need 24 bytes, the string 3.
+/// let mut budget = Budget::new(30);
+/// assert_eq!(from_slice_bounded::<Vec<u64>>(&numbers, &mut budget).unwrap(), vec![1, 2, 3]);
+/// assert_eq!(from_slice_bounded::<String>(&text, &mut budget).unwrap(), "abc");
+/// assert_eq!(budget.used(), 27);
+/// // The 3 bytes left are too few for the numbers again.
+/// let err = from_slice_bounded::<Vec<u64>>(&numbers, &mut budget).unwrap_err();
 /// assert_eq!(err.kind(), borsh::io::ErrorKind::OutOfMemory);
+/// assert_eq!(budget.used(), 27);
 /// ```
 /// # Errors
-/// Returns an error if the data is invalid, exceeds the limit, or is not fully consumed.
-pub fn from_slice_bounded<T: BorshDeserializeBounded>(v: &[u8], limit: usize) -> Result<T> {
+/// Returns an error if the data is invalid, does not fit the budget, or is not fully consumed.
+pub fn from_slice_bounded<T: BorshDeserializeBounded>(v: &[u8], budget: &mut Budget) -> Result<T> {
     let mut v_mut = v;
-    let object = T::deserialize_bounded(&mut v_mut, &mut Budget::new(limit))?;
+    let object = T::deserialize_bounded(&mut v_mut, budget)?;
     if !v_mut.is_empty() {
         return Err(Error::new(ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ));
     }
@@ -342,22 +363,24 @@ pub fn from_slice_bounded<T: BorshDeserializeBounded>(v: &[u8], limit: usize) ->
 }
 
 /// Deserializes an object from a reader, failing with
-/// [`LimitExceeded`](crate::error::LimitExceeded) when decoding would charge more than
-/// `limit` bytes. See [`from_slice_bounded`].
+/// [`LimitExceeded`](crate::error::LimitExceeded) when decoding would charge more than is
+/// left in `budget`. See [`from_slice_bounded`].
 ///
 /// # Example
 /// ```
+/// use borsh::de::Budget;
 /// use borsh::{from_reader_bounded, to_vec};
 ///
 /// let encoded = to_vec(&String::from("hello")).unwrap();
-/// let decoded = from_reader_bounded::<_, String>(&mut encoded.as_slice(), 5).unwrap();
+/// let decoded =
+///     from_reader_bounded::<_, String>(&mut encoded.as_slice(), &mut Budget::new(5)).unwrap();
 /// assert_eq!(decoded, "hello");
 /// ```
 pub fn from_reader_bounded<R: Read, T: BorshDeserializeBounded>(
     reader: &mut R,
-    limit: usize,
+    budget: &mut Budget,
 ) -> Result<T> {
-    let result = T::deserialize_bounded(reader, &mut Budget::new(limit))?;
+    let result = T::deserialize_bounded(reader, budget)?;
     let mut buf = [0u8; 1];
     match reader.read_exact(&mut buf) {
         Err(f) if f.kind() == ErrorKind::UnexpectedEof => Ok(result),

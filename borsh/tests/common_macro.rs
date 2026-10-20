@@ -241,6 +241,7 @@ mod bounded_helpers {
         T: borsh::BorshDeserialize + borsh::BorshDeserializeBounded + PartialEq + core::fmt::Debug,
     {
         use alloc::vec::Vec;
+        use borsh::de::Budget;
 
         fn check<T: PartialEq + core::fmt::Debug>(
             buf: &[u8],
@@ -257,15 +258,19 @@ mod bounded_helpers {
 
         let plain = borsh::from_slice::<T>(buf);
         let limit_error_allowed = plain.is_err();
-        let bounded = borsh::from_slice_bounded::<T>(buf, PARITY_LIMIT);
+        let bounded = borsh::from_slice_bounded::<T>(buf, &mut Budget::new(PARITY_LIMIT));
         check(buf, "from_slice", plain, bounded, limit_error_allowed);
 
         let plain = borsh::from_reader::<_, T>(&mut &buf[..]);
-        let bounded = borsh::from_reader_bounded::<_, T>(&mut &buf[..], PARITY_LIMIT);
+        let bounded =
+            borsh::from_reader_bounded::<_, T>(&mut &buf[..], &mut Budget::new(PARITY_LIMIT));
         check(buf, "from_reader", plain, bounded, limit_error_allowed);
 
         let plain = borsh::from_reader::<_, T>(&mut OneByteReader(buf));
-        let bounded = borsh::from_reader_bounded::<_, T>(&mut OneByteReader(buf), PARITY_LIMIT);
+        let bounded = borsh::from_reader_bounded::<_, T>(
+            &mut OneByteReader(buf),
+            &mut Budget::new(PARITY_LIMIT),
+        );
         check(
             buf,
             "one byte per read",
@@ -289,7 +294,7 @@ mod bounded_helpers {
         mutations.push(appended);
         for mutated in &mutations {
             let plain = borsh::from_slice::<T>(mutated);
-            let bounded = borsh::from_slice_bounded::<T>(mutated, PARITY_LIMIT);
+            let bounded = borsh::from_slice_bounded::<T>(mutated, &mut Budget::new(PARITY_LIMIT));
             check(mutated, "mutation", plain, bounded, true);
         }
     }

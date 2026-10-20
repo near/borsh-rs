@@ -8,14 +8,15 @@ When a charge does not fit, decoding stops with a
 [`LimitExceeded`](crate::error::LimitExceeded) error.
 
 ```rust
+use borsh::de::Budget;
 use borsh::{from_slice_bounded, to_vec};
 
 let encoded = to_vec(&vec![String::from("abc"); 3]).unwrap();
 // The outer vector holds three `String`s; each string holds 3 bytes.
 let limit = 3 * core::mem::size_of::<String>() + 3 * 3;
-let decoded = from_slice_bounded::<Vec<String>>(&encoded, limit).unwrap();
+let decoded = from_slice_bounded::<Vec<String>>(&encoded, &mut Budget::new(limit)).unwrap();
 assert_eq!(decoded, vec!["abc"; 3]);
-assert!(from_slice_bounded::<Vec<String>>(&encoded, limit - 1).is_err());
+assert!(from_slice_bounded::<Vec<String>>(&encoded, &mut Budget::new(limit - 1)).is_err());
 ```
 
 The trait is implemented for the types listed in [What is charged](#what-is-charged). A type without an
@@ -107,6 +108,10 @@ assert_eq!(charged(&vec![0u64; 1000]), 8000);
   from `T::Owned` into `Box<T>` are not charged.
 - The formulas may be refined in a minor release, with a changelog entry. A refinement can
   move the threshold of an input in either direction.
+- Charges are computed from `size_of` and the standard library's and hashbrown's layouts, so
+  they depend on the target and on compiler and dependency versions; the same input can fit a
+  limit with one build and exceed it with another. Use the limit to reject inputs locally, not
+  where different machines must agree on whether an input is accepted.
 
 # Writing an implementation by hand
 
@@ -154,7 +159,7 @@ impl BorshDeserializeBounded for Versioned {
 # #[cfg(feature = "std")]
 # {
 let legacy = borsh::to_vec(&vec![7u64, 8]).unwrap();
-let decoded = borsh::from_slice_bounded::<Versioned>(&legacy, 16).unwrap();
+let decoded = borsh::from_slice_bounded::<Versioned>(&legacy, &mut Budget::new(16)).unwrap();
 assert_eq!(decoded, Versioned::Legacy(vec![7, 8]));
 # }
 ```
