@@ -37,54 +37,12 @@ pub trait BorshDeserializeBounded: Sized {
     }
 }
 
-/// Additional methods offered on enums, the bounded twin of [`EnumExt`](crate::de::EnumExt).
+/// Bounded counterpart of [`EnumExt`](crate::de::EnumExt).
 pub trait EnumExtBounded: BorshDeserializeBounded {
-    /// Deserializes the given variant, charging `budget` like
-    /// [`deserialize_bounded`](BorshDeserializeBounded::deserialize_bounded).
-    ///
-    /// Allows validation or filtering of the variant before decoding its fields.
-    ///
-    /// ```
-    /// use borsh::de::{Budget, EnumExtBounded};
-    /// use borsh::io::{Error, ErrorKind, Read, Result};
-    /// use borsh::{from_slice_bounded, BorshDeserializeBounded};
-    ///
-    /// // Implements both bounded traits.
-    /// enum MyEnum { Zero, One(u8), Many(Vec<u8>) }
-    /// # impl BorshDeserializeBounded for MyEnum {
-    /// #     fn deserialize_bounded<R: Read>(r: &mut R, b: &mut Budget) -> Result<Self> {
-    /// #         let tag = u8::deserialize_bounded(r, b)?;
-    /// #         Self::deserialize_variant_bounded(r, tag, b)
-    /// #     }
-    /// # }
-    /// # impl EnumExtBounded for MyEnum {
-    /// #     fn deserialize_variant_bounded<R: Read>(
-    /// #         r: &mut R, tag: u8, b: &mut Budget,
-    /// #     ) -> Result<Self> {
-    /// #         match tag {
-    /// #             0 => Ok(MyEnum::Zero),
-    /// #             1 => Ok(MyEnum::One(u8::deserialize_bounded(r, b)?)),
-    /// #             2 => Ok(MyEnum::Many(Vec::deserialize_bounded(r, b)?)),
-    /// #             _ => Err(Error::new(ErrorKind::InvalidData, "Unexpected variant tag")),
-    /// #         }
-    /// #     }
-    /// # }
-    ///
-    /// struct OneOrZero(MyEnum);
-    ///
-    /// impl BorshDeserializeBounded for OneOrZero {
-    ///     fn deserialize_bounded<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
-    ///         let tag = u8::deserialize_bounded(reader, budget)?;
-    ///         if tag == 2 {
-    ///             return Err(Error::new(ErrorKind::InvalidData, "MyEnum::Many not allowed here"));
-    ///         }
-    ///         MyEnum::deserialize_variant_bounded(reader, tag, budget).map(Self)
-    ///     }
-    /// }
-    ///
-    /// assert!(from_slice_bounded::<OneOrZero>(&[0], &mut Budget::new(0)).is_ok());
-    /// assert!(from_slice_bounded::<OneOrZero>(&[2, 0, 0, 0, 0], &mut Budget::new(0)).is_err());
-    /// ```
+    /// Decodes the variant for an already read `tag`, charging `budget` like
+    /// [`deserialize_bounded`](BorshDeserializeBounded::deserialize_bounded). Like
+    /// [`EnumExt::deserialize_variant`](crate::de::EnumExt::deserialize_variant), it lets an
+    /// impl check the tag before the fields are decoded.
     fn deserialize_variant_bounded<R: Read>(
         reader: &mut R,
         tag: u8,

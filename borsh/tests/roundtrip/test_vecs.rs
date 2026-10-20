@@ -1,5 +1,7 @@
 use borsh::{from_slice, to_vec};
 
+use crate::common_macro::assert_bounded_parity;
+
 use alloc::{
     string::{String, ToString},
     vec,
@@ -14,7 +16,7 @@ macro_rules! test_vec {
             insta::assert_debug_snapshot!(buf);
         }
         let actual_v: Vec<$t> = from_slice(&buf).expect("failed to deserialize");
-        crate::common_macro::assert_bounded_parity::<Vec<$t>>(&buf);
+        assert_bounded_parity::<Vec<$t>>(&buf);
         assert_eq!(actual_v, $v);
     };
 }

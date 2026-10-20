@@ -1,5 +1,7 @@
 use borsh::{from_slice, to_vec};
 
+use crate::common_macro::assert_bounded_parity;
+
 macro_rules! test_primitive {
     ($test_name: ident, $v: expr, $t: ty) => {
         #[test]
@@ -10,7 +12,7 @@ macro_rules! test_primitive {
             #[cfg(feature = "std")]
             insta::assert_debug_snapshot!(buf);
             let actual = from_slice::<$t>(&buf).expect("failed to deserialize");
-            crate::common_macro::assert_bounded_parity::<$t>(&buf);
+            assert_bounded_parity::<$t>(&buf);
             assert_eq!(actual, expected);
         }
     };
