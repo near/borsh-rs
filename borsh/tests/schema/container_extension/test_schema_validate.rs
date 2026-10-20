@@ -64,6 +64,18 @@ fn validate_for_zst_sequences() {
     ));
 }
 
+/// The same zero-sized array type twice must not be mistaken for recursion.
+#[test]
+fn validate_for_repeated_zero_sized_arrays() {
+    #[derive(BorshSchema)]
+    #[allow(unused)]
+    struct RepeatedArrays([u8; 0], [u8; 0]);
+
+    test_err::<Vec<RepeatedArrays>>(SchemaContainerValidateError::ZSTSequence(
+        "Vec<RepeatedArrays>".to_string(),
+    ));
+}
+
 #[test]
 fn validate_bound_vec() {
     #[allow(dead_code)]
