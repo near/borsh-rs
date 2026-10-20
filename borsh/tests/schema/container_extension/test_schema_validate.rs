@@ -64,6 +64,48 @@ fn validate_for_zst_sequences() {
     ));
 }
 
+/// The schema describes the encoding, and transparent wrappers declare their inner type,
+/// so it already agrees with the runtime guard on types which encode to zero bytes,
+/// although they are not zero-sized in memory.
+#[test]
+fn validate_for_zero_encoded_sequences() {
+    #[derive(BorshSchema)]
+    #[allow(unused)]
+    struct Wrapper(Box<()>);
+
+    #[derive(BorshSchema)]
+    #[allow(unused)]
+    struct Skipped {
+        #[borsh(skip)]
+        x: u64,
+    }
+
+    test_err::<Vec<Box<()>>>(SchemaContainerValidateError::ZSTSequence(
+        "Vec<()>".to_string(),
+    ));
+    test_err::<Vec<Box<[u8; 0]>>>(SchemaContainerValidateError::ZSTSequence(
+        "Vec<[u8; 0]>".to_string(),
+    ));
+    test_err::<Vec<core::cell::RefCell<()>>>(SchemaContainerValidateError::ZSTSequence(
+        "Vec<()>".to_string(),
+    ));
+    test_err::<Vec<core::ops::RangeInclusive<()>>>(SchemaContainerValidateError::ZSTSequence(
+        "Vec<RangeInclusive<()>>".to_string(),
+    ));
+    test_err::<Vec<(Box<()>, ())>>(SchemaContainerValidateError::ZSTSequence(
+        "Vec<((), ())>".to_string(),
+    ));
+    test_err::<Vec<Wrapper>>(SchemaContainerValidateError::ZSTSequence(
+        "Vec<Wrapper>".to_string(),
+    ));
+    test_err::<Vec<Skipped>>(SchemaContainerValidateError::ZSTSequence(
+        "Vec<Skipped>".to_string(),
+    ));
+    test_ok::<Vec<Box<u8>>>();
+    test_ok::<Vec<(Box<()>, u8)>>();
+    test_ok::<Vec<Option<Box<()>>>>();
+}
+
 #[test]
 fn validate_bound_vec() {
     #[allow(dead_code)]

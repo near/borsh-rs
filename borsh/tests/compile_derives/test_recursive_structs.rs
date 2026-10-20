@@ -36,3 +36,34 @@ struct CRecC {
     a: String,
     b: HashMap<String, CRecC>,
 }
+
+// recursion only through types which forward the hidden `ENCODES_TO_ZERO_BYTES` constant
+// (`Box`, arrays, ...) must not make the derived constant cyclic; the types without any finite
+// value (`CRecOnlyBox`, `CRecMutualA`, ...) must still compile, as long as they are not used
+// as the element of a collection
+#[allow(unused)]
+#[derive(Clone, BorshSerialize, BorshDeserialize)]
+struct CRecOnlyBox(Box<CRecOnlyBox>);
+
+#[allow(unused)]
+#[derive(Clone, BorshSerialize, BorshDeserialize)]
+struct CRecEmptyArray {
+    a: [Box<CRecEmptyArray>; 0],
+    b: u8,
+}
+
+#[allow(unused)]
+#[derive(Clone, BorshSerialize, BorshDeserialize)]
+struct CRecSelfKeyword(Box<Self>, Box<()>);
+
+#[allow(unused)]
+#[derive(Clone, BorshSerialize, BorshDeserialize)]
+struct CRecGeneric<T: Clone>(Box<CRecGeneric<T>>, T);
+
+#[allow(unused)]
+#[derive(Clone, BorshSerialize, BorshDeserialize)]
+struct CRecMutualA(Box<CRecMutualB>);
+
+#[allow(unused)]
+#[derive(Clone, BorshSerialize, BorshDeserialize)]
+struct CRecMutualB(Box<CRecMutualA>);
