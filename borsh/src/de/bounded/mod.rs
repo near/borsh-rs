@@ -1,5 +1,6 @@
-//! Bounded decoding preserves the plain decoder's check order and passes one budget through
-//! nested values, charging before allocation.
+//! Each impl here is its plain twin from `de/mod.rs` plus a charge before each allocation,
+//! with the same reads, checks and constructors. Keep the twins in sync;
+//! `assert_bounded_parity` in the tests catches drift.
 
 use core::alloc::Layout;
 use core::convert::{TryFrom, TryInto};
@@ -26,8 +27,8 @@ pub trait BorshDeserializeBounded: Sized {
     /// Deserializes this instance from a reader, charging `budget` before every allocation.
     fn deserialize_bounded<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self>;
 
-    /// Reads `len` elements in one go. The caller has already charged the vector; the hook
-    /// only allocates and reads. Returning `None` must leave the reader untouched.
+    /// Reads `len` elements in one go into a vector the caller has already charged for.
+    /// `None` must leave the reader untouched.
     #[inline]
     #[doc(hidden)]
     fn vec_from_reader_bounded<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
@@ -44,84 +45,45 @@ pub trait EnumExtBounded: BorshDeserializeBounded {
     /// Allows validation or filtering of the variant before decoding its fields.
     ///
     /// ```
-    /// use borsh::de::{Budget, EnumExtBounded as _};
-    /// use borsh::BorshDeserializeBounded;
+    /// use borsh::de::{Budget, EnumExtBounded};
+    /// use borsh::io::{Error, ErrorKind, Read, Result};
+    /// use borsh::{from_slice_bounded, BorshDeserializeBounded};
     ///
-    /// #[derive(Debug, PartialEq, Eq)]
-    /// enum MyEnum {
-    ///     Zero,
-    ///     One(u8),
-    ///     Many(Vec<u8>)
-    /// }
+    /// // Implements both bounded traits.
+    /// enum MyEnum { Zero, One(u8), Many(Vec<u8>) }
+    /// # impl BorshDeserializeBounded for MyEnum {
+    /// #     fn deserialize_bounded<R: Read>(r: &mut R, b: &mut Budget) -> Result<Self> {
+    /// #         let tag = u8::deserialize_bounded(r, b)?;
+    /// #         Self::deserialize_variant_bounded(r, tag, b)
+    /// #     }
+    /// # }
+    /// # impl EnumExtBounded for MyEnum {
+    /// #     fn deserialize_variant_bounded<R: Read>(
+    /// #         r: &mut R, tag: u8, b: &mut Budget,
+    /// #     ) -> Result<Self> {
+    /// #         match tag {
+    /// #             0 => Ok(MyEnum::Zero),
+    /// #             1 => Ok(MyEnum::One(u8::deserialize_bounded(r, b)?)),
+    /// #             2 => Ok(MyEnum::Many(Vec::deserialize_bounded(r, b)?)),
+    /// #             _ => Err(Error::new(ErrorKind::InvalidData, "Unexpected variant tag")),
+    /// #         }
+    /// #     }
+    /// # }
     ///
-    /// // The two impls an enum needs to dispatch on a tag read ahead.
-    /// impl BorshDeserializeBounded for MyEnum {
-    ///     fn deserialize_bounded<R: borsh::io::Read>(
-    ///         reader: &mut R,
-    ///         budget: &mut Budget,
-    ///     ) -> borsh::io::Result<Self> {
-    ///         use borsh::de::EnumExtBounded;
-    ///         let tag = u8::deserialize_bounded(reader, budget)?;
-    ///         Self::deserialize_variant_bounded(reader, tag, budget)
-    ///     }
-    /// }
-    ///
-    /// impl borsh::de::EnumExtBounded for MyEnum {
-    ///     fn deserialize_variant_bounded<R: borsh::io::Read>(
-    ///         reader: &mut R,
-    ///         tag: u8,
-    ///         budget: &mut Budget,
-    ///     ) -> borsh::io::Result<Self> {
-    ///         match tag {
-    ///             0 => Ok(MyEnum::Zero),
-    ///             1 => Ok(MyEnum::One(u8::deserialize_bounded(reader, budget)?)),
-    ///             2 => Ok(MyEnum::Many(Vec::deserialize_bounded(reader, budget)?)),
-    ///             _ => Err(borsh::io::Error::new(
-    ///                 borsh::io::ErrorKind::InvalidData,
-    ///                 format!("Unexpected variant tag: {:?}", tag),
-    ///             )),
-    ///         }
-    ///     }
-    /// }
-    ///
-    /// #[derive(Debug, PartialEq, Eq)]
     /// struct OneOrZero(MyEnum);
     ///
     /// impl BorshDeserializeBounded for OneOrZero {
-    ///     fn deserialize_bounded<R: borsh::io::Read>(
-    ///         reader: &mut R,
-    ///         budget: &mut Budget,
-    ///     ) -> borsh::io::Result<Self> {
-    ///         use borsh::de::EnumExtBounded;
+    ///     fn deserialize_bounded<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
     ///         let tag = u8::deserialize_bounded(reader, budget)?;
     ///         if tag == 2 {
-    ///             Err(borsh::io::Error::new(
-    ///                 borsh::io::ErrorKind::InvalidData,
-    ///                 "MyEnum::Many not allowed here",
-    ///             ))
-    ///         } else {
-    ///             MyEnum::deserialize_variant_bounded(reader, tag, budget).map(Self)
+    ///             return Err(Error::new(ErrorKind::InvalidData, "MyEnum::Many not allowed here"));
     ///         }
+    ///         MyEnum::deserialize_variant_bounded(reader, tag, budget).map(Self)
     ///     }
     /// }
     ///
-    /// use borsh::from_slice_bounded;
-    /// let data = b"\0";
-    /// assert_eq!(
-    ///     MyEnum::Zero,
-    ///     from_slice_bounded::<MyEnum>(&data[..], &mut Budget::new(0)).unwrap()
-    /// );
-    /// assert_eq!(
-    ///     MyEnum::Zero,
-    ///     from_slice_bounded::<OneOrZero>(&data[..], &mut Budget::new(0)).unwrap().0
-    /// );
-    ///
-    /// let data = b"\x02\0\0\0\0";
-    /// assert_eq!(
-    ///     MyEnum::Many(Vec::new()),
-    ///     from_slice_bounded::<MyEnum>(&data[..], &mut Budget::new(0)).unwrap()
-    /// );
-    /// assert!(from_slice_bounded::<OneOrZero>(&data[..], &mut Budget::new(0)).is_err());
+    /// assert!(from_slice_bounded::<OneOrZero>(&[0], &mut Budget::new(0)).is_ok());
+    /// assert!(from_slice_bounded::<OneOrZero>(&[2, 0, 0, 0, 0], &mut Budget::new(0)).is_err());
     /// ```
     fn deserialize_variant_bounded<R: Read>(
         reader: &mut R,
@@ -291,18 +253,7 @@ where
     }
 }
 
-/// Deserializes an object from a slice of bytes, failing with
-/// [`LimitExceeded`](crate::error::LimitExceeded) when decoding would charge more than is
-/// left in `budget`.
-///
-/// The common call is `from_slice_bounded::<T>(&bytes, &mut Budget::new(limit))`. One budget
-/// can be passed to several calls to share one limit across several values, each still
-/// checked for trailing bytes. On error, the budget keeps the charges made before the error.
-/// Afterwards, [`budget.used()`](Budget::used) tells how much has been charged.
-///
-/// What is left in the budget is also the largest buffer a single false length prefix can
-/// make the decoder allocate before the input runs out, so pick a limit the process can
-/// actually provide. What is charged is documented on
+/// Deserializes an object from a slice of bytes, charging `budget` as described on
 /// [`BorshDeserializeBounded`](crate::BorshDeserializeBounded).
 ///
 /// # Example
@@ -310,20 +261,15 @@ where
 /// use borsh::de::Budget;
 /// use borsh::{from_slice_bounded, to_vec};
 ///
-/// let numbers = to_vec(&vec![1u64, 2, 3]).unwrap();
-/// let text = to_vec(&String::from("abc")).unwrap();
-/// // One limit for both values: three `u64`s need 24 bytes, the string 3.
-/// let mut budget = Budget::new(30);
-/// assert_eq!(from_slice_bounded::<Vec<u64>>(&numbers, &mut budget).unwrap(), vec![1, 2, 3]);
-/// assert_eq!(from_slice_bounded::<String>(&text, &mut budget).unwrap(), "abc");
-/// assert_eq!(budget.used(), 27);
-/// // The 3 bytes left are too few for the numbers again.
-/// let err = from_slice_bounded::<Vec<u64>>(&numbers, &mut budget).unwrap_err();
-/// assert_eq!(err.kind(), borsh::io::ErrorKind::OutOfMemory);
-/// assert_eq!(budget.used(), 27);
+/// let encoded = to_vec(&vec![1u64, 2, 3]).unwrap();
+/// // Three `u64`s need 24 bytes.
+/// let decoded = from_slice_bounded::<Vec<u64>>(&encoded, &mut Budget::new(24)).unwrap();
+/// assert_eq!(decoded, [1, 2, 3]);
 /// ```
 /// # Errors
-/// Returns an error if the data is invalid, does not fit the budget, or is not fully consumed.
+/// Returns an error if the data is invalid or not fully consumed, and an error of kind
+/// `OutOfMemory` (see [`LimitExceeded`](crate::error::LimitExceeded)) if it does not fit
+/// `budget`.
 pub fn from_slice_bounded<T: BorshDeserializeBounded>(v: &[u8], budget: &mut Budget) -> Result<T> {
     let mut v_mut = v;
     let object = T::deserialize_bounded(&mut v_mut, budget)?;
@@ -333,9 +279,7 @@ pub fn from_slice_bounded<T: BorshDeserializeBounded>(v: &[u8], budget: &mut Bud
     Ok(object)
 }
 
-/// Deserializes an object from a reader, failing with
-/// [`LimitExceeded`](crate::error::LimitExceeded) when decoding would charge more than is
-/// left in `budget`. See [`from_slice_bounded`].
+/// Deserializes an object from a reader, charging `budget`; see [`from_slice_bounded`].
 ///
 /// # Example
 /// ```

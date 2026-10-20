@@ -1,11 +1,10 @@
 A data-structure that can be de-serialized from binary format by NBOR, like
-[`BorshDeserialize`](crate::BorshDeserialize), while charging a memory limit.
+[`BorshDeserialize`](crate::BorshDeserialize), while charging a memory budget.
 
 Use it to decode untrusted input with a memory limit. The encoding is the same as for
-`BorshDeserialize`; only the memory accounting is added. Each decode gets a
-[`Budget`](crate::de::Budget), and every implementation charges it before it allocates.
-When a charge does not fit, decoding stops with a
-[`LimitExceeded`](crate::error::LimitExceeded) error.
+`BorshDeserialize`. Each decode gets a [`Budget`](crate::de::Budget), and every
+implementation charges it before it allocates. A charge that does not fit fails the decode
+with an error of kind `OutOfMemory` (see [`LimitExceeded`](crate::error::LimitExceeded)).
 
 ```rust
 use borsh::de::Budget;
@@ -44,27 +43,18 @@ to plain decoding. `BorshDeserialize` is not a supertrait, and plain decoding is
 
 # Guarantees
 
-**Threshold.** Let `U` be the bytes charged by a successful decode of some input. Then every
-limit of at least `U` decodes that input to the same value, and every limit below `U` fails
-with `LimitExceeded`. This assumes that the reader and any hand-written code are
-deterministic, that charges do not depend on the budget, and that allocations succeed.
+- Unless it fails with `LimitExceeded`, a bounded decode returns what `BorshDeserialize`
+  returns: the same value, or an error of the same kind and message.
+- After a successful decode with a fresh budget, [`used()`](crate::de::Budget::used) is the
+  smallest limit that decodes this input.
 
-**Parity with plain decoding.** With a limit of at least `U`, a bounded decode returns the
-same value as `BorshDeserialize`, or fails with the same error kind and message. Simple
-types delegate to their plain implementation, and containers keep the plain order of
-checks, the same reads and the same constructors. Hand-written implementations, conversion
-hooks and `#[borsh(init)]` functions must decode the same way in both traits, and must not
-depend on allocated capacity.
-
-Where plain decoding fails, bounded decoding can fail with `LimitExceeded` instead, when the
-input claims more than the limit allows. It also fails with `LimitExceeded`, with
-`requested = usize::MAX`, when a charge overflows `usize` or is larger than any allocation
-can be, and on 16-bit targets when a length prefix does not fit `usize`.
+Both assume that the reader is deterministic, that hand-written implementations follow the
+[rules](#writing-an-implementation-by-hand), and that allocations succeed.
 
 # What is charged
 
 `n` is the number of elements read from the length prefix. Collections charge nothing for
-`n = 0`.
+`n = 0`. A charge is exact when it equals the bytes the decoder asks the allocator for.
 
 | Type | Charge | Exactness |
 |---|---|---|
@@ -80,10 +70,9 @@ use borsh::{to_vec, BorshDeserializeBounded, BorshSerialize};
 
 fn charged<T: BorshSerialize + BorshDeserializeBounded>(value: &T) -> usize {
     let input = to_vec(value).unwrap();
-    let limit = 1 << 20;
-    let mut budget = Budget::new(limit);
+    let mut budget = Budget::new(1 << 20);
     T::deserialize_bounded(&mut input.as_slice(), &mut budget).unwrap();
-    limit - budget.remaining()
+    budget.used()
 }
 
 # #[cfg(target_pointer_width = "64")]
@@ -99,70 +88,64 @@ assert_eq!(charged(&vec![0u64; 1000]), 8000);
 - allocations inside hand-written implementations, unless they charge for them or decode
   their parts with `deserialize_bounded`; plain `BorshDeserialize` calls made from there are
   not charged either;
+- allocations made by a custom conversion from `T::Owned` into `Box<T>`;
 - error values, reader buffers and allocator overhead.
 
 # Caveats
 
-- `Box<T>` charges only the box: `size_of::<T>()` for a sized `T`, nothing more for an
-  unsized one, whose box reuses the decoded buffer. Allocations made by a custom conversion
-  from `T::Owned` into `Box<T>` are not charged.
-- The formulas may be refined in a minor release, with a changelog entry. A refinement can
-  move the threshold of an input in either direction.
-- Charges are computed from `size_of` and the standard library's and hashbrown's layouts, so
-  they depend on the target and on compiler and dependency versions; the same input can fit a
-  limit with one build and exceed it with another. Use the limit to reject inputs locally, not
-  where different machines must agree on whether an input is accepted.
+- The formulas are unstable and may change in any release; a change can move an input's
+  threshold in either direction.
+- Charges are computed from `size_of` and the standard library's layouts, so they depend on
+  the target and the compiler version; the same input can fit a limit with one build and
+  exceed it with another. Use the limit to reject inputs locally, not where different
+  machines must agree on whether an input is accepted.
 
 # Writing an implementation by hand
 
-Decode each part with its `deserialize_bounded` and pass on the budget you were given. Call
+Decode each part with its `deserialize_bounded`, and call
 [`Budget::charge`](crate::de::Budget::charge) or
 [`Budget::charge_array`](crate::de::Budget::charge_array) before an allocation you make
-yourself, and use [`EnumExtBounded`](crate::de::EnumExtBounded) to dispatch on a tag you
-have already read. Because the budget is passed separately from the reader, a part can be
-decoded from any reader, for example one that puts back a byte that was read ahead:
+yourself. Use [`EnumExtBounded`](crate::de::EnumExtBounded) to dispatch on a tag you have
+already read. An implementation must:
+
+- pass on the budget it was given, and never create a `Budget` of its own;
+- never let what it decodes depend on the budget's [`limit`](crate::de::Budget::limit),
+  [`used`](crate::de::Budget::used) or [`remaining`](crate::de::Budget::remaining);
+- decode the same way as its `BorshDeserialize` implementation, without depending on
+  allocated capacity.
 
 ```rust
 use borsh::de::Budget;
-use borsh::io::{Read, Result};
+use borsh::io::{ErrorKind, Read, Result};
 use borsh::BorshDeserializeBounded;
 
-/// A list of numbers that was written without a version tag before version 1 added a name.
-#[derive(Debug, PartialEq)]
-enum Versioned {
-    Legacy(Vec<u64>),
-    V1 { name: String, numbers: Vec<u64> },
+/// A name, as written and in lowercase.
+#[derive(Debug)]
+struct Name {
+    original: String,
+    lowercase: String,
 }
 
-impl BorshDeserializeBounded for Versioned {
+impl BorshDeserializeBounded for Name {
     fn deserialize_bounded<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
-        let tag = u8::deserialize_bounded(reader, budget)?;
-        if tag == 0xff {
-            Ok(Versioned::V1 {
-                name: String::deserialize_bounded(reader, budget)?,
-                numbers: Vec::deserialize_bounded(reader, budget)?,
-            })
-        } else {
-            // A legacy value starts with its length; `tag` was its first byte.
-            # #[cfg(feature = "std")]
-            # {
-            let tag = [tag];
-            let mut legacy = (&tag[..]).chain(reader);
-            Ok(Versioned::Legacy(Vec::deserialize_bounded(&mut legacy, budget)?))
-            # }
-            # #[cfg(not(feature = "std"))]
-            # unimplemented!()
-        }
+        let original = String::deserialize_bounded(reader, budget)?;
+        // `to_ascii_lowercase` allocates `original.len()` bytes.
+        budget.charge(original.len())?;
+        let lowercase = original.to_ascii_lowercase();
+        Ok(Name { original, lowercase })
     }
 }
 
-# #[cfg(feature = "std")]
-# {
-let legacy = borsh::to_vec(&vec![7u64, 8]).unwrap();
-let decoded = borsh::from_slice_bounded::<Versioned>(&legacy, &mut Budget::new(16)).unwrap();
-assert_eq!(decoded, Versioned::Legacy(vec![7, 8]));
-# }
+let input = borsh::to_vec("Borsh").unwrap();
+// 5 bytes for the string and 5 for its lowercase copy.
+let name = borsh::from_slice_bounded::<Name>(&input, &mut Budget::new(10)).unwrap();
+assert_eq!((name.original.as_str(), name.lowercase.as_str()), ("Borsh", "borsh"));
+let err = borsh::from_slice_bounded::<Name>(&input, &mut Budget::new(9)).unwrap_err();
+assert_eq!(err.kind(), ErrorKind::OutOfMemory);
 ```
+
+The budget is passed separately from the reader, so a part can be decoded from any reader,
+for example one built with `std::io::Read::chain` to put back a byte that was read ahead.
 
 A type from another crate can only get an implementation in that crate or in borsh, as with
 `BorshDeserialize`. Until it has one, wrap it in a type of your own and implement the trait

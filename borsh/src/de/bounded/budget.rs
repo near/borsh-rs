@@ -5,21 +5,14 @@ use crate::io::{Error, ErrorKind, Result};
 
 /// The memory that bounded decoding may still charge.
 ///
-/// [`from_slice_bounded`](crate::from_slice_bounded) and
-/// [`from_reader_bounded`](crate::from_reader_bounded) take one. Every
-/// [`BorshDeserializeBounded`](crate::BorshDeserializeBounded) implementation charges it
-/// before it allocates, and a charge that does not fit fails with
-/// [`LimitExceeded`](crate::error::LimitExceeded). Charges are never refunded.
+/// Every [`BorshDeserializeBounded`](crate::BorshDeserializeBounded) implementation charges
+/// it before it allocates. A charge that does not fit fails with an error of kind
+/// `OutOfMemory` (see [`LimitExceeded`]).
 ///
-/// Rules for implementations:
-/// - pass on the budget you were given;
-/// - never create a `Budget` inside an implementation;
-/// - never let what you decode depend on [`limit`](Budget::limit), [`used`](Budget::used) or
-///   [`remaining`](Budget::remaining).
-///
-/// To share one limit across several values, pass the same budget to each decode, for example
-/// to [`deserialize_bounded`](crate::BorshDeserializeBounded::deserialize_bounded) for values
-/// that follow each other in one reader:
+/// To share one limit across several values, pass the same budget to each decode: to each
+/// [`from_slice_bounded`](crate::from_slice_bounded) call, or to
+/// [`deserialize_bounded`](crate::BorshDeserializeBounded::deserialize_bounded) for values
+/// that follow each other in one reader. A failed decode keeps the charges it made.
 ///
 /// ```
 /// use borsh::de::Budget;
@@ -31,7 +24,7 @@ use crate::io::{Error, ErrorKind, Result};
 /// let numbers = Vec::<u32>::deserialize_bounded(&mut reader, &mut budget).unwrap();
 /// let text = String::deserialize_bounded(&mut reader, &mut budget).unwrap();
 /// assert_eq!((numbers, text.as_str()), (vec![1, 2, 3], "abc"));
-/// assert_eq!(budget.remaining(), 64 - 12 - 3);
+/// assert_eq!(budget.used(), 12 + 3);
 /// ```
 #[derive(Debug)]
 pub struct Budget {
@@ -63,8 +56,9 @@ impl Budget {
         self.limit - self.remaining
     }
 
-    /// Charges `bytes`. Fails with [`LimitExceeded`] only when `bytes` is more than
-    /// [`remaining`](Budget::remaining); a failed charge leaves the budget unchanged.
+    /// Charges `bytes`. Fails with an error of kind `OutOfMemory` (see [`LimitExceeded`]) only
+    /// when `bytes` is more than [`remaining`](Budget::remaining); a failed charge leaves the
+    /// budget unchanged.
     #[inline]
     pub fn charge(&mut self, bytes: usize) -> Result<()> {
         if bytes > self.remaining {
@@ -114,31 +108,30 @@ impl Budget {
     }
 }
 
-/// The error a bounded decode returns when a charge does not fit the remaining memory limit.
+/// The error of a charge that does not fit the remaining [`Budget`].
 ///
-/// It reaches the caller wrapped in an [`io::Error`](crate::io::Error) of kind
-/// [`OutOfMemory`](crate::io::ErrorKind::OutOfMemory).
-///
-/// With the `std` feature, it is the error's inner error:
+/// It reaches the caller as an [`io::Error`](crate::io::Error) of kind
+/// [`OutOfMemory`](crate::io::ErrorKind::OutOfMemory). With the `std` feature, it is that
+/// error's inner error:
 ///
 /// ```
 /// use borsh::de::Budget;
 /// use borsh::error::LimitExceeded;
 ///
-/// // Claims 1000 `u64`s, which need 8000 bytes.
-/// let input = 1000u32.to_le_bytes();
-/// let err = borsh::from_slice_bounded::<Vec<u64>>(&input, &mut Budget::new(100)).unwrap_err();
+/// // Claims a string of 5 bytes.
+/// let input = 5u32.to_le_bytes();
+/// let err = borsh::from_slice_bounded::<String>(&input, &mut Budget::new(4)).unwrap_err();
 /// # #[cfg(feature = "std")]
 /// # {
 /// let exceeded = err
 ///     .get_ref()
 ///     .and_then(|inner| inner.downcast_ref::<LimitExceeded>())
 ///     .unwrap();
-/// assert_eq!((exceeded.limit, exceeded.requested, exceeded.remaining), (100, 8000, 100));
+/// assert_eq!((exceeded.limit, exceeded.requested, exceeded.remaining), (4, 5, 4));
 /// # }
 /// ```
 ///
-/// Without `std`, `io::Error` only keeps a message, so check
+/// Without `std`, `io::Error` only keeps the message, so check
 /// `err.kind() == ErrorKind::OutOfMemory`. A reader or a hand-written implementation can
 /// return that kind too.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
