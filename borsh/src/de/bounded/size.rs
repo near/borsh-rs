@@ -1,11 +1,7 @@
-//! Charge formulas for the allocations collections make while they are built from a decoded
-//! vector. The rules and their exactness are documented in `borsh_bounded_charges.md`.
-//!
-//! Each function returns the bytes for `n > 0` elements, or `None` when the arithmetic
-//! overflows or one of the allocations would not have a valid `Layout`. The temporary
-//! `Vec` the elements are decoded into is charged separately, by `decode_seq`.
+//! The `extra(n)` charges for `decode_seq`: what a collection allocates besides the decoded
+//! vector, for `n > 0` elements. `None` means an overflow or an invalid layout.
 
-/// Used by the collections that keep no allocation besides the decoded vector.
+/// For collections that allocate nothing besides that vector.
 #[inline]
 pub(super) fn none(_n: usize) -> Option<usize> {
     Some(0)

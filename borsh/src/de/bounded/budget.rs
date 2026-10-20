@@ -67,7 +67,11 @@ impl Budget {
     /// [`remaining`](Budget::remaining); a failed charge leaves the budget unchanged.
     #[inline]
     pub fn charge(&mut self, bytes: usize) -> Result<()> {
-        self.charge_checked(Some(bytes))
+        if bytes > self.remaining {
+            return Err(self.exceeded(bytes));
+        }
+        self.remaining -= bytes;
+        Ok(())
     }
 
     /// Charges the size of an array of `len` values of `T`, as allocated by
@@ -80,15 +84,12 @@ impl Budget {
         self.charge_checked(Layout::array::<T>(len).ok().map(|layout| layout.size()))
     }
 
-    /// `None` means an overflow or invalid allocation size and always fails.
+    /// Like `charge`, but `None` (an overflow or an invalid allocation size) always fails,
+    /// even with a limit of `usize::MAX`.
     #[inline]
     pub(crate) fn charge_checked(&mut self, bytes: Option<usize>) -> Result<()> {
         match bytes {
-            Some(bytes) if bytes <= self.remaining => {
-                self.remaining -= bytes;
-                Ok(())
-            }
-            Some(bytes) => Err(self.exceeded(bytes)),
+            Some(bytes) => self.charge(bytes),
             None => Err(self.exceeded(usize::MAX)),
         }
     }
@@ -96,12 +97,20 @@ impl Budget {
     #[cold]
     #[inline(never)]
     fn exceeded(&self, requested: usize) -> Error {
-        LimitExceeded {
+        let exceeded = LimitExceeded {
             limit: self.limit,
             requested,
             remaining: self.remaining,
+        };
+        #[cfg(feature = "std")]
+        {
+            Error::new(ErrorKind::OutOfMemory, exceeded)
         }
-        .into_io_error()
+        #[cfg(not(feature = "std"))]
+        {
+            use crate::__private::maybestd::string::ToString;
+            Error::new(ErrorKind::OutOfMemory, exceeded.to_string())
+        }
     }
 }
 
@@ -144,20 +153,6 @@ pub struct LimitExceeded {
     pub remaining: usize,
 }
 
-impl LimitExceeded {
-    pub(crate) fn into_io_error(self) -> Error {
-        #[cfg(feature = "std")]
-        {
-            Error::new(ErrorKind::OutOfMemory, self)
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            use crate::__private::maybestd::string::ToString;
-            Error::new(ErrorKind::OutOfMemory, self.to_string())
-        }
-    }
-}
-
 impl fmt::Display for LimitExceeded {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -173,51 +168,47 @@ impl std::error::Error for LimitExceeded {}
 
 #[cfg(test)]
 mod tests {
+    use super::super::tests::assert_exceeded;
     use super::*;
 
-    #[track_caller]
-    fn assert_exceeded(result: Result<()>, limit: usize, requested: usize, remaining: usize) {
-        let err = result.unwrap_err();
-        assert_eq!(err.kind(), ErrorKind::OutOfMemory);
-        let expected = LimitExceeded {
-            limit,
-            requested,
-            remaining,
-        };
-        #[cfg(feature = "std")]
-        assert_eq!(
-            err.get_ref()
-                .and_then(|inner| inner.downcast_ref::<LimitExceeded>()),
-            Some(&expected)
-        );
-        #[cfg(not(feature = "std"))]
-        {
-            use crate::__private::maybestd::string::ToString;
-            assert_eq!(err.to_string(), expected.to_string());
+    #[test]
+    fn new_budget_has_its_limit_and_nothing_used() {
+        for limit in [0, 1, 100, usize::MAX] {
+            let budget = Budget::new(limit);
+            assert_eq!(
+                (budget.limit(), budget.used(), budget.remaining()),
+                (limit, 0, limit)
+            );
         }
+        const BUDGET: Budget = Budget::new(7);
+        const LIMIT_AND_USED: (usize, usize) = (BUDGET.limit(), BUDGET.used());
+        assert_eq!(LIMIT_AND_USED, (7, 0));
     }
 
     #[test]
-    fn exact_amount_passes() {
-        let mut budget = Budget::new(10);
-        budget.charge(4).unwrap();
-        budget.charge(6).unwrap();
-        assert_eq!(budget.remaining(), 0);
+    fn charges_add_up_to_the_limit() {
+        let mut budget = Budget::new(1000);
+        budget.charge(5).unwrap();
         budget.charge(0).unwrap();
-        assert_exceeded(budget.charge(1), 10, 1, 0);
+        budget.charge_array::<u64>(10).unwrap();
+        budget.charge_array::<()>(1_000_000).unwrap();
+        budget.charge_array::<[u8; 3]>(5).unwrap();
+        assert_eq!(budget.used(), 5 + 80 + 15);
+        budget.charge(900).unwrap();
+        assert_eq!((budget.used(), budget.remaining()), (1000, 0));
+        budget.charge(0).unwrap();
+        assert_exceeded(budget.charge(1), 1000, 1, 0);
     }
 
     #[test]
     fn failed_charge_leaves_budget_unchanged() {
         let mut budget = Budget::new(100);
         budget.charge_array::<u32>(10).unwrap();
-        assert_eq!(budget.remaining(), 60);
+        // Each error reports `remaining`, so it also shows that the failure before changed nothing.
         assert_exceeded(budget.charge(61), 100, 61, 60);
-        assert_eq!(budget.remaining(), 60);
         assert_exceeded(budget.charge_array::<u64>(usize::MAX), 100, usize::MAX, 60);
-        assert_eq!(budget.remaining(), 60);
         assert_exceeded(budget.charge_checked(None), 100, usize::MAX, 60);
-        assert_eq!(budget.remaining(), 60);
+        assert_eq!((budget.used(), budget.remaining()), (40, 60));
         budget.charge(60).unwrap();
         assert_eq!(budget.remaining(), 0);
     }
@@ -247,82 +238,7 @@ mod tests {
         assert_eq!(budget.remaining(), usize::MAX);
         // A plain byte count of `usize::MAX` is not an overflow.
         budget.charge(usize::MAX).unwrap();
-        assert_eq!(budget.remaining(), 0);
-    }
-
-    #[test]
-    fn charge_array_charges_the_vector_size() {
-        let mut budget = Budget::new(1000);
-        budget.charge_array::<u64>(10).unwrap();
-        budget.charge_array::<()>(1_000_000).unwrap();
-        budget.charge_array::<[u8; 3]>(5).unwrap();
-        assert_eq!(budget.remaining(), 1000 - 80 - 15);
-    }
-
-    #[test]
-    fn fresh_budget_has_its_limit_and_nothing_used() {
-        for limit in [0, 1, 100, usize::MAX] {
-            let budget = Budget::new(limit);
-            assert_eq!((budget.limit(), budget.used()), (limit, 0));
-        }
-        const BUDGET: Budget = Budget::new(7);
-        const LIMIT_AND_USED: (usize, usize) = (BUDGET.limit(), BUDGET.used());
-        assert_eq!(LIMIT_AND_USED, (7, 0));
-    }
-
-    #[test]
-    fn used_is_the_sum_of_charges() {
-        let mut budget = Budget::new(100);
-        budget.charge(10).unwrap();
-        assert_eq!(budget.used(), 10);
-        budget.charge_array::<u32>(5).unwrap();
-        budget.charge(0).unwrap();
-        assert_eq!(budget.used(), 10 + 20);
-        budget.charge(70).unwrap();
-        assert_eq!((budget.limit(), budget.used()), (100, 100));
-
-        let mut budget = Budget::new(usize::MAX);
-        budget.charge(usize::MAX).unwrap();
-        assert_eq!((budget.limit(), budget.used()), (usize::MAX, usize::MAX));
-    }
-
-    #[test]
-    fn failed_charge_leaves_used_unchanged() {
-        let mut budget = Budget::new(100);
-        budget.charge(40).unwrap();
-        assert_exceeded(budget.charge(61), 100, 61, 60);
-        assert_eq!(budget.used(), 40);
-        assert_exceeded(budget.charge_array::<u64>(usize::MAX), 100, usize::MAX, 60);
-        assert_eq!((budget.limit(), budget.used()), (100, 40));
-    }
-
-    #[test]
-    fn entry_points_charge_the_budget_they_are_given() {
-        use crate::__private::maybestd::vec::Vec;
-        use crate::{from_reader_bounded, from_slice_bounded};
-
-        let input = [3, 0, 0, 0, 1, 2, 3, 0];
-        let (exact, trailing) = (&input[..7], &input[..]);
-        let mut budget = Budget::new(20);
-        assert_eq!(
-            from_slice_bounded::<Vec<u8>>(exact, &mut budget).unwrap(),
-            [1, 2, 3]
-        );
-        assert_eq!(
-            from_reader_bounded::<_, Vec<u8>>(&mut &exact[..], &mut budget).unwrap(),
-            [1, 2, 3]
-        );
-        assert_eq!(budget.used(), 6);
-        // Each call still rejects trailing bytes, and keeps the charge made before.
-        let err = from_slice_bounded::<Vec<u8>>(trailing, &mut budget).unwrap_err();
-        assert_eq!(err.kind(), ErrorKind::InvalidData);
-        let err = from_reader_bounded::<_, Vec<u8>>(&mut &trailing[..], &mut budget).unwrap_err();
-        assert_eq!(err.kind(), ErrorKind::InvalidData);
-        assert_eq!(budget.used(), 12);
-        let claims_100 = 100u32.to_le_bytes();
-        let result = from_slice_bounded::<Vec<u8>>(&claims_100, &mut budget);
-        assert_exceeded(result.map(drop), 20, 100, 8);
-        assert_eq!(budget.used(), 12);
+        assert_eq!((budget.used(), budget.remaining()), (usize::MAX, 0));
     }
 
     #[test]
@@ -335,6 +251,8 @@ mod tests {
         };
         let expected = "Memory limit exceeded: 61 bytes requested, 60 of 100 bytes remaining";
         assert_eq!(exceeded.to_string(), expected);
-        assert_eq!(exceeded.into_io_error().to_string(), expected);
+        let mut budget = Budget::new(100);
+        budget.charge(40).unwrap();
+        assert_eq!(budget.charge(61).unwrap_err().to_string(), expected);
     }
 }

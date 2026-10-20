@@ -30,22 +30,8 @@ pub trait BorshDeserializeBounded: Sized {
     /// only allocates and reads. Returning `None` must leave the reader untouched.
     #[inline]
     #[doc(hidden)]
-    fn vec_from_reader_bounded<R: Read>(
-        len: u32,
-        reader: &mut R,
-        budget: &mut Budget,
-    ) -> Result<Option<Vec<Self>>> {
-        let _ = (len, reader, budget);
-        Ok(None)
-    }
-
-    #[inline]
-    #[doc(hidden)]
-    fn array_from_reader_bounded<R: Read, const N: usize>(
-        reader: &mut R,
-        budget: &mut Budget,
-    ) -> Result<Option<[Self; N]>> {
-        let _ = (reader, budget);
+    fn vec_from_reader_bounded<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
+        let _ = (len, reader);
         Ok(None)
     }
 }
@@ -144,9 +130,7 @@ pub trait EnumExtBounded: BorshDeserializeBounded {
     ) -> Result<Self>;
 }
 
-/// Charges the vector and `extra(n)` together before decoding any elements.
-/// `extra(n)` covers allocations made when converting the vector into a collection;
-/// `None` means overflow or an invalid allocation size.
+/// Charges the vector plus `extra(n)` before reading any element.
 fn decode_seq<T, R>(
     reader: &mut R,
     budget: &mut Budget,
@@ -164,15 +148,15 @@ where
     }
     let n = match usize::try_from(len) {
         Ok(n) => n,
-        // 16-bit targets only. Charged as an overflow, which always fails.
-        Err(_) => return budget.charge_checked(None).map(|()| Vec::new()),
+        // 16-bit targets only: fails as an overflow.
+        Err(_) => return budget.charge_checked(None).map(|()| unreachable!()),
     };
     budget.charge_checked(
         Layout::array::<T>(n)
             .ok()
             .and_then(|vec| vec.size().checked_add(extra(n)?)),
     )?;
-    if let Some(vec) = T::vec_from_reader_bounded(len, reader, budget)? {
+    if let Some(vec) = T::vec_from_reader_bounded(len, reader)? {
         Ok(vec)
     } else {
         let mut result = Vec::with_capacity(n);
@@ -244,14 +228,10 @@ impl BorshDeserializeBounded for u8 {
 
     #[inline]
     #[doc(hidden)]
-    fn vec_from_reader_bounded<R: Read>(
-        len: u32,
-        reader: &mut R,
-        _budget: &mut Budget,
-    ) -> Result<Option<Vec<Self>>> {
+    fn vec_from_reader_bounded<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
         let len: usize = len.try_into().map_err(|_| ErrorKind::InvalidData)?;
-        // Preallocate the charged size to avoid reallocations, but preserve the plain
-        // decoder's read windows for readers that depend on the requested buffer size.
+        // The reads of `<u8 as BorshDeserialize>::vec_from_reader`, into a vector that has
+        // the charged capacity from the start.
         let mut vec = Vec::with_capacity(len);
         vec.resize(len.min(1024 * 1024), 0);
         let mut pos = 0;
@@ -272,15 +252,6 @@ impl BorshDeserializeBounded for u8 {
             }
         }
         Ok(Some(vec))
-    }
-
-    #[inline]
-    #[doc(hidden)]
-    fn array_from_reader_bounded<R: Read, const N: usize>(
-        reader: &mut R,
-        _budget: &mut Budget,
-    ) -> Result<Option<[Self; N]>> {
-        <u8 as BorshDeserialize>::array_from_reader(reader)
     }
 }
 
@@ -311,8 +282,8 @@ where
 {
     fn deserialize_bounded<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
         let owned = T::Owned::deserialize_bounded(reader, budget)?;
-        // On stable Rust only sized types have thin pointers. The box of an unsized value
-        // reuses the buffer `owned` already charged for.
+        // Charges the box of a sized `T`; the box of an unsized one reuses the buffer `owned`
+        // was charged for. On stable Rust only sized types have thin pointers.
         if size_of::<*const T>() == size_of::<*const ()>() {
             budget.charge(size_of_val(<U as Borrow<T>>::borrow(&owned)))?;
         }
@@ -385,5 +356,60 @@ pub fn from_reader_bounded<R: Read, T: BorshDeserializeBounded>(
     match reader.read_exact(&mut buf) {
         Err(f) if f.kind() == ErrorKind::UnexpectedEof => Ok(result),
         _ => Err(Error::new(ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[track_caller]
+    pub(super) fn assert_exceeded(
+        result: Result<()>,
+        limit: usize,
+        requested: usize,
+        remaining: usize,
+    ) {
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::OutOfMemory);
+        let expected = LimitExceeded {
+            limit,
+            requested,
+            remaining,
+        };
+        #[cfg(feature = "std")]
+        assert_eq!(
+            err.get_ref()
+                .and_then(|inner| inner.downcast_ref::<LimitExceeded>()),
+            Some(&expected)
+        );
+        #[cfg(not(feature = "std"))]
+        assert_eq!(err.to_string(), expected.to_string());
+    }
+
+    #[test]
+    fn entry_points_charge_the_budget_they_are_given() {
+        let input = [3, 0, 0, 0, 1, 2, 3, 0];
+        let (exact, trailing) = (&input[..7], &input[..]);
+        let mut budget = Budget::new(20);
+        assert_eq!(
+            from_slice_bounded::<Vec<u8>>(exact, &mut budget).unwrap(),
+            [1, 2, 3]
+        );
+        assert_eq!(
+            from_reader_bounded::<_, Vec<u8>>(&mut &exact[..], &mut budget).unwrap(),
+            [1, 2, 3]
+        );
+        assert_eq!(budget.used(), 6);
+        // Each call still rejects trailing bytes, and keeps the charge made before.
+        let err = from_slice_bounded::<Vec<u8>>(trailing, &mut budget).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidData);
+        let err = from_reader_bounded::<_, Vec<u8>>(&mut &trailing[..], &mut budget).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidData);
+        assert_eq!(budget.used(), 12);
+        let claims_100 = 100u32.to_le_bytes();
+        let result = from_slice_bounded::<Vec<u8>>(&claims_100, &mut budget);
+        assert_exceeded(result.map(drop), 20, 100, 8);
+        assert_eq!(budget.used(), 12);
     }
 }
