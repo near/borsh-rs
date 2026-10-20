@@ -134,6 +134,7 @@ mod init_in_deserialize {
 }
 
 mod zero_sized_types {
+    mod test_zero_encoded_types;
     #[cfg(feature = "derive")]
     mod test_zero_sized_types_forbidden;
 }

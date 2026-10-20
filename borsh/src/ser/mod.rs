@@ -1,6 +1,7 @@
 use core::convert::TryFrom;
 use core::marker::PhantomData;
 
+use crate::__private::encodes_to_zero_bytes_ser as zero_bytes;
 use crate::__private::maybestd::{
     borrow::{Cow, ToOwned},
     boxed::Box,
@@ -8,7 +9,7 @@ use crate::__private::maybestd::{
     string::String,
     vec::Vec,
 };
-use crate::error::check_zst;
+use crate::error::check_zst_ser;
 use crate::io::{Error, ErrorKind, Result, Write};
 
 pub(crate) mod helpers;
@@ -60,6 +61,16 @@ pub trait BorshSerialize {
         let _ = slice;
         None
     }
+
+    /// Whether serializing this type always writes zero bytes.
+    ///
+    /// Collections reject such element types, because a length prefix alone could otherwise
+    /// drive an unbounded number of iterations and allocations on deserialization. The default
+    /// is `false` because `Self` may be unsized; collections additionally reject any element
+    /// type that is zero-sized in memory. Types that wrap another value transparently (such as
+    /// `Box<T>`) forward the inner type's answer.
+    #[doc(hidden)]
+    const ENCODES_TO_ZERO_BYTES: bool = false;
 }
 
 impl BorshSerialize for u8 {
@@ -265,6 +276,8 @@ where
 }
 
 impl<T: BorshSerialize + ?Sized> BorshSerialize for &T {
+    const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T>();
+
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         (*self).serialize(writer)
@@ -275,6 +288,8 @@ impl<T> BorshSerialize for Cow<'_, T>
 where
     T: BorshSerialize + ToOwned + ?Sized,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T>();
+
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         self.as_ref().serialize(writer)
@@ -287,7 +302,7 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        check_zst::<T>()?;
+        check_zst_ser::<T>()?;
 
         self.as_slice().serialize(writer)
     }
@@ -326,7 +341,7 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        check_zst::<T>()?;
+        check_zst_ser::<T>()?;
 
         let iterator = self.iter();
 
@@ -352,7 +367,7 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        check_zst::<K>()?;
+        check_zst_ser::<K>()?;
 
         let iterator = self.iter();
 
@@ -384,7 +399,7 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        check_zst::<T>()?;
+        check_zst_ser::<T>()?;
 
         writer.write_all(
             &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidData)?).to_le_bytes(),
@@ -401,7 +416,7 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        check_zst::<T>()?;
+        check_zst_ser::<T>()?;
 
         writer.write_all(
             &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidData)?).to_le_bytes(),
@@ -420,7 +435,7 @@ where
 #[cfg(hash_collections)]
 pub mod hashes {
     use crate::__private::maybestd::vec::Vec;
-    use crate::error::check_zst;
+    use crate::error::check_zst_ser;
     use crate::{
         __private::maybestd::collections::{HashMap, HashSet},
         BorshSerialize,
@@ -438,7 +453,7 @@ pub mod hashes {
     {
         #[inline]
         fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-            check_zst::<K>()?;
+            check_zst_ser::<K>()?;
 
             let mut vec = self.iter().collect::<Vec<_>>();
             vec.sort_by_key(|(a, _)| *a);
@@ -459,7 +474,7 @@ pub mod hashes {
     {
         #[inline]
         fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-            check_zst::<T>()?;
+            check_zst_ser::<T>()?;
 
             let mut vec = self.iter().collect::<Vec<_>>();
             vec.sort();
@@ -481,7 +496,7 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        check_zst::<K>()?;
+        check_zst_ser::<K>()?;
         // NOTE: BTreeMap iterates over the entries that are sorted by key, so the serialization
         // result will be consistent without a need to sort the entries as we do for HashMap
         // serialization.
@@ -502,7 +517,7 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
-        check_zst::<T>()?;
+        check_zst_ser::<T>()?;
         // NOTE: BTreeSet iterates over the items that are sorted, so the serialization result will
         // be consistent without a need to sort the entries as we do for HashSet serialization.
         u32::try_from(self.len())
@@ -577,6 +592,8 @@ impl BorshSerialize for core::net::IpAddr {
     }
 }
 impl<T: BorshSerialize + ?Sized> BorshSerialize for Box<T> {
+    const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T>();
+
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         self.as_ref().serialize(writer)
     }
@@ -586,6 +603,8 @@ impl<T, const N: usize> BorshSerialize for [T; N]
 where
     T: BorshSerialize,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = N == 0 || zero_bytes::<T>();
+
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         if N == 0 {
@@ -604,6 +623,8 @@ where
 macro_rules! impl_tuple {
     (@unit $name:ty) => {
         impl BorshSerialize for $name {
+            const ENCODES_TO_ZERO_BYTES: bool = true;
+
             #[inline]
             fn serialize<W: Write>(&self, _writer: &mut W) -> Result<()> {
                 Ok(())
@@ -615,6 +636,8 @@ macro_rules! impl_tuple {
       impl<$($name),+> BorshSerialize for ($($name,)+)
       where $($name: BorshSerialize,)+
       {
+        const ENCODES_TO_ZERO_BYTES: bool = $(zero_bytes::<$name>())&&+;
+
         #[inline]
         fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
             $(self.$idx.serialize(writer)?;)+
@@ -651,6 +674,8 @@ impl_tuple!(0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T
 macro_rules! impl_range {
     ($type:ident, $this:ident, $($field:expr),*) => {
         impl<T: BorshSerialize> BorshSerialize for core::ops::$type<T> {
+            const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T>();
+
             #[inline]
             fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
                 let $this = self;
@@ -684,6 +709,8 @@ pub mod rc {
     /// data structure. Serialization will not attempt to deduplicate these
     /// repeated data.
     impl<T: BorshSerialize + ?Sized> BorshSerialize for Rc<T> {
+        const ENCODES_TO_ZERO_BYTES: bool = crate::__private::encodes_to_zero_bytes_ser::<T>();
+
         fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
             (**self).serialize(writer)
         }
@@ -696,6 +723,8 @@ pub mod rc {
     /// data structure. Serialization will not attempt to deduplicate these
     /// repeated data.
     impl<T: BorshSerialize + ?Sized> BorshSerialize for Arc<T> {
+        const ENCODES_TO_ZERO_BYTES: bool = crate::__private::encodes_to_zero_bytes_ser::<T>();
+
         fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
             (**self).serialize(writer)
         }
@@ -703,6 +732,8 @@ pub mod rc {
 }
 
 impl<T: ?Sized> BorshSerialize for PhantomData<T> {
+    const ENCODES_TO_ZERO_BYTES: bool = true;
+
     fn serialize<W: Write>(&self, _: &mut W) -> Result<()> {
         Ok(())
     }
@@ -712,6 +743,8 @@ impl<T> BorshSerialize for core::cell::Cell<T>
 where
     T: BorshSerialize + Copy,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T>();
+
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         <T as BorshSerialize>::serialize(&self.get(), writer)
     }
@@ -721,6 +754,8 @@ impl<T> BorshSerialize for core::cell::RefCell<T>
 where
     T: BorshSerialize + Sized,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T>();
+
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self.try_borrow() {
             Ok(ref value) => value.serialize(writer),

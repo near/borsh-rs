@@ -4,6 +4,9 @@ expression: pretty_print_syn_str(&actual).unwrap()
 ---
 #[automatically_derived]
 impl reexporter::borsh::de::BorshDeserialize for A {
+    const ENCODES_TO_ZERO_BYTES: bool = reexporter::borsh::__private::encodes_to_zero_bytes_de::<
+        u64,
+    >() && reexporter::borsh::__private::encodes_to_zero_bytes_de::<String>();
     fn deserialize_reader<__R: reexporter::borsh::io::Read>(
         reader: &mut __R,
     ) -> ::core::result::Result<Self, reexporter::borsh::io::Error> {

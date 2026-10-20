@@ -7,6 +7,9 @@ impl<T> borsh::ser::BorshSerialize for TupleA<T>
 where
     T: borsh::ser::BorshSerialize,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = borsh::__private::encodes_to_zero_bytes_ser::<
+        T,
+    >() && borsh::__private::encodes_to_zero_bytes_ser::<u32>();
     fn serialize<__W: borsh::io::Write>(
         &self,
         writer: &mut __W,
