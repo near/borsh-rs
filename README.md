@@ -47,7 +47,7 @@ they exist.
 - [Derive Macro `BorshSerialize`](./borsh/docs/rustdoc_include/borsh_serialize.md)
 - [Derive Macro `BorshDeserialize`](./borsh/docs/rustdoc_include/borsh_deserialize.md)
 - [Derive Macro `BorshSchema`](./borsh/docs/rustdoc_include/borsh_schema.md)
-- [Decoding with a memory limit: `BorshDeserializeBounded`](./borsh/docs/rustdoc_include/borsh_bounded_charges.md)
+- [Decoding with a memory limit: `BorshDeserializeBounded`](./borsh/docs/rustdoc_include/borsh_bounded_charges.md) (feature `unstable__bounded`)
 
 ## Advanced examples 
 
