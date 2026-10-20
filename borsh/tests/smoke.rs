@@ -49,9 +49,10 @@ fn test_from_slice_bounded() {
     let deserialized =
         from_reader_bounded::<_, u64>(&mut serialized.as_slice(), &mut Budget::new(0)).unwrap();
     assert_eq!(deserialized, 42u64);
-    let mut budget = Budget::new(0);
-    let deserialized =
-        <u64 as BorshDeserializeBounded>::deserialize_bounded(&mut &serialized[..], &mut budget)
-            .unwrap();
+    let deserialized = <u64 as BorshDeserializeBounded>::deserialize_bounded(
+        &mut &serialized[..],
+        &mut Budget::new(0),
+    )
+    .unwrap();
     assert_eq!(deserialized, 42u64);
 }

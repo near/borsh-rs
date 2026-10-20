@@ -192,8 +192,8 @@ impl BorshDeserializeBounded for u8 {
     #[doc(hidden)]
     fn vec_from_reader_bounded<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
         let len: usize = len.try_into().map_err(|_| ErrorKind::InvalidData)?;
-        // The reads of `<u8 as BorshDeserialize>::vec_from_reader`, into a vector that has
-        // the charged capacity from the start.
+        // Same reads as `<u8 as BorshDeserialize>::vec_from_reader`, but the vector has the
+        // charged capacity from the start.
         let mut vec = Vec::with_capacity(len);
         vec.resize(len.min(1024 * 1024), 0);
         let mut pos = 0;

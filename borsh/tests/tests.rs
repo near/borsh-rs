@@ -123,8 +123,8 @@ mod schema {
 #[cfg(bounded)]
 mod bounded {
     mod cases;
-    mod test_exact_charge;
     mod test_box;
+    mod test_exact_charge;
 }
 
 mod deserialization_errors {

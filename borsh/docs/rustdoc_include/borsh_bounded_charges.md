@@ -18,13 +18,14 @@ assert_eq!(decoded, vec!["abc"; 3]);
 assert!(from_slice_bounded::<Vec<String>>(&encoded, &mut Budget::new(limit - 1)).is_err());
 ```
 
-The trait is implemented for the types listed in [What is charged](#what-is-charged). A type without an
-implementation cannot be decoded bounded: that is a compile error, never a silent fallback
-to plain decoding. `BorshDeserialize` is not a supertrait, and plain decoding is unchanged.
+The trait is implemented for the types listed in [What is charged](#what-is-charged). A
+type without an implementation cannot be decoded bounded: that is a compile error, never a
+silent fallback to plain decoding. `BorshDeserialize` is not a supertrait, and plain
+decoding is unchanged.
 
 # How charging works
 
-- A charge is made before the allocation it pays for, and it is never refunded.
+- A charge is never refunded.
 - The limit caps the total of all charges made against one budget, not the peak memory.
 - A collection charges for all its elements as soon as it has read its length prefix, so a
   length that cannot fit fails before any element is read.
@@ -62,7 +63,7 @@ Both assume that the reader is deterministic, that hand-written implementations 
 | `Vec<T>`, `String`, `Box<[T]>`, `Box<str>` | `n·size_of::<T>()` (1 byte per element of strings) | exact |
 | `Box<T>` of a sized `T` | `size_of::<T>()`, after `T` is decoded | exact for the standard library's conversions |
 
-Worked examples on a 64-bit target:
+Worked example on a 64-bit target:
 
 ```rust
 use borsh::de::Budget;

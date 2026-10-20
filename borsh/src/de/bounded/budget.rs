@@ -5,10 +5,6 @@ use crate::io::{Error, ErrorKind, Result};
 
 /// The memory that bounded decoding may still charge.
 ///
-/// Every [`BorshDeserializeBounded`](crate::BorshDeserializeBounded) implementation charges
-/// it before it allocates. A charge that does not fit fails with an error of kind
-/// `OutOfMemory` (see [`LimitExceeded`]).
-///
 /// To share one limit across several values, pass the same budget to each decode: to each
 /// [`from_slice_bounded`](crate::from_slice_bounded) call, or to
 /// [`deserialize_bounded`](crate::BorshDeserializeBounded::deserialize_bounded) for values
@@ -197,7 +193,7 @@ mod tests {
     fn failed_charge_leaves_budget_unchanged() {
         let mut budget = Budget::new(100);
         budget.charge_array::<u32>(10).unwrap();
-        // Each error reports `remaining`, so it also shows that the failure before changed nothing.
+        // `remaining` in each error shows that the previous failure changed nothing.
         assert_exceeded(budget.charge(61), 100, 61, 60);
         assert_exceeded(budget.charge_array::<u64>(usize::MAX), 100, usize::MAX, 60);
         assert_exceeded(budget.charge_checked(None), 100, usize::MAX, 60);
