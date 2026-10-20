@@ -101,6 +101,14 @@ fn validate_for_zero_encoded_sequences() {
     test_err::<Vec<Skipped>>(SchemaContainerValidateError::ZSTSequence(
         "Vec<Skipped>".to_string(),
     ));
+    // the same zero-sized array type twice must not be mistaken for recursion
+    #[derive(BorshSchema)]
+    #[allow(unused)]
+    struct RepeatedArrays([u8; 0], [u8; 0], Box<()>);
+
+    test_err::<Vec<RepeatedArrays>>(SchemaContainerValidateError::ZSTSequence(
+        "Vec<RepeatedArrays>".to_string(),
+    ));
     test_ok::<Vec<Box<u8>>>();
     test_ok::<Vec<(Box<()>, u8)>>();
     test_ok::<Vec<Option<Box<()>>>>();
