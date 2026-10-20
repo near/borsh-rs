@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc = include_str!("../docs/rustdoc_include/borsh_crate_top_level.md")]
+#![cfg_attr(bounded, doc = include_str!("../docs/rustdoc_include/borsh_crate_bounded.md"))]
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -27,8 +28,9 @@ pub(crate) mod schema_helpers;
 pub mod ser;
 
 pub use de::BorshDeserialize;
-pub use de::BorshDeserializeBounded;
-pub use de::{from_reader, from_reader_bounded, from_slice, from_slice_bounded};
+pub use de::{from_reader, from_slice};
+#[cfg(bounded)]
+pub use de::{from_reader_bounded, from_slice_bounded, BorshDeserializeBounded};
 #[cfg(feature = "unstable__schema")]
 pub use schema::BorshSchema;
 #[cfg(feature = "unstable__schema")]

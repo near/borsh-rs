@@ -70,7 +70,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Run clippy
-      run: cargo clippy --features unstable__schema --benches -- -D clippy::all
+      run: cargo clippy --features unstable__schema,unstable__bounded --benches -- -D clippy::all
 
   cargo-fmt:
     runs-on: ubuntu-24.04
@@ -89,7 +89,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: run cargo doc
-      run: RUSTDOCFLAGS="-D warnings" cargo doc --features derive,unstable__schema
+      run: RUSTDOCFLAGS="-D warnings" cargo doc --features derive,unstable__schema,unstable__bounded
 
   release-plz:
     runs-on: ubuntu-latest

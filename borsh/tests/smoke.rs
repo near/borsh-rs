@@ -7,9 +7,7 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::vec;
 
-#[allow(unused_imports)]
-use borsh::de::EnumExtBounded as _;
-use borsh::{self, from_reader_bounded, from_slice, from_slice_bounded, BorshDeserializeBounded};
+use borsh::{self, from_slice};
 #[cfg(feature = "unstable__schema")]
 use borsh::{schema_container_of, try_from_slice_with_schema};
 
@@ -36,8 +34,13 @@ fn test_to_writer() {
     assert_eq!(value, deserialized);
 }
 
+#[cfg(bounded)]
 #[test]
 fn test_from_slice_bounded() {
+    #[allow(unused_imports)]
+    use borsh::de::EnumExtBounded as _;
+    use borsh::{from_reader_bounded, from_slice_bounded, BorshDeserializeBounded};
+
     let serialized = borsh::to_vec(&42u64).unwrap();
     let deserialized = from_slice_bounded::<u64>(&serialized, 0).unwrap();
     assert_eq!(deserialized, 42u64);

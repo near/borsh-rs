@@ -19,7 +19,7 @@ use super::{BorshDeserialize, ERROR_NOT_ALL_BYTES_READ, ERROR_UNEXPECTED_LENGTH_
 mod budget;
 mod size;
 
-pub use budget::Budget;
+pub use budget::{Budget, LimitExceeded};
 
 #[doc = include_str!("../../../docs/rustdoc_include/borsh_bounded_charges.md")]
 pub trait BorshDeserializeBounded: Sized {

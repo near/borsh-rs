@@ -120,6 +120,7 @@ mod schema {
 }
 
 #[rustfmt::skip]
+#[cfg(bounded)]
 mod bounded {
     mod cases;
     mod test_exact_charge;
