@@ -515,6 +515,10 @@ where
     }
 }
 
+/// Encoded as a `u8` tag (`0` for `V4`, `1` for `V6`) followed by the variant's payload.
+///
+/// **Lossy for `V6`:** see the [`SocketAddrV6`](core::net::SocketAddrV6) impl. The
+/// `flowinfo` and `scope_id` fields are not encoded.
 impl BorshSerialize for core::net::SocketAddr {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -539,6 +543,18 @@ impl BorshSerialize for core::net::SocketAddrV4 {
     }
 }
 
+/// Encoded as the 16 address octets followed by the port as a little-endian `u16`
+/// (18 bytes total).
+///
+/// **This encoding is lossy.** [`flowinfo`](core::net::SocketAddrV6::flowinfo) and
+/// [`scope_id`](core::net::SocketAddrV6::scope_id) are *not* encoded, and deserialization
+/// always sets both to `0`. For any value where either field is non-zero (for example a
+/// link-local address such as `[fe80::1%2]:8080`, or an address returned by
+/// `TcpStream::peer_addr` for a link-local peer), `from_slice(&to_vec(&x)?)? != x`, and two
+/// values that differ only in those fields serialize to identical bytes.
+///
+/// Both fields are host- or flow-local and are generally meaningless on another machine.
+/// If you need to preserve them, serialize them alongside the address explicitly.
 impl BorshSerialize for core::net::SocketAddrV6 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
