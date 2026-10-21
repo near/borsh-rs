@@ -685,6 +685,10 @@ where
     }
 }
 
+/// Decodes a `u8` tag (`0` for `V4`, `1` for `V6`) followed by the variant's payload.
+///
+/// For `V6`, `flowinfo` and `scope_id` are always `0`; see the
+/// [`SocketAddrV6`](core::net::SocketAddrV6) impl.
 impl BorshDeserialize for core::net::SocketAddr {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
@@ -732,6 +736,11 @@ impl BorshDeserialize for core::net::SocketAddrV4 {
     }
 }
 
+/// Decodes the 16 address octets followed by the port as a little-endian `u16`.
+///
+/// The encoding does not carry [`flowinfo`](core::net::SocketAddrV6::flowinfo) or
+/// [`scope_id`](core::net::SocketAddrV6::scope_id), so the returned value always has both set
+/// to `0`. Round-tripping a value with either field non-zero does not reproduce the original.
 impl BorshDeserialize for core::net::SocketAddrV6 {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {

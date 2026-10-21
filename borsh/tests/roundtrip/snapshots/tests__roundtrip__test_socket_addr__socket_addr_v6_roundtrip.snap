@@ -1,0 +1,24 @@
+---
+source: borsh/tests/roundtrip/test_socket_addr.rs
+expression: encoded
+---
+[
+    32,
+    1,
+    13,
+    184,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    144,
+    31,
+]
