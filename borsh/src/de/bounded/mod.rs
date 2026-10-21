@@ -2,7 +2,6 @@
 //! with the same reads, checks and constructors. Keep the twins in sync;
 //! `assert_bounded_parity` in the tests catches drift.
 
-use core::alloc::Layout;
 use core::convert::{TryFrom, TryInto};
 use core::mem::{size_of, size_of_val};
 
@@ -24,7 +23,11 @@ pub use budget::{Budget, LimitExceeded};
 
 #[doc = include_str!("../../../docs/rustdoc_include/borsh_bounded_charges.md")]
 pub trait BorshDeserializeBounded: Sized {
-    /// Deserializes this instance from a reader, charging `budget` before every allocation.
+    /// Deserializes this instance from a reader, charging `budget` before every allocation
+    /// made while decoding. It does not charge the value's own inline size: the entry points
+    /// [`from_slice_bounded`](crate::from_slice_bounded) and
+    /// [`from_reader_bounded`](crate::from_reader_bounded) charge it, or the allocation that
+    /// holds the value does.
     fn deserialize_bounded<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self>;
 
     /// Reads `len` elements in one go into a vector the caller has already charged for.
@@ -66,25 +69,18 @@ where
     if len == 0 {
         return Ok(Vec::new());
     }
-    let n = match usize::try_from(len) {
-        Ok(n) => n,
-        // 16-bit targets only: fails as an overflow.
-        Err(_) => return budget.charge_checked(None).map(|()| unreachable!()),
-    };
-    budget.charge_checked(
-        Layout::array::<T>(n)
-            .ok()
-            .and_then(|vec| vec.size().checked_add(extra(n)?)),
-    )?;
+    // Only fails on 16-bit targets, where the charge below then fails as an overflow.
+    let n = usize::try_from(len).unwrap_or(usize::MAX);
+    budget.charge_array::<T>(n)?;
+    budget.charge_checked(extra(n))?;
     if let Some(vec) = T::vec_from_reader_bounded(len, reader)? {
-        Ok(vec)
-    } else {
-        let mut result = Vec::with_capacity(n);
-        for _ in 0..len {
-            result.push(T::deserialize_bounded(reader, budget)?);
-        }
-        Ok(result)
+        return Ok(vec);
     }
+    let mut result = Vec::with_capacity(n);
+    for _ in 0..len {
+        result.push(T::deserialize_bounded(reader, budget)?);
+    }
+    Ok(result)
 }
 
 /// Only for types whose plain decoder never allocates.
@@ -214,14 +210,20 @@ where
 /// Deserializes an object from a slice of bytes, charging `budget` as described on
 /// [`BorshDeserializeBounded`](crate::BorshDeserializeBounded).
 ///
+/// A successful call charges `size_of::<T>()` plus the allocation charges listed there.
+/// `size_of::<T>()` is charged first, so a budget too small for the value fails before
+/// anything is read.
+///
 /// # Example
 /// ```
 /// use borsh::de::Budget;
 /// use borsh::{from_slice_bounded, to_vec};
+/// use core::mem::size_of;
 ///
 /// let encoded = to_vec(&vec![1u64, 2, 3]).unwrap();
-/// // Three `u64`s need 24 bytes.
-/// let decoded = from_slice_bounded::<Vec<u64>>(&encoded, &mut Budget::new(24)).unwrap();
+/// // The `Vec` itself, plus 24 bytes for three `u64`s.
+/// let mut budget = Budget::new(size_of::<Vec<u64>>() + 24);
+/// let decoded = from_slice_bounded::<Vec<u64>>(&encoded, &mut budget).unwrap();
 /// assert_eq!(decoded, [1, 2, 3]);
 /// ```
 /// # Errors
@@ -229,6 +231,7 @@ where
 /// `OutOfMemory` (see [`LimitExceeded`](crate::error::LimitExceeded)) if it does not fit
 /// `budget`.
 pub fn from_slice_bounded<T: BorshDeserializeBounded>(v: &[u8], budget: &mut Budget) -> Result<T> {
+    budget.charge(size_of::<T>())?;
     let mut v_mut = v;
     let object = T::deserialize_bounded(&mut v_mut, budget)?;
     if !v_mut.is_empty() {
@@ -237,22 +240,26 @@ pub fn from_slice_bounded<T: BorshDeserializeBounded>(v: &[u8], budget: &mut Bud
     Ok(object)
 }
 
-/// Deserializes an object from a reader, charging `budget`; see [`from_slice_bounded`].
+/// Deserializes an object from a reader, charging `budget` like [`from_slice_bounded`]:
+/// `size_of::<T>()` first, before anything is read, then the allocations.
 ///
 /// # Example
 /// ```
 /// use borsh::de::Budget;
 /// use borsh::{from_reader_bounded, to_vec};
+/// use core::mem::size_of;
 ///
 /// let encoded = to_vec(&String::from("hello")).unwrap();
-/// let decoded =
-///     from_reader_bounded::<_, String>(&mut encoded.as_slice(), &mut Budget::new(5)).unwrap();
+/// // The `String` itself, plus its 5 bytes.
+/// let mut budget = Budget::new(size_of::<String>() + 5);
+/// let decoded = from_reader_bounded::<_, String>(&mut encoded.as_slice(), &mut budget).unwrap();
 /// assert_eq!(decoded, "hello");
 /// ```
 pub fn from_reader_bounded<R: Read, T: BorshDeserializeBounded>(
     reader: &mut R,
     budget: &mut Budget,
 ) -> Result<T> {
+    budget.charge(size_of::<T>())?;
     let result = T::deserialize_bounded(reader, budget)?;
     let mut buf = [0u8; 1];
     match reader.read_exact(&mut buf) {
@@ -293,7 +300,11 @@ mod tests {
     fn entry_points_charge_the_budget_they_are_given() {
         let input = [3, 0, 0, 0, 1, 2, 3, 0];
         let (exact, trailing) = (&input[..7], &input[..]);
-        let mut budget = Budget::new(20);
+        // Each of the five calls below first charges the `Vec` itself; the first four then
+        // charge its 3 bytes, and the last one fails with 8 bytes left.
+        let root = size_of::<Vec<u8>>();
+        let limit = 20 + 5 * root;
+        let mut budget = Budget::new(limit);
         assert_eq!(
             from_slice_bounded::<Vec<u8>>(exact, &mut budget).unwrap(),
             [1, 2, 3]
@@ -302,16 +313,30 @@ mod tests {
             from_reader_bounded::<_, Vec<u8>>(&mut &exact[..], &mut budget).unwrap(),
             [1, 2, 3]
         );
-        assert_eq!(budget.used(), 6);
+        assert_eq!(budget.used(), 2 * (root + 3));
         // Each call still rejects trailing bytes, and keeps the charge made before.
         let err = from_slice_bounded::<Vec<u8>>(trailing, &mut budget).unwrap_err();
         assert_eq!(err.kind(), ErrorKind::InvalidData);
         let err = from_reader_bounded::<_, Vec<u8>>(&mut &trailing[..], &mut budget).unwrap_err();
         assert_eq!(err.kind(), ErrorKind::InvalidData);
-        assert_eq!(budget.used(), 12);
+        assert_eq!(budget.used(), 4 * (root + 3));
+        // The root charge fits, then the claimed 100 bytes do not.
         let claims_100 = 100u32.to_le_bytes();
         let result = from_slice_bounded::<Vec<u8>>(&claims_100, &mut budget);
-        assert_exceeded(result.map(drop), 20, 100, 8);
-        assert_eq!(budget.used(), 12);
+        assert_exceeded(result.map(drop), limit, 100, 8);
+        assert_eq!(budget.used(), 4 * (root + 3) + root);
+    }
+
+    #[test]
+    fn root_charge_fails_before_anything_is_read() {
+        let root = size_of::<Vec<u8>>();
+        let input = [3, 0, 0, 0, 1, 2, 3];
+        let mut reader = &input[..];
+        let result = from_reader_bounded::<_, Vec<u8>>(&mut reader, &mut Budget::new(root - 1));
+        assert_exceeded(result.map(drop), root - 1, root, root - 1);
+        assert_eq!(reader.len(), input.len());
+        // The limit error wins over malformed input.
+        let result = from_slice_bounded::<Vec<u8>>(&[], &mut Budget::new(root - 1));
+        assert_exceeded(result.map(drop), root - 1, root, root - 1);
     }
 }

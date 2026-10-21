@@ -9,10 +9,11 @@ with an error of kind `OutOfMemory` (see [`LimitExceeded`](crate::error::LimitEx
 ```rust
 use borsh::de::Budget;
 use borsh::{from_slice_bounded, to_vec};
+use core::mem::size_of;
 
 let encoded = to_vec(&vec![String::from("abc"); 3]).unwrap();
-// The outer vector holds three `String`s; each string holds 3 bytes.
-let limit = 3 * core::mem::size_of::<String>() + 3 * 3;
+// The `Vec` itself, its buffer of three `String`s, and 3 bytes for each string.
+let limit = size_of::<Vec<String>>() + 3 * size_of::<String>() + 3 * 3;
 let decoded = from_slice_bounded::<Vec<String>>(&encoded, &mut Budget::new(limit)).unwrap();
 assert_eq!(decoded, vec!["abc"; 3]);
 assert!(from_slice_bounded::<Vec<String>>(&encoded, &mut Budget::new(limit - 1)).is_err());
@@ -54,10 +55,14 @@ Both assume that the reader is deterministic, that hand-written implementations 
 
 # What is charged
 
+A successful call to an entry point, [`from_slice_bounded`](crate::from_slice_bounded) or
+[`from_reader_bounded`](crate::from_reader_bounded), charges `size_of::<T>()` plus the
+allocation charges below. A direct `deserialize_bounded` call charges only the allocations.
+
 `n` is the number of elements read from the length prefix. Collections charge nothing for
 `n = 0`. A charge is exact when it equals the bytes the decoder asks the allocator for.
 
-| Type | Charge | Exactness |
+| Type | Allocation charge | Exactness |
 |---|---|---|
 | integers, `f32`, `f64`, `bool`, `NonZero*`, `()`, `RangeFull`, `core::net` types | 0 | exact |
 | `Vec<T>`, `String`, `Box<[T]>`, `Box<str>` | `n·size_of::<T>()` (1 byte per element of strings) | exact |
@@ -67,25 +72,27 @@ Worked example on a 64-bit target:
 
 ```rust
 use borsh::de::Budget;
-use borsh::{to_vec, BorshDeserializeBounded, BorshSerialize};
+use borsh::{from_slice_bounded, to_vec, BorshDeserializeBounded, BorshSerialize};
 
 fn charged<T: BorshSerialize + BorshDeserializeBounded>(value: &T) -> usize {
     let input = to_vec(value).unwrap();
     let mut budget = Budget::new(1 << 20);
-    T::deserialize_bounded(&mut input.as_slice(), &mut budget).unwrap();
+    from_slice_bounded::<T>(&input, &mut budget).unwrap();
     budget.used()
 }
 
 # #[cfg(target_pointer_width = "64")]
 # {
-assert_eq!(charged(&vec![0u64; 1000]), 8000);
+// 8000 bytes for the elements, and 24 for the `Vec` itself.
+assert_eq!(charged(&vec![0u64; 1000]), 8000 + 24);
 # }
 ```
 
 # What is not charged
 
-- stack memory and recursion depth;
-- `#[borsh(init)]` functions and `Default` values of skipped fields;
+- stack used while decoding (temporaries, recursion depth);
+- allocations made by `#[borsh(init)]` functions and by the `Default` values of skipped
+  fields;
 - allocations inside hand-written implementations, unless they charge for them or decode
   their parts with `deserialize_bounded`; plain `BorshDeserialize` calls made from there are
   not charged either;
@@ -138,10 +145,11 @@ impl BorshDeserializeBounded for Name {
 }
 
 let input = borsh::to_vec("Borsh").unwrap();
-// 5 bytes for the string and 5 for its lowercase copy.
-let name = borsh::from_slice_bounded::<Name>(&input, &mut Budget::new(10)).unwrap();
+// The `Name` itself, 5 bytes for the string and 5 for its lowercase copy.
+let limit = core::mem::size_of::<Name>() + 10;
+let name = borsh::from_slice_bounded::<Name>(&input, &mut Budget::new(limit)).unwrap();
 assert_eq!((name.original.as_str(), name.lowercase.as_str()), ("Borsh", "borsh"));
-let err = borsh::from_slice_bounded::<Name>(&input, &mut Budget::new(9)).unwrap_err();
+let err = borsh::from_slice_bounded::<Name>(&input, &mut Budget::new(limit - 1)).unwrap_err();
 assert_eq!(err.kind(), ErrorKind::OutOfMemory);
 ```
 

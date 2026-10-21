@@ -8,7 +8,8 @@ use crate::io::{Error, ErrorKind, Result};
 /// To share one limit across several values, pass the same budget to each decode: to each
 /// [`from_slice_bounded`](crate::from_slice_bounded) call, or to
 /// [`deserialize_bounded`](crate::BorshDeserializeBounded::deserialize_bounded) for values
-/// that follow each other in one reader. A failed decode keeps the charges it made.
+/// that follow each other in one reader. A direct `deserialize_bounded` call charges only
+/// the allocations, not the value itself. A failed decode keeps the charges it made.
 ///
 /// ```
 /// use borsh::de::Budget;
@@ -20,6 +21,7 @@ use crate::io::{Error, ErrorKind, Result};
 /// let numbers = Vec::<u32>::deserialize_bounded(&mut reader, &mut budget).unwrap();
 /// let text = String::deserialize_bounded(&mut reader, &mut budget).unwrap();
 /// assert_eq!((numbers, text.as_str()), (vec![1, 2, 3], "abc"));
+/// // Only the allocations: 12 bytes for the `u32`s and 3 for the string.
 /// assert_eq!(budget.used(), 12 + 3);
 /// ```
 #[derive(Debug)]
@@ -116,14 +118,16 @@ impl Budget {
 ///
 /// // Claims a string of 5 bytes.
 /// let input = 5u32.to_le_bytes();
-/// let err = borsh::from_slice_bounded::<String>(&input, &mut Budget::new(4)).unwrap_err();
+/// // Room for the `String` itself and 4 bytes.
+/// let limit = core::mem::size_of::<String>() + 4;
+/// let err = borsh::from_slice_bounded::<String>(&input, &mut Budget::new(limit)).unwrap_err();
 /// # #[cfg(feature = "std")]
 /// # {
 /// let exceeded = err
 ///     .get_ref()
 ///     .and_then(|inner| inner.downcast_ref::<LimitExceeded>())
 ///     .unwrap();
-/// assert_eq!((exceeded.limit, exceeded.requested, exceeded.remaining), (4, 5, 4));
+/// assert_eq!((exceeded.limit, exceeded.requested, exceeded.remaining), (limit, 5, 4));
 /// # }
 /// ```
 ///

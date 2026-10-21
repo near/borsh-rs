@@ -1,7 +1,8 @@
 //! Inputs with known charges, shared by the decoding tests.
 //!
 //! The formulas below are written out independently of the implementation, from the
-//! charging table in `docs/rustdoc_include/borsh_bounded_charges.md`.
+//! charging table in `docs/rustdoc_include/borsh_bounded_charges.md`. Each case decodes
+//! through an entry point, which also charges `size_of::<T>()`.
 
 #![allow(dead_code)]
 
@@ -17,6 +18,7 @@ pub const MIB: usize = 1024 * 1024;
 pub struct Case {
     pub name: String,
     pub input: Vec<u8>,
+    /// What a successful decode charges: `size_of::<T>()` plus the allocations.
     pub charge: usize,
     /// `(requested, remaining)` of the limit error at limit `charge - 1`. `None` when the
     /// charge is 0.
@@ -29,34 +31,50 @@ pub fn decode<T: BorshDeserializeBounded>(input: &[u8], budget: &mut Budget) -> 
     from_slice_bounded::<T>(input, budget).map(drop)
 }
 
+/// `allocations` is the charge on top of the root's `size_of::<T>()`.
 fn case<T: BorshSerialize + BorshDeserializeBounded>(
     name: String,
     value: &T,
-    charge: usize,
+    allocations: usize,
     below: Option<(usize, usize)>,
 ) -> Case {
     Case {
         name,
         input: to_vec(value).unwrap(),
-        charge,
+        charge: size_of::<T>() + allocations,
         below,
         decode: decode::<T>,
     }
 }
 
-/// The failure of a case that makes a single charge.
-fn single(charge: usize) -> Option<(usize, usize)> {
-    if charge == 0 {
+/// The failure at limit `charge - 1` of a case whose last charge, of `last` bytes, is the one
+/// that does not fit. Every charge before it, the root's included, still fits.
+fn single(last: usize) -> Option<(usize, usize)> {
+    if last == 0 {
         None
     } else {
-        Some((charge, charge - 1))
+        Some((last, last - 1))
     }
 }
 
 pub fn cases() -> Vec<Case> {
     vec![
-        case("empty Vec<u64>".into(), &Vec::<u64>::new(), 0, None),
-        case("Box<()>".into(), &Box::new(()), 0, None),
+        // A zero-sized root with no allocations charges nothing.
+        case("()".into(), &(), 0, None),
+        // Without allocations, only the root is charged.
+        case("u64".into(), &7u64, 0, single(size_of::<u64>())),
+        case(
+            "empty Vec<u64>".into(),
+            &Vec::<u64>::new(),
+            0,
+            single(size_of::<Vec<u64>>()),
+        ),
+        case(
+            "Box<()>".into(),
+            &Box::new(()),
+            0,
+            single(size_of::<Box<()>>()),
+        ),
         case("Box<u64>".into(), &Box::new(7u64), 8, single(8)),
         case(
             "Vec<u64> of 1000".into(),
