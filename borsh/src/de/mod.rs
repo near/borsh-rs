@@ -22,6 +22,10 @@ use crate::io::{Error, ErrorKind, Read, Result};
 use crate::error::check_zst;
 
 mod hint;
+mod recursion;
+
+use recursion::RecursionGuard;
+pub use recursion::DEFAULT_RECURSION_LIMIT;
 
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
@@ -411,6 +415,7 @@ where
         } else if let Some(vec_bytes) = T::vec_from_reader(len, reader)? {
             Ok(vec_bytes)
         } else {
+            let _guard = RecursionGuard::enter()?;
             // TODO(16): return capacity allocation when we can safely do that.
             let mut result = Vec::with_capacity(hint::cautious::<T>(len));
             for _ in 0..len {
@@ -770,6 +775,7 @@ where
     T::Owned: BorshDeserialize,
 {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let _guard = RecursionGuard::enter()?;
         Ok(T::Owned::deserialize_reader(reader)?.into())
     }
 }
@@ -1074,4 +1080,44 @@ pub fn from_reader<R: Read, T: BorshDeserialize>(reader: &mut R) -> Result<T> {
         Err(f) if f.kind() == ErrorKind::UnexpectedEof => Ok(result),
         _ => Err(Error::new(ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ)),
     }
+}
+
+/// Deserializes an object from a slice of bytes, allowing values to be nested
+/// at most `limit` levels deep.
+///
+/// Behaves like [`from_slice`], which uses [`DEFAULT_RECURSION_LIMIT`]. See
+/// that constant for what counts as a level. Use this to accept data that
+/// legitimately nests deeper than the default, or to tighten the limit.
+/// A higher limit needs a correspondingly larger stack.
+///
+/// Only available with the `std` feature: without it nesting depth is not
+/// tracked.
+/// # Example
+/// ```
+/// use borsh::de::from_slice_with_recursion_limit;
+///
+/// // 3 levels of `Box`.
+/// let encoded = 7u8.to_le_bytes();
+/// let decoded = from_slice_with_recursion_limit::<Box<Box<Box<u8>>>>(&encoded, 3).unwrap();
+/// assert_eq!(***decoded, 7);
+/// assert!(from_slice_with_recursion_limit::<Box<Box<Box<u8>>>>(&encoded, 2).is_err());
+/// ```
+#[cfg(feature = "std")]
+pub fn from_slice_with_recursion_limit<T: BorshDeserialize>(v: &[u8], limit: usize) -> Result<T> {
+    recursion::with_limit(limit, || from_slice(v))
+}
+
+/// Deserializes an object from a reader, allowing values to be nested at most
+/// `limit` levels deep.
+///
+/// Behaves like [`from_reader`], which uses [`DEFAULT_RECURSION_LIMIT`]. See
+/// [`from_slice_with_recursion_limit`] for details.
+///
+/// Only available with the `std` feature.
+#[cfg(feature = "std")]
+pub fn from_reader_with_recursion_limit<R: Read, T: BorshDeserialize>(
+    reader: &mut R,
+    limit: usize,
+) -> Result<T> {
+    recursion::with_limit(limit, || from_reader(reader))
 }

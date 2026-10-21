@@ -124,6 +124,8 @@ mod deserialization_errors {
     mod test_ascii_strings;
     mod test_cells;
     mod test_initial;
+    #[cfg(all(feature = "std", feature = "derive"))]
+    mod test_recursion_limit;
 }
 
 mod init_in_deserialize {
