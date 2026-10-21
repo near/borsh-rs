@@ -55,9 +55,8 @@ Both assume that the reader is deterministic, that hand-written implementations 
 
 # What is charged
 
-A successful call to an entry point, [`from_slice_bounded`](crate::from_slice_bounded) or
-[`from_reader_bounded`](crate::from_reader_bounded), charges `size_of::<T>()` plus the
-allocation charges below. A direct `deserialize_bounded` call charges only the allocations.
+A successful `from_slice_bounded` or `from_reader_bounded` call charges `size_of::<T>()`
+plus the allocation charges below.
 
 `n` is the number of elements read from the length prefix. Collections charge nothing for
 `n = 0`. A charge is exact when it equals the bytes the decoder asks the allocator for.
@@ -83,7 +82,6 @@ fn charged<T: BorshSerialize + BorshDeserializeBounded>(value: &T) -> usize {
 
 # #[cfg(target_pointer_width = "64")]
 # {
-// 8000 bytes for the elements, and 24 for the `Vec` itself.
 assert_eq!(charged(&vec![0u64; 1000]), 8000 + 24);
 # }
 ```
@@ -91,8 +89,7 @@ assert_eq!(charged(&vec![0u64; 1000]), 8000 + 24);
 # What is not charged
 
 - stack used while decoding (temporaries, recursion depth);
-- allocations made by `#[borsh(init)]` functions and by the `Default` values of skipped
-  fields;
+- allocations of `#[borsh(init)]` functions and of `Default` values of skipped fields;
 - allocations inside hand-written implementations, unless they charge for them or decode
   their parts with `deserialize_bounded`; plain `BorshDeserialize` calls made from there are
   not charged either;

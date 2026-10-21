@@ -1,8 +1,7 @@
 //! Inputs with known charges, shared by the decoding tests.
 //!
 //! The formulas below are written out independently of the implementation, from the
-//! charging table in `docs/rustdoc_include/borsh_bounded_charges.md`. Each case decodes
-//! through an entry point, which also charges `size_of::<T>()`.
+//! charging table in `docs/rustdoc_include/borsh_bounded_charges.md`.
 
 #![allow(dead_code)]
 
@@ -18,7 +17,7 @@ pub const MIB: usize = 1024 * 1024;
 pub struct Case {
     pub name: String,
     pub input: Vec<u8>,
-    /// What a successful decode charges: `size_of::<T>()` plus the allocations.
+    /// `size_of::<T>()` plus the allocations.
     pub charge: usize,
     /// `(requested, remaining)` of the limit error at limit `charge - 1`. `None` when the
     /// charge is 0.
@@ -31,7 +30,6 @@ pub fn decode<T: BorshDeserializeBounded>(input: &[u8], budget: &mut Budget) -> 
     from_slice_bounded::<T>(input, budget).map(drop)
 }
 
-/// `allocations` is the charge on top of the root's `size_of::<T>()`.
 fn case<T: BorshSerialize + BorshDeserializeBounded>(
     name: String,
     value: &T,
@@ -47,8 +45,7 @@ fn case<T: BorshSerialize + BorshDeserializeBounded>(
     }
 }
 
-/// The failure at limit `charge - 1` of a case whose last charge, of `last` bytes, is the one
-/// that does not fit. Every charge before it, the root's included, still fits.
+/// The failure of a case whose last charge, of `last` bytes, does not fit.
 fn single(last: usize) -> Option<(usize, usize)> {
     if last == 0 {
         None
@@ -59,9 +56,7 @@ fn single(last: usize) -> Option<(usize, usize)> {
 
 pub fn cases() -> Vec<Case> {
     vec![
-        // A zero-sized root with no allocations charges nothing.
         case("()".into(), &(), 0, None),
-        // Without allocations, only the root is charged.
         case("u64".into(), &7u64, 0, single(size_of::<u64>())),
         case(
             "empty Vec<u64>".into(),

@@ -23,11 +23,8 @@ pub use budget::{Budget, LimitExceeded};
 
 #[doc = include_str!("../../../docs/rustdoc_include/borsh_bounded_charges.md")]
 pub trait BorshDeserializeBounded: Sized {
-    /// Deserializes this instance from a reader, charging `budget` before every allocation
-    /// made while decoding. It does not charge the value's own inline size: the entry points
-    /// [`from_slice_bounded`](crate::from_slice_bounded) and
-    /// [`from_reader_bounded`](crate::from_reader_bounded) charge it, or the allocation that
-    /// holds the value does.
+    /// Deserializes this instance from a reader, charging `budget` before every allocation.
+    /// `size_of::<Self>()` is charged by the entry points, or by the allocation that holds it.
     fn deserialize_bounded<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self>;
 
     /// Reads `len` elements in one go into a vector the caller has already charged for.
@@ -210,9 +207,7 @@ where
 /// Deserializes an object from a slice of bytes, charging `budget` as described on
 /// [`BorshDeserializeBounded`](crate::BorshDeserializeBounded).
 ///
-/// A successful call charges `size_of::<T>()` plus the allocation charges listed there.
-/// `size_of::<T>()` is charged first, so a budget too small for the value fails before
-/// anything is read.
+/// Charges `size_of::<T>()` first, before reading anything, then the allocations.
 ///
 /// # Example
 /// ```
@@ -240,8 +235,7 @@ pub fn from_slice_bounded<T: BorshDeserializeBounded>(v: &[u8], budget: &mut Bud
     Ok(object)
 }
 
-/// Deserializes an object from a reader, charging `budget` like [`from_slice_bounded`]:
-/// `size_of::<T>()` first, before anything is read, then the allocations.
+/// Deserializes an object from a reader, charging `budget`; see [`from_slice_bounded`].
 ///
 /// # Example
 /// ```
@@ -300,8 +294,7 @@ mod tests {
     fn entry_points_charge_the_budget_they_are_given() {
         let input = [3, 0, 0, 0, 1, 2, 3, 0];
         let (exact, trailing) = (&input[..7], &input[..]);
-        // Each of the five calls below first charges the `Vec` itself; the first four then
-        // charge its 3 bytes, and the last one fails with 8 bytes left.
+        // Every call charges `root` first.
         let root = size_of::<Vec<u8>>();
         let limit = 20 + 5 * root;
         let mut budget = Budget::new(limit);
@@ -320,7 +313,6 @@ mod tests {
         let err = from_reader_bounded::<_, Vec<u8>>(&mut &trailing[..], &mut budget).unwrap_err();
         assert_eq!(err.kind(), ErrorKind::InvalidData);
         assert_eq!(budget.used(), 4 * (root + 3));
-        // The root charge fits, then the claimed 100 bytes do not.
         let claims_100 = 100u32.to_le_bytes();
         let result = from_slice_bounded::<Vec<u8>>(&claims_100, &mut budget);
         assert_exceeded(result.map(drop), limit, 100, 8);
