@@ -30,6 +30,7 @@ cargo test --features indexmap,derive 'roundtrip::test_indexmap'
 ########## features = ["de_strict_order"] group
 cargo test --features de_strict_order 'roundtrip::test_hash_map'
 cargo test --features de_strict_order 'roundtrip::test_btree_map'
+cargo test --features indexmap,de_strict_order 'roundtrip::test_indexmap'
 ########## features = ["bson"] group
 cargo test --features bson,derive 'roundtrip::requires_derive_category::test_bson_object_ids'
 ########## features = ["bytes"] group
@@ -53,6 +54,7 @@ cargo test --no-default-features --features rc,unstable__schema 'schema::test_rc
 cargo test --no-default-features --features indexmap 'roundtrip::test_indexmap'
 # checking with `derive` too just for the sake of redundancy https://github.com/near/borsh-rs/pull/346
 cargo test --no-default-features --features indexmap,derive 'roundtrip::test_indexmap'
+cargo test --no-default-features --features indexmap,de_strict_order 'roundtrip::test_indexmap'
 ########## features = ["hashbrown"] group
 cargo test --no-default-features --features hashbrown
 cargo test --no-default-features --features hashbrown,derive
