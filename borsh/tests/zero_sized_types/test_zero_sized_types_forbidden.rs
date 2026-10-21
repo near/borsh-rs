@@ -1,4 +1,4 @@
-use alloc::{string::ToString, vec, vec::Vec};
+use alloc::{borrow::Cow, boxed::Box, string::ToString, vec, vec::Vec};
 
 #[cfg(feature = "std")]
 use std::collections::{HashMap, HashSet};
@@ -41,6 +41,41 @@ fn test_serialize_vec_of_unit_type() {
 #[test]
 fn test_serialize_vec_of_vec_of_unit_type() {
     let v: Vec<Vec<()>> = vec![vec![(), (), ()]];
+    let res = to_vec(&v);
+    assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+}
+
+#[test]
+fn test_serialize_slice_of_zst() {
+    let v = [A(), A()];
+    let res = to_vec(&v[..]);
+    assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+}
+
+#[test]
+fn test_serialize_slice_of_unit_type() {
+    let v = [(); 5];
+    let res = to_vec(&v[..]);
+    assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+}
+
+#[test]
+fn test_serialize_empty_slice_of_unit_type() {
+    let v: &[()] = &[];
+    let res = to_vec(v);
+    assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+}
+
+#[test]
+fn test_serialize_boxed_slice_of_unit_type() {
+    let v: Box<[()]> = vec![(), (), ()].into_boxed_slice();
+    let res = to_vec(&v);
+    assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+}
+
+#[test]
+fn test_serialize_cow_slice_of_unit_type() {
+    let v: Cow<'_, [()]> = Cow::Borrowed(&[(), (), ()]);
     let res = to_vec(&v);
     assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
 }
@@ -147,4 +182,11 @@ fn test_serialize_non_zst() {
     let v = vec![B(1)];
     let res = to_vec(&v);
     assert!(res.is_ok());
+}
+
+#[test]
+fn test_serialize_slice_of_non_zst() {
+    let v = [B(1), B(2)];
+    let res = to_vec(&v[..]);
+    assert_eq!(res.unwrap(), vec![2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]);
 }
