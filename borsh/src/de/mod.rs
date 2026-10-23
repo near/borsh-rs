@@ -31,6 +31,8 @@ const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
 
 #[cfg(feature = "de_strict_order")]
 const ERROR_WRONG_ORDER_OF_KEYS: &str = "keys were not serialized in ascending order";
+#[cfg(all(feature = "de_strict_order", feature = "indexmap"))]
+const ERROR_DUPLICATE_KEYS: &str = "duplicate keys were encountered during deserialization";
 
 /// A data-structure that can be de-serialized from binary format by NBOR.
 pub trait BorshDeserialize: Sized {
@@ -456,6 +458,17 @@ impl BorshDeserialize for bson::oid::ObjectId {
 #[cfg(feature = "indexmap")]
 // Taken from https://github.com/indexmap-rs/indexmap/blob/dd06e5773e4f91748396c67d00c83637f5c0dd49/src/borsh.rs#L39
 // license: MIT OR Apache-2.0
+/// Entries are inserted in the order they appear in the input, so the
+/// insertion (iteration) order written by [`BorshSerialize`](crate::BorshSerialize)
+/// is restored on deserialization.
+///
+/// Unlike `HashMap`/`BTreeMap`, the order of keys is **not** checked, even with the
+/// **de_strict_order** feature: any order is a valid encoding, and the
+/// encoding of `IndexMap` is not canonical (see its `BorshSerialize` impl).
+///
+/// With **de_strict_order** enabled, input containing a duplicate key is
+/// rejected with [`ErrorKind::InvalidData`]. Without it, a later duplicate
+/// overwrites the value of the earlier one, which keeps its original position.
 impl<K, V, S> BorshDeserialize for indexmap::IndexMap<K, V, S>
 where
     K: BorshDeserialize + Eq + core::hash::Hash,
@@ -466,13 +479,31 @@ where
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         check_zst::<K>()?;
         let vec = <Vec<(K, V)>>::deserialize_reader(reader)?;
-        Ok(vec.into_iter().collect::<indexmap::IndexMap<K, V, S>>())
+        #[cfg(feature = "de_strict_order")]
+        let len = vec.len();
+        let map = vec.into_iter().collect::<indexmap::IndexMap<K, V, S>>();
+        #[cfg(feature = "de_strict_order")]
+        if map.len() != len {
+            return Err(Error::new(ErrorKind::InvalidData, ERROR_DUPLICATE_KEYS));
+        }
+        Ok(map)
     }
 }
 
 #[cfg(feature = "indexmap")]
 // Taken from https://github.com/indexmap-rs/indexmap/blob/dd06e5773e4f91748396c67d00c83637f5c0dd49/src/borsh.rs#L75
 // license: MIT OR Apache-2.0
+/// Items are inserted in the order they appear in the input, so the
+/// insertion (iteration) order written by [`BorshSerialize`](crate::BorshSerialize)
+/// is restored on deserialization.
+///
+/// Unlike `HashSet`/`BTreeSet`, the order of items is **not** checked, even with the
+/// **de_strict_order** feature: any order is a valid encoding, and the
+/// encoding of `IndexSet` is not canonical (see its `BorshSerialize` impl).
+///
+/// With **de_strict_order** enabled, input containing a duplicate item is
+/// rejected with [`ErrorKind::InvalidData`]. Without it, later duplicates are
+/// ignored.
 impl<T, S> BorshDeserialize for indexmap::IndexSet<T, S>
 where
     T: BorshDeserialize + Eq + core::hash::Hash,
@@ -482,7 +513,14 @@ where
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         check_zst::<T>()?;
         let vec = <Vec<T>>::deserialize_reader(reader)?;
-        Ok(vec.into_iter().collect::<indexmap::IndexSet<T, S>>())
+        #[cfg(feature = "de_strict_order")]
+        let len = vec.len();
+        let set = vec.into_iter().collect::<indexmap::IndexSet<T, S>>();
+        #[cfg(feature = "de_strict_order")]
+        if set.len() != len {
+            return Err(Error::new(ErrorKind::InvalidData, ERROR_DUPLICATE_KEYS));
+        }
+        Ok(set)
     }
 }
 
