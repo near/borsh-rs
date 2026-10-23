@@ -22,7 +22,7 @@ impl GenericsOutput {
         Self {
             overrides: vec![],
             deserialize_visitor: generics::FindTyParams::new(generics),
-            default_visitor: generics::FindTyParams::new(generics),
+            default_visitor: generics::FindTyParams::new_for_default(generics),
         }
     }
     fn extend(self, where_clause: &mut syn::WhereClause, cratename: &Path) {

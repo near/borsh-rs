@@ -82,6 +82,7 @@ pub struct FindTyParams {
     associated_type_params_usage: HashMap<Ident, Vec<Type>>,
 
     include_phantom_data: bool,
+    skip_default_container_elements: bool,
 }
 
 fn ungroup(mut ty: &Type) -> &Type {
@@ -109,8 +110,15 @@ impl FindTyParams {
             relevant_type_params: HashSet::new(),
             associated_type_params_usage: HashMap::new(),
             include_phantom_data: false,
+            skip_default_container_elements: false,
         }
     }
+    pub fn new_for_default(generics: &Generics) -> Self {
+        let mut find = Self::new(generics);
+        find.skip_default_container_elements = true;
+        find
+    }
+
     pub fn process_for_bounds(self) -> Vec<Type> {
         let relevant_type_params = self.relevant_type_params;
         let associated_type_params_usage = self.associated_type_params_usage;
@@ -156,6 +164,7 @@ impl FindTyParams {
             relevant_type_params: HashSet::new(),
             associated_type_params_usage: HashMap::new(),
             include_phantom_data: false,
+            skip_default_container_elements: false,
         }
     }
 
@@ -252,6 +261,25 @@ impl FindTyParams {
 
     fn visit_path(&mut self, path: &Path) {
         if let Some(seg) = path.segments.last() {
+            if self.skip_default_container_elements {
+                let skipped_arguments = match seg.ident.to_string().as_str() {
+                    "Vec" | "Option" => 1,
+                    "HashMap" | "BTreeMap" => 2,
+                    _ => 0,
+                };
+                if skipped_arguments != 0 {
+                    // These collections implement Default without bounds on their elements.
+                    // Extra parameters, such as a HashMap's hasher, still need bounds.
+                    if let PathArguments::AngleBracketed(arguments) = &seg.arguments {
+                        for argument in arguments.args.iter().skip(skipped_arguments) {
+                            if let GenericArgument::Type(ty) = argument {
+                                self.visit_type(ty);
+                            }
+                        }
+                        return;
+                    }
+                }
+            }
             if seg.ident == "PhantomData" && !self.include_phantom_data {
                 // Hardcoded exception, because PhantomData<T> implements
                 // Serialize and Deserialize and Schema whether or not T implements it.

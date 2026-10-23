@@ -8,6 +8,14 @@ Generally, `BorshDeserialize` adds `borsh::de::BorshDeserialize` bound to any ty
 found in item's fields and `core::default::Default` bound to any type parameter found
 in item's skipped fields.
 
+The element type parameters of skipped `Vec`, `Option`, `HashMap`, and `BTreeMap`
+fields do not receive `Default` bounds: these collections can be empty without
+constructing their elements. Additional parameters, such as a `HashMap`'s hasher,
+still receive `Default` bounds. These exceptions match the final identifier in a
+type path, including qualified paths; a custom type with one of these names is
+treated the same way. Use explicit `#[borsh(bound(deserialize = "..."))]`
+to override inferred bounds when needed (see the field-level attribute below).
+
 ```rust
 use borsh::BorshDeserialize;
 
