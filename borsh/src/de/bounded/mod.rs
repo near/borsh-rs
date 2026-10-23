@@ -27,6 +27,16 @@ pub trait BorshDeserializeBounded: Sized {
     /// `size_of::<Self>()` is charged by the entry points, or by the allocation that holds it.
     fn deserialize_bounded<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self>;
 
+    /// Same as [`from_slice_bounded`].
+    fn try_from_slice_bounded(v: &[u8], budget: &mut Budget) -> Result<Self> {
+        from_slice_bounded(v, budget)
+    }
+
+    /// Same as [`from_reader_bounded`].
+    fn try_from_reader_bounded<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        from_reader_bounded(reader, budget)
+    }
+
     /// Reads `len` elements in one go into a vector the caller has already charged for.
     /// `None` must leave the reader untouched.
     #[inline]
@@ -315,6 +325,29 @@ mod tests {
         let result = from_slice_bounded::<Vec<u8>>(&claims_100, &mut budget);
         assert_exceeded(result.map(drop), limit, 100, 8);
         assert_eq!(budget.used(), 4 * (root + 3) + root);
+    }
+
+    #[test]
+    fn trait_methods_match_the_entry_points() {
+        type Outcome = (core::result::Result<Vec<u8>, (ErrorKind, String)>, usize);
+        fn run(decode: impl FnOnce(&mut Budget) -> Result<Vec<u8>>) -> Outcome {
+            let mut budget = Budget::new(size_of::<Vec<u8>>() + 10);
+            let result = decode(&mut budget).map_err(|err| (err.kind(), err.to_string()));
+            (result, budget.used())
+        }
+        let input = [3, 0, 0, 0, 1, 2, 3, 0];
+        let claims_100 = 100u32.to_le_bytes();
+        // Exact input, trailing bytes, and a length over the limit.
+        for input in [&input[..7], &input[..], &claims_100[..]] {
+            assert_eq!(
+                run(|budget| Vec::<u8>::try_from_slice_bounded(input, budget)),
+                run(|budget| from_slice_bounded::<Vec<u8>>(input, budget))
+            );
+            assert_eq!(
+                run(|budget| Vec::<u8>::try_from_reader_bounded(&mut &input[..], budget)),
+                run(|budget| from_reader_bounded::<_, Vec<u8>>(&mut &input[..], budget))
+            );
+        }
     }
 
     #[test]
