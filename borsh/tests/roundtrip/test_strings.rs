@@ -1,6 +1,8 @@
 use alloc::string::String;
 use borsh::{from_slice, to_vec};
 
+use crate::common_macro::assert_bounded_parity;
+
 /// Verifies serialisation and deserialisation of the given string.
 ///
 /// Returns serialised representation of the string.
@@ -11,6 +13,7 @@ fn check_string(value: &str) -> alloc::vec::Vec<u8> {
     assert_eq!(buf, to_vec(&String::from(value)).unwrap());
     // Check round trip.
     assert_eq!(value, from_slice::<String>(&buf).unwrap());
+    assert_bounded_parity::<String>(&buf);
     buf
 }
 

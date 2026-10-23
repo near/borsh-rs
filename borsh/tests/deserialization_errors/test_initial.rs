@@ -1,5 +1,7 @@
 use borsh::from_slice;
 
+use crate::common_macro::assert_bounded_parity;
+
 #[cfg(feature = "derive")]
 use borsh::BorshDeserialize;
 
@@ -77,6 +79,7 @@ fn test_extra_bytes() {
         from_slice::<Vec<u8>>(&bytes).unwrap_err().to_string(),
         "Not all bytes read"
     );
+    assert_bounded_parity::<Vec<u8>>(&bytes);
 }
 
 #[test]
@@ -87,6 +90,7 @@ fn test_invalid_bool() {
             from_slice::<bool>(&bytes).unwrap_err().to_string(),
             format!("Invalid bool representation: {}", i)
         );
+        assert_bounded_parity::<bool>(&bytes);
     }
 }
 
@@ -127,6 +131,7 @@ fn test_invalid_length() {
         from_slice::<Vec<u64>>(&bytes).unwrap_err().to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
     );
+    assert_bounded_parity::<Vec<u64>>(&bytes);
 }
 
 #[test]
@@ -136,6 +141,7 @@ fn test_invalid_length_string() {
         from_slice::<String>(&bytes).unwrap_err().to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
     );
+    assert_bounded_parity::<String>(&bytes);
 }
 
 #[test]
@@ -145,6 +151,7 @@ fn test_non_utf_string() {
         from_slice::<String>(&bytes).unwrap_err().to_string(),
         "invalid utf-8 sequence of 1 bytes from index 0"
     );
+    assert_bounded_parity::<String>(&bytes);
 }
 
 #[test]
@@ -154,6 +161,7 @@ fn test_nan_float() {
         from_slice::<f32>(&bytes).unwrap_err().to_string(),
         "For portability reasons we do not allow to deserialize NaNs."
     );
+    assert_bounded_parity::<f32>(&bytes);
 }
 
 #[test]
@@ -175,6 +183,7 @@ fn test_evil_bytes_string_extra() {
         from_slice::<String>(&bytes).unwrap_err().to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
     );
+    assert_bounded_parity::<String>(&bytes);
 }
 
 #[test]
@@ -186,6 +195,7 @@ fn test_zero_on_nonzero_integer_u8() {
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
     );
+    assert_bounded_parity::<core::num::NonZeroU8>(bytes);
 }
 
 #[test]
@@ -197,6 +207,7 @@ fn test_zero_on_nonzero_integer_u32() {
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
     );
+    assert_bounded_parity::<core::num::NonZeroU32>(bytes);
 }
 
 #[test]
@@ -208,6 +219,7 @@ fn test_zero_on_nonzero_integer_i64() {
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
     );
+    assert_bounded_parity::<core::num::NonZeroI64>(bytes);
 }
 
 #[test]
@@ -219,6 +231,7 @@ fn test_zero_on_nonzero_integer_usize() {
             .to_string(),
         ERROR_INVALID_ZERO_VALUE
     );
+    assert_bounded_parity::<core::num::NonZeroUsize>(bytes);
 }
 
 #[test]
@@ -230,4 +243,5 @@ fn test_zero_on_nonzero_integer_missing_byte() {
             .to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
     );
+    assert_bounded_parity::<core::num::NonZeroUsize>(bytes);
 }
