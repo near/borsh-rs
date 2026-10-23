@@ -86,7 +86,7 @@ impl Budget {
 
     #[cold]
     #[inline(never)]
-    fn exceeded(&self, requested: usize) -> Error {
+    pub(super) fn exceeded(&self, requested: usize) -> Error {
         let exceeded = LimitExceeded {
             limit: self.limit,
             requested,

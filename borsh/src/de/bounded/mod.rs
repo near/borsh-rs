@@ -76,8 +76,8 @@ where
     if len == 0 {
         return Ok(Vec::new());
     }
-    // Only fails on 16-bit targets, where the charge below then fails as an overflow.
-    let n = usize::try_from(len).unwrap_or(usize::MAX);
+    // Only fails on 16-bit targets.
+    let n = usize::try_from(len).map_err(|_| budget.exceeded(usize::MAX))?;
     budget.charge_array::<T>(n)?;
     budget.charge_checked(extra(n))?;
     if let Some(vec) = T::vec_from_reader_bounded(len, reader)? {
