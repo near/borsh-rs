@@ -30,7 +30,7 @@ pub mod ser;
 pub use de::BorshDeserialize;
 pub use de::{from_reader, from_slice};
 #[cfg(bounded)]
-pub use de::{from_reader_bounded, from_slice_bounded, BorshDeserializeBounded};
+pub use de::{from_reader_bounded, from_slice_bounded, BorshDeserializeBounded, Budget};
 #[cfg(feature = "unstable__schema")]
 pub use schema::BorshSchema;
 #[cfg(feature = "unstable__schema")]
