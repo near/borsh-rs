@@ -181,9 +181,7 @@ mod bounded_helpers {
         }
         #[cfg(feature = "std")]
         {
-            let exceeded = err
-                .get_ref()?
-                .downcast_ref::<borsh::error::LimitExceeded>()?;
+            let exceeded = borsh::error::LimitExceeded::from_io_error(err)?;
             Some((exceeded.limit, exceeded.requested, exceeded.remaining))
         }
         #[cfg(not(feature = "std"))]

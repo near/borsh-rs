@@ -107,8 +107,8 @@ impl Budget {
 /// The error of a charge that does not fit the remaining [`Budget`].
 ///
 /// It reaches the caller as an [`io::Error`](crate::io::Error) of kind
-/// [`OutOfMemory`](crate::io::ErrorKind::OutOfMemory). With the `std` feature, it is that
-/// error's inner error:
+/// [`OutOfMemory`](crate::io::ErrorKind::OutOfMemory). With the `std` feature,
+/// [`from_io_error`](LimitExceeded::from_io_error) gets it back:
 ///
 /// ```
 /// use borsh::error::LimitExceeded;
@@ -121,10 +121,7 @@ impl Budget {
 /// let err = borsh::from_slice_bounded::<String>(&input, &mut Budget::new(limit)).unwrap_err();
 /// # #[cfg(feature = "std")]
 /// # {
-/// let exceeded = err
-///     .get_ref()
-///     .and_then(|inner| inner.downcast_ref::<LimitExceeded>())
-///     .unwrap();
+/// let exceeded = LimitExceeded::from_io_error(&err).unwrap();
 /// assert_eq!((exceeded.limit, exceeded.requested, exceeded.remaining), (limit, 5, 4));
 /// # }
 /// ```
@@ -142,6 +139,14 @@ pub struct LimitExceeded {
     pub requested: usize,
     /// The bytes that were still available when the charge failed.
     pub remaining: usize,
+}
+
+impl LimitExceeded {
+    /// The limit error inside `err`, or `None` if `err` is not one.
+    #[cfg(feature = "std")]
+    pub fn from_io_error(err: &Error) -> Option<&LimitExceeded> {
+        err.get_ref()?.downcast_ref()
+    }
 }
 
 impl fmt::Display for LimitExceeded {
@@ -245,5 +250,21 @@ mod tests {
         let mut budget = Budget::new(100);
         budget.charge(40).unwrap();
         assert_eq!(budget.charge(61).unwrap_err().to_string(), expected);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn from_io_error_finds_only_limit_errors() {
+        let err = Budget::new(0).charge(1).unwrap_err();
+        let expected = LimitExceeded {
+            limit: 0,
+            requested: 1,
+            remaining: 0,
+        };
+        assert_eq!(LimitExceeded::from_io_error(&err), Some(&expected));
+        let message = Error::new(ErrorKind::OutOfMemory, "x");
+        assert_eq!(LimitExceeded::from_io_error(&message), None);
+        let kind_only = Error::from(ErrorKind::OutOfMemory);
+        assert_eq!(LimitExceeded::from_io_error(&kind_only), None);
     }
 }

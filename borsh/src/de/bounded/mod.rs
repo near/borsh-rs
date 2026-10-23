@@ -289,11 +289,7 @@ mod tests {
             remaining,
         };
         #[cfg(feature = "std")]
-        assert_eq!(
-            err.get_ref()
-                .and_then(|inner| inner.downcast_ref::<LimitExceeded>()),
-            Some(&expected)
-        );
+        assert_eq!(LimitExceeded::from_io_error(&err), Some(&expected));
         #[cfg(not(feature = "std"))]
         assert_eq!(err.to_string(), expected.to_string());
     }
