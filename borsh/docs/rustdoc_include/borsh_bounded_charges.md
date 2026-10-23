@@ -7,8 +7,7 @@ implementation charges it before it allocates. A charge that does not fit fails 
 with an error of kind `OutOfMemory` (see [`LimitExceeded`](crate::error::LimitExceeded)).
 
 ```rust
-use borsh::de::Budget;
-use borsh::{from_slice_bounded, to_vec};
+use borsh::{from_slice_bounded, to_vec, Budget};
 use core::mem::size_of;
 
 let encoded = to_vec(&vec![String::from("abc"); 3]).unwrap();
@@ -70,8 +69,7 @@ plus the allocation charges below.
 Worked example on a 64-bit target:
 
 ```rust
-use borsh::de::Budget;
-use borsh::{from_slice_bounded, to_vec, BorshDeserializeBounded, BorshSerialize};
+use borsh::{from_slice_bounded, to_vec, BorshDeserializeBounded, BorshSerialize, Budget};
 
 fn charged<T: BorshSerialize + BorshDeserializeBounded>(value: &T) -> usize {
     let input = to_vec(value).unwrap();
@@ -120,9 +118,8 @@ already read. An implementation must:
   allocated capacity.
 
 ```rust
-use borsh::de::Budget;
 use borsh::io::{ErrorKind, Read, Result};
-use borsh::BorshDeserializeBounded;
+use borsh::{BorshDeserializeBounded, Budget};
 
 /// A name, as written and in lowercase.
 #[derive(Debug)]

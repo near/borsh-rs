@@ -11,8 +11,7 @@ use crate::io::{Error, ErrorKind, Result};
 /// that follow each other in one reader. A failed decode keeps the charges it made.
 ///
 /// ```
-/// use borsh::de::Budget;
-/// use borsh::BorshDeserializeBounded;
+/// use borsh::{BorshDeserializeBounded, Budget};
 ///
 /// let input = borsh::to_vec(&(vec![1u32, 2, 3], String::from("abc"))).unwrap();
 /// let mut reader = &input[..];
@@ -112,8 +111,8 @@ impl Budget {
 /// error's inner error:
 ///
 /// ```
-/// use borsh::de::Budget;
 /// use borsh::error::LimitExceeded;
+/// use borsh::Budget;
 ///
 /// // Claims a string of 5 bytes.
 /// let input = 5u32.to_le_bytes();

@@ -211,8 +211,7 @@ where
 ///
 /// # Example
 /// ```
-/// use borsh::de::Budget;
-/// use borsh::{from_slice_bounded, to_vec};
+/// use borsh::{from_slice_bounded, to_vec, Budget};
 /// use core::mem::size_of;
 ///
 /// let encoded = to_vec(&vec![1u64, 2, 3]).unwrap();
@@ -239,8 +238,7 @@ pub fn from_slice_bounded<T: BorshDeserializeBounded>(v: &[u8], budget: &mut Bud
 ///
 /// # Example
 /// ```
-/// use borsh::de::Budget;
-/// use borsh::{from_reader_bounded, to_vec};
+/// use borsh::{from_reader_bounded, to_vec, Budget};
 /// use core::mem::size_of;
 ///
 /// let encoded = to_vec(&String::from("hello")).unwrap();

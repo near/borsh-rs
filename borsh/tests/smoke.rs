@@ -37,8 +37,7 @@ fn test_to_writer() {
 #[cfg(bounded)]
 #[test]
 fn test_from_slice_bounded() {
-    use borsh::de::Budget;
-    use borsh::{from_reader_bounded, from_slice_bounded, BorshDeserializeBounded};
+    use borsh::{from_reader_bounded, from_slice_bounded, BorshDeserializeBounded, Budget};
     // Only checks that these paths exist.
     #[allow(unused_imports)]
     use borsh::{de::EnumExtBounded, error::LimitExceeded};
