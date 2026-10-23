@@ -2,7 +2,10 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{Fields, ItemStruct, Path};
 
-use crate::internals::{attributes::item, deserialize, generics};
+use crate::internals::{
+    attributes::{item, BoundType},
+    deserialize, generics, zero_bytes,
+};
 
 pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2> {
     let name = &input.ident;
@@ -36,11 +39,15 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
         }
     };
     generics_output.extend(&mut where_clause, &cratename);
+    let encodes_to_zero_bytes =
+        zero_bytes::encodes_to_zero_bytes(&input.fields, &cratename, BoundType::Deserialize)?;
 
     if let Some(method_ident) = item::contains_initialize_with(&input.attrs)? {
         Ok(quote! {
             #[automatically_derived]
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
+                const ENCODES_TO_ZERO_BYTES: bool = #encodes_to_zero_bytes;
+
                 fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
                     let mut return_value = #return_value;
                     return_value.#method_ident();
@@ -52,6 +59,8 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
         Ok(quote! {
             #[automatically_derived]
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
+                const ENCODES_TO_ZERO_BYTES: bool = #encodes_to_zero_bytes;
+
                 fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
                     Ok(#return_value)
                 }
@@ -262,6 +271,56 @@ mod tests {
         })
         .unwrap();
         let actual = process(&item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn zero_bytes_unit_struct() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A;
+        })
+        .unwrap();
+
+        let actual = process(&item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn zero_bytes_all_fields_skipped() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(skip)]
+                x: u64,
+            }
+        })
+        .unwrap();
+
+        let actual = process(&item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn zero_bytes_recursive_through_empty_array() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                x: Box<()>,
+                y: [Box<A>; 0],
+            }
+        })
+        .unwrap();
+
+        let actual = process(&item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn zero_bytes_recursive_through_self() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A(Box<()>, Option<Box<Self>>);
+        })
+        .unwrap();
+
+        let actual = process(&item_struct, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 }

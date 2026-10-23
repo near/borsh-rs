@@ -23,6 +23,8 @@ cargo test --features ascii,unstable__schema 'schema::test_ascii_strings'
 ########## features = ["rc"] group
 cargo test --features rc 'roundtrip::test_rc'
 cargo test --features rc,unstable__schema 'schema::test_rc'
+########## zero-sized and zero-encoded types, with every optional collection and wrapper
+cargo test --features rc,indexmap,derive 'zero_sized_types'
 ########## features = ["indexmap"] group
 cargo test --features indexmap 'roundtrip::test_indexmap'
 # checking with `derive` too just for the sake of redundancy https://github.com/near/borsh-rs/pull/346
@@ -50,6 +52,9 @@ cargo test --no-default-features --features ascii,unstable__schema 'schema::test
 ########## features = ["rc"] group
 cargo test --no-default-features --features rc 'roundtrip::test_rc'
 cargo test --no-default-features --features rc,unstable__schema 'schema::test_rc'
+########## zero-sized and zero-encoded types, with every optional collection and wrapper
+cargo test --no-default-features --features rc,indexmap,derive 'zero_sized_types'
+cargo test --no-default-features --features hashbrown,rc,indexmap,derive 'zero_sized_types'
 ########## features = ["indexmap"] group
 cargo test --no-default-features --features indexmap 'roundtrip::test_indexmap'
 # checking with `derive` too just for the sake of redundancy https://github.com/near/borsh-rs/pull/346
