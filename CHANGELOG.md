@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0](https://github.com/near/borsh-rs/compare/borsh-v1.8.1...borsh-v1.9.0) - 2026-11-04
+
+### Added
+
+- add BorshSchema for bytes types ([#383](https://github.com/near/borsh-rs/pull/383))
+
+### Fixed
+
+- avoid Default bounds on skipped collection elements ([#388](https://github.com/near/borsh-rs/pull/388))
+
+### Other
+
+- make isize/usize snapshots pointer-width independent ([#382](https://github.com/near/borsh-rs/pull/382))
+
 ## [1.8.1](https://github.com/near/borsh-rs/compare/borsh-v1.8.0...borsh-v1.8.1) - 2026-08-26
 
 ### Fixed
