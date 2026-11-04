@@ -38,7 +38,7 @@
   Pulls in [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet) when no `std` is available.
   This feature is set to be mutually exclusive with **std** feature.
 * **bytes** -
-  Gates implementation of [BorshSerialize] and [BorshDeserialize]
+  Gates implementation of [BorshSerialize], [BorshDeserialize], [BorshSchema]
   for [Bytes](https://docs.rs/bytes/1.5.0/bytes/struct.Bytes.html) and [BytesMut](https://docs.rs/bytes/1.5.0/bytes/struct.BytesMut.html).
   In `no_std` builds this keeps `bytes` in `no_std` mode; when **std** is enabled,
   `bytes/std` is enabled as well.

@@ -91,9 +91,39 @@ jobs:
     - name: run cargo doc
       run: RUSTDOCFLAGS="-D warnings" cargo doc --features derive,unstable__schema
 
+
+  semver-checks:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: std
+            feature-group: default-features
+            features: derive,rc,de_strict_order,ascii,bytes,indexmap,bson,uuid
+          - name: no_std-hashbrown
+            feature-group: only-explicit-features
+            features: hashbrown,derive,rc,de_strict_order,ascii,bytes,indexmap,bson,uuid
+
+    env:
+      # NOTE: Workflow-level `-D warnings` would also apply to the rustdoc build of the crates.io 
+      # baseline, which can break new lints
+      RUSTFLAGS: ''
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Manual `cargo-semver-checks` - ${{ matrix.name }}
+        uses: obi1kenobi/cargo-semver-checks-action@v2
+        with:
+          package: borsh
+          feature-group: ${{ matrix.feature-group }}
+          features: ${{ matrix.features }}
+          release-type: minor
+
   release-plz:
     runs-on: ubuntu-latest
-    needs: [tests, clippy, cargo-fmt]
+    needs: [tests, clippy, cargo-fmt, semver-checks]
     if: github.ref == 'refs/heads/master'
     steps:
       - name: Checkout repository
