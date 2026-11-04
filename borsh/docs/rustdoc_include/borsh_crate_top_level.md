@@ -68,6 +68,14 @@
   and [BorshSchema]
   for [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
 
+# Lossy encodings
+
+* [`SocketAddrV6`](core::net::SocketAddrV6) (and the `V6` variant of
+  [`SocketAddr`](core::net::SocketAddr)) is encoded as address octets and port only.
+  `flowinfo` and `scope_id` are dropped on serialization and decode as `0`, so a value such as
+  the link-local `[fe80::1%2]:8080` does not round-trip. Serialize those fields separately if
+  they matter to you.
+
 # Shortcuts
 
 Following pages are highlighted here just to give reader a chance at learning that
