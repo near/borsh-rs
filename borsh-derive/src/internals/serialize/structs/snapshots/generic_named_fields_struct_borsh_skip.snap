@@ -7,6 +7,9 @@ impl<K, V, U> borsh::ser::BorshSerialize for G<K, V, U>
 where
     U: borsh::ser::BorshSerialize,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = borsh::__private::encodes_to_zero_bytes_ser::<
+        U,
+    >();
     fn serialize<__W: borsh::io::Write>(
         &self,
         writer: &mut __W,

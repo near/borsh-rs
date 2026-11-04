@@ -4,7 +4,7 @@ use syn::{Fields, ItemStruct, Path};
 
 use crate::internals::{
     attributes::{field, BoundType},
-    generics, serialize,
+    generics, serialize, zero_bytes,
 };
 
 pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2> {
@@ -32,10 +32,14 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
         Fields::Unit => {}
     }
     generics_output.extend(&mut where_clause, &cratename);
+    let encodes_to_zero_bytes =
+        zero_bytes::encodes_to_zero_bytes(&input.fields, &cratename, BoundType::Serialize)?;
 
     Ok(quote! {
         #[automatically_derived]
         impl #impl_generics #cratename::ser::BorshSerialize for #name #ty_generics #where_clause {
+            const ENCODES_TO_ZERO_BYTES: bool = #encodes_to_zero_bytes;
+
             fn serialize<__W: #cratename::io::Write>(&self, writer: &mut __W) -> ::core::result::Result<(), #cratename::io::Error> {
                 #body
                 Ok(())
@@ -299,5 +303,55 @@ mod tests {
             Err(err) => err,
         };
         local_insta_assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn zero_bytes_unit_struct() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A;
+        })
+        .unwrap();
+
+        let actual = process(&item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn zero_bytes_all_fields_skipped() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(skip)]
+                x: u64,
+            }
+        })
+        .unwrap();
+
+        let actual = process(&item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn zero_bytes_recursive_through_empty_array() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                x: Box<()>,
+                y: [Box<A>; 0],
+            }
+        })
+        .unwrap();
+
+        let actual = process(&item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn zero_bytes_recursive_through_self() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A(Box<()>, Option<Box<Self>>);
+        })
+        .unwrap();
+
+        let actual = process(&item_struct, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 }

@@ -5,6 +5,7 @@ mod generics;
 #[cfg(feature = "schema")]
 pub mod schema;
 pub mod serialize;
+mod zero_bytes;
 
 pub mod cratename;
 
