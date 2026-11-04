@@ -8,7 +8,6 @@ where
     V: Value,
     K: borsh::de::BorshDeserialize,
     V: borsh::de::BorshDeserialize,
-    U: core::default::Default,
 {
     fn deserialize_reader<__R: borsh::io::Read>(
         reader: &mut __R,
@@ -23,7 +22,6 @@ where
     V: Value,
     K: borsh::de::BorshDeserialize,
     V: borsh::de::BorshDeserialize,
-    U: core::default::Default,
 {
     fn deserialize_variant<__R: borsh::io::Read>(
         reader: &mut __R,
