@@ -47,7 +47,15 @@
   for [ObjectId](https://docs.rs/bson/2.9.0/bson/oid/struct.ObjectId.html).
 * **indexmap** -
   Gates implementation of [BorshSerialize] and [BorshDeserialize]
-  for [indexmap::IndexMap](https://docs.rs/indexmap/2.8.0/indexmap/map/struct.IndexMap.html) and [IndexSet](https://docs.rs/indexmap/2.8.0/indexmap/set/struct.IndexSet.html)
+  for [indexmap::IndexMap](https://docs.rs/indexmap/2.8.0/indexmap/map/struct.IndexMap.html) and [IndexSet](https://docs.rs/indexmap/2.8.0/indexmap/set/struct.IndexSet.html).
+
+  Unlike the other map/set implementations, these are serialized in insertion
+  (iteration) order, which is restored on deserialization. Their encoding is
+  therefore **not canonical**: two `IndexMap`s/`IndexSet`s which are equal with
+  respect to [PartialEq] (which ignores order) serialize to different bytes if
+  their entries were inserted in a different order. Sort them first
+  (`sort_keys`/`sort`), or use a [BTreeMap](std::collections::BTreeMap)/[BTreeSet](std::collections::BTreeSet),
+  if the serialized bytes are hashed, signed or compared.
 * **ascii** -
   Gates implementation of [BorshSerialize], [BorshDeserialize], [BorshSchema] for
   types from [ascii](https://docs.rs/ascii/1.1.0/ascii/) crate.
@@ -59,6 +67,12 @@
   and [Ord] for btree ones. Deserialization emits error otherwise.
 
   If this feature is not enabled, it is possible that two different byte slices could deserialize into the same `HashMap`/`HashSet` object.
+
+  When combined with **indexmap**, this feature also makes deserialization of
+  `IndexMap`/`IndexSet` reject input containing duplicate keys. Their key order is
+  not checked, as insertion order is part of their value (see **indexmap** above),
+  so different byte slices can still deserialize into `IndexMap`s/`IndexSet`s which are
+  equal with respect to [PartialEq].
 
 ### Config aliases
 
