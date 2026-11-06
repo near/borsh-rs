@@ -65,7 +65,7 @@ up with.
 |---|---|---|
 | integers, `f32`, `f64`, `bool`, `NonZero*`, `()`, `RangeFull`, `core::net` types | 0 | exact |
 | `Vec<T>`, `String`, `Box<[T]>`, `Box<str>` | `n·size_of::<T>()` (1 byte per element of strings) | exact |
-| `Box<T>` of a sized `T` | `size_of::<T>()`, after `T` is decoded | exact for the standard library's conversions |
+| `Box<T>` of a sized `T` | `size_of::<T>()`, before `T` is decoded | exact for the standard library's conversions |
 
 Worked example on a 64-bit target:
 

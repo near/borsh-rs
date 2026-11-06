@@ -111,12 +111,11 @@ pub fn cases() -> Vec<Case> {
             5000,
             single(5000),
         ),
-        // The box is charged after its contents, so the box charge is the one that fails.
         case(
             "Box<Vec<u8>> of 10".into(),
             &Box::new(vec![7u8; 10]),
             10 + size_of::<Vec<u8>>(),
-            Some((size_of::<Vec<u8>>(), size_of::<Vec<u8>>() - 1)),
+            single(10),
         ),
         case(
             "empty Box<Vec<u8>>".into(),

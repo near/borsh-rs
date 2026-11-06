@@ -3,7 +3,7 @@
 //! `assert_bounded_parity` in the tests catches drift.
 
 use core::convert::TryFrom;
-use core::mem::{size_of, size_of_val};
+use core::mem::size_of;
 
 use crate::__private::maybestd::{
     borrow::{Borrow, ToOwned},
@@ -187,13 +187,13 @@ where
     T::Owned: BorshDeserializeBounded,
 {
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
-        let owned = T::Owned::deserialize_bounded_alloc(reader, budget)?;
-        // Charges the box of a sized `T`; the box of an unsized one reuses the buffer `owned`
-        // was charged for. On stable Rust only sized types have thin pointers.
+        // A sized `T` gets its own box, charged before decoding so recursion pays as it goes;
+        // an unsized one reuses the buffer `T::Owned` charged. On stable Rust only sized types
+        // have thin pointers.
         if size_of::<*const T>() == size_of::<*const ()>() {
-            budget.charge(size_of_val(<U as Borrow<T>>::borrow(&owned)))?;
+            budget.charge(size_of::<U>())?;
         }
-        Ok(owned.into())
+        Ok(T::Owned::deserialize_bounded_alloc(reader, budget)?.into())
     }
 }
 
