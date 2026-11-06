@@ -20,13 +20,13 @@ assert!(from_slice_bounded::<Vec<String>>(&encoded, &mut Budget::new(limit - 1))
 
 The trait is implemented for the types listed in [What is charged](#what-is-charged). A
 type without an implementation cannot be decoded bounded: that is a compile error, never a
-silent fallback to plain decoding. `BorshDeserialize` is not a supertrait, and plain
-decoding is unchanged.
+silent fallback to plain decoding. `BorshDeserialize` is not a supertrait.
 
 # How charging works
 
 - A charge is never refunded.
-- The limit caps the total of all charges made against one budget, not the peak memory.
+- The limit caps the total of all charges made against one budget, not the peak memory:
+  copying a growing buffer can briefly need almost twice the charged bytes.
 - A collection charges for all its elements as soon as it has read its length prefix, so a
   length that cannot fit fails before any element is read.
 - Charges only depend on the input, never on how much of the budget is left.
