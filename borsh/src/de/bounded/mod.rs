@@ -187,9 +187,8 @@ where
     T::Owned: BorshDeserializeBounded,
 {
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
-        // A sized `T` gets its own box, charged before decoding so recursion pays as it goes;
-        // an unsized one reuses the buffer `T::Owned` charged. On stable Rust only sized types
-        // have thin pointers.
+        // Charge first so recursion pays as it goes. On stable Rust only sized types have thin
+        // pointers; an unsized `T` reuses the buffer `T::Owned` charged.
         if size_of::<*const T>() == size_of::<*const ()>() {
             budget.charge(size_of::<U>())?;
         }
