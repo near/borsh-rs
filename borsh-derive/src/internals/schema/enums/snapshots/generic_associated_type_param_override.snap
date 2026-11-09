@@ -15,13 +15,11 @@ where
     V: borsh::BorshSchema,
 {
     fn declaration() -> borsh::schema::Declaration {
-        let params = borsh::__private::maybestd::vec![
-            < T as borsh::BorshSchema > ::declaration(), < K as borsh::BorshSchema >
-            ::declaration(), < < K as TraitName > ::Associated as borsh::BorshSchema >
-            ::declaration(), < V as borsh::BorshSchema > ::declaration()
-        ];
         borsh::__private::maybestd::format!(
-            r#"{}<{}>"#, "EnumParametrized", params.join(", ")
+            r#"{}<{}>"#, "EnumParametrized", [< T as borsh::BorshSchema >
+            ::declaration(), < K as borsh::BorshSchema > ::declaration(), < < K as
+            TraitName > ::Associated as borsh::BorshSchema > ::declaration(), < V as
+            borsh::BorshSchema > ::declaration()].join(", ")
         )
     }
     fn add_definitions_recursively(

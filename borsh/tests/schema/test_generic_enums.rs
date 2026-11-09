@@ -315,3 +315,23 @@ pub fn generic_enum_with_predicate_bound_referencing_filtered_param() {
         defs
     );
 }
+
+#[test]
+pub fn const_generic_enum() {
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    enum Key<const N: usize> {
+        Raw([u8; N]),
+        Empty,
+    }
+
+    assert_eq!("Key<4>".to_string(), <Key<4>>::declaration());
+    let mut defs = Default::default();
+    <(Key<4>, Key<8>)>::add_definitions_recursively(&mut defs);
+    assert_eq!(
+        Some(&Definition::Struct {
+            fields: Fields::UnnamedFields(vec!["[u8; 8]".to_string()])
+        }),
+        defs.get("Key__Raw<8>")
+    );
+}

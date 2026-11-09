@@ -10,12 +10,9 @@ where
     T::Associated: borsh::BorshSchema,
 {
     fn declaration() -> borsh::schema::Declaration {
-        let params = borsh::__private::maybestd::vec![
-            < V as borsh::BorshSchema > ::declaration(), < T::Associated as
-            borsh::BorshSchema > ::declaration()
-        ];
         borsh::__private::maybestd::format!(
-            r#"{}<{}>"#, "Parametrized", params.join(", ")
+            r#"{}<{}>"#, "Parametrized", [< V as borsh::BorshSchema > ::declaration(), <
+            T::Associated as borsh::BorshSchema > ::declaration()].join(", ")
         )
     }
     fn add_definitions_recursively(

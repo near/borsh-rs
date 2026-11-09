@@ -389,6 +389,21 @@ mod tests {
     }
 
     #[test]
+    fn const_generic_struct() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A<T, const N: usize> {
+                tag: T,
+                bytes: [u8; N],
+            }
+        })
+        .unwrap();
+
+        let actual = process(&item_struct, default_cratename()).unwrap();
+
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
     fn generic_associated_type() {
         let item_struct: ItemStruct = syn::parse2(quote! {
             struct Parametrized<V, T: Debug>

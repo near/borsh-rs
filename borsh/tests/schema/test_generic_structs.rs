@@ -230,3 +230,28 @@ pub fn generic_associated_item3() {
     );
 }
 
+#[test]
+#[allow(non_upper_case_globals)]
+pub fn const_generic_struct() {
+    // Named `params` to check that the derive doesn't shadow it with a local binding.
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Buf<const params: usize>([u8; params]);
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Id<T, const N: usize> {
+        tag: T,
+        bytes: Buf<N>,
+    }
+
+    assert_eq!("Id<u8, 4>".to_string(), <Id<u8, 4>>::declaration());
+    let mut defs = Default::default();
+    <(Id<u8, 4>, Id<u8, 8>)>::add_definitions_recursively(&mut defs);
+    assert_eq!(
+        Some(&Definition::Struct {
+            fields: Fields::UnnamedFields(vec!["[u8; 8]".to_string()])
+        }),
+        defs.get("Buf<8>")
+    );
+}

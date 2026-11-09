@@ -8,10 +8,9 @@ where
     V: borsh::BorshSchema,
 {
     fn declaration() -> borsh::schema::Declaration {
-        let params = borsh::__private::maybestd::vec![
-            < V as borsh::BorshSchema > ::declaration()
-        ];
-        borsh::__private::maybestd::format!(r#"{}<{}>"#, "A", params.join(", "))
+        borsh::__private::maybestd::format!(
+            r#"{}<{}>"#, "A", [< V as borsh::BorshSchema > ::declaration()].join(", ")
+        )
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<

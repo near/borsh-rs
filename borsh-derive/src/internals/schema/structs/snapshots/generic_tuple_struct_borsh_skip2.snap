@@ -9,11 +9,10 @@ where
     V: borsh::BorshSchema,
 {
     fn declaration() -> borsh::schema::Declaration {
-        let params = borsh::__private::maybestd::vec![
-            < K as borsh::BorshSchema > ::declaration(), < V as borsh::BorshSchema >
-            ::declaration()
-        ];
-        borsh::__private::maybestd::format!(r#"{}<{}>"#, "G", params.join(", "))
+        borsh::__private::maybestd::format!(
+            r#"{}<{}>"#, "G", [< K as borsh::BorshSchema > ::declaration(), < V as
+            borsh::BorshSchema > ::declaration()].join(", ")
+        )
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<

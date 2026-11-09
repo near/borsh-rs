@@ -14,12 +14,14 @@ pub mod structs;
 
 struct GenericsOutput {
     params_visitor: generics::FindTyParams,
+    const_params: Vec<Ident>,
 }
 
 impl GenericsOutput {
     fn new(generics: &Generics) -> Self {
         Self {
             params_visitor: generics::FindTyParams::new(generics),
+            const_params: generics.const_params().map(|p| p.ident.clone()).collect(),
         }
     }
     fn result(self, item_name: &str, cratename: &Path) -> (Vec<WherePredicate>, TokenStream2) {
@@ -33,13 +35,19 @@ impl GenericsOutput {
             item_name,
             cratename.clone(),
             self.params_visitor.process_for_bounds(),
+            self.const_params,
         );
 
         (predicates, declaration)
     }
 }
 
-fn declaration(ident_str: &str, cratename: Path, params_for_bounds: Vec<Type>) -> TokenStream2 {
+fn declaration(
+    ident_str: &str,
+    cratename: Path,
+    params_for_bounds: Vec<Type>,
+    const_params: Vec<Ident>,
+) -> TokenStream2 {
     // Generate function that returns the name of the type.
     let mut declaration_params = vec![];
     for type_param in params_for_bounds {
@@ -47,14 +55,20 @@ fn declaration(ident_str: &str, cratename: Path, params_for_bounds: Vec<Type>) -
             <#type_param as #cratename::BorshSchema>::declaration()
         });
     }
+    // Like the length in `[T; N]`, const params are part of the name: `Buf<4>`, `Buf<8>`.
+    for const_param in const_params {
+        declaration_params.push(quote! {
+            #cratename::__private::maybestd::string::ToString::to_string(&#const_param)
+        });
+    }
     if declaration_params.is_empty() {
         quote! {
                 ::core::convert::Into::into(#ident_str)
         }
     } else {
+        // No local binding: it could clash with a const param of the same name.
         quote! {
-                let params = #cratename::__private::maybestd::vec![#(#declaration_params),*];
-                #cratename::__private::maybestd::format!(r#"{}<{}>"#, #ident_str, params.join(", "))
+                #cratename::__private::maybestd::format!(r#"{}<{}>"#, #ident_str, [#(#declaration_params),*].join(", "))
         }
     }
 }
