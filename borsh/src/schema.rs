@@ -264,6 +264,39 @@ pub fn add_definition(
     }
 }
 
+/// Adds a derived struct's definition, then walks its fields once per Rust type. Used by the derive.
+///
+/// Declarations can't end the walk: a cycle back into `T` and another type with the same name, such
+/// as `Signed<v2::Transfer>` after `Signed<v1::Transfer>`, look the same. So the walk is cut on
+/// [`core::any::type_name`] instead. The trait passes only `definitions`, so the names walked so far
+/// are kept there under `"\0walked"`, which no Rust type name or derived declaration contains,
+/// until the outermost call returns.
+#[doc(hidden)]
+pub fn add_struct_definition<T: BorshSchema + ?Sized>(
+    definition: Definition,
+    definitions: &mut BTreeMap<Declaration, Definition>,
+    add_fields_definitions: impl FnOnce(&mut BTreeMap<Declaration, Definition>),
+) {
+    const WALKED: &str = "\0walked";
+    add_definition(T::declaration(), definition, definitions);
+    let outermost = !definitions.contains_key(WALKED);
+    let walked = definitions
+        .entry(WALKED.into())
+        .or_insert(Definition::Tuple {
+            elements: Vec::new(),
+        });
+    let name = core::any::type_name::<T>();
+    if let Definition::Tuple { elements } = walked {
+        if !elements.iter().any(|walked| walked == name) {
+            elements.push(name.into());
+            add_fields_definitions(definitions);
+        }
+    }
+    if outermost {
+        definitions.remove(WALKED);
+    }
+}
+
 /// The declaration and the definition of the type that can be used to (de)serialize Borsh without
 /// the Rust type that produced it.
 pub trait BorshSchema {
