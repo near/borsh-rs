@@ -132,7 +132,7 @@ fn max_serialized_size_impl<'a>(
                 let sz = max_serialized_size_impl(ONE, variant, schema, stack)?;
                 max = max.max(sz);
             }
-            add(max, usize::from(*tag_width))
+            mul(count, add(max, usize::from(*tag_width))?)
         }
 
         // Tuples and structs sum sizes of all the members.
