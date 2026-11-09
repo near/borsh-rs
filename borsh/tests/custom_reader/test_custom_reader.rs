@@ -201,3 +201,70 @@ impl borsh::io::Read for CustomReaderThatFails {
         ))
     }
 }
+
+#[test]
+fn test_custom_reader_that_fails_after_value() {
+    use borsh::io::ErrorKind;
+
+    for kind in [ErrorKind::ConnectionReset, ErrorKind::UnexpectedEof] {
+        let mut reader = CustomReaderThatFailsAfterData {
+            data: &[1, 0, 0, 0],
+            kind,
+        };
+        let err = from_reader::<_, u32>(&mut reader).unwrap_err();
+        assert_eq!(err.kind(), kind);
+    }
+}
+
+/// Yields `data`, then fails with `kind`, like a decompressor on truncated input.
+struct CustomReaderThatFailsAfterData {
+    data: &'static [u8],
+    kind: borsh::io::ErrorKind,
+}
+
+impl borsh::io::Read for CustomReaderThatFailsAfterData {
+    fn read(&mut self, buf: &mut [u8]) -> borsh::io::Result<usize> {
+        if self.data.is_empty() {
+            return Err(self.kind.into());
+        }
+        borsh::io::Read::read(&mut self.data, buf)
+    }
+}
+
+#[test]
+fn test_custom_reader_interrupted_after_value() {
+    let mut reader = CustomReaderInterruptedAfterData {
+        data: &[1, 0, 0, 0],
+        interrupted: false,
+        tail: &[],
+    };
+    assert_eq!(from_reader::<_, u32>(&mut reader).unwrap(), 1);
+
+    let mut reader = CustomReaderInterruptedAfterData {
+        data: &[1, 0, 0, 0],
+        interrupted: false,
+        tail: &[0],
+    };
+    let err = from_reader::<_, u32>(&mut reader).unwrap_err();
+    assert_eq!(err.kind(), borsh::io::ErrorKind::InvalidData);
+}
+
+/// Yields `data`, fails once with `Interrupted`, then yields `tail`.
+struct CustomReaderInterruptedAfterData {
+    data: &'static [u8],
+    interrupted: bool,
+    tail: &'static [u8],
+}
+
+impl borsh::io::Read for CustomReaderInterruptedAfterData {
+    fn read(&mut self, buf: &mut [u8]) -> borsh::io::Result<usize> {
+        if !self.data.is_empty() {
+            return borsh::io::Read::read(&mut self.data, buf);
+        }
+        if !self.interrupted {
+            self.interrupted = true;
+            return Err(borsh::io::ErrorKind::Interrupted.into());
+        }
+        borsh::io::Read::read(&mut self.tail, buf)
+    }
+}
