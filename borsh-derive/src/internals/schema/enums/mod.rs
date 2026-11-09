@@ -1,4 +1,4 @@
-use proc_macro2::{Span, TokenStream as TokenStream2};
+use proc_macro2::{Span, TokenStream as TokenStream2, TokenTree};
 use quote::{format_ident, quote, ToTokens};
 use std::collections::HashSet;
 use syn::{
@@ -35,7 +35,8 @@ fn transform_variant_fields(mut input: Fields) -> Fields {
 ///
 /// Every `Self` in type position is rewritten, including the self type of a qualified path
 /// (`<Self as Trait>::Assoc` becomes `<Enum as Trait>::Assoc`), while `Self::Assoc` is left
-/// alone, because there `Self` is a path segment rather than a type.
+/// alone, because there `Self` is a path segment rather than a type. `Self` in a macro is left
+/// alone too, since the macro may match the token itself; `check_unresolved_self` rejects it.
 struct ReplaceSelf {
     concrete: syn::Type,
 }
@@ -49,6 +50,42 @@ impl syn::fold::Fold for ReplaceSelf {
         }
         syn::fold::fold_type(self, ty)
     }
+}
+
+/// Rejects `Self` that `ReplaceSelf` doesn't rewrite, in a macro or in a `schema` attribute
+/// string, because in the helper struct it would name the helper instead of the enum.
+fn check_unresolved_self(fields: &Fields, enum_name: &str) -> syn::Result<()> {
+    fn mentions_self(tokens: TokenStream2) -> bool {
+        tokens.into_iter().any(|token| match token {
+            TokenTree::Ident(ident) => ident == "Self",
+            TokenTree::Group(group) => mentions_self(group.stream()),
+            _ => false,
+        })
+    }
+
+    for field in fields {
+        let attrs = field::Attributes::parse(&field.attrs)?;
+        if attrs.skip {
+            continue;
+        }
+        let ty = &field.ty;
+        let schema = attrs.schema.unwrap_or_default();
+        let params = schema.params.unwrap_or_default();
+        let funcs = schema
+            .with_funcs
+            .into_iter()
+            .flat_map(|f| [f.declaration, f.definitions]);
+        if mentions_self(quote! { #ty #(#params)* #(#funcs)* }) {
+            return Err(syn::Error::new_spanned(
+                field,
+                format!(
+                    "`BorshSchema` can't resolve `Self` in a macro or a `schema` attribute \
+                     of an enum variant, use `{enum_name}` instead"
+                ),
+            ));
+        }
+    }
+    Ok(())
 }
 
 pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
@@ -154,6 +191,7 @@ fn process_variant(
         concrete: self_ty.clone(),
     };
     let variant_fields = syn::fold::fold_fields(&mut replace_self, variant.fields.clone());
+    check_unresolved_self(&variant_fields, enum_name)?;
 
     schema::visit_struct_fields(&variant_fields, &mut generics_output.params_visitor)?;
     let (inner_struct, inner_struct_generics) = inner_struct_definition(
@@ -597,6 +635,57 @@ mod tests {
         .unwrap();
 
         let actual = process(&item_struct, default_cratename()).unwrap();
+
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn self_in_macro_err() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum Tree {
+                Leaf(u8),
+                Node(list!(Self)),
+            }
+        })
+        .unwrap();
+
+        let actual = process(&item_enum, default_cratename());
+
+        local_insta_assert_debug_snapshot!(actual.unwrap_err());
+    }
+
+    #[test]
+    fn self_in_with_funcs_err() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum Tree {
+                Leaf(u8),
+                Node(
+                    #[borsh(schema(with_funcs(
+                        declaration = "children::declaration::<Self>",
+                        definitions = "children::add_definitions_recursively::<Self>"
+                    )))]
+                    Children,
+                ),
+            }
+        })
+        .unwrap();
+
+        let actual = process(&item_enum, default_cratename());
+
+        local_insta_assert_debug_snapshot!(actual.unwrap_err());
+    }
+
+    #[test]
+    fn self_in_serialize_with() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum E<T> {
+                Data(T),
+                Flag(#[borsh(serialize_with = "write_flag::<Self, _>")] u8),
+            }
+        })
+        .unwrap();
+
+        let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
