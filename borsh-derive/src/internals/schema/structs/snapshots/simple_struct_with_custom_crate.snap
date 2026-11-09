@@ -5,7 +5,7 @@ expression: pretty_print_syn_str(&actual).unwrap()
 #[automatically_derived]
 impl reexporter::borsh::BorshSchema for A {
     fn declaration() -> reexporter::borsh::schema::Declaration {
-        "A".to_string()
+        "A".into()
     }
     fn add_definitions_recursively(
         definitions: &mut reexporter::borsh::__private::maybestd::collections::BTreeMap<
@@ -15,9 +15,9 @@ impl reexporter::borsh::BorshSchema for A {
     ) {
         let fields = reexporter::borsh::schema::Fields::NamedFields(
             reexporter::borsh::__private::maybestd::vec![
-                ("x".to_string(), < u64 as reexporter::borsh::BorshSchema >
-                ::declaration()), ("y".to_string(), < String as
-                reexporter::borsh::BorshSchema > ::declaration())
+                ("x".into(), < u64 as reexporter::borsh::BorshSchema > ::declaration()),
+                ("y".into(), < String as reexporter::borsh::BorshSchema >
+                ::declaration())
             ],
         );
         let definition = reexporter::borsh::schema::Definition::Struct {

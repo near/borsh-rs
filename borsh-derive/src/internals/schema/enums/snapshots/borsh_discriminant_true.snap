@@ -1,12 +1,11 @@
 ---
 source: borsh-derive/src/internals/schema/enums/mod.rs
-assertion_line: 258
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 #[automatically_derived]
 impl borsh::BorshSchema for X {
     fn declaration() -> borsh::schema::Declaration {
-        "X".to_string()
+        "X".into()
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<

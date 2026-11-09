@@ -14,7 +14,9 @@ where
             < V as borsh::BorshSchema > ::declaration(), < T::Associated as
             borsh::BorshSchema > ::declaration()
         ];
-        format!(r#"{}<{}>"#, "Parametrized", params.join(", "))
+        borsh::__private::maybestd::format!(
+            r#"{}<{}>"#, "Parametrized", params.join(", ")
+        )
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
@@ -24,8 +26,8 @@ where
     ) {
         let fields = borsh::schema::Fields::NamedFields(
             borsh::__private::maybestd::vec![
-                ("field".to_string(), < T::Associated as borsh::BorshSchema >
-                ::declaration()), ("another".to_string(), < V as borsh::BorshSchema >
+                ("field".into(), < T::Associated as borsh::BorshSchema >
+                ::declaration()), ("another".into(), < V as borsh::BorshSchema >
                 ::declaration())
             ],
         );

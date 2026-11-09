@@ -1,6 +1,5 @@
 ---
 source: borsh-derive/src/internals/schema/enums/mod.rs
-assertion_line: 425
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 #[automatically_derived]
@@ -21,7 +20,9 @@ where
             ::declaration(), < K::Associated as borsh::BorshSchema > ::declaration(), < V
             as borsh::BorshSchema > ::declaration()
         ];
-        format!(r#"{}<{}>"#, "EnumParametrized", params.join(", "))
+        borsh::__private::maybestd::format!(
+            r#"{}<{}>"#, "EnumParametrized", params.join(", ")
+        )
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<

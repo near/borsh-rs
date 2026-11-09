@@ -1,6 +1,5 @@
 ---
 source: borsh-derive/src/internals/schema/enums/mod.rs
-assertion_line: 303
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 #[automatically_derived]
@@ -14,7 +13,7 @@ where
             < C as borsh::BorshSchema > ::declaration(), < W as borsh::BorshSchema >
             ::declaration()
         ];
-        format!(r#"{}<{}>"#, "A", params.join(", "))
+        borsh::__private::maybestd::format!(r#"{}<{}>"#, "A", params.join(", "))
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<

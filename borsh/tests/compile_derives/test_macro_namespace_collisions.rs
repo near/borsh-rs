@@ -13,3 +13,20 @@ enum B {
     C,
     D,
 }
+
+// Neither a variant field named `writer` nor variants named `Ok` and `Err` in scope may capture
+// names in the generated code, and `#[borsh(skip)]` must not reach `Default` through `mod core`.
+#[allow(unused)]
+#[derive(borsh::BorshSerialize, borsh::BorshDeserialize)]
+enum Sink {
+    File {
+        writer: u8,
+        #[borsh(skip)]
+        cache: u8,
+    },
+    Ok,
+    Err(u8),
+}
+
+#[allow(unused_imports)]
+use Sink::*;

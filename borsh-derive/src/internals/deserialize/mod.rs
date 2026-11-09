@@ -27,7 +27,7 @@ impl GenericsOutput {
     }
     fn extend(self, where_clause: &mut syn::WhereClause, cratename: &Path) {
         let de_trait: Path = syn::parse2(quote! { #cratename::de::BorshDeserialize }).unwrap();
-        let default_trait: Path = syn::parse2(quote! { core::default::Default }).unwrap();
+        let default_trait: Path = syn::parse2(quote! { ::core::default::Default }).unwrap();
         let de_predicates =
             generics::compute_predicates(self.deserialize_visitor.process_for_bounds(), &de_trait);
         let default_predicates =
@@ -93,9 +93,9 @@ fn field_output(
 fn field_default_output(field_name: Option<&Ident>) -> TokenStream2 {
     if let Some(field_name) = field_name {
         quote! {
-            #field_name: core::default::Default::default(),
+            #field_name: ::core::default::Default::default(),
         }
     } else {
-        quote! { core::default::Default::default(), }
+        quote! { ::core::default::Default::default(), }
     }
 }

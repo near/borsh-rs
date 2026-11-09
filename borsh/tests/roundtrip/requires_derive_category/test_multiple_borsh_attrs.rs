@@ -4,11 +4,6 @@ use alloc::{
 };
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
-// the `BorshSchema` derive expands to code that uses the `format!` macro at the
-// struct definition site, so it has to be in scope here too.
-#[cfg(feature = "unstable__schema")]
-use alloc::format;
-
 #[derive(Debug, PartialEq, Eq)]
 struct ThirdParty<K, V>(pub BTreeMap<K, V>);
 

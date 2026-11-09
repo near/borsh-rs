@@ -30,7 +30,7 @@ impl reexporter::borsh::de::EnumExt for A {
                 reexporter::borsh::BorshDeserialize::deserialize_reader(reader)?,
             )
         } else {
-            return Err(
+            return ::core::result::Result::Err(
                 reexporter::borsh::io::Error::new(
                     reexporter::borsh::io::ErrorKind::InvalidData,
                     reexporter::borsh::__private::maybestd::format!(
@@ -39,6 +39,6 @@ impl reexporter::borsh::de::EnumExt for A {
                 ),
             )
         };
-        Ok(return_value)
+        ::core::result::Result::Ok(return_value)
     }
 }

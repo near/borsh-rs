@@ -49,13 +49,13 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
             ) -> ::core::result::Result<Self, #cratename::io::Error> {
                 let mut return_value =
                     #variant_arms {
-                    return Err(#cratename::io::Error::new(
+                    return ::core::result::Result::Err(#cratename::io::Error::new(
                         #cratename::io::ErrorKind::InvalidData,
                         #cratename::__private::maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
                     ))
                 };
                 #init
-                Ok(return_value)
+                ::core::result::Result::Ok(return_value)
             }
         }
     })

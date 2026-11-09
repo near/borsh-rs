@@ -51,7 +51,7 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
                 fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
                     let mut return_value = #return_value;
                     return_value.#method_ident();
-                    Ok(return_value)
+                    ::core::result::Result::Ok(return_value)
                 }
             }
         })
@@ -62,7 +62,7 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
                 #encodes_to_zero_bytes
 
                 fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
-                    Ok(#return_value)
+                    ::core::result::Result::Ok(#return_value)
                 }
             }
         })

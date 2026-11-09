@@ -9,6 +9,12 @@ pub mod enums;
 pub mod structs;
 pub mod unions;
 
+/// The writer parameter of `serialize`, spanned so that a variant field named `writer` doesn't
+/// shadow it.
+fn writer() -> Ident {
+    Ident::new("writer", Span::mixed_site())
+}
+
 struct GenericsOutput {
     overrides: Vec<syn::WherePredicate>,
     serialize_visitor: generics::FindTyParams,
@@ -82,10 +88,11 @@ impl FieldId {
         serialize_with: Option<ExprPath>,
     ) -> TokenStream2 {
         let arg: Expr = self.serialize_arg();
+        let writer = writer();
         if let Some(func) = serialize_with {
-            quote! { #func(#arg, writer)?; }
+            quote! { #func(#arg, #writer)?; }
         } else {
-            quote! { #cratename::BorshSerialize::serialize(#arg, writer)?; }
+            quote! { #cratename::BorshSerialize::serialize(#arg, #writer)?; }
         }
     }
     pub fn enum_variant_header(&self, skipped: bool) -> Option<TokenStream2> {
