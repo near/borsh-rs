@@ -335,3 +335,42 @@ pub fn const_generic_enum() {
         defs.get("Key__Raw<8>")
     );
 }
+
+#[test]
+pub fn enum_lifetime_unused_by_variant() {
+    use alloc::borrow::Cow;
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    enum Msg<'a, T: 'a> {
+        Text(Cow<'a, str>),
+        Ping(u8),
+        // Same name as the derive's marker field.
+        Pong { id: T, __borsh_lifetimes: u8 },
+        Empty,
+    }
+
+    let mut defs = Default::default();
+    <Msg<'static, u32>>::add_definitions_recursively(&mut defs);
+    assert_eq!(
+        Some(&Definition::Struct {
+            fields: Fields::UnnamedFields(vec!["u8".to_string()])
+        }),
+        defs.get("Msg__Ping")
+    );
+    assert_eq!(
+        Some(&Definition::Struct {
+            fields: Fields::NamedFields(vec![
+                ("id".to_string(), "u32".to_string()),
+                ("__borsh_lifetimes".to_string(), "u8".to_string())
+            ])
+        }),
+        defs.get("Msg__Pong<u32>")
+    );
+    assert_eq!(
+        Some(&Definition::Struct {
+            fields: Fields::Empty
+        }),
+        defs.get("Msg__Empty")
+    );
+}
