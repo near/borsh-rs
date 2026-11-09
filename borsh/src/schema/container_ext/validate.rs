@@ -77,7 +77,8 @@ fn validate_impl<'a>(
             length_range,
             elements,
         } if *length_width == Definition::ARRAY_LENGTH_WIDTH
-            && length_range.clone().count() == 1 =>
+            && !length_range.is_empty()
+            && length_range.start() == length_range.end() =>
         {
             validate_impl(elements, schema, stack)?
         }

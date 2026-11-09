@@ -220,7 +220,7 @@ fn is_zero_size_impl<'a>(
             // NOTE: no early `return` here, so that `stack` is popped below; otherwise
             // a second occurrence of the same array type would be reported as recursive
             *length_width == 0
-                && ((length_range.clone().count() == 1 && *length_range.start() == 0)
+                && (*length_range == (0..=0)
                     || is_zero_size_impl(elements.as_str(), schema, stack)?)
         }
         Ok(Definition::Tuple { elements }) => all(elements.iter(), |key| *key, schema, stack)?,

@@ -103,4 +103,7 @@ fn validate_bound_vec() {
 
     test_ok::<BoundVec<1, { u8::MAX as u64 }>>();
     test_ok::<BoundVec<0, { u16::MAX as u64 }>>();
+    // more lengths than `usize::MAX`, which used to panic when counted
+    test_ok::<BoundVec<0, { u64::MAX }>>();
+    test_ok::<Vec<BoundVec<0, { u64::MAX }>>>();
 }
