@@ -1,6 +1,6 @@
-use super::{is_zero_size, ZeroSizeError};
+use super::{is_zero_size, ZeroSizeCache, ZeroSizeError};
 use super::{BorshSchemaContainer, Declaration, Definition, Fields};
-use crate::__private::maybestd::{string::ToString, vec::Vec};
+use crate::__private::maybestd::{collections::BTreeSet, string::ToString};
 
 impl BorshSchemaContainer {
     /// Validates container for violation of any well-known rules with
@@ -15,8 +15,14 @@ impl BorshSchemaContainer {
     /// assert_eq!(Ok(()), schema.validate());
     /// ```
     pub fn validate(&self) -> core::result::Result<(), Error> {
-        let mut stack = Vec::new();
-        validate_impl(self.declaration(), self, &mut stack)
+        // Every declaration reached so far, so that each one is checked once
+        // however many times it is referenced.  The first error found is the
+        // same as when skipping only the declarations on the current path:
+        // everything reachable from a declaration visited before is either
+        // checked already or on the current path.
+        let mut visited = BTreeSet::new();
+        let mut zero_size = ZeroSizeCache::new();
+        validate_impl(self.declaration(), self, &mut visited, &mut zero_size)
     }
 }
 
@@ -57,7 +63,8 @@ const U64_LEN: u8 = 8;
 fn validate_impl<'a>(
     declaration: &'a Declaration,
     schema: &'a BorshSchemaContainer,
-    stack: &mut Vec<&'a Declaration>,
+    visited: &mut BTreeSet<&'a Declaration>,
+    zero_size: &mut ZeroSizeCache<'a>,
 ) -> core::result::Result<(), Error> {
     let definition = match schema.get_definition(declaration) {
         Some(definition) => definition,
@@ -65,10 +72,9 @@ fn validate_impl<'a>(
             return Err(Error::MissingDefinition(declaration.to_string()));
         }
     };
-    if stack.contains(&declaration) {
+    if !visited.insert(declaration) {
         return Ok(());
     }
-    stack.push(declaration);
     match definition {
         Definition::Primitive(_size) => {}
         // arrays branch
@@ -80,7 +86,7 @@ fn validate_impl<'a>(
             && !length_range.is_empty()
             && length_range.start() == length_range.end() =>
         {
-            validate_impl(elements, schema, stack)?
+            validate_impl(elements, schema, visited, zero_size)?
         }
         Definition::Sequence {
             length_width,
@@ -91,7 +97,7 @@ fn validate_impl<'a>(
                 return Err(Error::EmptyLengthRange(declaration.clone()));
             }
             check_length_width(declaration, *length_width, *length_range.end())?;
-            match is_zero_size(elements, schema) {
+            match is_zero_size(elements, schema, zero_size) {
                 Ok(true) => return Err(Error::ZSTSequence(declaration.clone())),
                 Ok(false) => (),
                 // a recursive type either has no exit, so it cannot be instantiated
@@ -102,7 +108,7 @@ fn validate_impl<'a>(
                     return Err(Error::MissingDefinition(declaration));
                 }
             }
-            validate_impl(elements, schema, stack)?;
+            validate_impl(elements, schema, visited, zero_size)?;
         }
         Definition::Enum {
             tag_width,
@@ -112,29 +118,28 @@ fn validate_impl<'a>(
                 return Err(Error::TagTooWide(declaration.to_string()));
             }
             for (_, _, variant) in variants {
-                validate_impl(variant, schema, stack)?;
+                validate_impl(variant, schema, visited, zero_size)?;
             }
         }
         Definition::Tuple { elements } => {
             for element_type in elements {
-                validate_impl(element_type, schema, stack)?;
+                validate_impl(element_type, schema, visited, zero_size)?;
             }
         }
         Definition::Struct { fields } => match fields {
             Fields::NamedFields(fields) => {
                 for (_field_name, field_type) in fields {
-                    validate_impl(field_type, schema, stack)?;
+                    validate_impl(field_type, schema, visited, zero_size)?;
                 }
             }
             Fields::UnnamedFields(fields) => {
                 for field_type in fields {
-                    validate_impl(field_type, schema, stack)?;
+                    validate_impl(field_type, schema, visited, zero_size)?;
                 }
             }
             Fields::Empty => {}
         },
     };
-    stack.pop();
     Ok(())
 }
 
