@@ -1,6 +1,6 @@
-use super::{is_zero_size, ZeroSizeCache, ZeroSizeError};
-use super::{BorshSchemaContainer, Declaration, Definition, Fields};
-use crate::__private::maybestd::{collections::BTreeSet, string::ToString};
+use super::{is_zero_size, members, ZeroSizeCache, ZeroSizeError};
+use super::{BorshSchemaContainer, Declaration, Definition};
+use crate::__private::maybestd::{collections::BTreeSet, string::ToString, vec};
 
 impl BorshSchemaContainer {
     /// Validates container for violation of any well-known rules with
@@ -22,7 +22,21 @@ impl BorshSchemaContainer {
         // checked already or on the current path.
         let mut visited = BTreeSet::new();
         let mut zero_size = ZeroSizeCache::new();
-        validate_impl(self.declaration(), self, &mut visited, &mut zero_size)
+        // Declarations left to check, the next one last.
+        let mut pending = vec![self.declaration()];
+        while let Some(declaration) = pending.pop() {
+            let definition = match self.get_definition(declaration) {
+                Some(definition) => definition,
+                None => {
+                    return Err(Error::MissingDefinition(declaration.to_string()));
+                }
+            };
+            if visited.insert(declaration) {
+                check_definition(declaration, definition, self, &mut zero_size)?;
+                pending.extend(members(definition));
+            }
+        }
+        Ok(())
     }
 }
 
@@ -60,34 +74,22 @@ fn check_length_width(declaration: &Declaration, width: u8, max: u64) -> Result<
 
 const U64_LEN: u8 = 8;
 
-fn validate_impl<'a>(
+/// Checks the definition of `declaration`, but not its members.
+fn check_definition<'a>(
     declaration: &'a Declaration,
+    definition: &'a Definition,
     schema: &'a BorshSchemaContainer,
-    visited: &mut BTreeSet<&'a Declaration>,
     zero_size: &mut ZeroSizeCache<'a>,
 ) -> core::result::Result<(), Error> {
-    let definition = match schema.get_definition(declaration) {
-        Some(definition) => definition,
-        None => {
-            return Err(Error::MissingDefinition(declaration.to_string()));
-        }
-    };
-    if !visited.insert(declaration) {
-        return Ok(());
-    }
     match definition {
-        Definition::Primitive(_size) => {}
         // arrays branch
         Definition::Sequence {
             length_width,
             length_range,
-            elements,
+            ..
         } if *length_width == Definition::ARRAY_LENGTH_WIDTH
             && !length_range.is_empty()
-            && length_range.start() == length_range.end() =>
-        {
-            validate_impl(elements, schema, visited, zero_size)?
-        }
+            && length_range.start() == length_range.end() => {}
         Definition::Sequence {
             length_width,
             length_range,
@@ -108,37 +110,13 @@ fn validate_impl<'a>(
                     return Err(Error::MissingDefinition(declaration));
                 }
             }
-            validate_impl(elements, schema, visited, zero_size)?;
         }
-        Definition::Enum {
-            tag_width,
-            variants,
-        } => {
+        Definition::Enum { tag_width, .. } => {
             if *tag_width > U64_LEN {
                 return Err(Error::TagTooWide(declaration.to_string()));
             }
-            for (_, _, variant) in variants {
-                validate_impl(variant, schema, visited, zero_size)?;
-            }
         }
-        Definition::Tuple { elements } => {
-            for element_type in elements {
-                validate_impl(element_type, schema, visited, zero_size)?;
-            }
-        }
-        Definition::Struct { fields } => match fields {
-            Fields::NamedFields(fields) => {
-                for (_field_name, field_type) in fields {
-                    validate_impl(field_type, schema, visited, zero_size)?;
-                }
-            }
-            Fields::UnnamedFields(fields) => {
-                for field_type in fields {
-                    validate_impl(field_type, schema, visited, zero_size)?;
-                }
-            }
-            Fields::Empty => {}
-        },
+        Definition::Primitive(_) | Definition::Tuple { .. } | Definition::Struct { .. } => {}
     };
     Ok(())
 }
