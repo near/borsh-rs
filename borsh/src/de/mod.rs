@@ -474,7 +474,9 @@ impl BorshDeserialize for bson::oid::ObjectId {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let mut buf = [0u8; 12];
-        reader.read_exact(&mut buf)?;
+        reader
+            .read_exact(&mut buf)
+            .map_err(unexpected_eof_to_unexpected_length_of_input)?;
         Ok(bson::oid::ObjectId::from_bytes(buf))
     }
 }
