@@ -34,6 +34,8 @@ const ERROR_INVALID_ZERO_VALUE: &str = "Expected a non-zero value";
 const ERROR_WRONG_ORDER_OF_KEYS: &str = "keys were not serialized in ascending order";
 #[cfg(all(feature = "de_strict_order", feature = "indexmap"))]
 const ERROR_DUPLICATE_KEYS: &str = "duplicate keys were encountered during deserialization";
+#[cfg(all(feature = "de_strict_order", feature = "indexmap"))]
+const ERROR_DUPLICATE_ITEMS: &str = "duplicate items were encountered during deserialization";
 
 /// A data-structure that can be de-serialized from binary format by NBOR.
 pub trait BorshDeserialize: Sized {
@@ -534,7 +536,7 @@ where
         let set = vec.into_iter().collect::<indexmap::IndexSet<T, S>>();
         #[cfg(feature = "de_strict_order")]
         if set.len() != len {
-            return Err(Error::new(ErrorKind::InvalidData, ERROR_DUPLICATE_KEYS));
+            return Err(Error::new(ErrorKind::InvalidData, ERROR_DUPLICATE_ITEMS));
         }
         Ok(set)
     }

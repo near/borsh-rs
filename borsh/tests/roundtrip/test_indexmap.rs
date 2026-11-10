@@ -43,10 +43,11 @@ fn test_indexset_roundtrip() {
     assert_eq!(original_set, deserialized_set);
 }
 
-// length 2, then (1, 2), (1, 3): the key `1` occurs twice
-const DUPLICATE_KEY_MAP_BYTES: [u8; 20] = [
-    2, 0, 0, 0, //
+// length 3, then (1, 2), (5, 9), (1, 3): the key `1` occurs twice
+const DUPLICATE_KEY_MAP_BYTES: [u8; 28] = [
+    3, 0, 0, 0, //
     1, 0, 0, 0, 2, 0, 0, 0, //
+    5, 0, 0, 0, 9, 0, 0, 0, //
     1, 0, 0, 0, 3, 0, 0, 0,
 ];
 
@@ -60,6 +61,8 @@ const DUPLICATE_ITEM_SET_BYTES: [u8; 16] = [
 
 #[cfg(feature = "de_strict_order")]
 const ERROR_DUPLICATE_KEYS: &str = "duplicate keys were encountered during deserialization";
+#[cfg(feature = "de_strict_order")]
+const ERROR_DUPLICATE_ITEMS: &str = "duplicate items were encountered during deserialization";
 
 #[test]
 fn test_indexmap_serializes_in_insertion_order() {
@@ -129,7 +132,7 @@ fn test_indexmap_deser_err_duplicate_keys() {
 fn test_indexset_deser_err_duplicate_items() {
     let err = from_slice::<IndexSet<i32>>(&DUPLICATE_ITEM_SET_BYTES).unwrap_err();
     assert_eq!(err.kind(), borsh::io::ErrorKind::InvalidData);
-    assert_eq!(err.to_string(), ERROR_DUPLICATE_KEYS);
+    assert_eq!(err.to_string(), ERROR_DUPLICATE_ITEMS);
 }
 
 // Without `de_strict_order`, duplicates are still accepted (lossily), as before.
@@ -137,7 +140,8 @@ fn test_indexset_deser_err_duplicate_items() {
 #[test]
 fn test_indexmap_deser_duplicate_keys_last_value_wins() {
     let decoded: IndexMap<i32, i32> = from_slice(&DUPLICATE_KEY_MAP_BYTES).unwrap();
-    assert_eq!(decoded.into_iter().collect::<Vec<_>>(), [(1, 3)]);
+    // The duplicate key keeps its first position and takes the last value.
+    assert_eq!(decoded.into_iter().collect::<Vec<_>>(), [(1, 3), (5, 9)]);
 }
 
 #[cfg(not(feature = "de_strict_order"))]
