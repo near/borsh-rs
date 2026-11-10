@@ -45,6 +45,9 @@ const ERROR_DUPLICATE_ITEMS: &str = "duplicate items were encountered during des
 pub trait BorshDeserialize: Sized {
     /// Deserializes this instance from a given slice of bytes.
     /// Updates the buffer to point at the remaining bytes.
+    ///
+    /// If this returns an error, the position of `buf` is unspecified: it
+    /// differs between `std` and `no_std` builds and between Rust versions.
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         Self::deserialize_reader(&mut *buf)
     }

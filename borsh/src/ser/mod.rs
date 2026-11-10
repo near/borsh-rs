@@ -714,7 +714,8 @@ impl_tuple!(0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T
 impl_tuple!(0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 15 T15 16 T16 17 T17 18 T18 19 T19);
 
 macro_rules! impl_range {
-    ($type:ident, $this:ident, $($field:expr),*) => {
+    ($(#[$attr:meta])* $type:ident, $this:ident, $($field:expr),*) => {
+        $(#[$attr])*
         impl<T: BorshSerialize> BorshSerialize for core::ops::$type<T> {
             const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T>();
 
@@ -729,7 +730,16 @@ macro_rules! impl_range {
 }
 
 impl_range!(Range, this, &this.start, &this.end);
-impl_range!(RangeInclusive, this, this.start(), this.end());
+impl_range!(
+    /// Writes `start()` then `end()`. A range iterated to exhaustion can be
+    /// marked empty by a flag that is not encoded, so it can decode as a
+    /// non-empty range (for example `255u8..=255` after one `next()`). The
+    /// format is frozen; check `is_empty()` before serializing if that matters.
+    RangeInclusive,
+    this,
+    this.start(),
+    this.end()
+);
 impl_range!(RangeFrom, this, &this.start);
 impl_range!(RangeTo, this, &this.end);
 impl_range!(RangeToInclusive, this, &this.end);
