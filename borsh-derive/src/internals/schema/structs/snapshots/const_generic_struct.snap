@@ -1,0 +1,46 @@
+---
+source: borsh-derive/src/internals/schema/structs/mod.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+#[automatically_derived]
+impl<T, const N: usize> borsh::BorshSchema for A<T, N>
+where
+    T: borsh::BorshSchema,
+{
+    fn declaration() -> borsh::schema::Declaration {
+        borsh::__private::maybestd::format!(
+            r#"{}<{}>"#, "A", < [borsh::__private::maybestd::string::String] > ::join(&
+            [< T as borsh::BorshSchema > ::declaration(),
+            borsh::__private::maybestd::format!("{:?}", N)], ", ")
+        )
+    }
+    fn add_definitions_recursively(
+        definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
+            borsh::schema::Declaration,
+            borsh::schema::Definition,
+        >,
+    ) {
+        let fields = borsh::schema::Fields::NamedFields(
+            borsh::__private::maybestd::vec![
+                (::core::convert::Into::into("tag"), < T as borsh::BorshSchema >
+                ::declaration()), (::core::convert::Into::into("bytes"), < [u8; N] as
+                borsh::BorshSchema > ::declaration())
+            ],
+        );
+        let definition = borsh::schema::Definition::Struct {
+            fields,
+        };
+        let no_recursion_flag = definitions
+            .get(&<Self as borsh::BorshSchema>::declaration())
+            .is_none();
+        borsh::schema::add_definition(
+            <Self as borsh::BorshSchema>::declaration(),
+            definition,
+            definitions,
+        );
+        if no_recursion_flag {
+            <T as borsh::BorshSchema>::add_definitions_recursively(definitions);
+            <[u8; N] as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        }
+    }
+}

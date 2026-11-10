@@ -230,3 +230,72 @@ pub fn generic_associated_item3() {
     );
 }
 
+#[test]
+#[allow(non_upper_case_globals)]
+pub fn const_generic_struct() {
+    // Named `params` to check that the derive doesn't shadow it with a local binding.
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Buf<const params: usize>([u8; params]);
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Id<T, const N: usize> {
+        tag: T,
+        bytes: Buf<N>,
+    }
+
+    assert_eq!("Id<u8, 4>".to_string(), <Id<u8, 4>>::declaration());
+    let mut defs = Default::default();
+    <(Id<u8, 4>, Id<u8, 8>)>::add_definitions_recursively(&mut defs);
+    assert_eq!(
+        Some(&Definition::Struct {
+            fields: Fields::UnnamedFields(vec!["[u8; 8]".to_string()])
+        }),
+        defs.get("Buf<8>")
+    );
+}
+
+#[test]
+pub fn array_join_trait_in_scope() {
+    // A `join` method on arrays in scope must not replace the slice `join` in the declaration.
+    #[allow(unused)]
+    trait ArrayJoin {
+        fn join(&self, sep: &str) -> String;
+    }
+
+    impl<const N: usize> ArrayJoin for [String; N] {
+        fn join(&self, _sep: &str) -> String {
+            "array-specific join".to_string()
+        }
+    }
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Wrapper<T>(T);
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Pair<T, const N: usize>([T; N]);
+
+    assert_eq!("Wrapper<u8>".to_string(), <Wrapper<u8>>::declaration());
+    assert_eq!("Pair<u16, 2>".to_string(), <Pair<u16, 2>>::declaration());
+}
+
+#[test]
+pub fn const_generic_param_order_and_char() {
+    // Type params come first, then const params, each in declaration order.
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Inter<const N: usize, T, const M: usize>([T; N], [u8; M]);
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Flags<const F: bool, const C: char, const I: i8>(u8);
+
+    assert_eq!("Inter<u8, 1, 2>".to_string(), <Inter<1, u8, 2>>::declaration());
+    assert_eq!(
+        "Flags<true, ',', -3>".to_string(),
+        <Flags<true, ',', -3>>::declaration()
+    );
+}
