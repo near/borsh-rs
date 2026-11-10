@@ -21,8 +21,9 @@ where
     ) {
         let fields = borsh::schema::Fields::NamedFields(
             borsh::__private::maybestd::vec![
-                ("tag".into(), < T as borsh::BorshSchema > ::declaration()), ("bytes"
-                .into(), < [u8; N] as borsh::BorshSchema > ::declaration())
+                (::core::convert::Into::into("tag"), < T as borsh::BorshSchema >
+                ::declaration()), (::core::convert::Into::into("bytes"), < [u8; N] as
+                borsh::BorshSchema > ::declaration())
             ],
         );
         let definition = borsh::schema::Definition::Struct {
