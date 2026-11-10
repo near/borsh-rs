@@ -65,3 +65,13 @@ mod schema_into_collision {
         B(u8),
     }
 }
+
+// A skipped generic field adds a `Default` bound to the generated where clause, which must not
+// resolve through the local `mod core`.
+#[allow(unused)]
+#[derive(borsh::BorshSerialize, borsh::BorshDeserialize)]
+struct SkippedGeneric<T, U> {
+    a: T,
+    #[borsh(skip)]
+    b: U,
+}
