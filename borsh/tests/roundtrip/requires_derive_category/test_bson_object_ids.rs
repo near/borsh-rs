@@ -1,5 +1,6 @@
 #![allow(clippy::float_cmp)]
 
+use alloc::string::ToString;
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 use bson::oid::ObjectId;
 
@@ -18,4 +19,13 @@ fn test_object_id() {
     insta::assert_debug_snapshot!(serialized);
     let deserialized: StructWithObjectId = from_slice(&serialized).unwrap();
     assert_eq!(obj, deserialized);
+}
+
+#[test]
+fn test_object_id_truncated() {
+    for len in 0..12 {
+        let err = from_slice::<ObjectId>(&[0; 11][..len]).unwrap_err();
+        assert_eq!(err.kind(), borsh::io::ErrorKind::InvalidData);
+        assert_eq!(err.to_string(), "Unexpected length of input");
+    }
 }
