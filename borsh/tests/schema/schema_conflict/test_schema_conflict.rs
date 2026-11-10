@@ -233,3 +233,49 @@ fn test_empty_declaration_behind_recursive_struct() {
         ["", "EmptyNameNode", "Vec<EmptyNameNode>"]
     );
 }
+
+#[allow(unused)]
+#[derive(borsh::BorshSchema)]
+struct Signed<T> {
+    payload: T,
+}
+
+#[allow(unused)]
+#[derive(borsh::BorshSchema)]
+struct Pair<A, B> {
+    a: A,
+    b: B,
+}
+
+fn walk_pair<A: BorshSchema, B: BorshSchema>(_: &A, _: &B) -> BTreeMap<Declaration, Definition> {
+    let mut defs = Default::default();
+    <Pair<A, B> as borsh::BorshSchema>::add_definitions_recursively(&mut defs);
+    defs
+}
+
+macro_rules! block_local_x {
+    ($declaration:literal) => {{
+        struct X;
+        impl BorshSchema for X {
+            fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+                add_definition(Self::declaration(), Definition::Primitive(1), definitions);
+            }
+            fn declaration() -> Declaration {
+                $declaration.into()
+            }
+        }
+        Signed { payload: X }
+    }};
+}
+
+#[test]
+fn test_same_type_name_different_declarations() {
+    // Both `X`s print the same `type_name`, so the walk must not take the second
+    // `Signed<X>` for a cycle and skip `X2`.
+    let first = block_local_x!("X1");
+    let second = block_local_x!("X2");
+    assert_eq!(
+        walk_pair(&first, &second).keys().collect::<Vec<_>>(),
+        ["Pair<Signed<X1>, Signed<X2>>", "Signed<X1>", "Signed<X2>", "X1", "X2"]
+    );
+}

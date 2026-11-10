@@ -266,11 +266,13 @@ pub fn add_definition(
 
 /// Adds a derived struct's definition, then walks its fields once per Rust type. Used by the derive.
 ///
-/// Declarations can't end the walk: a cycle back into `T` and another type with the same name, such
-/// as `Signed<v2::Transfer>` after `Signed<v1::Transfer>`, look the same. So the walk is cut on
-/// [`core::any::type_name`] instead. The trait passes only `definitions`, so the names walked so far
-/// are kept there under `"\0walked"`, which no Rust type name or derived declaration contains,
-/// until the outermost call returns.
+/// Declarations alone can't end the walk: a cycle back into `T` and another type with the same name,
+/// such as `Signed<v2::Transfer>` after `Signed<v1::Transfer>`, look the same. Neither can
+/// [`core::any::type_name`] alone: it isn't guaranteed unique, and items in different blocks of one
+/// function print the same path. So the walk is cut on the pair of both, which a cycle repeats.
+/// The trait passes only `definitions`, so the pairs walked so far are kept there under
+/// `"\0walked"`, which no Rust type name or derived declaration contains, until the outermost call
+/// returns.
 #[doc(hidden)]
 pub fn add_struct_definition<T: BorshSchema + ?Sized>(
     definition: Definition,
@@ -285,10 +287,10 @@ pub fn add_struct_definition<T: BorshSchema + ?Sized>(
         .or_insert(Definition::Tuple {
             elements: Vec::new(),
         });
-    let name = core::any::type_name::<T>();
+    let key = format!("{}\0{}", core::any::type_name::<T>(), T::declaration());
     if let Definition::Tuple { elements } = walked {
-        if !elements.iter().any(|walked| walked == name) {
-            elements.push(name.into());
+        if !elements.contains(&key) {
+            elements.push(key);
             add_fields_definitions(definitions);
         }
     }
