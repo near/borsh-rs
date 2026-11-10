@@ -4,8 +4,8 @@ use syn::{Fields, Path};
 
 use super::attributes::{field, BoundType};
 
-/// function which computes the value of the hidden `ENCODES_TO_ZERO_BYTES` constant
-/// for a struct: it holds iff every field which is (de)serialized encodes to zero bytes.
+/// function which generates the hidden `ENCODES_TO_ZERO_BYTES` constant of a struct impl:
+/// it holds iff every field which is (de)serialized encodes to zero bytes.
 ///
 /// - skipped fields are not encoded, so they do not count;
 /// - a field with `serialize_with`/`deserialize_with` is opaque, so it is assumed to encode
@@ -13,7 +13,10 @@ use super::attributes::{field, BoundType};
 ///
 /// The constants of fields are read through a `const fn`, so that a recursive type
 /// doesn't make the constant cyclic (see `borsh::__private::encodes_to_zero_bytes_de`).
-pub fn encodes_to_zero_bytes(
+///
+/// Field types are pasted with the user's spans, so lints that the user silenced on the struct
+/// or field (such as `deprecated`) would fire again inside the constant; they're allowed on it.
+pub fn encodes_to_zero_bytes_const(
     fields: &Fields,
     cratename: &Path,
     bound_type: BoundType,
@@ -35,13 +38,20 @@ pub fn encodes_to_zero_bytes(
             ),
         };
         if custom_with {
-            return Ok(quote! { false });
+            return Ok(zero_bytes_const(quote! { false }));
         }
         let field_type = &field.ty;
         terms.push(quote! { #read_const::<#field_type>() });
     }
     if terms.is_empty() {
-        return Ok(quote! { true });
+        return Ok(zero_bytes_const(quote! { true }));
     }
-    Ok(quote! { #(#terms)&&* })
+    Ok(zero_bytes_const(quote! { #(#terms)&&* }))
+}
+
+fn zero_bytes_const(value: TokenStream2) -> TokenStream2 {
+    quote! {
+        #[allow(deprecated, unused_parens, unused_qualifications, clippy::all, clippy::use_self)]
+        const ENCODES_TO_ZERO_BYTES: bool = #value;
+    }
 }

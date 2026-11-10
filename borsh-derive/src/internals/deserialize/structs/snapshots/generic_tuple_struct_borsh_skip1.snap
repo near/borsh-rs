@@ -7,6 +7,13 @@ impl<K, V, U> borsh::de::BorshDeserialize for G<K, V, U>
 where
     U: borsh::de::BorshDeserialize,
 {
+    #[allow(
+        deprecated,
+        unused_parens,
+        unused_qualifications,
+        clippy::all,
+        clippy::use_self
+    )]
     const ENCODES_TO_ZERO_BYTES: bool = borsh::__private::encodes_to_zero_bytes_de::<
         U,
     >();

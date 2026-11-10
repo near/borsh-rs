@@ -33,12 +33,12 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
     }
     generics_output.extend(&mut where_clause, &cratename);
     let encodes_to_zero_bytes =
-        zero_bytes::encodes_to_zero_bytes(&input.fields, &cratename, BoundType::Serialize)?;
+        zero_bytes::encodes_to_zero_bytes_const(&input.fields, &cratename, BoundType::Serialize)?;
 
     Ok(quote! {
         #[automatically_derived]
         impl #impl_generics #cratename::ser::BorshSerialize for #name #ty_generics #where_clause {
-            const ENCODES_TO_ZERO_BYTES: bool = #encodes_to_zero_bytes;
+            #encodes_to_zero_bytes
 
             fn serialize<__W: #cratename::io::Write>(&self, writer: &mut __W) -> ::core::result::Result<(), #cratename::io::Error> {
                 #body

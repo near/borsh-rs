@@ -21,6 +21,7 @@ mod compile_derives {
     mod test_generic_structs;
     mod test_generic_enums;
     mod test_recursive_structs;
+    mod test_field_type_lints;
 
     #[cfg(feature = "unstable__schema")]
     mod schema {
