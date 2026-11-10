@@ -431,11 +431,14 @@ where
 
         let len = u32::deserialize_reader(reader)?;
         if len == 0 {
-            Ok(Vec::new())
-        } else if let Some(vec_bytes) = T::vec_from_reader(len, reader)? {
+            return Ok(Vec::new());
+        }
+        // Enter the guard before `vec_from_reader` too: an implementation of it can decode
+        // elements itself, and those may recurse.
+        let _guard = RecursionGuard::enter()?;
+        if let Some(vec_bytes) = T::vec_from_reader(len, reader)? {
             Ok(vec_bytes)
         } else {
-            let _guard = RecursionGuard::enter()?;
             // TODO(16): return capacity allocation when we can safely do that.
             let mut result = Vec::with_capacity(hint::cautious::<T>(len));
             for _ in 0..len {
