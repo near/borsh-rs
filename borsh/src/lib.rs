@@ -59,6 +59,36 @@ pub mod io {
 
 #[doc(hidden)]
 pub mod __private {
+    // NOTE: forwarding `ENCODES_TO_ZERO_BYTES` through a `const fn` call, instead of reading
+    // the inner constant directly, defers the read until the constant is evaluated. Then
+    // `N == 0 || ...` and `... && ...` short-circuit, and a recursive type such as
+    // `struct A([Box<A>; 0], u8)` doesn't make the constant cyclic.
+
+    /// `<T as BorshDeserialize>::ENCODES_TO_ZERO_BYTES`, read lazily
+    pub const fn encodes_to_zero_bytes_de<T: crate::BorshDeserialize>() -> bool {
+        T::ENCODES_TO_ZERO_BYTES
+    }
+
+    /// `<T as BorshSerialize>::ENCODES_TO_ZERO_BYTES`, read lazily
+    pub const fn encodes_to_zero_bytes_ser<T: crate::BorshSerialize + ?Sized>() -> bool {
+        T::ENCODES_TO_ZERO_BYTES
+    }
+
+    /// `ENCODES_TO_ZERO_BYTES` of a field's type, read lazily; the derives pass an accessor of
+    /// the field, `|s: &Self| addr_of!(s.field)`, so that they don't have to paste the field's type
+    pub const fn field_encodes_to_zero_bytes_de<S: ?Sized, T: crate::BorshDeserialize>(
+        _field: fn(&S) -> *const T,
+    ) -> bool {
+        T::ENCODES_TO_ZERO_BYTES
+    }
+
+    /// `ENCODES_TO_ZERO_BYTES` of a field's type, read lazily; the derives pass an accessor of
+    /// the field, `|s: &Self| addr_of!(s.field)`, so that they don't have to paste the field's type
+    pub const fn field_encodes_to_zero_bytes_ser<S: ?Sized, T: crate::BorshSerialize + ?Sized>(
+        _field: fn(&S) -> *const T,
+    ) -> bool {
+        T::ENCODES_TO_ZERO_BYTES
+    }
 
     /// A facade around all the types we need from the `std`, and `alloc`
     /// crates. This avoids elaborate import wrangling having to happen in every

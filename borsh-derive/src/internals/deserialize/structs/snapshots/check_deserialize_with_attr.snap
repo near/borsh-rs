@@ -8,6 +8,7 @@ where
     K: borsh::de::BorshDeserialize,
     V: borsh::de::BorshDeserialize,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = false;
     fn deserialize_reader<__R: borsh::io::Read>(
         reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {

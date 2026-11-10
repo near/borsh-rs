@@ -4,6 +4,16 @@ expression: pretty_print_syn_str(&actual).unwrap()
 ---
 #[automatically_derived]
 impl reexporter::borsh::ser::BorshSerialize for A {
+    const ENCODES_TO_ZERO_BYTES: bool = {
+        const fn __borsh_struct() {}
+        __borsh_struct();
+        reexporter::borsh::__private::field_encodes_to_zero_bytes_ser(|
+            __borsh_struct: &Self|
+        ::core::ptr::addr_of!(__borsh_struct.x))
+            && reexporter::borsh::__private::field_encodes_to_zero_bytes_ser(|
+                __borsh_struct: &Self|
+            ::core::ptr::addr_of!(__borsh_struct.y))
+    };
     fn serialize<__W: reexporter::borsh::io::Write>(
         &self,
         writer: &mut __W,

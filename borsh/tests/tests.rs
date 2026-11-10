@@ -21,6 +21,7 @@ mod compile_derives {
     mod test_generic_structs;
     mod test_generic_enums;
     mod test_recursive_structs;
+    mod test_field_type_lints;
 
     #[cfg(feature = "unstable__schema")]
     mod schema {
@@ -134,6 +135,7 @@ mod init_in_deserialize {
 }
 
 mod zero_sized_types {
+    mod test_zero_encoded_types;
     #[cfg(feature = "derive")]
     mod test_zero_sized_types_forbidden;
 }

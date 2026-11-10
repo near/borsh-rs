@@ -8,6 +8,13 @@ where
     K: borsh::ser::BorshSerialize,
     V: borsh::ser::BorshSerialize,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = {
+        const fn __borsh_struct() {}
+        __borsh_struct();
+        borsh::__private::field_encodes_to_zero_bytes_ser(|__borsh_struct: &Self| {
+            ::core::ptr::addr_of!(__borsh_struct.0)
+        })
+    };
     fn serialize<__W: borsh::io::Write>(
         &self,
         writer: &mut __W,
