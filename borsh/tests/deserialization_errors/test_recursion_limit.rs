@@ -228,3 +228,50 @@ fn test_custom_limit_with_reader() {
         assert!(borsh::de::from_reader_with_recursion_limit::<_, Tree>(&mut reader, 20).is_ok());
     });
 }
+
+/// Recursive type whose `vec_from_reader` decodes the elements itself.
+#[derive(BorshSerialize, Clone, Debug, PartialEq)]
+struct Batched(Vec<Batched>);
+
+impl BorshDeserialize for Batched {
+    fn deserialize_reader<R: borsh::io::Read>(reader: &mut R) -> borsh::io::Result<Self> {
+        Ok(Batched(Vec::deserialize_reader(reader)?))
+    }
+
+    fn vec_from_reader<R: borsh::io::Read>(
+        len: u32,
+        reader: &mut R,
+    ) -> borsh::io::Result<Option<Vec<Self>>> {
+        let mut result = Vec::new();
+        for _ in 0..len {
+            result.push(Batched::deserialize_reader(reader)?);
+        }
+        Ok(Some(result))
+    }
+}
+
+#[test]
+fn test_custom_vec_from_reader_is_limited() {
+    on_small_stack(|| {
+        assert!(from_slice_with_recursion_limit::<Batched>(&vec_node_bytes(10), 10).is_ok());
+        assert_recursion_limit_error(from_slice_with_recursion_limit::<Batched>(
+            &vec_node_bytes(11),
+            10,
+        ));
+        assert_recursion_limit_error(from_slice::<Batched>(&vec_node_bytes(
+            DEFAULT_RECURSION_LIMIT + 1,
+        )));
+    });
+}
+
+#[test]
+fn test_byte_vec_counts_one_level() {
+    let data = [1u8, 0, 0, 0, 7];
+    assert_recursion_limit_error(from_slice_with_recursion_limit::<Vec<u8>>(&data, 0));
+    assert_eq!(
+        from_slice_with_recursion_limit::<Vec<u8>>(&data, 1).unwrap(),
+        vec![7u8]
+    );
+    // An empty vector doesn't count.
+    assert!(from_slice_with_recursion_limit::<Vec<u8>>(&[0, 0, 0, 0], 0).is_ok());
+}
