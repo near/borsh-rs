@@ -61,6 +61,9 @@ impl syn::fold::Fold for ReplaceSelf {
 /// string, because in the helper struct it would name the helper instead of the enum. `Self`
 /// inside a nested item, such as a local `impl` inside an array length, names that item and
 /// keeps its meaning in the helper struct.
+///
+/// A derive only sees a macro's input, so a macro whose expansion contains `Self` without taking
+/// it as input (`macro_rules! me { () => { Vec<Self> } }`) still names the helper struct.
 fn check_unresolved_self(fields: &Fields, enum_name: &str) -> syn::Result<()> {
     fn mentions_self(tokens: TokenStream2) -> bool {
         tokens.into_iter().any(|token| match token {
@@ -788,6 +791,7 @@ mod tests {
         })
         .unwrap();
 
-        assert!(process(&item_enum, default_cratename()).is_err());
+        let err = process(&item_enum, default_cratename()).unwrap_err();
+        assert!(err.to_string().contains("can't resolve `Self`"), "{}", err);
     }
 }
