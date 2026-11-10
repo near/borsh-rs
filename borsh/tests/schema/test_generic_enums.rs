@@ -376,3 +376,33 @@ pub fn enum_lifetime_unused_by_variant() {
         defs.get("Msg__Empty")
     );
 }
+
+#[test]
+pub fn enum_two_lifetimes_unused_by_variants() {
+    use alloc::borrow::Cow;
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    enum Two<'a, 'b: 'a> {
+        First(Cow<'a, str>),
+        Second(Cow<'b, str>),
+        Neither(u8),
+        Raw { r#__borsh_lifetimes: u8 },
+    }
+
+    let mut defs = Default::default();
+    <Two<'static, 'static>>::add_definitions_recursively(&mut defs);
+    assert_eq!(
+        Some(&Definition::Struct {
+            fields: Fields::UnnamedFields(vec!["u8".to_string()])
+        }),
+        defs.get("Two__Neither")
+    );
+    // The marker field never shows up in a definition.
+    match defs.get("Two__Raw") {
+        Some(Definition::Struct {
+            fields: Fields::NamedFields(fields),
+        }) => assert_eq!(fields.len(), 1),
+        other => panic!("unexpected definition: {:?}", other),
+    }
+}
