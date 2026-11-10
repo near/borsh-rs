@@ -192,16 +192,19 @@ impl BorshDeserialize for u8 {
                 vec.resize(vec.len().saturating_mul(2).min(len), 0)
             }
             // TODO(mina86): Convert this to read_buf once that stabilises.
-            match reader.read(&mut vec.as_mut_slice()[pos..])? {
-                0 => {
+            match reader.read(&mut vec.as_mut_slice()[pos..]) {
+                Ok(0) => {
                     return Err(Error::new(
                         ErrorKind::InvalidData,
                         ERROR_UNEXPECTED_LENGTH_OF_INPUT,
                     ))
                 }
-                read => {
+                Ok(read) => {
                     pos += read;
                 }
+                // Retry on `Interrupted`, as `read_exact` does.
+                Err(e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(e) => return Err(e),
             }
         }
         Ok(Some(vec))

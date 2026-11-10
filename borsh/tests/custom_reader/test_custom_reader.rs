@@ -123,6 +123,66 @@ impl borsh::io::Read for CustomReaderThatDoesntFillSlices {
 }
 
 #[test]
+fn test_custom_reader_that_is_interrupted() {
+    let s = Serializable {
+        item1: 100,
+        item2: "foo".into(),
+        item3: 1.2345,
+    };
+    let bytes = to_vec(&s).unwrap();
+    // One byte per read, so interruptions also land inside the string's payload.
+    let mut reader = CustomReaderThatIsInterrupted {
+        data: bytes,
+        read_index: 0,
+        interrupted: false,
+        max_read: 1,
+    };
+    let de: Serializable = from_reader(&mut reader).unwrap();
+    assert_eq!(de.item1, s.item1);
+    assert_eq!(de.item2, s.item2);
+    assert_eq!(de.item3, s.item3);
+}
+
+#[test]
+fn test_custom_reader_that_is_interrupted_large_byte_vec() {
+    // Over 1 MiB, so decoding grows the buffer between interrupted partial reads.
+    let v: Vec<u8> = (0..(1usize << 20) + 3).map(|i| i as u8).collect();
+    let mut reader = CustomReaderThatIsInterrupted {
+        data: to_vec(&v).unwrap(),
+        read_index: 0,
+        interrupted: false,
+        max_read: 4093,
+    };
+    let de: Vec<u8> = from_reader(&mut reader).unwrap();
+    assert_eq!(de, v);
+}
+
+/// Fails every other `read` with `ErrorKind::Interrupted`, which callers should retry, and
+/// returns at most `max_read` bytes from the others.
+struct CustomReaderThatIsInterrupted {
+    data: Vec<u8>,
+    read_index: usize,
+    interrupted: bool,
+    max_read: usize,
+}
+
+impl borsh::io::Read for CustomReaderThatIsInterrupted {
+    fn read(&mut self, buf: &mut [u8]) -> borsh::io::Result<usize> {
+        self.interrupted = !self.interrupted;
+        if self.interrupted {
+            return Err(borsh::io::ErrorKind::Interrupted.into());
+        }
+        let len = buf
+            .len()
+            .min(self.data.len() - self.read_index)
+            .min(self.max_read);
+        buf[0..len].copy_from_slice(&self.data[self.read_index..self.read_index + len]);
+        self.read_index += len;
+        Ok(len)
+    }
+}
+
+#[test]
 fn test_custom_reader_that_fails_preserves_error_information() {
     let mut reader = CustomReaderThatFails;
 
