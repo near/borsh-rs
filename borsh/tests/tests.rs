@@ -80,6 +80,8 @@ mod roundtrip {
 mod schema {
     #[cfg(feature = "ascii")]
     mod test_ascii_strings;
+    #[cfg(feature = "bytes")]
+    mod test_bytes;
     mod test_strings;
     mod test_arrays;
     mod test_vecs;
