@@ -1,7 +1,10 @@
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote, ToTokens};
 use std::collections::HashSet;
-use syn::{parse_quote, Fields, Generics, Ident, ItemEnum, ItemStruct, Path, Variant, Visibility};
+use syn::{
+    ext::IdentExt, parse_quote, Fields, Generics, Ident, ItemEnum, ItemStruct, Path, Variant,
+    Visibility,
+};
 
 use crate::internals::{
     attributes::{field, item},
@@ -195,7 +198,7 @@ fn add_lifetimes_marker(fields: &mut Fields, generics: &Generics) {
             while fields
                 .named
                 .iter()
-                .any(|field| field.ident.as_ref() == Some(&name))
+                .any(|field| field.ident.as_ref().map(IdentExt::unraw).as_ref() == Some(&name))
             {
                 name = format_ident!("{}_", name);
             }

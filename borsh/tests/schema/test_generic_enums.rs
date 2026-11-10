@@ -347,6 +347,8 @@ pub fn enum_lifetime_unused_by_variant() {
         Ping(u8),
         // Same name as the derive's marker field.
         Pong { id: T, __borsh_lifetimes: u8 },
+        // The same name as a raw identifier.
+        Raw { r#__borsh_lifetimes: u8 },
         Empty,
     }
 
