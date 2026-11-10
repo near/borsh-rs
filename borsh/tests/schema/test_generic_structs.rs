@@ -281,3 +281,21 @@ pub fn array_join_trait_in_scope() {
     assert_eq!("Wrapper<u8>".to_string(), <Wrapper<u8>>::declaration());
     assert_eq!("Pair<u16, 2>".to_string(), <Pair<u16, 2>>::declaration());
 }
+
+#[test]
+pub fn const_generic_param_order_and_char() {
+    // Type params come first, then const params, each in declaration order.
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Inter<const N: usize, T, const M: usize>([T; N], [u8; M]);
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Flags<const F: bool, const C: char, const I: i8>(u8);
+
+    assert_eq!("Inter<u8, 1, 2>".to_string(), <Inter<1, u8, 2>>::declaration());
+    assert_eq!(
+        "Flags<true, ',', -3>".to_string(),
+        <Flags<true, ',', -3>>::declaration()
+    );
+}

@@ -56,9 +56,11 @@ fn declaration(
         });
     }
     // Like the length in `[T; N]`, const params are part of the name: `Buf<4>`, `Buf<8>`.
+    // `Debug` quotes a `char`, so `','` can't be read as a separator or `'a'` as a type name;
+    // integers and `bool` print as with `Display`.
     for const_param in const_params {
         declaration_params.push(quote! {
-            #cratename::__private::maybestd::string::ToString::to_string(&#const_param)
+            #cratename::__private::maybestd::format!("{:?}", #const_param)
         });
     }
     if declaration_params.is_empty() {

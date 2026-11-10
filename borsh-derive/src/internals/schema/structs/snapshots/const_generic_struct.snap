@@ -11,7 +11,7 @@ where
         borsh::__private::maybestd::format!(
             r#"{}<{}>"#, "A", < [borsh::__private::maybestd::string::String] > ::join(&
             [< T as borsh::BorshSchema > ::declaration(),
-            borsh::__private::maybestd::string::ToString::to_string(& N)], ", ")
+            borsh::__private::maybestd::format!("{:?}", N)], ", ")
         )
     }
     fn add_definitions_recursively(
