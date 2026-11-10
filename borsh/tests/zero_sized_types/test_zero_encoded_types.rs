@@ -408,6 +408,55 @@ mod derived {
         assert_roundtrip(vec![MutualB([], 7)]);
     }
 
+    // a const expression in a field type must resolve as the user wrote it: `$n` is the
+    // macro caller's `n`, not the macro's own `n`
+    macro_rules! array_len_from_caller {
+        ($n:ident) => {
+            #[allow(unused_variables)]
+            #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
+            struct LenFromCaller(
+                Box<
+                    [u8; {
+                        let $n = 0;
+                        let n = 1;
+                        $n
+                    }],
+                >,
+            );
+
+            #[allow(unused_variables)]
+            #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
+            struct LenFromCallerNonZero(
+                Box<
+                    [u8; {
+                        let $n = 1;
+                        let n = 0;
+                        $n
+                    }],
+                >,
+            );
+        };
+    }
+    array_len_from_caller!(n);
+
+    #[test]
+    fn test_derived_const_expression_hygiene() {
+        assert_sequences_rejected(|| LenFromCaller(Box::new([])));
+        assert_roundtrip(vec![LenFromCallerNonZero(Box::new([7]))]);
+    }
+
+    /// the derived constant must not borrow fields: a reference to a packed field doesn't compile
+    #[derive(BorshDeserialize)]
+    #[repr(C, packed)]
+    struct Packed(u32);
+
+    #[test]
+    fn test_derived_packed() {
+        let decoded = from_slice::<Vec<Packed>>(&[1, 0, 0, 0, 7, 0, 0, 0]).unwrap();
+        let value = decoded[0].0;
+        assert_eq!(value, 7);
+    }
+
     #[test]
     fn test_derived_single_variant_enum_unchanged() {
         // unchanged and deliberately conservative: such an enum is zero-sized in memory,
