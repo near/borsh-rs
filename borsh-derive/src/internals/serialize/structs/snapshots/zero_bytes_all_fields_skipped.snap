@@ -9,6 +9,6 @@ impl borsh::ser::BorshSerialize for A {
         &self,
         writer: &mut __W,
     ) -> ::core::result::Result<(), borsh::io::Error> {
-        Ok(())
+        ::core::result::Result::Ok(())
     }
 }

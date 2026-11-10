@@ -28,6 +28,6 @@ where
                 borsh::BorshSerialize::serialize(id1, writer)?;
             }
         }
-        Ok(())
+        ::core::result::Result::Ok(())
     }
 }

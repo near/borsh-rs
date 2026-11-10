@@ -22,6 +22,6 @@ impl borsh::de::BorshDeserialize for A {
             y: borsh::BorshDeserialize::deserialize_reader(reader)?,
         };
         return_value.initialization_method();
-        Ok(return_value)
+        ::core::result::Result::Ok(return_value)
     }
 }

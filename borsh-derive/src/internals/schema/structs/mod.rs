@@ -21,7 +21,7 @@ fn field_declaration_output(
     if let Some(field_name) = field_name {
         let field_name = field_name.to_token_stream().to_string();
         quote! {
-            (#field_name.to_string(), #path())
+            (::core::convert::Into::into(#field_name), #path())
         }
     } else {
         quote! {

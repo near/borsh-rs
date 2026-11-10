@@ -1,12 +1,11 @@
 ---
 source: borsh-derive/src/internals/schema/enums/mod.rs
-assertion_line: 221
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 #[automatically_derived]
 impl reexporter::borsh::BorshSchema for A {
     fn declaration() -> reexporter::borsh::schema::Declaration {
-        "A".to_string()
+        ::core::convert::Into::into("A")
     }
     fn add_definitions_recursively(
         definitions: &mut reexporter::borsh::__private::maybestd::collections::BTreeMap<
@@ -33,10 +32,10 @@ impl reexporter::borsh::BorshSchema for A {
         let definition = reexporter::borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: reexporter::borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "Bacon".into(), < A__Bacon as
-                reexporter::borsh::BorshSchema > ::declaration()), (u8::from(1u8) as i64,
-                "Eggs".into(), < A__Eggs as reexporter::borsh::BorshSchema >
-                ::declaration())
+                (u8::from(0u8) as i64, ::core::convert::Into::into("Bacon"), < A__Bacon
+                as reexporter::borsh::BorshSchema > ::declaration()), (u8::from(1u8) as
+                i64, ::core::convert::Into::into("Eggs"), < A__Eggs as
+                reexporter::borsh::BorshSchema > ::declaration())
             ],
         };
         reexporter::borsh::schema::add_definition(

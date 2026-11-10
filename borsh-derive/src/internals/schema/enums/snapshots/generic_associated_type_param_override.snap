@@ -1,6 +1,5 @@
 ---
 source: borsh-derive/src/internals/schema/enums/mod.rs
-assertion_line: 450
 expression: pretty_print_syn_str(&actual).unwrap()
 ---
 #[automatically_derived]
@@ -21,7 +20,9 @@ where
             ::declaration(), < < K as TraitName > ::Associated as borsh::BorshSchema >
             ::declaration(), < V as borsh::BorshSchema > ::declaration()
         ];
-        format!(r#"{}<{}>"#, "EnumParametrized", params.join(", "))
+        borsh::__private::maybestd::format!(
+            r#"{}<{}>"#, "EnumParametrized", params.join(", ")
+        )
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
@@ -64,9 +65,10 @@ where
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "B".into(), < EnumParametrized__B < K, V > as
-                borsh::BorshSchema > ::declaration()), (u8::from(1u8) as i64, "C".into(),
-                < EnumParametrized__C < T > as borsh::BorshSchema > ::declaration())
+                (u8::from(0u8) as i64, ::core::convert::Into::into("B"), <
+                EnumParametrized__B < K, V > as borsh::BorshSchema > ::declaration()),
+                (u8::from(1u8) as i64, ::core::convert::Into::into("C"), <
+                EnumParametrized__C < T > as borsh::BorshSchema > ::declaration())
             ],
         };
         borsh::schema::add_definition(

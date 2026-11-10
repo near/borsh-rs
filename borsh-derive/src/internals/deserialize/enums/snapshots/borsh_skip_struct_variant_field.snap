@@ -19,7 +19,7 @@ impl borsh::de::EnumExt for AA {
     ) -> ::core::result::Result<Self, borsh::io::Error> {
         let mut return_value = if variant_tag == 0u8 {
             AA::B {
-                c: core::default::Default::default(),
+                c: ::core::default::Default::default(),
                 d: borsh::BorshDeserialize::deserialize_reader(reader)?,
             }
         } else if variant_tag == 1u8 {
@@ -27,7 +27,7 @@ impl borsh::de::EnumExt for AA {
                 beta: borsh::BorshDeserialize::deserialize_reader(reader)?,
             }
         } else {
-            return Err(
+            return ::core::result::Result::Err(
                 borsh::io::Error::new(
                     borsh::io::ErrorKind::InvalidData,
                     borsh::__private::maybestd::format!(
@@ -36,6 +36,6 @@ impl borsh::de::EnumExt for AA {
                 ),
             )
         };
-        Ok(return_value)
+        ::core::result::Result::Ok(return_value)
     }
 }

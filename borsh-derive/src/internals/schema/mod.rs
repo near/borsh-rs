@@ -49,12 +49,12 @@ fn declaration(ident_str: &str, cratename: Path, params_for_bounds: Vec<Type>) -
     }
     if declaration_params.is_empty() {
         quote! {
-                #ident_str.to_string()
+                ::core::convert::Into::into(#ident_str)
         }
     } else {
         quote! {
                 let params = #cratename::__private::maybestd::vec![#(#declaration_params),*];
-                format!(r#"{}<{}>"#, #ident_str, params.join(", "))
+                #cratename::__private::maybestd::format!(r#"{}<{}>"#, #ident_str, params.join(", "))
         }
     }
 }

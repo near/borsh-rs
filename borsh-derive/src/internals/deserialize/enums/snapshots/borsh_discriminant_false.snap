@@ -30,7 +30,7 @@ impl borsh::de::EnumExt for X {
         } else if variant_tag == 5u8 {
             X::F
         } else {
-            return Err(
+            return ::core::result::Result::Err(
                 borsh::io::Error::new(
                     borsh::io::ErrorKind::InvalidData,
                     borsh::__private::maybestd::format!(
@@ -39,6 +39,6 @@ impl borsh::de::EnumExt for X {
                 ),
             )
         };
-        Ok(return_value)
+        ::core::result::Result::Ok(return_value)
     }
 }

@@ -42,18 +42,19 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     }
     let fields_body = optimize_fields_body(fields_body, has_unit_variant);
     generics_output.extend(&mut where_clause, &cratename);
+    let writer = serialize::writer();
 
     Ok(quote! {
         #[automatically_derived]
         impl #impl_generics #cratename::ser::BorshSerialize for #enum_ident #ty_generics #where_clause {
-            fn serialize<__W: #cratename::io::Write>(&self, writer: &mut __W) -> ::core::result::Result<(), #cratename::io::Error> {
+            fn serialize<__W: #cratename::io::Write>(&self, #writer: &mut __W) -> ::core::result::Result<(), #cratename::io::Error> {
                 let variant_idx: u8 = match self {
                     #all_variants_idx_body
                 };
-                writer.write_all(&variant_idx.to_le_bytes())?;
+                #writer.write_all(&variant_idx.to_le_bytes())?;
 
                 #fields_body
-                Ok(())
+                ::core::result::Result::Ok(())
             }
         }
     })

@@ -36,7 +36,7 @@ where
                 y: third_party_impl::deserialize_third_party(reader)?,
             }
         } else {
-            return Err(
+            return ::core::result::Result::Err(
                 borsh::io::Error::new(
                     borsh::io::ErrorKind::InvalidData,
                     borsh::__private::maybestd::format!(
@@ -45,6 +45,6 @@ where
                 ),
             )
         };
-        Ok(return_value)
+        ::core::result::Result::Ok(return_value)
     }
 }

@@ -5,7 +5,7 @@ expression: pretty_print_syn_str(&actual).unwrap()
 #[automatically_derived]
 impl borsh::BorshSchema for CRecC {
     fn declaration() -> borsh::schema::Declaration {
-        "CRecC".to_string()
+        ::core::convert::Into::into("CRecC")
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
@@ -15,9 +15,9 @@ impl borsh::BorshSchema for CRecC {
     ) {
         let fields = borsh::schema::Fields::NamedFields(
             borsh::__private::maybestd::vec![
-                ("a".to_string(), < String as borsh::BorshSchema > ::declaration()), ("b"
-                .to_string(), < HashMap < String, CRecC > as borsh::BorshSchema >
-                ::declaration())
+                (::core::convert::Into::into("a"), < String as borsh::BorshSchema >
+                ::declaration()), (::core::convert::Into::into("b"), < HashMap < String,
+                CRecC > as borsh::BorshSchema > ::declaration())
             ],
         );
         let definition = borsh::schema::Definition::Struct {

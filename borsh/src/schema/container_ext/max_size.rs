@@ -261,7 +261,7 @@ mod tests {
 
     // this is not integration test module, so can use __private for ease of imports;
     // it cannot be made integration, as it tests `is_zero_size` function, chosen to be non-pub
-    use crate::__private::maybestd::{boxed::Box, string::ToString};
+    use crate::__private::maybestd::boxed::Box;
 
     #[test]
     fn test_is_zero_size_recursive_check_bypassed() {
