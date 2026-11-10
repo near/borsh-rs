@@ -575,8 +575,9 @@ impl BorshSerialize for core::net::SocketAddrV4 {
 /// `TcpStream::peer_addr` for a link-local peer), `from_slice(&to_vec(&x)?)? != x`, and two
 /// values that differ only in those fields serialize to identical bytes.
 ///
-/// Both fields are host- or flow-local and are generally meaningless on another machine.
-/// If you need to preserve them, serialize them alongside the address explicitly.
+/// `scope_id` is an interface index local to one host, and `flowinfo` (the traffic class and
+/// flow label) is rarely meaningful in a stored address. If you need to preserve them,
+/// serialize them alongside the address explicitly.
 impl BorshSerialize for core::net::SocketAddrV6 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
