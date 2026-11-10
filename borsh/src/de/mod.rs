@@ -1211,3 +1211,28 @@ pub fn from_reader_with_recursion_limit<R: Read, T: BorshDeserialize>(
 ) -> Result<T> {
     recursion::with_limit(limit, || from_reader(reader))
 }
+
+/// Runs `f` with the nesting limit set to `limit`, and restores the previous
+/// limit afterwards, also when `f` fails or panics.
+///
+/// Use this to change the limit for decoding that [`from_slice_with_recursion_limit`]
+/// and [`from_reader_with_recursion_limit`] don't cover, such as decoding one
+/// value from the front of a longer buffer with [`BorshDeserialize::deserialize`].
+/// Levels already in use by an enclosing call still count towards `limit`.
+///
+/// Only available with the `std` feature.
+/// # Example
+/// ```
+/// use borsh::{de::with_recursion_limit, BorshDeserialize};
+///
+/// // 3 levels of `Box`, followed by the start of the next value.
+/// let data = [7u8, 1, 2];
+/// let mut buf = &data[..];
+/// let decoded = with_recursion_limit(3, || Box::<Box<Box<u8>>>::deserialize(&mut buf)).unwrap();
+/// assert_eq!(***decoded, 7);
+/// assert_eq!(buf, [1, 2]);
+/// ```
+#[cfg(feature = "std")]
+pub fn with_recursion_limit<T>(limit: usize, f: impl FnOnce() -> Result<T>) -> Result<T> {
+    recursion::with_limit(limit, f)
+}
