@@ -18,11 +18,24 @@ mod tests {
         assert_eq!(cautious::<u64>(u32::MAX), 512);
     }
 
-    /// Sizes that used to truncate to 0 and 1 as `u32`.
+    #[test]
+    pub fn test_cautious_element_over_cap() {
+        // `4096 / 4097 == 0`, so the floor of one element decides.
+        assert_eq!(cautious::<[u8; 4097]>(u32::MAX), 1);
+        assert_eq!(cautious::<[u8; 4097]>(0), 1);
+    }
+
+    /// A size that used to truncate to 0 as `u32` (division by zero).
     #[cfg(target_pointer_width = "64")]
     #[test]
-    pub fn test_cautious_huge_elements() {
+    pub fn test_cautious_huge_element_multiple_of_2_32() {
         assert_eq!(cautious::<[u8; 1 << 32]>(u32::MAX), 1);
+    }
+
+    /// A size that used to truncate to 1 as `u32` (4096 elements of 4 GiB).
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    pub fn test_cautious_huge_element_truncated_to_one() {
         assert_eq!(cautious::<[u8; (1 << 32) + 1]>(u32::MAX), 1);
     }
 }
