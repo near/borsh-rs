@@ -42,6 +42,11 @@ struct ReplaceSelf {
 }
 
 impl syn::fold::Fold for ReplaceSelf {
+    // `Self` inside a nested item (a local `impl` in an array length, say) names that item.
+    fn fold_item(&mut self, item: syn::Item) -> syn::Item {
+        item
+    }
+
     fn fold_type(&mut self, ty: syn::Type) -> syn::Type {
         if let syn::Type::Path(ref type_path) = ty {
             if type_path.qself.is_none() && type_path.path.is_ident("Self") {
@@ -53,9 +58,9 @@ impl syn::fold::Fold for ReplaceSelf {
 }
 
 /// Rejects `Self` that `ReplaceSelf` doesn't rewrite, in a macro or in a `schema` attribute
-/// string, because in the helper struct it would name the helper instead of the enum. Other
-/// `Self` tokens left in a field type, such as one in a local `impl` inside an array length,
-/// keep their meaning in the helper struct.
+/// string, because in the helper struct it would name the helper instead of the enum. `Self`
+/// inside a nested item, such as a local `impl` inside an array length, names that item and
+/// keeps its meaning in the helper struct.
 fn check_unresolved_self(fields: &Fields, enum_name: &str) -> syn::Result<()> {
     fn mentions_self(tokens: TokenStream2) -> bool {
         tokens.into_iter().any(|token| match token {
@@ -65,11 +70,26 @@ fn check_unresolved_self(fields: &Fields, enum_name: &str) -> syn::Result<()> {
         })
     }
 
-    struct SelfInMacro(bool);
-    impl syn::fold::Fold for SelfInMacro {
+    /// Finds `Self` in a macro or, with `paths`, in any path, outside nested items.
+    struct FindSelf {
+        paths: bool,
+        found: bool,
+    }
+    impl syn::fold::Fold for FindSelf {
+        fn fold_item(&mut self, item: syn::Item) -> syn::Item {
+            item
+        }
+
         fn fold_macro(&mut self, mac: syn::Macro) -> syn::Macro {
-            self.0 |= mentions_self(mac.tokens.clone());
+            self.found |= mentions_self(mac.tokens.clone());
             mac
+        }
+
+        fn fold_path(&mut self, path: syn::Path) -> syn::Path {
+            if self.paths && path.segments.iter().any(|segment| segment.ident == "Self") {
+                self.found = true;
+            }
+            syn::fold::fold_path(self, path)
         }
     }
 
@@ -78,15 +98,24 @@ fn check_unresolved_self(fields: &Fields, enum_name: &str) -> syn::Result<()> {
         if attrs.skip {
             continue;
         }
-        let mut self_in_macro = SelfInMacro(false);
-        syn::fold::Fold::fold_type(&mut self_in_macro, field.ty.clone());
+        let mut in_field = FindSelf {
+            paths: false,
+            found: false,
+        };
+        syn::fold::Fold::fold_type(&mut in_field, field.ty.clone());
         let schema = attrs.schema.unwrap_or_default();
-        let params = schema.params.unwrap_or_default();
+        let mut in_params = FindSelf {
+            paths: true,
+            found: false,
+        };
+        for param in schema.params.unwrap_or_default() {
+            syn::fold::Fold::fold_type(&mut in_params, param.override_type);
+        }
         let funcs = schema
             .with_funcs
             .into_iter()
             .flat_map(|f| [f.declaration, f.definitions]);
-        if self_in_macro.0 || mentions_self(quote! { #(#params)* #(#funcs)* }) {
+        if in_field.found || in_params.found || mentions_self(quote! { #(#funcs)* }) {
             return Err(syn::Error::new_spanned(
                 field,
                 format!(
@@ -718,5 +747,47 @@ mod tests {
         .unwrap();
 
         assert!(process(&item_enum, default_cratename()).is_ok());
+    }
+
+    #[test]
+    fn self_in_nested_items_ok() {
+        // Every `Self` here names a local item, not the enum.
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum E {
+                Macro([u8; {
+                    struct Size;
+                    impl Size {
+                        const N: usize = 1;
+                        const M: usize = ident!(Self::N);
+                        fn get() -> Self { Size }
+                    }
+                    Size::M
+                }]),
+                Param(
+                    #[borsh(schema(params = "T => [T; { trait Len { const N: usize = 1; fn n() -> usize { Self::N } } 1 }]"))]
+                    Wrapper<T>,
+                ),
+            }
+        })
+        .unwrap();
+
+        let actual = process(&item_enum, default_cratename())
+            .unwrap()
+            .to_string();
+        // `ReplaceSelf` leaves the local impl's `Self` alone.
+        assert!(actual.contains("fn get () -> Self"), "{}", actual);
+    }
+
+    #[test]
+    fn self_in_params_err() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum Tree<T> {
+                Leaf(T),
+                Node(#[borsh(schema(params = "T => Vec<Self>"))] Wrapper<T>),
+            }
+        })
+        .unwrap();
+
+        assert!(process(&item_enum, default_cratename()).is_err());
     }
 }
