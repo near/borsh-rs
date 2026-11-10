@@ -1,4 +1,4 @@
-use proc_macro2::{Span, TokenStream as TokenStream2};
+use proc_macro2::{Span, TokenStream as TokenStream2, TokenTree};
 use quote::{format_ident, quote, ToTokens};
 use std::collections::HashSet;
 use syn::{
@@ -35,12 +35,18 @@ fn transform_variant_fields(mut input: Fields) -> Fields {
 ///
 /// Every `Self` in type position is rewritten, including the self type of a qualified path
 /// (`<Self as Trait>::Assoc` becomes `<Enum as Trait>::Assoc`), while `Self::Assoc` is left
-/// alone, because there `Self` is a path segment rather than a type.
+/// alone, because there `Self` is a path segment rather than a type. `Self` in a macro is left
+/// alone too, since the macro may match the token itself; `check_unresolved_self` rejects it.
 struct ReplaceSelf {
     concrete: syn::Type,
 }
 
 impl syn::fold::Fold for ReplaceSelf {
+    // `Self` inside a nested item (a local `impl` in an array length, say) names that item.
+    fn fold_item(&mut self, item: syn::Item) -> syn::Item {
+        item
+    }
+
     fn fold_type(&mut self, ty: syn::Type) -> syn::Type {
         if let syn::Type::Path(ref type_path) = ty {
             if type_path.qself.is_none() && type_path.path.is_ident("Self") {
@@ -49,6 +55,80 @@ impl syn::fold::Fold for ReplaceSelf {
         }
         syn::fold::fold_type(self, ty)
     }
+}
+
+/// Rejects `Self` that `ReplaceSelf` doesn't rewrite, in a macro or in a `schema` attribute
+/// string, because in the helper struct it would name the helper instead of the enum. `Self`
+/// inside a nested item, such as a local `impl` inside an array length, names that item and
+/// keeps its meaning in the helper struct.
+///
+/// A derive only sees a macro's input, so a macro whose expansion contains `Self` without taking
+/// it as input (`macro_rules! me { () => { Vec<Self> } }`) still names the helper struct.
+fn check_unresolved_self(fields: &Fields, enum_name: &str) -> syn::Result<()> {
+    fn mentions_self(tokens: TokenStream2) -> bool {
+        tokens.into_iter().any(|token| match token {
+            TokenTree::Ident(ident) => ident == "Self",
+            TokenTree::Group(group) => mentions_self(group.stream()),
+            _ => false,
+        })
+    }
+
+    /// Finds `Self` in a macro or, with `paths`, in any path, outside nested items.
+    struct FindSelf {
+        paths: bool,
+        found: bool,
+    }
+    impl syn::fold::Fold for FindSelf {
+        fn fold_item(&mut self, item: syn::Item) -> syn::Item {
+            item
+        }
+
+        fn fold_macro(&mut self, mac: syn::Macro) -> syn::Macro {
+            self.found |= mentions_self(mac.tokens.clone());
+            mac
+        }
+
+        fn fold_path(&mut self, path: syn::Path) -> syn::Path {
+            if self.paths && path.segments.iter().any(|segment| segment.ident == "Self") {
+                self.found = true;
+            }
+            syn::fold::fold_path(self, path)
+        }
+    }
+
+    for field in fields {
+        let attrs = field::Attributes::parse(&field.attrs)?;
+        if attrs.skip {
+            continue;
+        }
+        let mut in_field = FindSelf {
+            paths: false,
+            found: false,
+        };
+        syn::fold::Fold::fold_type(&mut in_field, field.ty.clone());
+        let schema = attrs.schema.unwrap_or_default();
+        let mut in_params = FindSelf {
+            paths: true,
+            found: false,
+        };
+        for param in schema.params.unwrap_or_default() {
+            syn::fold::Fold::fold_type(&mut in_params, param.override_type);
+        }
+        let funcs = schema
+            .with_funcs
+            .into_iter()
+            .flat_map(|f| [f.declaration, f.definitions]);
+        if in_field.found || in_params.found || mentions_self(quote! { #(#funcs)* }) {
+            return Err(syn::Error::new_spanned(
+                field,
+                format!(
+                    "`BorshSchema` can't resolve `Self` in a macro or a `schema` attribute \
+                     of an enum variant, use `{enum_name}` instead"
+                ),
+            ));
+        }
+    }
+    Ok(())
 }
 
 pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
@@ -154,6 +234,7 @@ fn process_variant(
         concrete: self_ty.clone(),
     };
     let variant_fields = syn::fold::fold_fields(&mut replace_self, variant.fields.clone());
+    check_unresolved_self(&variant_fields, enum_name)?;
 
     schema::visit_struct_fields(&variant_fields, &mut generics_output.params_visitor)?;
     let (inner_struct, inner_struct_generics) = inner_struct_definition(
@@ -599,5 +680,118 @@ mod tests {
         let actual = process(&item_struct, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn self_in_macro_err() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum Tree {
+                Leaf(u8),
+                Node(list!(Self)),
+            }
+        })
+        .unwrap();
+
+        let actual = process(&item_enum, default_cratename());
+
+        local_insta_assert_debug_snapshot!(actual.unwrap_err());
+    }
+
+    #[test]
+    fn self_in_with_funcs_err() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum Tree {
+                Leaf(u8),
+                Node(
+                    #[borsh(schema(with_funcs(
+                        declaration = "children::declaration::<Self>",
+                        definitions = "children::add_definitions_recursively::<Self>"
+                    )))]
+                    Children,
+                ),
+            }
+        })
+        .unwrap();
+
+        let actual = process(&item_enum, default_cratename());
+
+        local_insta_assert_debug_snapshot!(actual.unwrap_err());
+    }
+
+    #[test]
+    fn self_in_serialize_with() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum E<T> {
+                Data(T),
+                Flag(#[borsh(serialize_with = "write_flag::<Self, _>")] u8),
+            }
+        })
+        .unwrap();
+
+        let actual = process(&item_enum, default_cratename()).unwrap();
+
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn self_in_local_impl_of_array_len() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum E {
+                V([u8; {
+                    struct Size;
+                    impl Size {
+                        const N: usize = 1;
+                        const M: usize = Self::N;
+                    }
+                    Size::M
+                }]),
+            }
+        })
+        .unwrap();
+
+        assert!(process(&item_enum, default_cratename()).is_ok());
+    }
+
+    #[test]
+    fn self_in_nested_items_ok() {
+        // Every `Self` here names a local item, not the enum.
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum E {
+                Macro([u8; {
+                    struct Size;
+                    impl Size {
+                        const N: usize = 1;
+                        const M: usize = ident!(Self::N);
+                        fn get() -> Self { Size }
+                    }
+                    Size::M
+                }]),
+                Param(
+                    #[borsh(schema(params = "T => [T; { trait Len { const N: usize = 1; fn n() -> usize { Self::N } } 1 }]"))]
+                    Wrapper<T>,
+                ),
+            }
+        })
+        .unwrap();
+
+        let actual = process(&item_enum, default_cratename())
+            .unwrap()
+            .to_string();
+        // `ReplaceSelf` leaves the local impl's `Self` alone.
+        assert!(actual.contains("fn get () -> Self"), "{}", actual);
+    }
+
+    #[test]
+    fn self_in_params_err() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum Tree<T> {
+                Leaf(T),
+                Node(#[borsh(schema(params = "T => Vec<Self>"))] Wrapper<T>),
+            }
+        })
+        .unwrap();
+
+        let err = process(&item_enum, default_cratename()).unwrap_err();
+        assert!(err.to_string().contains("can't resolve `Self`"), "{}", err);
     }
 }

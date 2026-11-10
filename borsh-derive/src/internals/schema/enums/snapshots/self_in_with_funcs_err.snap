@@ -1,0 +1,7 @@
+---
+source: borsh-derive/src/internals/schema/enums/mod.rs
+expression: actual.unwrap_err()
+---
+Error(
+    "`BorshSchema` can't resolve `Self` in a macro or a `schema` attribute of an enum variant, use `Tree` instead",
+)

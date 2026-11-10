@@ -1,0 +1,49 @@
+---
+source: borsh-derive/src/internals/schema/enums/mod.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+#[automatically_derived]
+impl<T> borsh::BorshSchema for E<T>
+where
+    T: borsh::BorshSchema,
+{
+    fn declaration() -> borsh::schema::Declaration {
+        borsh::__private::maybestd::format!(
+            r#"{}<{}>"#, "E", < [borsh::__private::maybestd::string::String] > ::join(&
+            [< T as borsh::BorshSchema > ::declaration()], ", ")
+        )
+    }
+    fn add_definitions_recursively(
+        definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
+            borsh::schema::Declaration,
+            borsh::schema::Definition,
+        >,
+    ) {
+        #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct E__Data<T>(T);
+        #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct E__Flag(#[borsh(serialize_with = "write_flag::<Self, _>")] u8);
+        <E__Data<T> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <E__Flag as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        let definition = borsh::schema::Definition::Enum {
+            tag_width: 1,
+            variants: borsh::__private::maybestd::vec![
+                (u8::from(0u8) as i64, ::core::convert::Into::into("Data"), < E__Data < T
+                > as borsh::BorshSchema > ::declaration()), (u8::from(1u8) as i64,
+                ::core::convert::Into::into("Flag"), < E__Flag as borsh::BorshSchema >
+                ::declaration())
+            ],
+        };
+        borsh::schema::add_definition(
+            <Self as borsh::BorshSchema>::declaration(),
+            definition,
+            definitions,
+        );
+    }
+}
