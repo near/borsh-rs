@@ -21,9 +21,9 @@ where
     ) {
         let fields = borsh::schema::Fields::NamedFields(
             borsh::__private::maybestd::vec![
-                ("x".into(), < PrimaryMap < K, V > as borsh::BorshSchema >
-                ::declaration()), ("y".into(), < String as borsh::BorshSchema >
-                ::declaration())
+                (::core::convert::Into::into("x"), < PrimaryMap < K, V > as
+                borsh::BorshSchema > ::declaration()), (::core::convert::Into::into("y"),
+                < String as borsh::BorshSchema > ::declaration())
             ],
         );
         let definition = borsh::schema::Definition::Struct {

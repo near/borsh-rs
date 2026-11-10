@@ -21,7 +21,8 @@ where
     ) {
         let fields = borsh::schema::Fields::NamedFields(
             borsh::__private::maybestd::vec![
-                ("y".into(), < U as borsh::BorshSchema > ::declaration())
+                (::core::convert::Into::into("y"), < U as borsh::BorshSchema >
+                ::declaration())
             ],
         );
         let definition = borsh::schema::Definition::Struct {

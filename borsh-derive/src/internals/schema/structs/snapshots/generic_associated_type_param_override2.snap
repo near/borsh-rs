@@ -28,9 +28,10 @@ where
     ) {
         let fields = borsh::schema::Fields::NamedFields(
             borsh::__private::maybestd::vec![
-                ("field".into(), < (< T as TraitName > ::Associated, T) as
-                borsh::BorshSchema > ::declaration()), ("another".into(), < V as
-                borsh::BorshSchema > ::declaration())
+                (::core::convert::Into::into("field"), < (< T as TraitName >
+                ::Associated, T) as borsh::BorshSchema > ::declaration()),
+                (::core::convert::Into::into("another"), < V as borsh::BorshSchema >
+                ::declaration())
             ],
         );
         let definition = borsh::schema::Definition::Struct {

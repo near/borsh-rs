@@ -49,7 +49,7 @@ fn declaration(ident_str: &str, cratename: Path, params_for_bounds: Vec<Type>) -
     }
     if declaration_params.is_empty() {
         quote! {
-                #ident_str.into()
+                ::core::convert::Into::into(#ident_str)
         }
     } else {
         quote! {

@@ -173,7 +173,7 @@ fn process_variant(
         },
         variant_entry: quote! {
             (u8::from(#discriminant_value) as i64,
-             #variant_name.into(),
+             ::core::convert::Into::into(#variant_name),
              #variant_type::declaration())
         },
     })

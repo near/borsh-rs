@@ -5,7 +5,7 @@ expression: pretty_print_syn_str(&actual).unwrap()
 #[automatically_derived]
 impl borsh::BorshSchema for X {
     fn declaration() -> borsh::schema::Declaration {
-        "X".into()
+        ::core::convert::Into::into("X")
     }
     fn add_definitions_recursively(
         definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
@@ -52,14 +52,18 @@ impl borsh::BorshSchema for X {
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "A".into(), < X__A as borsh::BorshSchema >
-                ::declaration()), (u8::from(1u8) as i64, "B".into(), < X__B as
-                borsh::BorshSchema > ::declaration()), (u8::from(2u8) as i64, "C".into(),
-                < X__C as borsh::BorshSchema > ::declaration()), (u8::from(3u8) as i64,
-                "D".into(), < X__D as borsh::BorshSchema > ::declaration()),
-                (u8::from(4u8) as i64, "E".into(), < X__E as borsh::BorshSchema >
-                ::declaration()), (u8::from(5u8) as i64, "F".into(), < X__F as
-                borsh::BorshSchema > ::declaration())
+                (u8::from(0u8) as i64, ::core::convert::Into::into("A"), < X__A as
+                borsh::BorshSchema > ::declaration()), (u8::from(1u8) as i64,
+                ::core::convert::Into::into("B"), < X__B as borsh::BorshSchema >
+                ::declaration()), (u8::from(2u8) as i64,
+                ::core::convert::Into::into("C"), < X__C as borsh::BorshSchema >
+                ::declaration()), (u8::from(3u8) as i64,
+                ::core::convert::Into::into("D"), < X__D as borsh::BorshSchema >
+                ::declaration()), (u8::from(4u8) as i64,
+                ::core::convert::Into::into("E"), < X__E as borsh::BorshSchema >
+                ::declaration()), (u8::from(5u8) as i64,
+                ::core::convert::Into::into("F"), < X__F as borsh::BorshSchema >
+                ::declaration())
             ],
         };
         borsh::schema::add_definition(

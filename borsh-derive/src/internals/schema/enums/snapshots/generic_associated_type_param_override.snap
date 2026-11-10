@@ -65,9 +65,10 @@ where
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "B".into(), < EnumParametrized__B < K, V > as
-                borsh::BorshSchema > ::declaration()), (u8::from(1u8) as i64, "C".into(),
-                < EnumParametrized__C < T > as borsh::BorshSchema > ::declaration())
+                (u8::from(0u8) as i64, ::core::convert::Into::into("B"), <
+                EnumParametrized__B < K, V > as borsh::BorshSchema > ::declaration()),
+                (u8::from(1u8) as i64, ::core::convert::Into::into("C"), <
+                EnumParametrized__C < T > as borsh::BorshSchema > ::declaration())
             ],
         };
         borsh::schema::add_definition(

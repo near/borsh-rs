@@ -30,3 +30,38 @@ enum Sink {
 
 #[allow(unused_imports)]
 use Sink::*;
+
+// A trait in scope with its own `into` method on `&str` must not make the generated schema code
+// ambiguous.
+#[cfg(feature = "unstable__schema")]
+mod schema_into_collision {
+    use alloc::string::String;
+
+    #[allow(unused)]
+    trait OtherInto {
+        fn into(self) -> String;
+    }
+
+    impl OtherInto for &str {
+        fn into(self) -> String {
+            String::from(self)
+        }
+    }
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Unit;
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Named<T> {
+        field: T,
+    }
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    enum Variants {
+        A,
+        B(u8),
+    }
+}
