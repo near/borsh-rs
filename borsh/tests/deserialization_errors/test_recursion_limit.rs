@@ -275,3 +275,74 @@ fn test_byte_vec_counts_one_level() {
     // An empty vector doesn't count.
     assert!(from_slice_with_recursion_limit::<Vec<u8>>(&[0, 0, 0, 0], 0).is_ok());
 }
+
+#[test]
+fn test_with_recursion_limit_for_prefix_decoding() {
+    on_small_stack(|| {
+        let depth = DEFAULT_RECURSION_LIMIT + 1;
+        let mut data = tree_bytes(depth);
+        data.push(42); // the start of the next value
+        let mut buf = &data[..];
+        assert_recursion_limit_error(Tree::deserialize(&mut buf));
+
+        let mut buf = &data[..];
+        let tree = borsh::de::with_recursion_limit(depth, || Tree::deserialize(&mut buf)).unwrap();
+        assert_eq!(tree, deep_tree(depth));
+        assert_eq!(buf, [42]);
+
+        // The default limit is back afterwards.
+        let mut buf = &data[..];
+        assert_recursion_limit_error(Tree::deserialize(&mut buf));
+    });
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, PartialEq)]
+struct MapNode(std::collections::BTreeMap<u8, MapNode>);
+
+#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, PartialEq)]
+struct Named {
+    name: alloc::string::String,
+    next: Option<Box<Named>>,
+}
+
+#[test]
+fn test_deep_map_is_rejected() {
+    on_small_stack(|| {
+        let mut data = Vec::new();
+        for _ in 0..100_000 {
+            data.extend_from_slice(&1u32.to_le_bytes());
+            data.push(0);
+        }
+        data.extend_from_slice(&0u32.to_le_bytes());
+        assert_recursion_limit_error(from_slice::<MapNode>(&data));
+    });
+}
+
+#[test]
+fn test_string_leaf_counts_one_level() {
+    // 1023 boxes: the innermost `name` is the 1024th level if it isn't empty.
+    fn named(depth: usize, leaf: &str) -> Named {
+        let mut value = Named {
+            name: leaf.into(),
+            next: None,
+        };
+        for _ in 0..depth {
+            value = Named {
+                name: alloc::string::String::new(),
+                next: Some(Box::new(value)),
+            };
+        }
+        value
+    }
+    on_small_stack(|| {
+        let ok = to_vec(&named(DEFAULT_RECURSION_LIMIT - 1, "x")).unwrap();
+        assert_eq!(
+            from_slice::<Named>(&ok).unwrap(),
+            named(DEFAULT_RECURSION_LIMIT - 1, "x")
+        );
+        let empty = to_vec(&named(DEFAULT_RECURSION_LIMIT, "")).unwrap();
+        assert!(from_slice::<Named>(&empty).is_ok());
+        let full = to_vec(&named(DEFAULT_RECURSION_LIMIT, "x")).unwrap();
+        assert_recursion_limit_error(from_slice::<Named>(&full));
+    });
+}

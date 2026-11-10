@@ -16,8 +16,11 @@
 /// Every `Box<T>` and every non-empty `Vec<T>` (and the collections built on
 /// it, such as `VecDeque`, `BTreeMap` or `HashSet`) that is being
 /// deserialized counts as one level, so `Vec<Box<T>>` uses two levels per
-/// level of nesting. Use `from_slice_with_recursion_limit` or
-/// `from_reader_with_recursion_limit` to deserialize with a different limit.
+/// level of nesting. That includes `Vec<u8>` and the types decoded through
+/// it, such as a non-empty `String`, so a value at the limit can be accepted
+/// with an empty string in its innermost level and rejected with a non-empty
+/// one. Use `from_slice_with_recursion_limit`, `from_reader_with_recursion_limit`
+/// or `with_recursion_limit` to deserialize with a different limit.
 ///
 /// The limit counts levels, not bytes of stack. The stack used per level
 /// grows with the inline size of the value being built at that level, so a
