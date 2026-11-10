@@ -74,6 +74,14 @@ fn test_serialize_boxed_slice_of_unit_type() {
 }
 
 #[test]
+fn test_serialize_slice_of_boxed_unit_type() {
+    // `Box<()>` is pointer-sized in memory but encodes to zero bytes.
+    let v = [Box::new(()), Box::new(())];
+    let res = to_vec(&v[..]);
+    assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+}
+
+#[test]
 fn test_serialize_cow_slice_of_unit_type() {
     let v: Cow<'_, [()]> = Cow::Borrowed(&[(), (), ()]);
     let res = to_vec(&v);
