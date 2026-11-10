@@ -23,6 +23,9 @@ fn test_object_id() {
 
 #[test]
 fn test_object_id_truncated() {
-    let err = from_slice::<ObjectId>(&[0; 11]).unwrap_err();
-    assert_eq!(err.to_string(), "Unexpected length of input");
+    for len in 0..12 {
+        let err = from_slice::<ObjectId>(&[0; 11][..len]).unwrap_err();
+        assert_eq!(err.kind(), borsh::io::ErrorKind::InvalidData);
+        assert_eq!(err.to_string(), "Unexpected length of input");
+    }
 }
