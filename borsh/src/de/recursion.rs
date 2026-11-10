@@ -5,7 +5,8 @@
 //! `Box<T>` or the element loop of `Vec<T>`. Each of those enters a
 //! `RecursionGuard` for the duration of its inner deserialization, so the
 //! number of live guards on a thread is the current nesting depth. Exceeding
-//! the limit returns an error instead of overflowing the stack.
+//! the limit returns an error. The limit counts levels, not stack bytes; see
+//! [`DEFAULT_RECURSION_LIMIT`].
 //!
 //! The counter is thread-local, so it needs `std`. Without `std` the guard is
 //! a no-op.
@@ -17,6 +18,13 @@
 /// deserialized counts as one level, so `Vec<Box<T>>` uses two levels per
 /// level of nesting. Use `from_slice_with_recursion_limit` or
 /// `from_reader_with_recursion_limit` to deserialize with a different limit.
+///
+/// The limit counts levels, not bytes of stack. The stack used per level
+/// grows with the inline size of the value being built at that level, so a
+/// type that is large inline (for example one holding a big array next to its
+/// `Box`) can still overflow the stack before it reaches the limit, especially
+/// on threads with small stacks or in debug builds. Use a lower limit for such
+/// types, or deserialize them on a thread with a larger stack.
 ///
 /// The limit only applies when borsh is built with the `std` feature.
 pub const DEFAULT_RECURSION_LIMIT: usize = 1024;
