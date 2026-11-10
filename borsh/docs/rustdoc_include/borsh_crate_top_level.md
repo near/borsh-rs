@@ -14,6 +14,13 @@
   `std::io` items.  Otherwise they are borsh-specific types which mimic
   behaviour of corresponding standard types.
 
+  With **std**, deserialization also limits how deeply values of recursive
+  types may be nested and returns an error once the limit is reached, which
+  keeps typical types from overflowing the stack. The limit counts levels, not
+  stack bytes, so types that are large inline may need a lower limit. See
+  [`de::DEFAULT_RECURSION_LIMIT`]. Without **std** nesting depth is not
+  tracked.
+
 ### Default features
 
 * **std** - enabled by default.
