@@ -22,17 +22,17 @@ impl<C> borsh::BorshSchema for ASalad<C> {
         let definition = borsh::schema::Definition::Struct {
             fields,
         };
-        let no_recursion_flag = definitions
-            .get(&<Self as borsh::BorshSchema>::declaration())
-            .is_none();
-        borsh::schema::add_definition(
-            <Self as borsh::BorshSchema>::declaration(),
+        borsh::schema::add_struct_definition::<
+            Self,
+        >(
             definition,
             definitions,
+            |definitions| {
+                <Tomatoes as borsh::BorshSchema>::add_definitions_recursively(
+                    definitions,
+                );
+                <Oil as borsh::BorshSchema>::add_definitions_recursively(definitions);
+            },
         );
-        if no_recursion_flag {
-            <Tomatoes as borsh::BorshSchema>::add_definitions_recursively(definitions);
-            <Oil as borsh::BorshSchema>::add_definitions_recursively(definitions);
-        }
     }
 }

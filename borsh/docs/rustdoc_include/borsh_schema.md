@@ -307,11 +307,8 @@ mod index_map_impl {
                 length_width: Definition::DEFAULT_LENGTH_WIDTH,
                 length_range: Definition::DEFAULT_LENGTH_RANGE,
             };
-            let no_recursion_flag = definitions.get(&declaration::<K, V>()).is_none();
             schema::add_definition(declaration::<K, V>(), definition, definitions);
-            if no_recursion_flag {
-                <(K, V)>::add_definitions_recursively(definitions);
-            }
+            <(K, V)>::add_definitions_recursively(definitions);
         }
     }
 }
