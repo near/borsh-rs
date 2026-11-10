@@ -9,6 +9,13 @@ where
     K: borsh::ser::BorshSerialize,
     V: borsh::ser::BorshSerialize,
 {
+    #[allow(
+        deprecated,
+        unused_parens,
+        unused_qualifications,
+        clippy::all,
+        clippy::use_self
+    )]
     const ENCODES_TO_ZERO_BYTES: bool = borsh::__private::encodes_to_zero_bytes_ser::<
         HashMap<K, V>,
     >() && borsh::__private::encodes_to_zero_bytes_ser::<String>();

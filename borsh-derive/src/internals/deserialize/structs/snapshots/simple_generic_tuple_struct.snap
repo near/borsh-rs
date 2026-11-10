@@ -7,6 +7,13 @@ impl<T> borsh::de::BorshDeserialize for TupleA<T>
 where
     T: borsh::de::BorshDeserialize,
 {
+    #[allow(
+        deprecated,
+        unused_parens,
+        unused_qualifications,
+        clippy::all,
+        clippy::use_self
+    )]
     const ENCODES_TO_ZERO_BYTES: bool = borsh::__private::encodes_to_zero_bytes_de::<T>()
         && borsh::__private::encodes_to_zero_bytes_de::<u32>();
     fn deserialize_reader<__R: borsh::io::Read>(

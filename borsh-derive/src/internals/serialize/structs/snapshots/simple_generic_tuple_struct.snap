@@ -7,6 +7,13 @@ impl<T> borsh::ser::BorshSerialize for TupleA<T>
 where
     T: borsh::ser::BorshSerialize,
 {
+    #[allow(
+        deprecated,
+        unused_parens,
+        unused_qualifications,
+        clippy::all,
+        clippy::use_self
+    )]
     const ENCODES_TO_ZERO_BYTES: bool = borsh::__private::encodes_to_zero_bytes_ser::<
         T,
     >() && borsh::__private::encodes_to_zero_bytes_ser::<u32>();

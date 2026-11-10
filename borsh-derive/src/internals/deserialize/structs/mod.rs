@@ -40,13 +40,13 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
     };
     generics_output.extend(&mut where_clause, &cratename);
     let encodes_to_zero_bytes =
-        zero_bytes::encodes_to_zero_bytes(&input.fields, &cratename, BoundType::Deserialize)?;
+        zero_bytes::encodes_to_zero_bytes_const(&input.fields, &cratename, BoundType::Deserialize)?;
 
     if let Some(method_ident) = item::contains_initialize_with(&input.attrs)? {
         Ok(quote! {
             #[automatically_derived]
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
-                const ENCODES_TO_ZERO_BYTES: bool = #encodes_to_zero_bytes;
+                #encodes_to_zero_bytes
 
                 fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
                     let mut return_value = #return_value;
@@ -59,7 +59,7 @@ pub fn process(input: &ItemStruct, cratename: Path) -> syn::Result<TokenStream2>
         Ok(quote! {
             #[automatically_derived]
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
-                const ENCODES_TO_ZERO_BYTES: bool = #encodes_to_zero_bytes;
+                #encodes_to_zero_bytes
 
                 fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
                     Ok(#return_value)
