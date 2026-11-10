@@ -66,9 +66,14 @@ fn declaration(
                 ::core::convert::Into::into(#ident_str)
         }
     } else {
-        // No local binding: it could clash with a const param of the same name.
+        // No local binding: it could clash with a const param of the same name. `<[String]>::join`
+        // names the slice method, so a `join` trait method on arrays in scope can't take over.
         quote! {
-                #cratename::__private::maybestd::format!(r#"{}<{}>"#, #ident_str, [#(#declaration_params),*].join(", "))
+                #cratename::__private::maybestd::format!(
+                    r#"{}<{}>"#,
+                    #ident_str,
+                    <[#cratename::__private::maybestd::string::String]>::join(&[#(#declaration_params),*], ", ")
+                )
         }
     }
 }

@@ -12,8 +12,9 @@ where
 {
     fn declaration() -> borsh::schema::Declaration {
         borsh::__private::maybestd::format!(
-            r#"{}<{}>"#, "Side", [< B as borsh::BorshSchema > ::declaration(), < A as
-            borsh::BorshSchema > ::declaration()].join(", ")
+            r#"{}<{}>"#, "Side", < [borsh::__private::maybestd::string::String] >
+            ::join(& [< B as borsh::BorshSchema > ::declaration(), < A as
+            borsh::BorshSchema > ::declaration()], ", ")
         )
     }
     fn add_definitions_recursively(

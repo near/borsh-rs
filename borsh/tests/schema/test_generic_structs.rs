@@ -255,3 +255,29 @@ pub fn const_generic_struct() {
         defs.get("Buf<8>")
     );
 }
+
+#[test]
+pub fn array_join_trait_in_scope() {
+    // A `join` method on arrays in scope must not replace the slice `join` in the declaration.
+    #[allow(unused)]
+    trait ArrayJoin {
+        fn join(&self, sep: &str) -> String;
+    }
+
+    impl<const N: usize> ArrayJoin for [String; N] {
+        fn join(&self, _sep: &str) -> String {
+            "array-specific join".to_string()
+        }
+    }
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Wrapper<T>(T);
+
+    #[allow(unused)]
+    #[derive(borsh::BorshSchema)]
+    struct Pair<T, const N: usize>([T; N]);
+
+    assert_eq!("Wrapper<u8>".to_string(), <Wrapper<u8>>::declaration());
+    assert_eq!("Pair<u16, 2>".to_string(), <Pair<u16, 2>>::declaration());
+}
