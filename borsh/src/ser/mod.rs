@@ -731,10 +731,10 @@ macro_rules! impl_range {
 
 impl_range!(Range, this, &this.start, &this.end);
 impl_range!(
-    /// Writes `start()` then `end()`. A range iterated to exhaustion is marked
-    /// empty by a flag that is not encoded, so it can decode as a non-empty
-    /// range (for example `255u8..=255` after one `next()`). The format is
-    /// frozen; check `is_empty()` before serializing if that matters.
+    /// Writes `start()` then `end()`. A range iterated to exhaustion can be
+    /// marked empty by a flag that is not encoded, so it can decode as a
+    /// non-empty range (for example `255u8..=255` after one `next()`). The
+    /// format is frozen; check `is_empty()` before serializing if that matters.
     RangeInclusive,
     this,
     this.start(),
