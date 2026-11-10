@@ -69,6 +69,11 @@ pub trait BorshSerialize {
     /// is `false` because `Self` may be unsized; collections additionally reject any element
     /// type that is zero-sized in memory. Types that wrap another value transparently (such as
     /// `Box<T>`) forward the inner type's answer.
+    ///
+    /// A type that contains itself only through such wrappers, with nothing in between that
+    /// always encodes bytes (for example `struct A(Box<A>)`), has no finite value, and its
+    /// constant is cyclic: serializing or deserializing a collection of it doesn't compile.
+    /// Such a collection could only ever be empty.
     #[doc(hidden)]
     const ENCODES_TO_ZERO_BYTES: bool = false;
 }

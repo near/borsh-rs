@@ -4,13 +4,6 @@ expression: pretty_print_syn_str(&actual).unwrap()
 ---
 #[automatically_derived]
 impl borsh::ser::BorshSerialize for A {
-    #[allow(
-        deprecated,
-        unused_parens,
-        unused_qualifications,
-        clippy::all,
-        clippy::use_self
-    )]
     const ENCODES_TO_ZERO_BYTES: bool = true;
     fn serialize<__W: borsh::io::Write>(
         &self,
