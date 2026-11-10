@@ -8,8 +8,8 @@ impl borsh::de::BorshDeserialize for A {
     fn deserialize_reader<__R: borsh::io::Read>(
         reader: &mut __R,
     ) -> ::core::result::Result<Self, borsh::io::Error> {
-        Ok(Self {
-            x: core::default::Default::default(),
+        ::core::result::Result::Ok(Self {
+            x: ::core::default::Default::default(),
         })
     }
 }
