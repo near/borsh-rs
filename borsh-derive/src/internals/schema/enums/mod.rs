@@ -1,7 +1,10 @@
 use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::{quote, ToTokens};
+use quote::{format_ident, quote, ToTokens};
 use std::collections::HashSet;
-use syn::{Fields, Generics, Ident, ItemEnum, ItemStruct, Path, Variant, Visibility};
+use syn::{
+    ext::IdentExt, parse_quote, Fields, Generics, Ident, ItemEnum, ItemStruct, Path, Variant,
+    Visibility,
+};
 
 use crate::internals::{
     attributes::{field, item},
@@ -179,13 +182,42 @@ fn process_variant(
     })
 }
 
+/// The inner struct keeps all of the enum's lifetimes, as bounds may name them, but its fields
+/// may not use them all (E0392). A skipped `PhantomData` field uses them and leaves the schema
+/// as it is.
+fn add_lifetimes_marker(fields: &mut Fields, generics: &Generics) {
+    let lifetimes: Vec<_> = generics.lifetimes().map(|param| &param.lifetime).collect();
+    if lifetimes.is_empty() {
+        return;
+    }
+    let marker = quote! { ::core::marker::PhantomData<(#(&#lifetimes (),)*)> };
+    match fields {
+        Fields::Named(fields) => {
+            // A name no field has, so the marker never clashes with a user field.
+            let mut name = format_ident!("__borsh_lifetimes");
+            while fields
+                .named
+                .iter()
+                .any(|field| field.ident.as_ref().map(IdentExt::unraw).as_ref() == Some(&name))
+            {
+                name = format_ident!("{}_", name);
+            }
+            fields
+                .named
+                .push(parse_quote! { #[borsh(skip)] #name: #marker });
+        }
+        Fields::Unnamed(fields) => fields.unnamed.push(parse_quote! { #[borsh(skip)] #marker }),
+        Fields::Unit => *fields = Fields::Unnamed(parse_quote! { (#[borsh(skip)] #marker) }),
+    }
+}
+
 fn inner_struct_definition(
     fields: &Fields,
     cratename: &Path,
     inner_struct_ident: &Ident,
     enum_generics: &Generics,
 ) -> (TokenStream2, Generics) {
-    let transformed_fields = transform_variant_fields(fields.clone());
+    let mut transformed_fields = transform_variant_fields(fields.clone());
 
     let mut variant_schema_params_visitor =
         generics::FindTyParams::new_including_phantom_data(enum_generics);
@@ -196,6 +228,7 @@ fn inner_struct_definition(
         .collect::<HashSet<_>>();
     let inner_struct_generics =
         schema::filter_used_params(enum_generics, variant_not_skipped_params);
+    add_lifetimes_marker(&mut transformed_fields, &inner_struct_generics);
 
     let inner_struct = ItemStruct {
         attrs: vec![],
@@ -304,6 +337,22 @@ mod tests {
         .unwrap();
 
         let actual = process(&item_enum, default_cratename()).unwrap();
+        local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn lifetime_unused_by_variants() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum A<'a, T: 'a> {
+                Text(Cow<'a, str>),
+                Pair { x: T, y: u8 },
+                Empty,
+            }
+        })
+        .unwrap();
+
+        let actual = process(&item_enum, default_cratename()).unwrap();
+
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
     }
 

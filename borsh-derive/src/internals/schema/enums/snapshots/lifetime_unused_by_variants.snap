@@ -1,0 +1,66 @@
+---
+source: borsh-derive/src/internals/schema/enums/mod.rs
+expression: pretty_print_syn_str(&actual).unwrap()
+---
+#[automatically_derived]
+impl<'a, T: 'a> borsh::BorshSchema for A<'a, T>
+where
+    T: borsh::BorshSchema,
+{
+    fn declaration() -> borsh::schema::Declaration {
+        borsh::__private::maybestd::format!(
+            r#"{}<{}>"#, "A", < [borsh::__private::maybestd::string::String] > ::join(&
+            [< T as borsh::BorshSchema > ::declaration()], ", ")
+        )
+    }
+    fn add_definitions_recursively(
+        definitions: &mut borsh::__private::maybestd::collections::BTreeMap<
+            borsh::schema::Declaration,
+            borsh::schema::Definition,
+        >,
+    ) {
+        #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct A__Text<'a>(
+            Cow<'a, str>,
+            #[borsh(skip)]
+            ::core::marker::PhantomData<(&'a (),)>,
+        );
+        #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct A__Pair<'a, T: 'a> {
+            x: T,
+            y: u8,
+            #[borsh(skip)]
+            __borsh_lifetimes: ::core::marker::PhantomData<(&'a (),)>,
+        }
+        #[allow(dead_code)]
+        #[allow(non_camel_case_types)]
+        #[derive(borsh::BorshSchema)]
+        #[borsh(crate = "borsh")]
+        struct A__Empty<'a>(#[borsh(skip)] ::core::marker::PhantomData<(&'a (),)>);
+        <A__Text<'a> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <A__Pair<'a, T> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        <A__Empty<'a> as borsh::BorshSchema>::add_definitions_recursively(definitions);
+        let definition = borsh::schema::Definition::Enum {
+            tag_width: 1,
+            variants: borsh::__private::maybestd::vec![
+                (u8::from(0u8) as i64, ::core::convert::Into::into("Text"), < A__Text <
+                'a > as borsh::BorshSchema > ::declaration()), (u8::from(1u8) as i64,
+                ::core::convert::Into::into("Pair"), < A__Pair < 'a, T > as
+                borsh::BorshSchema > ::declaration()), (u8::from(2u8) as i64,
+                ::core::convert::Into::into("Empty"), < A__Empty < 'a > as
+                borsh::BorshSchema > ::declaration())
+            ],
+        };
+        borsh::schema::add_definition(
+            <Self as borsh::BorshSchema>::declaration(),
+            definition,
+            definitions,
+        );
+    }
+}
