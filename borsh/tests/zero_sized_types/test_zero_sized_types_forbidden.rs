@@ -81,6 +81,16 @@ fn test_serialize_slice_of_boxed_unit_type() {
     assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
 }
 
+#[cfg(feature = "rc")]
+#[test]
+fn test_serialize_rc_and_arc_slice_of_unit_type() {
+    // `Rc<[T]>` and `Arc<[T]>` forward to the `[T]` impl.
+    let rc: alloc::rc::Rc<[()]> = vec![(), ()].into();
+    assert_eq!(to_vec(&rc).unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+    let arc: alloc::sync::Arc<[()]> = vec![(), ()].into();
+    assert_eq!(to_vec(&arc).unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+}
+
 #[test]
 fn test_serialize_cow_slice_of_unit_type() {
     let v: Cow<'_, [()]> = Cow::Borrowed(&[(), (), ()]);
