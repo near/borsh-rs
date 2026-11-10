@@ -273,6 +273,8 @@ where
 {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
+        check_zst_ser::<T>()?;
+
         writer.write_all(
             &(u32::try_from(self.len()).map_err(|_| ErrorKind::InvalidData)?).to_le_bytes(),
         )?;
