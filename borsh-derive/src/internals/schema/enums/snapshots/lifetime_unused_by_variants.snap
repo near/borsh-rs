@@ -48,10 +48,11 @@ where
         let definition = borsh::schema::Definition::Enum {
             tag_width: 1,
             variants: borsh::__private::maybestd::vec![
-                (u8::from(0u8) as i64, "Text".into(), < A__Text < 'a > as
-                borsh::BorshSchema > ::declaration()), (u8::from(1u8) as i64, "Pair"
-                .into(), < A__Pair < 'a, T > as borsh::BorshSchema > ::declaration()),
-                (u8::from(2u8) as i64, "Empty".into(), < A__Empty < 'a > as
+                (u8::from(0u8) as i64, ::core::convert::Into::into("Text"), < A__Text <
+                'a > as borsh::BorshSchema > ::declaration()), (u8::from(1u8) as i64,
+                ::core::convert::Into::into("Pair"), < A__Pair < 'a, T > as
+                borsh::BorshSchema > ::declaration()), (u8::from(2u8) as i64,
+                ::core::convert::Into::into("Empty"), < A__Empty < 'a > as
                 borsh::BorshSchema > ::declaration())
             ],
         };
