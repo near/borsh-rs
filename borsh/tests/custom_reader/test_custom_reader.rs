@@ -202,18 +202,32 @@ impl borsh::io::Read for CustomReaderThatFails {
     }
 }
 
+/// Both entry points must return the error the reader gives after the value.
+fn assert_fails_after_value(kind: borsh::io::ErrorKind) {
+    let mut reader = CustomReaderThatFailsAfterData {
+        data: &[1, 0, 0, 0],
+        kind,
+    };
+    let err = from_reader::<_, u32>(&mut reader).unwrap_err();
+    assert_eq!(err.kind(), kind);
+
+    let mut reader = CustomReaderThatFailsAfterData {
+        data: &[1, 0, 0, 0],
+        kind,
+    };
+    let err = u32::try_from_reader(&mut reader).unwrap_err();
+    assert_eq!(err.kind(), kind);
+}
+
 #[test]
 fn test_custom_reader_that_fails_after_value() {
-    use borsh::io::ErrorKind;
+    assert_fails_after_value(borsh::io::ErrorKind::ConnectionReset);
+}
 
-    for kind in [ErrorKind::ConnectionReset, ErrorKind::UnexpectedEof] {
-        let mut reader = CustomReaderThatFailsAfterData {
-            data: &[1, 0, 0, 0],
-            kind,
-        };
-        let err = from_reader::<_, u32>(&mut reader).unwrap_err();
-        assert_eq!(err.kind(), kind);
-    }
+#[test]
+fn test_custom_reader_that_hits_eof_error_after_value() {
+    // Truncated input that ends in an error rather than `Ok(0)` was accepted as `Ok`.
+    assert_fails_after_value(borsh::io::ErrorKind::UnexpectedEof);
 }
 
 /// Yields `data`, then fails with `kind`, like a decompressor on truncated input.
