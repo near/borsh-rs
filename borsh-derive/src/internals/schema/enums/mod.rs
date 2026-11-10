@@ -53,7 +53,9 @@ impl syn::fold::Fold for ReplaceSelf {
 }
 
 /// Rejects `Self` that `ReplaceSelf` doesn't rewrite, in a macro or in a `schema` attribute
-/// string, because in the helper struct it would name the helper instead of the enum.
+/// string, because in the helper struct it would name the helper instead of the enum. Other
+/// `Self` tokens left in a field type, such as one in a local `impl` inside an array length,
+/// keep their meaning in the helper struct.
 fn check_unresolved_self(fields: &Fields, enum_name: &str) -> syn::Result<()> {
     fn mentions_self(tokens: TokenStream2) -> bool {
         tokens.into_iter().any(|token| match token {
@@ -63,19 +65,28 @@ fn check_unresolved_self(fields: &Fields, enum_name: &str) -> syn::Result<()> {
         })
     }
 
+    struct SelfInMacro(bool);
+    impl syn::fold::Fold for SelfInMacro {
+        fn fold_macro(&mut self, mac: syn::Macro) -> syn::Macro {
+            self.0 |= mentions_self(mac.tokens.clone());
+            mac
+        }
+    }
+
     for field in fields {
         let attrs = field::Attributes::parse(&field.attrs)?;
         if attrs.skip {
             continue;
         }
-        let ty = &field.ty;
+        let mut self_in_macro = SelfInMacro(false);
+        syn::fold::Fold::fold_type(&mut self_in_macro, field.ty.clone());
         let schema = attrs.schema.unwrap_or_default();
         let params = schema.params.unwrap_or_default();
         let funcs = schema
             .with_funcs
             .into_iter()
             .flat_map(|f| [f.declaration, f.definitions]);
-        if mentions_self(quote! { #ty #(#params)* #(#funcs)* }) {
+        if self_in_macro.0 || mentions_self(quote! { #(#params)* #(#funcs)* }) {
             return Err(syn::Error::new_spanned(
                 field,
                 format!(
@@ -688,5 +699,24 @@ mod tests {
         let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn self_in_local_impl_of_array_len() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum E {
+                V([u8; {
+                    struct Size;
+                    impl Size {
+                        const N: usize = 1;
+                        const M: usize = Self::N;
+                    }
+                    Size::M
+                }]),
+            }
+        })
+        .unwrap();
+
+        assert!(process(&item_enum, default_cratename()).is_ok());
     }
 }
