@@ -48,7 +48,7 @@ insta = "1.29.0"
 serde_json = { version = "1" }
 
 [package.metadata.docs.rs]
-features = ["derive", "unstable__schema", "rc"]
+features = ["derive", "unstable__schema", "rc", "unstable__bounded"]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [features]
@@ -61,3 +61,6 @@ std = ["bytes?/std"]
 # Be sure that this is what you want before enabling this feature.
 rc = []
 de_strict_order = []
+# Opt into `BorshDeserializeBounded`, for decoding untrusted input with a memory limit.
+# Unstable: not covered by semver.
+unstable__bounded = []
