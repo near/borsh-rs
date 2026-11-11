@@ -13,9 +13,9 @@ use core::mem::size_of;
 let encoded = to_vec(&vec![String::from("abc"); 3]).unwrap();
 // The `Vec` itself, its buffer of three `String`s, and 3 bytes for each string.
 let limit = size_of::<Vec<String>>() + 3 * size_of::<String>() + 3 * 3;
-let decoded = from_slice_bounded::<Vec<String>>(&encoded, &mut Budget::new(limit)).unwrap();
+let decoded = from_slice_bounded::<Vec<String>>(&encoded, &mut Budget::from_bytes(limit)).unwrap();
 assert_eq!(decoded, vec!["abc"; 3]);
-assert!(from_slice_bounded::<Vec<String>>(&encoded, &mut Budget::new(limit - 1)).is_err());
+assert!(from_slice_bounded::<Vec<String>>(&encoded, &mut Budget::from_bytes(limit - 1)).is_err());
 ```
 
 The trait is implemented for the types listed in [What is charged](#what-is-charged). A
@@ -46,8 +46,8 @@ silent fallback to plain decoding. `BorshDeserialize` is not a supertrait.
 
 - Unless it fails with `LimitExceeded`, a bounded decode returns what `BorshDeserialize`
   returns: the same value, or an error of the same kind and message.
-- After a successful decode with a fresh budget, [`used()`](crate::de::Budget::used) is the
-  smallest limit that decodes this input.
+- After a successful decode with a fresh budget,
+  [`used_bytes()`](crate::de::Budget::used_bytes) is the smallest limit that decodes this input.
 
 Both assume that the reader is deterministic, that hand-written implementations follow the
 [rules](#writing-an-implementation-by-hand), and that allocations succeed.
@@ -74,9 +74,9 @@ use borsh::{from_slice_bounded, to_vec, BorshDeserializeBounded, BorshSerialize,
 
 fn charged<T: BorshSerialize + BorshDeserializeBounded>(value: &T) -> usize {
     let input = to_vec(value).unwrap();
-    let mut budget = Budget::new(1_000_000);
+    let mut budget = Budget::from_bytes(1_000_000);
     from_slice_bounded::<T>(&input, &mut budget).unwrap();
-    budget.used()
+    budget.used_bytes()
 }
 
 # #[cfg(target_pointer_width = "64")]
@@ -107,14 +107,15 @@ assert_eq!(charged(&vec![0u64; 1000]), 8000 + 24);
 # Writing an implementation by hand
 
 Decode each part with its `deserialize_bounded_alloc`, and call
-[`Budget::charge`](crate::de::Budget::charge) or
+[`Budget::charge_bytes`](crate::de::Budget::charge_bytes) or
 [`Budget::charge_array`](crate::de::Budget::charge_array) before an allocation you make
 yourself. Use [`EnumExtBounded`](crate::de::EnumExtBounded) to dispatch on a tag you have
 already read. An implementation must:
 
 - pass on the budget it was given, and never create a `Budget` of its own;
-- never let what it decodes depend on the budget's [`limit`](crate::de::Budget::limit),
-  [`used`](crate::de::Budget::used) or [`remaining`](crate::de::Budget::remaining);
+- never let what it decodes depend on the budget's
+  [`limit_bytes`](crate::de::Budget::limit_bytes), [`used_bytes`](crate::de::Budget::used_bytes)
+  or [`remaining_bytes`](crate::de::Budget::remaining_bytes);
 - decode the same way as its `BorshDeserialize` implementation, without depending on
   allocated capacity.
 
@@ -133,7 +134,7 @@ impl BorshDeserializeBounded for Name {
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
         let original = String::deserialize_bounded_alloc(reader, budget)?;
         // `to_ascii_lowercase` allocates `original.len()` bytes.
-        budget.charge(original.len())?;
+        budget.charge_bytes(original.len())?;
         let lowercase = original.to_ascii_lowercase();
         Ok(Name { original, lowercase })
     }
@@ -142,9 +143,10 @@ impl BorshDeserializeBounded for Name {
 let input = borsh::to_vec("Borsh").unwrap();
 // The `Name` itself, 5 bytes for the string and 5 for its lowercase copy.
 let limit = core::mem::size_of::<Name>() + 10;
-let name = borsh::from_slice_bounded::<Name>(&input, &mut Budget::new(limit)).unwrap();
+let name = borsh::from_slice_bounded::<Name>(&input, &mut Budget::from_bytes(limit)).unwrap();
 assert_eq!((name.original.as_str(), name.lowercase.as_str()), ("Borsh", "borsh"));
-let err = borsh::from_slice_bounded::<Name>(&input, &mut Budget::new(limit - 1)).unwrap_err();
+let err =
+    borsh::from_slice_bounded::<Name>(&input, &mut Budget::from_bytes(limit - 1)).unwrap_err();
 assert_eq!(err.kind(), ErrorKind::OutOfMemory);
 ```
 

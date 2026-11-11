@@ -21,8 +21,8 @@ fn test_vec_of_boxed_units_fails_at_its_length() {
     // Claims 2^27 boxes, which take no input bytes.
     let input = [0, 0, 0, 8, 1, 2, 3];
     let mut reader = &input[..];
-    let err =
-        from_reader_bounded::<_, Vec<Box<()>>>(&mut reader, &mut Budget::new(64)).unwrap_err();
+    let err = from_reader_bounded::<_, Vec<Box<()>>>(&mut reader, &mut Budget::from_bytes(64))
+        .unwrap_err();
     let requested = (1 << 27) * size_of::<Box<()>>();
     let remaining = 64 - size_of::<Vec<Box<()>>>();
     assert_eq!(limit_exceeded(&err), Some((64, requested, remaining)));
@@ -49,7 +49,7 @@ impl BorshDeserializeBounded for Chain {
 fn test_deep_box_chain_fails_on_the_way_down() {
     let limit = 10 * size_of::<Chain>();
     let input = vec![1u8; 1_000_000];
-    let err = from_slice_bounded::<Chain>(&input, &mut Budget::new(limit))
+    let err = from_slice_bounded::<Chain>(&input, &mut Budget::from_bytes(limit))
         .err()
         .expect("the chain never ends");
     // The root and 9 boxes fit.

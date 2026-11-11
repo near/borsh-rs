@@ -190,7 +190,7 @@ where
         // Charge first so recursion pays as it goes. On stable Rust only sized types have thin
         // pointers; an unsized `T` reuses the buffer `T::Owned` charged.
         if size_of::<*const T>() == size_of::<*const ()>() {
-            budget.charge(size_of::<U>())?;
+            budget.charge_bytes(size_of::<U>())?;
         }
         Ok(T::Owned::deserialize_bounded_alloc(reader, budget)?.into())
     }
@@ -208,7 +208,7 @@ where
 ///
 /// let encoded = to_vec(&vec![1u64, 2, 3]).unwrap();
 /// // The `Vec` itself, plus 24 bytes for three `u64`s.
-/// let mut budget = Budget::new(size_of::<Vec<u64>>() + 24);
+/// let mut budget = Budget::from_bytes(size_of::<Vec<u64>>() + 24);
 /// let decoded = from_slice_bounded::<Vec<u64>>(&encoded, &mut budget).unwrap();
 /// assert_eq!(decoded, [1, 2, 3]);
 /// ```
@@ -217,7 +217,7 @@ where
 /// `OutOfMemory` (see [`LimitExceeded`](crate::error::LimitExceeded)) if it does not fit
 /// `budget`.
 pub fn from_slice_bounded<T: BorshDeserializeBounded>(v: &[u8], budget: &mut Budget) -> Result<T> {
-    budget.charge(size_of::<T>())?;
+    budget.charge_bytes(size_of::<T>())?;
     let mut v_mut = v;
     let object = T::deserialize_bounded_alloc(&mut v_mut, budget)?;
     if !v_mut.is_empty() {
@@ -235,7 +235,7 @@ pub fn from_slice_bounded<T: BorshDeserializeBounded>(v: &[u8], budget: &mut Bud
 ///
 /// let encoded = to_vec(&String::from("hello")).unwrap();
 /// // The `String` itself, plus its 5 bytes.
-/// let mut budget = Budget::new(size_of::<String>() + 5);
+/// let mut budget = Budget::from_bytes(size_of::<String>() + 5);
 /// let decoded = from_reader_bounded::<_, String>(&mut encoded.as_slice(), &mut budget).unwrap();
 /// assert_eq!(decoded, "hello");
 /// ```
@@ -243,7 +243,7 @@ pub fn from_reader_bounded<R: Read, T: BorshDeserializeBounded>(
     reader: &mut R,
     budget: &mut Budget,
 ) -> Result<T> {
-    budget.charge(size_of::<T>())?;
+    budget.charge_bytes(size_of::<T>())?;
     let result = T::deserialize_bounded_alloc(reader, budget)?;
     let mut buf = [0u8; 1];
     match reader.read_exact(&mut buf) {
@@ -283,7 +283,7 @@ mod tests {
         // Every call charges `root` first.
         let root = size_of::<Vec<u8>>();
         let limit = 20 + 5 * root;
-        let mut budget = Budget::new(limit);
+        let mut budget = Budget::from_bytes(limit);
         assert_eq!(
             from_slice_bounded::<Vec<u8>>(exact, &mut budget).unwrap(),
             [1, 2, 3]
@@ -292,26 +292,26 @@ mod tests {
             from_reader_bounded::<_, Vec<u8>>(&mut &exact[..], &mut budget).unwrap(),
             [1, 2, 3]
         );
-        assert_eq!(budget.used(), 2 * (root + 3));
+        assert_eq!(budget.used_bytes(), 2 * (root + 3));
         // Each call still rejects trailing bytes, and keeps the charge made before.
         let err = from_slice_bounded::<Vec<u8>>(trailing, &mut budget).unwrap_err();
         assert_eq!(err.kind(), ErrorKind::InvalidData);
         let err = from_reader_bounded::<_, Vec<u8>>(&mut &trailing[..], &mut budget).unwrap_err();
         assert_eq!(err.kind(), ErrorKind::InvalidData);
-        assert_eq!(budget.used(), 4 * (root + 3));
+        assert_eq!(budget.used_bytes(), 4 * (root + 3));
         let claims_100 = 100u32.to_le_bytes();
         let result = from_slice_bounded::<Vec<u8>>(&claims_100, &mut budget);
         assert_exceeded(result.map(drop), limit, 100, 8);
-        assert_eq!(budget.used(), 4 * (root + 3) + root);
+        assert_eq!(budget.used_bytes(), 4 * (root + 3) + root);
     }
 
     #[test]
     fn trait_methods_match_the_entry_points() {
         type Outcome = (core::result::Result<Vec<u8>, (ErrorKind, String)>, usize);
         fn run(decode: impl FnOnce(&mut Budget) -> Result<Vec<u8>>) -> Outcome {
-            let mut budget = Budget::new(size_of::<Vec<u8>>() + 10);
+            let mut budget = Budget::from_bytes(size_of::<Vec<u8>>() + 10);
             let result = decode(&mut budget).map_err(|err| (err.kind(), err.to_string()));
-            (result, budget.used())
+            (result, budget.used_bytes())
         }
         let input = [3, 0, 0, 0, 1, 2, 3, 0];
         let claims_100 = 100u32.to_le_bytes();
@@ -336,16 +336,16 @@ mod tests {
             input
         }
         // Past the cautious start of 512 `u64`s, and past two 1 MiB steps of bytes.
-        let mut budget = Budget::new(usize::MAX);
+        let mut budget = Budget::from_bytes(usize::MAX);
         let numbers = from_slice_bounded::<Vec<u64>>(&encoded(1000, 8), &mut budget).unwrap();
         assert_eq!((numbers.len(), numbers.capacity()), (1000, 1000));
-        assert_eq!(budget.used(), size_of::<Vec<u64>>() + 8000);
+        assert_eq!(budget.used_bytes(), size_of::<Vec<u64>>() + 8000);
 
         let len = 2 * 1024 * 1024 + 1;
-        let mut budget = Budget::new(usize::MAX);
+        let mut budget = Budget::from_bytes(usize::MAX);
         let bytes = from_slice_bounded::<Vec<u8>>(&encoded(len, 1), &mut budget).unwrap();
         assert_eq!((bytes.len(), bytes.capacity()), (len, len));
-        assert_eq!(budget.used(), size_of::<Vec<u8>>() + len);
+        assert_eq!(budget.used_bytes(), size_of::<Vec<u8>>() + len);
     }
 
     #[test]
@@ -353,11 +353,12 @@ mod tests {
         let root = size_of::<Vec<u8>>();
         let input = [3, 0, 0, 0, 1, 2, 3];
         let mut reader = &input[..];
-        let result = from_reader_bounded::<_, Vec<u8>>(&mut reader, &mut Budget::new(root - 1));
+        let result =
+            from_reader_bounded::<_, Vec<u8>>(&mut reader, &mut Budget::from_bytes(root - 1));
         assert_exceeded(result.map(drop), root - 1, root, root - 1);
         assert_eq!(reader.len(), input.len());
         // The limit error wins over malformed input.
-        let result = from_slice_bounded::<Vec<u8>>(&[], &mut Budget::new(root - 1));
+        let result = from_slice_bounded::<Vec<u8>>(&[], &mut Budget::from_bytes(root - 1));
         assert_exceeded(result.map(drop), root - 1, root, root - 1);
     }
 }
