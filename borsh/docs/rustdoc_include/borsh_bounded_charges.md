@@ -57,7 +57,8 @@ Both assume that the reader is deterministic, that hand-written implementations 
 # What is charged
 
 A successful `from_slice_bounded` or `from_reader_bounded` call charges `size_of::<T>()`
-plus the allocation charges below.
+plus the allocation charges below. Each row is one type's own allocations; the values it
+contains add their own.
 
 `n` is the number of elements read from the length prefix, `p` is `size_of::<usize>()`, and
 `E` is `(K, V)` for maps and `T` for sets. Collections charge nothing for `n = 0`; an `Rc` or
@@ -67,7 +68,7 @@ the final size of the allocations it covers, temporaries included.
 | Type | Allocation charge | Exactness |
 |---|---|---|
 | integers, `f32`, `f64`, `bool`, `NonZero*`, `()`, `RangeFull`, `PhantomData`, `core::net` types | 0 | exact |
-| `Option`, `Result`, tuples, ranges, `Cell`, `RefCell`, `[T; N]` | 0, plus what their contents charge | exact |
+| `Option`, `Result`, tuples, ranges, `Cell`, `RefCell`, `[T; N]`, `Cow<T>` of a sized `T` | 0, plus what their contents charge | exact |
 | `Vec<T>`, `VecDeque<T>`, `String`, `Box<[T]>`, `Box<str>`, `Cow<[T]>`, `Cow<str>` | `n·size_of::<T>()` (1 byte per element of strings) | exact |
 | `Box<T>` of a sized `T` | `size_of::<T::Owned>()`, before `T` is decoded | exact for the standard library's conversions |
 | `Rc<T>`, `Arc<T>` (feature `rc`) | what `Box<T>` charges, plus `rc_block` of the value, after it is decoded | exact |

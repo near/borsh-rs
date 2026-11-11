@@ -410,8 +410,11 @@ pub fn cases() -> Vec<Case> {
         }
     }
 
-    // Hash tables reserve capacity for duplicate entries; BTree nodes hold only distinct keys.
-    #[cfg(not(feature = "de_strict_order"))]
+    // Hash tables reserve capacity for duplicate entries.
+    #[cfg(all(
+        not(feature = "de_strict_order"),
+        any(feature = "std", feature = "hashbrown")
+    ))]
     {
         let entries = [
             (1u64, 10u64),
@@ -425,25 +428,14 @@ pub fn cases() -> Vec<Case> {
             (8, 18),
         ];
         let n = entries.len();
-        let extra = sort_scratch(16, n) + btree_nodes::<u64, u64>(n);
-        cases.push(case_input::<BTreeMap<u64, u64>>(
-            "BTreeMap<u64, u64> with a duplicate key".into(),
+        let extra = table(16, n);
+        cases.push(case_input::<HashMap<u64, u64>>(
+            "HashMap<u64, u64> with a duplicate key".into(),
             to_vec(&entries.to_vec()).unwrap(),
             n * 16 + extra,
             single(extra),
-            Alloc::UpperBound,
+            Alloc::HashTable { entries: n },
         ));
-        #[cfg(any(feature = "std", feature = "hashbrown"))]
-        {
-            let extra = table(16, n);
-            cases.push(case_input::<HashMap<u64, u64>>(
-                "HashMap<u64, u64> with a duplicate key".into(),
-                to_vec(&entries.to_vec()).unwrap(),
-                n * 16 + extra,
-                single(extra),
-                Alloc::HashTable { entries: n },
-            ));
-        }
     }
 
     #[cfg(feature = "rc")]

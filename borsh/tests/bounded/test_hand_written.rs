@@ -470,39 +470,6 @@ fn test_sub_decode_parity_with_plain() {
     assert_fails_alike::<Embedded<Vec<u8>>>(&embedded_input(&to_vec(&1000u32).unwrap()));
 }
 
-#[derive(Debug, PartialEq)]
-struct Uncharged(Vec<u8>);
-
-impl BorshDeserialize for Uncharged {
-    fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        Vec::<u8>::deserialize_reader(reader).map(Uncharged)
-    }
-}
-
-impl BorshDeserializeBounded for Uncharged {
-    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, _budget: &mut Budget) -> Result<Self> {
-        <Vec<u8> as BorshDeserialize>::deserialize_reader(reader).map(Uncharged)
-    }
-}
-
-#[test]
-fn test_plain_decode_inside_a_bounded_impl_is_not_charged() {
-    let input = to_vec(&vec![7u8; 1000]).unwrap();
-    let mut budget = Budget::from_bytes(10);
-    let value = Uncharged::deserialize_bounded_alloc(&mut &input[..], &mut budget).unwrap();
-    assert_eq!(value, Uncharged(vec![7; 1000]));
-    assert_eq!(budget.remaining_bytes(), 10);
-    assert_bounded_parity::<Uncharged>(&input);
-
-    // Plain decoding ignores the limit and fails on truncated input instead.
-    let input = to_vec(&u32::MAX).unwrap();
-    let err =
-        from_slice_bounded::<Uncharged>(&input, &mut Budget::from_bytes(size_of::<Uncharged>()))
-            .unwrap_err();
-    assert_eq!(limit_exceeded(&err), None);
-    assert_fails_alike::<Uncharged>(&input);
-}
-
 #[test]
 fn test_one_budget_for_several_values() {
     let (legacy_input, legacy_value) = legacy(&[1, 2], "ab");

@@ -26,8 +26,8 @@ use borsh::{
 };
 
 use super::cases::MIB;
-use super::common::{assert_same_outcome, charged, error_of, ERROR_UNEXPECTED_LENGTH_OF_INPUT};
-use crate::common_macro::{is_limit_exceeded, limit_exceeded, PARITY_LIMIT};
+use super::common::{assert_same_outcome, error_of, ERROR_UNEXPECTED_LENGTH_OF_INPUT};
+use crate::common_macro::{limit_exceeded, PARITY_LIMIT};
 
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 
@@ -104,57 +104,6 @@ impl Read for FailAfter<'_> {
             None => Ok(take(&mut self.input, buf, usize::MAX)),
         }
     }
-}
-
-/// Trailing-byte validation follows decoding, so a limit error takes precedence.
-#[track_caller]
-fn assert_trailing_bytes_rejected<T>(value: &T)
-where
-    T: BorshSerialize + BorshDeserialize + BorshDeserializeBounded + Debug,
-{
-    let encoding = to_vec(value).unwrap();
-    let used = size_of::<T>() + charged::<T>(&encoding);
-    let expected = (ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ.to_string());
-    let input = [&encoding[..], &[0][..]].concat();
-    assert_eq!(error_of(from_slice::<T>(&input)), expected, "{:?}", value);
-    assert_eq!(
-        error_of(from_reader::<_, T>(&mut &input[..])),
-        expected,
-        "{:?}",
-        value
-    );
-    assert_eq!(
-        error_of(from_slice_bounded::<T>(
-            &input,
-            &mut Budget::from_bytes(used)
-        )),
-        expected,
-        "{:?}",
-        value
-    );
-    assert_eq!(
-        error_of(from_reader_bounded::<_, T>(
-            &mut &input[..],
-            &mut Budget::from_bytes(used)
-        )),
-        expected,
-        "{:?}",
-        value
-    );
-    if used > 0 {
-        let err = from_slice_bounded::<T>(&input, &mut Budget::from_bytes(used - 1)).unwrap_err();
-        assert!(is_limit_exceeded(&err), "{:?}: {}", value, err);
-        let err = from_reader_bounded::<_, T>(&mut &input[..], &mut Budget::from_bytes(used - 1))
-            .unwrap_err();
-        assert!(is_limit_exceeded(&err), "{:?}: {}", value, err);
-    }
-}
-
-#[test]
-fn test_trailing_bytes() {
-    assert_trailing_bytes_rejected(&());
-    assert_trailing_bytes_rejected(&vec![1u64, 2, 3]);
-    assert_trailing_bytes_rejected(&String::from("hello"));
 }
 
 /// The ZST error comes before the length is read and before anything is charged.

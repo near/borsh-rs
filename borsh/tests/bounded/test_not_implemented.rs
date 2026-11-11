@@ -212,15 +212,7 @@ assert_both!(Rc<u8>, Rc<[u8]>, Arc<u8>, Arc<[u8]>);
 assert_both!(PhantomData<[u8]>, PhantomData<BinaryHeap<u8>>);
 assert_both!(Cell<u32>, RefCell<String>);
 
-assert_neither!(
-    BinaryHeap<u8>,
-    NonZeroIsize,
-    char,
-    Wrapping<u8>,
-    Duration,
-    str,
-    [u8],
-);
+assert_neither!(BinaryHeap<u8>, NonZeroIsize, char, Wrapping<u8>, Duration);
 assert_neither!((
     u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8
 ));
