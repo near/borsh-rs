@@ -2,6 +2,8 @@ use borsh::{from_slice, to_vec};
 use core::{matches, ops::Deref};
 use alloc::string::ToString;
 
+use crate::common_macro::assert_bounded_parity;
+
 use alloc::{borrow::Cow, vec};
 
 #[test]
@@ -14,6 +16,7 @@ fn test_cow_str() {
     insta::assert_debug_snapshot!(encoded);
 
     let out: Cow<'_, str> = from_slice(&encoded).unwrap();
+    assert_bounded_parity::<Cow<'_, str>>(&encoded);
 
     assert!(matches!(out, Cow::Owned(..)));
 
@@ -32,6 +35,7 @@ fn test_cow_byte_slice() {
     insta::assert_debug_snapshot!(encoded);
 
     let out: Cow<'_, [u8]> = from_slice(&encoded).unwrap();
+    assert_bounded_parity::<Cow<'_, [u8]>>(&encoded);
 
     assert!(matches!(out, Cow::Owned(..)));
 
@@ -53,6 +57,7 @@ fn test_cow_slice_of_cow_str() {
     insta::assert_debug_snapshot!(encoded);
 
     let out: Cow<'_, [Cow<'_, str>]> = from_slice(&encoded).unwrap();
+    assert_bounded_parity::<Cow<'_, [Cow<'_, str>]>>(&encoded);
 
     assert!(matches!(out, Cow::Owned(..)));
 

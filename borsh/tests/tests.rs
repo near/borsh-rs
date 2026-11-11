@@ -124,9 +124,17 @@ mod schema {
 #[rustfmt::skip]
 #[cfg(feature = "unstable__bounded")]
 mod bounded {
+    mod common;
     mod cases;
     mod test_box;
+    #[cfg(feature = "rc")]
+    mod test_rc;
     mod test_exact_charge;
+    mod test_threshold;
+    mod test_lying_length;
+    mod test_errors_and_readers;
+    mod test_hand_written;
+    mod test_not_implemented;
 }
 
 mod deserialization_errors {
