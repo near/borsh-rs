@@ -783,48 +783,48 @@ where
     }
 }
 
+struct ArrayDropGuard<T, const N: usize> {
+    buffer: [MaybeUninit<T>; N],
+    init_count: usize,
+}
+impl<T, const N: usize> Drop for ArrayDropGuard<T, N> {
+    fn drop(&mut self) {
+        let init_range = &mut self.buffer[..self.init_count];
+        // SAFETY: Elements up to self.init_count have been initialized. Assumes this value
+        //         is only incremented in `fill_buffer`, which writes the element before
+        //         increasing the init_count.
+        unsafe {
+            core::ptr::drop_in_place(init_range as *mut _ as *mut [T]);
+        };
+    }
+}
+impl<T, const N: usize> ArrayDropGuard<T, N> {
+    unsafe fn transmute_to_array(mut self) -> [T; N] {
+        debug_assert_eq!(self.init_count, N);
+        // Set init_count to 0 so that the values do not get dropped twice.
+        self.init_count = 0;
+        // SAFETY: This cast is required because `mem::transmute` does not work with
+        //         const generics https://github.com/rust-lang/rust/issues/61956. This
+        //         array is guaranteed to be initialized by this point.
+        core::ptr::read(&self.buffer as *const _ as *const [T; N])
+    }
+    fn fill_buffer(&mut self, mut f: impl FnMut() -> Result<T>) -> Result<()> {
+        // TODO: replace with `core::array::try_from_fn` when stabilized to avoid manually
+        // dropping uninitialized values through the guard drop.
+        for elem in self.buffer.iter_mut() {
+            elem.write(f()?);
+            self.init_count += 1;
+        }
+        Ok(())
+    }
+}
+
 impl<T, const N: usize> BorshDeserialize for [T; N]
 where
     T: BorshDeserialize,
 {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        struct ArrayDropGuard<T, const N: usize> {
-            buffer: [MaybeUninit<T>; N],
-            init_count: usize,
-        }
-        impl<T, const N: usize> Drop for ArrayDropGuard<T, N> {
-            fn drop(&mut self) {
-                let init_range = &mut self.buffer[..self.init_count];
-                // SAFETY: Elements up to self.init_count have been initialized. Assumes this value
-                //         is only incremented in `fill_buffer`, which writes the element before
-                //         increasing the init_count.
-                unsafe {
-                    core::ptr::drop_in_place(init_range as *mut _ as *mut [T]);
-                };
-            }
-        }
-        impl<T, const N: usize> ArrayDropGuard<T, N> {
-            unsafe fn transmute_to_array(mut self) -> [T; N] {
-                debug_assert_eq!(self.init_count, N);
-                // Set init_count to 0 so that the values do not get dropped twice.
-                self.init_count = 0;
-                // SAFETY: This cast is required because `mem::transmute` does not work with
-                //         const generics https://github.com/rust-lang/rust/issues/61956. This
-                //         array is guaranteed to be initialized by this point.
-                core::ptr::read(&self.buffer as *const _ as *const [T; N])
-            }
-            fn fill_buffer(&mut self, mut f: impl FnMut() -> Result<T>) -> Result<()> {
-                // TODO: replace with `core::array::try_from_fn` when stabilized to avoid manually
-                // dropping uninitialized values through the guard drop.
-                for elem in self.buffer.iter_mut() {
-                    elem.write(f()?);
-                    self.init_count += 1;
-                }
-                Ok(())
-            }
-        }
-
         if let Some(arr) = T::array_from_reader(reader)? {
             Ok(arr)
         } else {

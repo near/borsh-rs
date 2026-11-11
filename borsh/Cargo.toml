@@ -27,6 +27,10 @@ name = "generate_schema_schema"
 path = "src/generate_schema_schema.rs"
 required-features = ["std", "unstable__schema"]
 
+[[test]]
+name = "bounded_allocations"
+required-features = ["unstable__bounded"]
+
 [build-dependencies]
 cfg_aliases = "0.2.1"
 
