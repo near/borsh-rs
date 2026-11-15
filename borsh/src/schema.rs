@@ -786,6 +786,67 @@ pub mod hashes {
     }
 }
 
+#[cfg(feature = "indexmap")]
+pub mod indexmap {
+    //! Module is available if borsh is built with `features = ["indexmap"]`.
+    //!
+    //! Module defines [BorshSchema] implementation for
+    //! [IndexMap](indexmap::IndexMap) and [IndexSet](indexmap::IndexSet).
+    //! They are serialized as a sequence of entries in insertion order, like
+    //! `HashMap`/`HashSet`.
+    use crate::BorshSchema;
+
+    use super::{add_definition, Declaration, Definition};
+    use crate::__private::maybestd::collections::BTreeMap;
+
+    #[cfg(not(feature = "std"))]
+    use alloc::format;
+
+    // S is not serialized, so it is ignored in the schema, as for `HashMap`
+    impl<K, V, S> BorshSchema for indexmap::IndexMap<K, V, S>
+    where
+        K: BorshSchema,
+        V: BorshSchema,
+    {
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+            let definition = Definition::Sequence {
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: <(K, V)>::declaration(),
+            };
+            add_definition(Self::declaration(), definition, definitions);
+            <(K, V)>::add_definitions_recursively(definitions);
+        }
+
+        fn declaration() -> Declaration {
+            format!(
+                r#"indexmap::IndexMap<{}, {}>"#,
+                K::declaration(),
+                V::declaration()
+            )
+        }
+    }
+
+    impl<T, S> BorshSchema for indexmap::IndexSet<T, S>
+    where
+        T: BorshSchema,
+    {
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+            let definition = Definition::Sequence {
+                length_width: Definition::DEFAULT_LENGTH_WIDTH,
+                length_range: Definition::DEFAULT_LENGTH_RANGE,
+                elements: <T>::declaration(),
+            };
+            add_definition(Self::declaration(), definition, definitions);
+            <T>::add_definitions_recursively(definitions);
+        }
+
+        fn declaration() -> Declaration {
+            format!(r#"indexmap::IndexSet<{}>"#, T::declaration())
+        }
+    }
+}
+
 impl<K, V> BorshSchema for BTreeMap<K, V>
 where
     K: BorshSchema,
