@@ -548,7 +548,8 @@ impl BorshDeserialize for core::net::Ipv6Addr {
     }
 }
 
-/// Each `Box` is one level of the recursion limit.
+/// Each `Box` is one level of the recursion limit. `Box`, `Rc`, `Arc`, `Option` and `u8` decode
+/// are inlined: recursive types nest through them, so each saved frame is saved at every level.
 impl<T, U> BorshDeserialize for Box<T>
 where
     U: Into<Box<T>> + Borrow<T>,
@@ -556,6 +557,7 @@ where
     T::Owned: BorshDeserialize,
 {
     const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T::Owned>();
+    #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
         let _guard = RecursionGuard::enter()?;
         Ok(T::Owned::deserialize_reader(reader)?.into())
@@ -656,6 +658,7 @@ pub mod rc {
                 Box<T>: BorshDeserialize,
             {
                 const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<Box<T>>();
+                #[inline]
                 fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                     Ok(Box::<T>::deserialize_reader(reader)?.into())
                 }
