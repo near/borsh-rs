@@ -433,8 +433,7 @@ pub fn schema(item: &Item) -> Result<TokenStream> {
             let vdecl = declaration(&format!("{}__{}", name, v.ident), mine.bounds());
             let (fields, w, vname) = (fields_def(v), walks(v), v.ident.to_string());
             entries.push(quote! {(
-                <::core::primitive::u8 as ::core::convert::From<::core::primitive::u8>>::from(#t)
-                    as ::core::primitive::i64,
+                <::core::primitive::i64 as ::core::convert::From<::core::primitive::u8>>::from(#t),
                 ::core::convert::Into::into(#vname),
                 #vdecl
             )});
@@ -793,28 +792,35 @@ mod tests {
                 quote!(union U { a: u8 }),
                 "Borsh schema does not support unions yet.",
             ),
+            (
+                serialize,
+                quote!(
+                    #[borsh(crate = "x")]
+                    struct S;
+                ),
+                "duplicate `crate` attribute",
+            ),
+            (
+                serialize,
+                quote!(
+                    #[borsh(crate = 5)]
+                    struct S;
+                ),
+                "expected borsh borsh attribute to be a string: `crate = \"...\"`",
+            ),
         ];
         for (emit, input, msg) in cases {
-            let input = syn::parse2(quote!(#[borsh(crate = "borsh")] #input)).unwrap();
-            let err = crate::ir::parse(&input).and_then(|item| emit(&item));
-            assert_eq!(err.err().map(|e| e.to_string()).as_deref(), Some(*msg));
+            // After the input's own attributes, so a bad `crate` in the input is seen first.
+            let mut item: syn::DeriveInput = syn::parse2(input.clone()).unwrap();
+            item.attrs
+                .push(syn::parse_quote!(#[borsh(crate = "borsh")]));
+            let err = crate::ir::parse(&item).and_then(|item| emit(&item)).err();
+            assert_eq!(
+                err.map(|e| e.to_string()).as_deref(),
+                Some(*msg),
+                "{}",
+                input
+            );
         }
-        let input = syn::parse2(quote!(
-            #[borsh(crate = "x")]
-            #[borsh(crate = "y")]
-            struct S;
-        ));
-        let err = crate::ir::parse(&input.unwrap()).err().unwrap();
-        assert_eq!(err.to_string(), "duplicate `crate` attribute");
-        let input = syn::parse2(quote!(
-            #[borsh(crate = 5)]
-            struct S;
-        ))
-        .unwrap();
-        let err = crate::ir::parse(&input).err().unwrap();
-        assert_eq!(
-            err.to_string(),
-            "expected borsh borsh attribute to be a string: `crate = \"...\"`"
-        );
     }
 }

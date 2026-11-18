@@ -220,26 +220,31 @@ pub fn add_struct_definition<T: BorshSchema + ?Sized>(
     add_fields_definitions: impl FnOnce(&mut BTreeMap<Declaration, Definition>),
 ) {
     const WALKED: &str = "\0walked";
-    /// Removes the walked-types key when the outermost call ends.
-    struct Walk<'a>(&'a mut BTreeMap<Declaration, Definition>, bool);
-    impl Drop for Walk<'_> {
+    /// Removes the walked-types key when dropped, on return or on panic.
+    struct RemoveWalked<'a>(&'a mut BTreeMap<Declaration, Definition>);
+    impl Drop for RemoveWalked<'_> {
         fn drop(&mut self) {
-            if self.1 {
-                self.0.remove(WALKED);
-            }
+            self.0.remove(WALKED);
         }
     }
     add_definition(T::declaration(), definition, definitions);
-    let outermost = !definitions.contains_key(WALKED);
-    let walk = Walk(definitions, outermost);
-    let walked = walk.0.entry(WALKED.into()).or_insert(Definition::Tuple {
-        elements: Vec::new(),
-    });
+    // Only the outermost call, which adds the key, holds the guard that removes it.
+    let mut outermost = None;
+    let definitions = if definitions.contains_key(WALKED) {
+        definitions
+    } else {
+        &mut *outermost.insert(RemoveWalked(definitions)).0
+    };
+    let walked = definitions
+        .entry(WALKED.into())
+        .or_insert(Definition::Tuple {
+            elements: Vec::new(),
+        });
     let key = format!("{}\0{}", core::any::type_name::<T>(), T::declaration());
     if let Definition::Tuple { elements } = walked {
         if !elements.contains(&key) {
             elements.push(key);
-            add_fields_definitions(&mut *walk.0);
+            add_fields_definitions(definitions);
         }
     }
 }
