@@ -19,6 +19,7 @@ use super::{cautious, expect_end, start_seq, BorshDeserialize, RecursionGuard};
 use super::{invalid, ERROR_NOT_ALL_BYTES_READ};
 
 mod budget;
+mod size;
 
 pub use budget::{Budget, LimitExceeded};
 
@@ -66,10 +67,12 @@ pub trait EnumExtBounded: BorshDeserializeBounded {
     ) -> Result<Self>;
 }
 
-/// `Vec<T>`'s decode: `start_seq`, then a charge for all `len` elements before reading any.
+/// A collection's decode: `start_seq`, then a charge for the vector plus `extra(n)` before
+/// reading any element.
 fn decode_seq<T: BorshDeserializeBounded, R: Read>(
     reader: &mut R,
     budget: &mut Budget,
+    extra: impl FnOnce(usize) -> Option<usize>,
 ) -> Result<Vec<T>> {
     let Some((len, _guard)) = start_seq::<T, _>(reader, T::ENCODES_TO_ZERO_BYTES)? else {
         return Ok(Vec::new());
@@ -77,6 +80,7 @@ fn decode_seq<T: BorshDeserializeBounded, R: Read>(
     // Only fails on 16-bit targets.
     let n = usize::try_from(len).map_err(|_| budget.exceeded(usize::MAX))?;
     budget.charge_array::<T>(n)?;
+    budget.charge_checked(extra(n))?;
     if let Some(vec) = T::vec_from_reader_bounded(len, reader)? {
         return Ok(vec);
     }
@@ -173,7 +177,7 @@ where
 {
     #[inline]
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
-        decode_seq(reader, budget)
+        decode_seq(reader, budget, size::none)
     }
 }
 
