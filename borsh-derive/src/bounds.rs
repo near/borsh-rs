@@ -89,6 +89,10 @@ impl<'a> Uses<'a> {
     }
 
     fn ty(&mut self, ty: &Type) {
+        #[cfg_attr(
+            feature = "force_exhaustive_checks",
+            deny(non_exhaustive_omitted_patterns)
+        )]
         match ty {
             Type::Array(t) => self.ty(&t.elem),
             Type::Group(t) => self.ty(&t.elem),
@@ -109,6 +113,7 @@ impl<'a> Uses<'a> {
                 }
                 self.path(&t.path);
             }
+            Type::Infer(_) | Type::Macro(_) | Type::Never(_) | Type::Verbatim(_) => {}
             _ => {}
         }
     }
@@ -120,8 +125,16 @@ impl<'a> Uses<'a> {
     }
 
     fn bound(&mut self, b: &TypeParamBound) {
-        if let TypeParamBound::Trait(t) = b {
-            self.path(&t.path);
+        #[cfg_attr(
+            feature = "force_exhaustive_checks",
+            deny(non_exhaustive_omitted_patterns)
+        )]
+        match b {
+            TypeParamBound::Trait(t) => self.path(&t.path),
+            TypeParamBound::Lifetime(_)
+            | TypeParamBound::PreciseCapture(_)
+            | TypeParamBound::Verbatim(_) => {}
+            _ => {}
         }
     }
 
@@ -155,11 +168,23 @@ impl<'a> Uses<'a> {
         for seg in &path.segments {
             match &seg.arguments {
                 PathArguments::None => {}
-                PathArguments::AngleBracketed(a) => a.args.iter().for_each(|arg| match arg {
-                    GenericArgument::Type(t) => self.ty(t),
-                    GenericArgument::AssocType(t) => self.ty(&t.ty),
-                    _ => {}
-                }),
+                PathArguments::AngleBracketed(a) => {
+                    for arg in &a.args {
+                        #[cfg_attr(
+                            feature = "force_exhaustive_checks",
+                            deny(non_exhaustive_omitted_patterns)
+                        )]
+                        match arg {
+                            GenericArgument::Type(t) => self.ty(t),
+                            GenericArgument::AssocType(t) => self.ty(&t.ty),
+                            GenericArgument::Lifetime(_)
+                            | GenericArgument::Const(_)
+                            | GenericArgument::AssocConst(_)
+                            | GenericArgument::Constraint(_) => {}
+                            _ => {}
+                        }
+                    }
+                }
                 PathArguments::Parenthesized(a) => {
                     a.inputs.iter().for_each(|t| self.ty(&t.ty));
                     self.ret(&a.output);

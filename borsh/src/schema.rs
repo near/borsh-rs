@@ -202,11 +202,17 @@ pub fn add_definition(
 /// For derived types: add `T`'s definition, then its fields' definitions unless this walk
 /// already added them, so recursive types terminate.
 ///
-/// A type is walked once per Rust type, not per declaration, so two types that share a
-/// declaration both get their fields checked. The walked types (Rust type name and
-/// declaration) are kept in `definitions` itself, under the key `"\0walked"`, since that map
-/// is the only state a walk has. The outermost call removes the key on return and on panic,
-/// so only a hand-written `add_definitions_recursively` called during a walk can see it.
+/// Declarations alone can't end the walk: a cycle back into `T` and another type with the
+/// same name, such as `Signed<v2::Transfer>` after `Signed<v1::Transfer>`, look the same.
+/// Neither can [`core::any::type_name`] alone: it isn't guaranteed unique, and items in
+/// different blocks of one function print the same path. So the walk is cut on the pair of
+/// both, which a cycle repeats. Two same-named types in sibling blocks with the same
+/// declaration still share a pair, so the second one's fields aren't walked, as on master.
+///
+/// The trait passes only `definitions`, so the pairs walked so far are kept there under the
+/// reserved key `"\0walked"`, which no Rust type name or derived declaration contains. The
+/// outermost call removes it on return and on panic, so only a hand-written
+/// `add_definitions_recursively` called during a walk can see it.
 #[doc(hidden)]
 pub fn add_struct_definition<T: BorshSchema + ?Sized>(
     definition: Definition,

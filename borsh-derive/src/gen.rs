@@ -271,9 +271,9 @@ impl VisitMut for ReplaceSelf {
 }
 
 /// Earlier versions moved each enum variant's fields into a helper struct, where `Self` in a
-/// macro or in a `schema` attribute named the helper instead of the enum, so they rejected
-/// those fields (skipped ones excepted). The same fields are still rejected, with the same
-/// error, so the accepted set of enums doesn't change.
+/// macro or in a `schema` attribute named the helper instead of the enum. 1.8.1 compiled
+/// such fields into a wrong schema; the fix stack rejected them (skipped ones excepted), and
+/// so does this, with the same error.
 /// `Self` inside a nested item names that item and is left alone.
 #[cfg(feature = "schema")]
 fn check_self(item: &Item, self_ty: &Type) -> Result<()> {

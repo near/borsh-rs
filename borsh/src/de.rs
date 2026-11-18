@@ -408,6 +408,8 @@ fn read_seq<T, E: Elements<T>, R: Read>(reader: &mut R, elements: &mut E) -> Res
     let mut result = Vec::with_capacity(cautious::<T>(len));
     for _ in 0..len {
         let value = elements.next(reader)?;
+        // Double, but never past the length: a decoded `Vec` ends with capacity == len, which
+        // bounded decoding's charges rely on.
         if result.len() == result.capacity() {
             result.reserve_exact(result.capacity().min(n - result.len()));
         }

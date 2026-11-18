@@ -9,6 +9,10 @@
 //! into a constant pattern. With `use_discriminant`, the tags are evaluated in an outer block
 //! (`__BorshTags`, `__BORSH_TAGS`) where those functions aren't declared, so a discriminant
 //! means what it means on the enum.
+#![cfg_attr(
+    feature = "force_exhaustive_checks",
+    feature(non_exhaustive_omitted_patterns_lint)
+)]
 mod bounds;
 mod gen;
 mod ir;
