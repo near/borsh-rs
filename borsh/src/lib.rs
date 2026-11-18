@@ -4,6 +4,16 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
+/// Calls `$m!` on every prefix of the list after the brackets: `$m!(0 T0)`,
+/// `$m!(0 T0 1 T1)`, and so on, to implement the traits for tuples.
+macro_rules! tuples {
+    ($m:ident [$($done:tt)*]) => {};
+    ($m:ident [$($done:tt)*] $idx:tt $name:ident $($rest:tt)*) => {
+        $m!($($done)* $idx $name);
+        tuples!($m [$($done)* $idx $name] $($rest)*);
+    };
+}
+
 #[doc = include_str!("../docs/rustdoc_include/borsh_schema.md")]
 #[cfg(feature = "unstable__schema")]
 pub use borsh_derive::BorshSchema;
@@ -17,96 +27,77 @@ pub use borsh_derive::BorshDeserialize;
 pub use borsh_derive::BorshSerialize;
 
 pub mod de;
-
-// See `hash_collections` alias definition in build.rs
-/// Module is available if borsh is built with `features = ["unstable__schema"]`.
+pub mod error;
 #[cfg(feature = "unstable__schema")]
 pub mod schema;
-#[cfg(feature = "unstable__schema")]
-pub(crate) mod schema_helpers;
 pub mod ser;
 
-pub use de::BorshDeserialize;
-pub use de::{from_reader, from_slice};
+pub use de::{from_reader, from_slice, BorshDeserialize};
 #[cfg(feature = "unstable__schema")]
-pub use schema::BorshSchema;
-#[cfg(feature = "unstable__schema")]
-pub use schema_helpers::{
-    max_serialized_size, schema_container_of, try_from_slice_with_schema, try_to_vec_with_schema,
+pub use schema::{
+    helpers::{
+        max_serialized_size, schema_container_of, try_from_slice_with_schema,
+        try_to_vec_with_schema,
+    },
+    BorshSchema,
 };
-pub use ser::helpers::{object_length, to_vec, to_writer};
-pub use ser::BorshSerialize;
-pub mod error;
+pub use ser::{
+    helpers::{object_length, to_vec, to_writer},
+    BorshSerialize,
+};
 
 #[cfg(all(feature = "std", feature = "hashbrown"))]
 compile_error!("feature \"std\" and feature \"hashbrown\" don't make sense at the same time");
 
-#[cfg(feature = "std")]
-use std::io as io_impl;
 #[cfg(not(feature = "std"))]
 mod nostd_io;
-#[cfg(not(feature = "std"))]
-use nostd_io as io_impl;
 
-/// Subset of `std::io` which is used as part of borsh public API.
-///
-/// When crate is built with `std` feature disabled (it’s enabled by default),
-/// the exported types are custom borsh types which try to mimic behaviour of
-/// corresponding standard types usually offering subset of features.
+/// `std::io` with `std`, a small copy of its relevant parts without.
 pub mod io {
-    pub use super::io_impl::{Error, ErrorKind, Read, Result, Write};
+    #[cfg(not(feature = "std"))]
+    pub use super::nostd_io::{Error, ErrorKind, Read, Result, Write};
+    #[cfg(feature = "std")]
+    pub use std::io::{Error, ErrorKind, Read, Result, Write};
 }
 
 #[doc(hidden)]
 pub mod __private {
-    // NOTE: forwarding `ENCODES_TO_ZERO_BYTES` through a `const fn` call, instead of reading
-    // the inner constant directly, defers the read until the constant is evaluated. Then
-    // `N == 0 || ...` and `... && ...` short-circuit, and a recursive type such as
-    // `struct A([Box<A>; 0], u8)` doesn't make the constant cyclic.
-
-    /// `<T as BorshDeserialize>::ENCODES_TO_ZERO_BYTES`, read lazily
+    /// Whether every value of `T` encodes to zero bytes. Collections of such types are
+    /// rejected, since a 4-byte length could otherwise demand unbounded work.
     pub const fn encodes_to_zero_bytes_de<T: crate::BorshDeserialize>() -> bool {
         T::ENCODES_TO_ZERO_BYTES
     }
 
-    /// `<T as BorshSerialize>::ENCODES_TO_ZERO_BYTES`, read lazily
     pub const fn encodes_to_zero_bytes_ser<T: crate::BorshSerialize + ?Sized>() -> bool {
         T::ENCODES_TO_ZERO_BYTES
     }
 
-    /// `ENCODES_TO_ZERO_BYTES` of a field's type, read lazily; the derives pass an accessor of
-    /// the field, `|s: &Self| addr_of!(s.field)`, so that they don't have to paste the field's type
+    /// The derive names a field's type through a pointer projection, so it never has to
+    /// spell the type out.
     pub const fn field_encodes_to_zero_bytes_de<S: ?Sized, T: crate::BorshDeserialize>(
         _field: fn(&S) -> *const T,
     ) -> bool {
         T::ENCODES_TO_ZERO_BYTES
     }
 
-    /// `ENCODES_TO_ZERO_BYTES` of a field's type, read lazily; the derives pass an accessor of
-    /// the field, `|s: &Self| addr_of!(s.field)`, so that they don't have to paste the field's type
     pub const fn field_encodes_to_zero_bytes_ser<S: ?Sized, T: crate::BorshSerialize + ?Sized>(
         _field: fn(&S) -> *const T,
     ) -> bool {
         T::ENCODES_TO_ZERO_BYTES
     }
 
-    /// A facade around all the types we need from the `std`, and `alloc`
-    /// crates. This avoids elaborate import wrangling having to happen in every
-    /// module.
     #[cfg(feature = "std")]
     pub mod maybestd {
         pub use std::{borrow, boxed, collections, format, string, vec};
-
         #[cfg(feature = "rc")]
         pub use std::{rc, sync};
     }
+
     #[cfg(not(feature = "std"))]
     pub mod maybestd {
         pub use alloc::{borrow, boxed, format, string, vec};
-
         #[cfg(feature = "rc")]
         pub use alloc::{rc, sync};
-
         pub mod collections {
             pub use alloc::collections::{btree_map, BTreeMap, BTreeSet, LinkedList, VecDeque};
             #[cfg(feature = "hashbrown")]

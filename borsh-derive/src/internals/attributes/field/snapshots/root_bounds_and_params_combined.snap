@@ -1,6 +1,0 @@
----
-source: borsh-derive/src/internals/attributes/field/mod.rs
-expression: debug_print_vec_of_tokenizable(bounds.deserialize)
----
-K : Hash
-

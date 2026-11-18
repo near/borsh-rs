@@ -1,18 +1,6 @@
-//!
-//! Since Borsh is not a self-descriptive format we have a way to describe types serialized with Borsh so that
-//! we can deserialize serialized blobs without having Rust types available. Additionally, this can be used to
-//! serialize content provided in a different format, e.g. JSON object `{"user": "alice", "message": "Message"}`
-//! can be serialized by JS code into Borsh format such that it can be deserialized into `struct UserMessage {user: String, message: String}`
-//! on Rust side.
-//!
-//! The important components are: `BorshSchema` trait, `Definition` and `Declaration` types, and `BorshSchemaContainer` struct.
-//! * `BorshSchema` trait allows any type that implements it to be self-descriptive, i.e. generate it's own schema;
-//! * `Declaration` is used to describe the type identifier, e.g. `HashMap<u64, String>`;
-//! * `Definition` is used to describe the structure of the type;
-//! * `BorshSchemaContainer` is used to store all declarations and definitions that are needed to work with a single type.
-
-#![allow(dead_code)] // Unclear why rust check complains on fields of `Definition` variants.
-use crate as borsh; // For `#[derive(BorshSerialize, BorshDeserialize)]`.
+//! Schemas: a type's declaration (its name) and its definitions (the shapes of it and every
+//! type it contains), keyed by declaration. Walks over a container live in `walks`.
+use crate as borsh; // The derives below name the crate `borsh`.
 use crate::__private::maybestd::{
     borrow,
     boxed::Box,
@@ -25,139 +13,62 @@ use crate::__private::maybestd::{
 use crate::io::{Read, Result as IOResult, Write};
 use crate::{BorshDeserialize, BorshSchema as BorshSchemaMacro, BorshSerialize};
 use core::borrow::Borrow;
-use core::cmp::Ord;
 use core::marker::PhantomData;
 
-mod container_ext;
+mod walks;
+pub use walks::{SchemaContainerValidateError, SchemaMaxSerializedSizeError};
 
-pub use container_ext::{SchemaContainerValidateError, SchemaMaxSerializedSizeError};
-
-/// The type that we use to represent the declaration of the Borsh type.
+/// The type name, for primitives and std types. Derived types use their name and the
+/// declarations of their generic parameters.
 pub type Declaration = String;
-/// The type that we use for the name of the variant.
 pub type VariantName = String;
-/// The type that we use for value of discriminant.
+/// The tag of a variant.
 pub type DiscriminantValue = i64;
-/// The name of the field in the struct (can be used to convert JSON to Borsh using the schema).
 pub type FieldName = String;
-/// The type that we use to represent the definition of the Borsh type.
-///
-/// Description of data encoding on the wire.
+
+/// The shape of a type.
 #[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
 pub enum Definition {
-    /// A fixed-size type, which is considered undivisible
+    /// A fixed-size value of the given number of bytes.
     Primitive(u8),
-
-    /// A sequence of homogeneous elements.
-    ///
-    /// If `length_width` is non-zero, the sequence is tagged, i.e. prefixed by
-    /// the number of elements in the sequence.  In that case, the length is
-    /// encoded as a `length_width`-byte wide little-endian unsigned integer.
-    ///
-    /// If `length_width` is zero, the sequence is untagged.  In that case, if
-    /// `length_range` contains a single number, the sequence is fixed-sized
-    /// with the range determining number of elements.  Otherwise, knowledge of
-    /// the type is necessary to be able to decode the number of elements.
-    ///
-    /// Prototypical examples of the use of this definitions are:
-    /// * `[T; N]` → `length_width: 0, length_range: N..=N, elements: "T"` and
-    /// * `Vec<T>` → `length_width: 4, length_range: 0..=u32::MAX,
-    ///   elements: "T"`.
-    ///
-    /// With `length_width` and `length_range` other custom encoding formats can
-    /// also be expressed.  For example:
-    /// * `BoundedVec<LO, HI, T>` → `length_width: 4, length_range: LO..=HI`;
-    /// * `PascalString` → `length_width: 1, length_range: 0..=255`;
-    /// * `Ipv4Packet` → `length_width: 0, length_range: 20..=65536` or
-    /// * `VarInt<u32>` → `length_width: 0, length_range: 1..=5`.
+    /// A length (`length_width` bytes, or none for fixed-length arrays) and that many elements.
     Sequence {
-        /// How many bytes does the length tag occupy.
-        ///
-        /// Zero if this is fixed-length array or the length must be determined
-        /// by means not specified in the schema.  The schema is invalid if the
-        /// value is greater than eight.
         length_width: u8,
-
-        /// Bounds on the possible lengths of the sequence.
-        ///
-        /// Note: The schema is invalid if the range is empty or `length_width`
-        /// is non-zero and either bound of the range cannot be represented as
-        /// `length_width`-byte-wide unsigned integer.
         length_range: core::ops::RangeInclusive<u64>,
-
-        /// Type of each element of the sequence.
         elements: Declaration,
     },
-
-    /// A fixed-size tuple with the length known at the compile time and the elements of different
-    /// types.
+    /// Each element in order.
     Tuple { elements: Vec<Declaration> },
-
-    /// A possibly tagged union, a.k.a enum.
-    ///
-    /// Tagged unions are prefixed by a tag identifying encoded variant followed
-    /// by encoding of that variant.  The tag is `tag_width`-byte wide
-    /// little-endian number.
-    ///
-    /// Untagged unions don’t have a separate tag which means that knowledge of
-    /// the type is necessary to fully analyse the binary.  Variants may still
-    /// be used to list possible values or determine the longest possible
-    /// encoding.
+    /// A tag of `tag_width` bytes, then the fields of the variant with that discriminant.
     Enum {
-        /// Width in bytes of the discriminant tag.
-        ///
-        /// Zero indicates this is an untagged union.  In standard borsh
-        /// encoding this is one.  Custom encoding formats may use larger width
-        /// if they need to encode more than 256 variants.  The schema is
-        /// invalid if the value is greater than eight.
         tag_width: u8,
-
-        /// Possible variants of the enumeration.
-        /// `VariantName` is metadata, not present in a type's serialized representation.
         variants: Vec<(DiscriminantValue, VariantName, Declaration)>,
     },
-
-    /// A structure, structurally similar to a tuple.
+    /// Each field in order.
     Struct { fields: Fields },
 }
 
 impl Definition {
-    /// Array length isn't present in payload, it's determined by type of data
-    /// serialized.
+    /// The `length_width` of fixed-length arrays: no length is written.
     pub const ARRAY_LENGTH_WIDTH: u8 = 0;
-
-    /// Convenience constant representing the length width of a standard borsh
-    /// sequence.
-    ///
-    /// Can be used for `Definition::Sequence::length_width`.
+    /// The `length_width` of `Vec` and other collections: a `u32`.
     pub const DEFAULT_LENGTH_WIDTH: u8 = 4;
-
-    /// Convenience constant representing the length range of a standard borsh
-    /// sequence.
-    ///
-    /// It equals `0..=u32::MAX`.  Can be used with
-    /// `Definition::Sequence::length_range`.
+    /// The `length_range` of `Vec` and other collections.
     pub const DEFAULT_LENGTH_RANGE: core::ops::RangeInclusive<u64> = 0..=(u32::MAX as u64);
 }
 
-/// The collection representing the fields of a struct.
+/// The fields of a struct or enum variant.
 #[derive(Clone, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize, BorshSchemaMacro)]
 pub enum Fields {
-    /// The struct with named fields, structurally identical to a tuple.
-    /// `FieldName` is metadata, not present in a type's serialized representation.
     NamedFields(Vec<(FieldName, Declaration)>),
-    /// The struct with unnamed fields, structurally identical to a tuple.
     UnnamedFields(Vec<Declaration>),
-    /// The struct with no fields, structurally identical to an empty tuple.
     Empty,
 }
 
-/// All schema information needed to deserialize a single type.
+/// A type's declaration and every definition it needs.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct BorshSchemaContainer {
-    /// Declaration of the type.
     declaration: Declaration,
-    /// All definitions needed to deserialize the given type.
     definitions: BTreeMap<Declaration, Definition>,
 }
 
@@ -169,7 +80,7 @@ impl BorshSchemaContainer {
         }
     }
 
-    /// generate [BorshSchemaContainer] for type `T`
+    /// The schema of `T`.
     pub fn for_type<T: BorshSchema + ?Sized>() -> Self {
         let mut definitions = Default::default();
         T::add_definitions_recursively(&mut definitions);
@@ -179,22 +90,24 @@ impl BorshSchemaContainer {
     pub fn declaration(&self) -> &Declaration {
         &self.declaration
     }
+
     pub fn definitions(&self) -> impl Iterator<Item = (&'_ Declaration, &'_ Definition)> {
         self.definitions.iter()
     }
 
-    pub fn get_definition<Q>(&self, declaration: &Q) -> Option<&Definition>
+    pub fn get_definition<Q: Ord + ?Sized>(&self, declaration: &Q) -> Option<&Definition>
     where
         Declaration: Borrow<Q>,
-        Q: Ord + ?Sized,
     {
         self.definitions.get(declaration)
     }
 
-    pub fn get_mut_definition<Q>(&mut self, declaration: &Q) -> Option<&mut Definition>
+    pub fn get_mut_definition<Q: Ord + ?Sized>(
+        &mut self,
+        declaration: &Q,
+    ) -> Option<&mut Definition>
     where
         Declaration: Borrow<Q>,
-        Q: Ord + ?Sized,
     {
         self.definitions.get_mut(declaration)
     }
@@ -206,10 +119,10 @@ impl BorshSchemaContainer {
     ) -> Option<Definition> {
         self.definitions.insert(declaration, definition)
     }
-    pub fn remove_definition<Q>(&mut self, declaration: &Q) -> Option<Definition>
+
+    pub fn remove_definition<Q: Ord + ?Sized>(&mut self, declaration: &Q) -> Option<Definition>
     where
         Declaration: Borrow<Q>,
-        Q: Ord + ?Sized,
     {
         self.definitions.remove(declaration)
     }
@@ -221,11 +134,8 @@ where
     BTreeMap<Declaration, Definition>: BorshSerialize,
 {
     fn serialize<W: Write>(&self, writer: &mut W) -> IOResult<()> {
-        let declaration = self.declaration();
-        let definitions: BTreeMap<&Declaration, &Definition> = self.definitions().collect();
-        BorshSerialize::serialize(declaration, writer)?;
-        BorshSerialize::serialize(&definitions, writer)?;
-        Ok(())
+        self.declaration.serialize(writer)?;
+        self.definitions.serialize(writer)
     }
 }
 
@@ -235,44 +145,63 @@ where
     BTreeMap<Declaration, Definition>: BorshDeserialize,
 {
     fn deserialize_reader<R: Read>(reader: &mut R) -> IOResult<Self> {
-        let declaration: Declaration = BorshDeserialize::deserialize_reader(reader)?;
-        let definitions: BTreeMap<Declaration, Definition> =
-            BorshDeserialize::deserialize_reader(reader)?;
-        Ok(Self::new(declaration, definitions))
+        let declaration = BorshDeserialize::deserialize_reader(reader)?;
+        Ok(Self::new(
+            declaration,
+            BorshDeserialize::deserialize_reader(reader)?,
+        ))
     }
 }
 
-/// Helper method to add a single type definition to the map.
+impl BorshSchema for BorshSchemaContainer
+where
+    Declaration: BorshSchema,
+    BTreeMap<Declaration, Definition>: BorshSchema,
+{
+    fn declaration() -> Declaration {
+        "BorshSchemaContainer".to_string()
+    }
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        let fields = Fields::NamedFields(vec![
+            ("declaration".to_string(), Declaration::declaration()),
+            (
+                "definitions".to_string(),
+                <BTreeMap<Declaration, Definition>>::declaration(),
+            ),
+        ]);
+        add_definition(
+            <Self as BorshSchema>::declaration(),
+            Definition::Struct { fields },
+            definitions,
+        );
+        Declaration::add_definitions_recursively(definitions);
+        <BTreeMap<Declaration, Definition>>::add_definitions_recursively(definitions);
+    }
+}
+
+/// Add a definition. Adding a different definition under the same declaration panics: two
+/// types with the same name can't share a schema.
 pub fn add_definition(
     declaration: Declaration,
     definition: Definition,
     definitions: &mut BTreeMap<Declaration, Definition>,
 ) {
     match definitions.entry(declaration) {
-        Entry::Occupied(occ) => {
-            let existing_def = occ.get();
-            assert_eq!(
-                existing_def,
-                &definition,
-                "Redefining type schema for {}. Types with the same names are not supported.",
-                occ.key()
-            );
-        }
+        Entry::Occupied(occ) => assert_eq!(
+            occ.get(),
+            &definition,
+            "Redefining type schema for {}. Types with the same names are not supported.",
+            occ.key()
+        ),
         Entry::Vacant(vac) => {
             vac.insert(definition);
         }
     }
 }
 
-/// Adds a derived struct's definition, then walks its fields once per Rust type. Used by the derive.
-///
-/// Declarations alone can't end the walk: a cycle back into `T` and another type with the same name,
-/// such as `Signed<v2::Transfer>` after `Signed<v1::Transfer>`, look the same. Neither can
-/// [`core::any::type_name`] alone: it isn't guaranteed unique, and items in different blocks of one
-/// function print the same path. So the walk is cut on the pair of both, which a cycle repeats.
-/// The trait passes only `definitions`, so the pairs walked so far are kept there under
-/// `"\0walked"`, which no Rust type name or derived declaration contains, until the outermost call
-/// returns.
+/// For derived types: add `T`'s definition, then its fields' definitions unless this walk
+/// already added them, so recursive types terminate. Walked types are tracked under a
+/// sentinel key (Rust type name and declaration) that the outermost call removes.
 #[doc(hidden)]
 pub fn add_struct_definition<T: BorshSchema + ?Sized>(
     definition: Definition,
@@ -299,365 +228,252 @@ pub fn add_struct_definition<T: BorshSchema + ?Sized>(
     }
 }
 
-/// The declaration and the definition of the type that can be used to (de)serialize Borsh without
-/// the Rust type that produced it.
+/// The schema of a type: its declaration, and its definitions and those of every type it
+/// contains.
 pub trait BorshSchema {
-    /// Recursively, using DFS, add type definitions required for this type.
-    /// Type definition partially explains how to serialize/deserialize a type.
+    /// Add this type's definitions, and those of the types it contains, to `definitions`.
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>);
 
-    /// Get the name of the type without brackets.
+    /// The name of this type.
     fn declaration() -> Declaration;
 }
 
-impl BorshSchema for BorshSchemaContainer
-where
-    Declaration: BorshSchema,
-    BTreeMap<Declaration, Definition>: BorshSchema,
-{
-    fn declaration() -> Declaration {
-        "BorshSchemaContainer".to_string()
-    }
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        let fields = Fields::NamedFields(<[_]>::into_vec(Box::new([
-            (
-                "declaration".to_string(),
-                <Declaration as BorshSchema>::declaration(),
-            ),
-            (
-                "definitions".to_string(),
-                <BTreeMap<Declaration, Definition> as BorshSchema>::declaration(),
-            ),
-        ])));
-        let definition = Definition::Struct { fields };
-        add_definition(
-            <Self as BorshSchema>::declaration(),
-            definition,
-            definitions,
-        );
-        <Declaration as BorshSchema>::add_definitions_recursively(definitions);
-        <BTreeMap<Declaration, Definition> as BorshSchema>::add_definitions_recursively(
-            definitions,
-        );
-    }
-}
-impl<T> BorshSchema for Box<T>
-where
-    T: BorshSchema + ?Sized,
-{
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        T::add_definitions_recursively(definitions);
-    }
+/// Free functions over schemas, re-exported at the crate root.
+pub(crate) mod helpers {
+    use super::{BorshSchema, BorshSchemaContainer, SchemaMaxSerializedSizeError};
+    use crate::__private::maybestd::vec::Vec;
+    use crate::io::{Error, ErrorKind, Result as IOResult};
+    use crate::{from_slice, BorshDeserialize, BorshSerialize};
 
-    fn declaration() -> Declaration {
-        T::declaration()
-    }
-}
-
-impl<T> BorshSchema for core::cell::Cell<T>
-where
-    T: BorshSchema + Copy,
-{
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        T::add_definitions_recursively(definitions);
-    }
-
-    fn declaration() -> Declaration {
-        T::declaration()
-    }
-}
-
-impl<T> BorshSchema for core::cell::RefCell<T>
-where
-    T: BorshSchema + Sized,
-{
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        T::add_definitions_recursively(definitions);
-    }
-
-    fn declaration() -> Declaration {
-        T::declaration()
-    }
-}
-/// Module is available if borsh is built with `features = ["rc"]`.
-#[cfg(feature = "rc")]
-pub mod rc {
-    //!
-    //! Module defines [BorshSchema] implementation for
-    //! [alloc::rc::Rc](std::rc::Rc) and [alloc::sync::Arc](std::sync::Arc).
-    use crate::BorshSchema;
-
-    use super::{Declaration, Definition};
-    use crate::__private::maybestd::collections::BTreeMap;
-    use crate::__private::maybestd::{rc::Rc, sync::Arc};
-
-    impl<T> BorshSchema for Rc<T>
-    where
-        T: BorshSchema + ?Sized,
-    {
-        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-            T::add_definitions_recursively(definitions);
+    /// Decode `T` after its schema, rejecting a schema other than `T`'s.
+    pub fn try_from_slice_with_schema<T: BorshDeserialize + BorshSchema>(v: &[u8]) -> IOResult<T> {
+        let (schema, object) = from_slice::<(BorshSchemaContainer, T)>(v)?;
+        if schema_container_of::<T>() != schema {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "Borsh schema does not match",
+            ));
         }
-
-        fn declaration() -> Declaration {
-            T::declaration()
-        }
+        Ok(object)
     }
 
-    impl<T> BorshSchema for Arc<T>
-    where
-        T: BorshSchema + ?Sized,
-    {
-        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-            T::add_definitions_recursively(definitions);
-        }
+    /// Encode `value` after the schema of `T`.
+    pub fn try_to_vec_with_schema<T: BorshSerialize + BorshSchema + ?Sized>(
+        value: &T,
+    ) -> IOResult<Vec<u8>> {
+        let mut res = crate::to_vec(&schema_container_of::<T>())?;
+        value.serialize(&mut res)?;
+        Ok(res)
+    }
 
-        fn declaration() -> Declaration {
-            T::declaration()
-        }
+    /// The schema of `T`, as [BorshSchemaContainer::for_type].
+    pub fn schema_container_of<T: BorshSchema + ?Sized>() -> BorshSchemaContainer {
+        BorshSchemaContainer::for_type::<T>()
+    }
+
+    /// The largest encoding of any value of `T`, as [BorshSchemaContainer::max_serialized_size].
+    ///
+    /// ```
+    /// assert_eq!(Ok(8), borsh::max_serialized_size::<usize>());
+    /// ```
+    pub fn max_serialized_size<T: BorshSchema + ?Sized>(
+    ) -> core::result::Result<usize, SchemaMaxSerializedSizeError> {
+        BorshSchemaContainer::for_type::<T>().max_serialized_size()
     }
 }
 
-impl<T> BorshSchema for borrow::Cow<'_, T>
+/// The schema of a type that encodes as `T` does.
+macro_rules! same_as {
+    ($($(#[$cfg:meta])* [$($g:tt)*] $t:ty => $inner:ty;)*) => {$(
+        $(#[$cfg])*
+        impl<$($g)*> BorshSchema for $t {
+            fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+                <$inner>::add_definitions_recursively(definitions);
+            }
+            fn declaration() -> Declaration {
+                <$inner>::declaration()
+            }
+        }
+    )*};
+}
+same_as! {
+    [T: BorshSchema + ?Sized] Box<T> => T;
+    [T: BorshSchema + Copy] core::cell::Cell<T> => T;
+    [T: BorshSchema] core::cell::RefCell<T> => T;
+    [] String => str;
+    [T] PhantomData<T> => ();
+}
+impl<T: borrow::ToOwned + ?Sized> BorshSchema for borrow::Cow<'_, T>
 where
-    T: borrow::ToOwned + ?Sized,
     T::Owned: BorshSchema,
 {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        <T::Owned as BorshSchema>::add_definitions_recursively(definitions);
+        T::Owned::add_definitions_recursively(definitions);
     }
-
     fn declaration() -> Declaration {
-        <T::Owned as BorshSchema>::declaration()
+        T::Owned::declaration()
     }
 }
 
-macro_rules! impl_for_renamed_primitives {
-    ($($ty: ty : $name: ident => $size: expr);+) => {
-    $(
-        impl BorshSchema for $ty {
-            #[inline]
+/// Module is available if borsh is built with `features = ["rc"]`.
+#[cfg(feature = "rc")]
+pub mod rc {
+    use super::*;
+    use crate::__private::maybestd::{rc::Rc, sync::Arc};
+    same_as! {
+        [T: BorshSchema + ?Sized] Rc<T> => T;
+        [T: BorshSchema + ?Sized] Arc<T> => T;
+    }
+}
+
+macro_rules! primitive {
+    ($($t:ty: $name:expr => $size:expr;)*) => {$(
+        impl BorshSchema for $t {
             fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-                let definition = Definition::Primitive($size);
-                add_definition(Self::declaration(), definition, definitions);
+                add_definition(Self::declaration(), Definition::Primitive($size), definitions);
             }
-            #[inline]
-            fn declaration() -> Declaration { stringify!($name).into() }
+            fn declaration() -> Declaration {
+                $name.into()
+            }
         }
-    )+
-    };
+    )*};
+}
+primitive! {
+    bool: "bool" => 1; f32: "f32" => 4; f64: "f64" => 8;
+    i8: "i8" => 1; i16: "i16" => 2; i32: "i32" => 4; i64: "i64" => 8; i128: "i128" => 16;
+    u8: "u8" => 1; u16: "u16" => 2; u32: "u32" => 4; u64: "u64" => 8; u128: "u128" => 16;
+    isize: "i64" => 8; usize: "u64" => 8;
+    core::num::NonZeroI8: "NonZeroI8" => 1; core::num::NonZeroI16: "NonZeroI16" => 2;
+    core::num::NonZeroI32: "NonZeroI32" => 4; core::num::NonZeroI64: "NonZeroI64" => 8;
+    core::num::NonZeroI128: "NonZeroI128" => 16; core::num::NonZeroU8: "NonZeroU8" => 1;
+    core::num::NonZeroU16: "NonZeroU16" => 2; core::num::NonZeroU32: "NonZeroU32" => 4;
+    core::num::NonZeroU64: "NonZeroU64" => 8; core::num::NonZeroU128: "NonZeroU128" => 16;
+    core::num::NonZeroUsize: "NonZeroUsize" => 8;
+    (): "()" => 0;
+}
 
-    ($($ty: ty : $name: expr, $size: expr);+) => {
-    $(
-        impl BorshSchema for $ty {
-            #[inline]
+/// A `u32` length and that many elements.
+fn sequence(elements: Declaration) -> Definition {
+    Definition::Sequence {
+        length_width: Definition::DEFAULT_LENGTH_WIDTH,
+        length_range: Definition::DEFAULT_LENGTH_RANGE,
+        elements,
+    }
+}
+
+/// Collections: a sequence of `$elem`, declared as `$decl`.
+macro_rules! seq {
+    ($($(#[$cfg:meta])* [$($g:tt)*] $t:ty => $elem:ty, $decl:expr;)*) => {$(
+        $(#[$cfg])*
+        impl<$($g)*> BorshSchema for $t {
             fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-                let definition = Definition::Primitive($size);
-                add_definition(Self::declaration(), definition, definitions);
+                add_definition(Self::declaration(), sequence(<$elem>::declaration()), definitions);
+                <$elem>::add_definitions_recursively(definitions);
             }
-            #[inline]
-            fn declaration() -> Declaration { $name.into() }
+            fn declaration() -> Declaration {
+                $decl
+            }
         }
-    )+
-    };
+    )*};
+}
+seq! {
+    [] str => u8, "String".into();
+    [T: BorshSchema] Vec<T> => T, format!("Vec<{}>", T::declaration());
+    [T: BorshSchema] VecDeque<T> => T, format!("VecDeque<{}>", T::declaration());
+    [T: BorshSchema] LinkedList<T> => T, format!("LinkedList<{}>", T::declaration());
+    [T: BorshSchema] [T] => T, format!("Vec<{}>", T::declaration());
+    [T: BorshSchema] BTreeSet<T> => T, format!("BTreeSet<{}>", T::declaration());
+    [K: BorshSchema, V: BorshSchema] BTreeMap<K, V> => (K, V),
+        format!("BTreeMap<{}, {}>", K::declaration(), V::declaration());
 }
 
-macro_rules! impl_for_primitives {
-    ($($ty: ident => $size: expr);+) => {
-        impl_for_renamed_primitives!{$($ty : $ty => $size);+}
-    };
-}
+/// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
+#[cfg(any(feature = "std", feature = "hashbrown"))]
+pub mod hashes {
+    use super::*;
+    use crate::__private::maybestd::collections::{HashMap, HashSet};
 
-impl_for_primitives!(bool => 1; f32 => 4; f64 => 8; i8 => 1; i16 => 2; i32 => 4; i64 => 8; i128 => 16);
-impl_for_primitives!(u8 => 1; u16 => 2; u32 => 4; u64 => 8; u128 => 16);
-impl_for_renamed_primitives!(isize: i64 => 8);
-impl_for_renamed_primitives!(usize: u64 => 8);
-
-impl_for_renamed_primitives!(core::num::NonZeroI8: NonZeroI8 => 1);
-impl_for_renamed_primitives!(core::num::NonZeroI16: NonZeroI16 => 2);
-impl_for_renamed_primitives!(core::num::NonZeroI32: NonZeroI32 => 4);
-impl_for_renamed_primitives!(core::num::NonZeroI64: NonZeroI64 => 8);
-impl_for_renamed_primitives!(core::num::NonZeroI128: NonZeroI128 => 16);
-impl_for_renamed_primitives!(core::num::NonZeroU8: NonZeroU8 => 1);
-impl_for_renamed_primitives!(core::num::NonZeroU16: NonZeroU16 => 2);
-impl_for_renamed_primitives!(core::num::NonZeroU32: NonZeroU32 => 4);
-impl_for_renamed_primitives!(core::num::NonZeroU64: NonZeroU64 => 8);
-impl_for_renamed_primitives!(core::num::NonZeroU128: NonZeroU128 => 16);
-// see 12 lines above
-impl_for_renamed_primitives!(core::num::NonZeroUsize: NonZeroUsize => 8);
-
-impl_for_renamed_primitives!((): "()", 0);
-
-impl BorshSchema for String {
-    #[inline]
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        str::add_definitions_recursively(definitions);
-    }
-    #[inline]
-    fn declaration() -> Declaration {
-        str::declaration()
-    }
-}
-
-impl BorshSchema for str {
-    #[inline]
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        let definition = Definition::Sequence {
-            length_width: Definition::DEFAULT_LENGTH_WIDTH,
-            length_range: Definition::DEFAULT_LENGTH_RANGE,
-            elements: u8::declaration(),
-        };
-        add_definition(Self::declaration(), definition, definitions);
-        u8::add_definitions_recursively(definitions);
-    }
-    #[inline]
-    fn declaration() -> Declaration {
-        "String".into()
+    seq! {
+        [K: BorshSchema, V: BorshSchema, S] HashMap<K, V, S> => (K, V),
+            format!("HashMap<{}, {}>", K::declaration(), V::declaration());
+        [T: BorshSchema, S] HashSet<T, S> => T, format!("HashSet<{}>", T::declaration());
     }
 }
 
 /// Module is available if borsh is built with `features = ["ascii"]`.
 #[cfg(feature = "ascii")]
 pub mod ascii {
-    //!
-    //! Module defines [BorshSchema] implementation for
-    //! some types from [ascii](::ascii) crate.
-    use crate::BorshSchema;
+    use super::*;
 
-    use super::{add_definition, Declaration, Definition};
-    use crate::__private::maybestd::collections::BTreeMap;
-
-    impl BorshSchema for ascii::AsciiString {
-        #[inline]
-        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-            ascii::AsciiStr::add_definitions_recursively(definitions);
-        }
-        #[inline]
-        fn declaration() -> Declaration {
-            ascii::AsciiStr::declaration()
-        }
+    same_as! {
+        [] ::ascii::AsciiString => ::ascii::AsciiStr;
+    }
+    seq! {
+        [] ::ascii::AsciiStr => ::ascii::AsciiChar, "AsciiString".into();
     }
 
-    impl BorshSchema for ascii::AsciiStr {
-        #[inline]
-        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-            let definition = Definition::Sequence {
-                length_width: Definition::DEFAULT_LENGTH_WIDTH,
-                length_range: Definition::DEFAULT_LENGTH_RANGE,
-                elements: ascii::AsciiChar::declaration(),
-            };
-            add_definition(Self::declaration(), definition, definitions);
-            ascii::AsciiChar::add_definitions_recursively(definitions);
-        }
-        #[inline]
-        fn declaration() -> Declaration {
-            "AsciiString".into()
-        }
-    }
-
-    impl BorshSchema for ascii::AsciiChar {
-        #[inline]
+    impl BorshSchema for ::ascii::AsciiChar {
         fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
             add_definition(Self::declaration(), Definition::Primitive(1), definitions);
         }
-        #[inline]
         fn declaration() -> Declaration {
             "AsciiChar".into()
         }
     }
 }
 
+/// Module is available if borsh is built with `features = ["bytes"]`.
 #[cfg(feature = "bytes")]
 pub mod bytes {
-    //! Module is available if borsh is built with `features = ["bytes"]`.
-    //!
-    //! Module defines [BorshSchema] implementation for
-    //! some types from [bytes] crate.
-    use crate::BorshSchema;
+    use super::*;
 
-    use super::{add_definition, Declaration, Definition};
-    use crate::__private::maybestd::collections::BTreeMap;
-
-    impl BorshSchema for bytes::Bytes {
-        #[inline]
-        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-            let definition = Definition::Sequence {
-                length_width: Definition::DEFAULT_LENGTH_WIDTH,
-                length_range: Definition::DEFAULT_LENGTH_RANGE,
-                elements: u8::declaration(),
-            };
-            add_definition(Self::declaration(), definition, definitions);
-            u8::add_definitions_recursively(definitions);
-        }
-        #[inline]
-        fn declaration() -> Declaration {
-            "bytes::Bytes".into()
-        }
-    }
-
-    impl BorshSchema for bytes::BytesMut {
-        #[inline]
-        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-            let definition = Definition::Sequence {
-                length_width: Definition::DEFAULT_LENGTH_WIDTH,
-                length_range: Definition::DEFAULT_LENGTH_RANGE,
-                elements: u8::declaration(),
-            };
-            add_definition(Self::declaration(), definition, definitions);
-            u8::add_definitions_recursively(definitions);
-        }
-        #[inline]
-        fn declaration() -> Declaration {
-            "bytes::BytesMut".into()
-        }
+    seq! {
+        [] ::bytes::Bytes => u8, "bytes::Bytes".into();
+        [] ::bytes::BytesMut => u8, "bytes::BytesMut".into();
     }
 }
 
 impl BorshSchema for core::ops::RangeFull {
-    #[inline]
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        let fields = Fields::Empty;
-        let def = Definition::Struct { fields };
-        add_definition(Self::declaration(), def, definitions);
+        add_definition(
+            Self::declaration(),
+            Definition::Struct {
+                fields: Fields::Empty,
+            },
+            definitions,
+        );
     }
-    #[inline]
     fn declaration() -> Declaration {
         "RangeFull".into()
     }
 }
 
-macro_rules! impl_for_range {
-    ($type:ident, $($name:ident),*) => {
-        impl<T: BorshSchema> BorshSchema for core::ops::$type<T> {
+macro_rules! range {
+    ($($t:ident($($side:ident),*);)*) => {$(
+        impl<T: BorshSchema> BorshSchema for core::ops::$t<T> {
             fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-                let decl = T::declaration();
-                let fields = Fields::NamedFields(vec![$(
-                    (FieldName::from(stringify!($name)), decl.clone())
-                ),*]);
-                let def = Definition::Struct { fields };
-                add_definition(Self::declaration(), def, definitions);
+                let fields = vec![$((stringify!($side).into(), T::declaration())),*];
+                let fields = Fields::NamedFields(fields);
+                add_definition(Self::declaration(), Definition::Struct { fields }, definitions);
                 T::add_definitions_recursively(definitions);
             }
             fn declaration() -> Declaration {
-                format!("{}<{}>", stringify!($type), T::declaration())
+                format!(concat!(stringify!($t), "<{}>"), T::declaration())
             }
         }
-    };
+    )*};
+}
+range! {
+    Range(start, end);
+    RangeInclusive(start, end);
+    RangeFrom(start);
+    RangeTo(end);
+    RangeToInclusive(end);
 }
 
-impl_for_range!(Range, start, end);
-impl_for_range!(RangeInclusive, start, end);
-impl_for_range!(RangeFrom, start);
-impl_for_range!(RangeTo, end);
-impl_for_range!(RangeToInclusive, end);
-
-impl<T, const N: usize> BorshSchema for [T; N]
-where
-    T: BorshSchema,
-{
+impl<T: BorshSchema, const N: usize> BorshSchema for [T; N] {
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        use core::convert::TryFrom;
-        let length = u64::try_from(N).unwrap();
+        let length = N as u64;
         let definition = Definition::Sequence {
             length_width: Definition::ARRAY_LENGTH_WIDTH,
             length_range: length..=length,
@@ -667,320 +483,83 @@ where
         T::add_definitions_recursively(definitions);
     }
     fn declaration() -> Declaration {
-        format!(r#"[{}; {}]"#, T::declaration(), N)
+        format!("[{}; {}]", T::declaration(), N)
     }
 }
 
-impl<T> BorshSchema for Option<T>
-where
-    T: BorshSchema,
-{
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        let definition = Definition::Enum {
-            tag_width: 1,
-            variants: vec![
-                (0u8 as i64, "None".to_string(), <()>::declaration()),
-                (1u8 as i64, "Some".to_string(), T::declaration()),
-            ],
-        };
-        add_definition(Self::declaration(), definition, definitions);
-        T::add_definitions_recursively(definitions);
-        <()>::add_definitions_recursively(definitions);
-    }
-
-    fn declaration() -> Declaration {
-        format!(r#"Option<{}>"#, T::declaration())
-    }
-}
-
-impl<T, E> BorshSchema for core::result::Result<T, E>
-where
-    T: BorshSchema,
-    E: BorshSchema,
-{
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        let definition = Definition::Enum {
-            tag_width: 1,
-            variants: vec![
-                (1u8 as i64, "Ok".to_string(), T::declaration()),
-                (0u8 as i64, "Err".to_string(), E::declaration()),
-            ],
-        };
-        add_definition(Self::declaration(), definition, definitions);
-        T::add_definitions_recursively(definitions);
-        E::add_definitions_recursively(definitions);
-    }
-
-    fn declaration() -> Declaration {
-        format!(r#"Result<{}, {}>"#, T::declaration(), E::declaration())
-    }
-}
-
-macro_rules! impl_for_vec_like_collection {
-    ($type: ident) => {
-        impl<T> BorshSchema for $type<T>
-        where
-            T: BorshSchema,
-        {
+/// `Option` and `Result` are enums with a one-byte tag.
+macro_rules! enum_like {
+    ($($t:ty, [$($g:ident),*], $fmt:literal, $(($tag:literal, $var:literal, $decl:ty)),*;)*) => {$(
+        impl<$($g: BorshSchema),*> BorshSchema for $t {
             fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-                let definition = Definition::Sequence {
-                    length_width: Definition::DEFAULT_LENGTH_WIDTH,
-                    length_range: Definition::DEFAULT_LENGTH_RANGE,
-                    elements: T::declaration(),
-                };
+                let variants = vec![$(($tag, $var.to_string(), <$decl>::declaration())),*];
+                let definition = Definition::Enum { tag_width: 1, variants };
                 add_definition(Self::declaration(), definition, definitions);
-                T::add_definitions_recursively(definitions);
+                $(<$decl>::add_definitions_recursively(definitions);)*
             }
-
             fn declaration() -> Declaration {
-                format!(r#"{}<{}>"#, stringify!($type), T::declaration())
+                format!($fmt, $($g::declaration()),*)
+            }
+        }
+    )*};
+}
+enum_like! {
+    Option<T>, [T], "Option<{}>", (0, "None", ()), (1, "Some", T);
+    core::result::Result<T, E>, [T, E], "Result<{}, {}>", (1, "Ok", T), (0, "Err", E);
+}
+
+macro_rules! tuple {
+    ($($idx:tt $name:ident)+) => {
+        impl<$($name: BorshSchema),+> BorshSchema for ($($name,)+) {
+            fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+                let elements = vec![$($name::declaration()),+];
+                add_definition(Self::declaration(), Definition::Tuple { elements }, definitions);
+                $($name::add_definitions_recursively(definitions);)+
+            }
+            fn declaration() -> Declaration {
+                let params: Vec<Declaration> = vec![$($name::declaration()),+];
+                if params.len() == 1 {
+                    format!("({},)", params[0])
+                } else {
+                    format!("({})", params.join(", "))
+                }
             }
         }
     };
 }
+tuples!(tuple []
+    0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9
+    10 T10 11 T11 12 T12 13 T13 14 T14 15 T15 16 T16 17 T17 18 T18 19 T19 20 T20
+);
 
-impl_for_vec_like_collection!(Vec);
-impl_for_vec_like_collection!(VecDeque);
-impl_for_vec_like_collection!(LinkedList);
-
-impl<T> BorshSchema for [T]
-where
-    T: BorshSchema,
-{
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        let definition = Definition::Sequence {
-            length_width: Definition::DEFAULT_LENGTH_WIDTH,
-            length_range: Definition::DEFAULT_LENGTH_RANGE,
-            elements: T::declaration(),
-        };
-        add_definition(Self::declaration(), definition, definitions);
-        T::add_definitions_recursively(definitions);
-    }
-
-    fn declaration() -> Declaration {
-        format!(r#"Vec<{}>"#, T::declaration())
-    }
-}
-
-/// Module is available if borsh is built with `features = ["std"]` or `features = ["hashbrown"]`.
-///
-/// Module defines [BorshSchema] implementation for
-/// [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
-#[cfg(hash_collections)]
-pub mod hashes {
+/// IP addresses have the schemas of these types.
+#[cfg(feature = "std")]
+#[allow(dead_code)]
+mod ip {
     use crate::BorshSchema;
 
-    use super::{add_definition, Declaration, Definition};
-    use crate::__private::maybestd::collections::BTreeMap;
-
-    use crate::__private::maybestd::collections::{HashMap, HashSet};
-    #[cfg(not(feature = "std"))]
-    use alloc::format;
-
-    // S is not serialized, so we ignore it in schema too
-    // forcing S to be BorshSchema forces to define Definition
-    // which must be empty, but if not - it will fail
-    // so better to ignore it
-    impl<K, V, S> BorshSchema for HashMap<K, V, S>
-    where
-        K: BorshSchema,
-        V: BorshSchema,
-    {
-        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-            let definition = Definition::Sequence {
-                length_width: Definition::DEFAULT_LENGTH_WIDTH,
-                length_range: Definition::DEFAULT_LENGTH_RANGE,
-                elements: <(K, V)>::declaration(),
-            };
-            add_definition(Self::declaration(), definition, definitions);
-            <(K, V)>::add_definitions_recursively(definitions);
-        }
-
-        fn declaration() -> Declaration {
-            format!(r#"HashMap<{}, {}>"#, K::declaration(), V::declaration())
-        }
-    }
-
-    impl<T, S> BorshSchema for HashSet<T, S>
-    where
-        T: BorshSchema,
-    {
-        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-            let definition = Definition::Sequence {
-                length_width: Definition::DEFAULT_LENGTH_WIDTH,
-                length_range: Definition::DEFAULT_LENGTH_RANGE,
-                elements: <T>::declaration(),
-            };
-            add_definition(Self::declaration(), definition, definitions);
-            <T>::add_definitions_recursively(definitions);
-        }
-
-        fn declaration() -> Declaration {
-            format!(r#"HashSet<{}>"#, T::declaration())
-        }
-    }
-}
-
-impl<K, V> BorshSchema for BTreeMap<K, V>
-where
-    K: BorshSchema,
-    V: BorshSchema,
-{
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        let definition = Definition::Sequence {
-            length_width: Definition::DEFAULT_LENGTH_WIDTH,
-            length_range: Definition::DEFAULT_LENGTH_RANGE,
-            elements: <(K, V)>::declaration(),
-        };
-        add_definition(Self::declaration(), definition, definitions);
-        <(K, V)>::add_definitions_recursively(definitions);
-    }
-
-    fn declaration() -> Declaration {
-        format!(r#"BTreeMap<{}, {}>"#, K::declaration(), V::declaration())
-    }
-}
-
-impl<T> BorshSchema for BTreeSet<T>
-where
-    T: BorshSchema,
-{
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        let definition = Definition::Sequence {
-            length_width: Definition::DEFAULT_LENGTH_WIDTH,
-            length_range: Definition::DEFAULT_LENGTH_RANGE,
-            elements: <T>::declaration(),
-        };
-        add_definition(Self::declaration(), definition, definitions);
-        <T>::add_definitions_recursively(definitions);
-    }
-
-    fn declaration() -> Declaration {
-        format!(r#"BTreeSet<{}>"#, T::declaration())
-    }
-}
-
-// Because it's a zero-sized marker, its type parameter doesn't need to be
-// included in the schema and so it's not bound to `BorshSchema`
-impl<T> BorshSchema for PhantomData<T> {
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        <()>::add_definitions_recursively(definitions);
-    }
-
-    fn declaration() -> Declaration {
-        <()>::declaration()
-    }
-}
-
-macro_rules! impl_tuple {
-    ($($name:ident),+) => {
-    impl<$($name),+> BorshSchema for ($($name,)+)
-    where
-        $($name: BorshSchema),+
-    {
-        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-            let elements = vec![$($name::declaration()),+];
-
-            let definition = Definition::Tuple { elements };
-            add_definition(Self::declaration(), definition, definitions);
-            $(
-                $name::add_definitions_recursively(definitions);
-            )+
-        }
-
-        fn declaration() -> Declaration {
-            let params = vec![$($name::declaration()),+];
-            if params.len() == 1 {
-                format!(r#"({},)"#, params[0])
-            } else {
-                format!(r#"({})"#, params.join(", "))
-            }
-        }
-    }
-    };
-}
-
-impl_tuple!(T0);
-impl_tuple!(T0, T1);
-impl_tuple!(T0, T1, T2);
-impl_tuple!(T0, T1, T2, T3);
-impl_tuple!(T0, T1, T2, T3, T4);
-impl_tuple!(T0, T1, T2, T3, T4, T5);
-impl_tuple!(T0, T1, T2, T3, T4, T5, T6);
-impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7);
-impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7, T8);
-impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9);
-impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
-impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
-impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
-impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
-impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
-impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
-impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
-impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17);
-impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18);
-impl_tuple!(
-    T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19
-);
-impl_tuple!(
-    T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20
-);
-
-#[cfg(feature = "std")]
-mod ip_addr_std_derive_impl {
-    use crate::BorshSchema as BorshSchemaMacro;
-
-    #[derive(BorshSchemaMacro)]
+    #[derive(BorshSchema)]
     #[borsh(crate = "crate")]
     pub struct Ipv4Addr {
         octets: [u8; 4],
     }
 
-    #[derive(BorshSchemaMacro)]
+    #[derive(BorshSchema)]
     #[borsh(crate = "crate")]
     pub struct Ipv6Addr {
         octets: [u8; 16],
     }
 
-    #[derive(BorshSchemaMacro)]
+    #[derive(BorshSchema)]
     #[borsh(crate = "crate")]
     pub enum IpAddr {
-        /// An IPv4 address.
         V4(core::net::Ipv4Addr),
-        /// An IPv6 address.
         V6(core::net::Ipv6Addr),
     }
 }
-
 #[cfg(feature = "std")]
-impl BorshSchema for core::net::Ipv4Addr {
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        <ip_addr_std_derive_impl::Ipv4Addr>::add_definitions_recursively(definitions);
-    }
-
-    fn declaration() -> Declaration {
-        ip_addr_std_derive_impl::Ipv4Addr::declaration()
-    }
-}
-
-#[cfg(feature = "std")]
-impl BorshSchema for core::net::Ipv6Addr {
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        <ip_addr_std_derive_impl::Ipv6Addr>::add_definitions_recursively(definitions);
-    }
-
-    fn declaration() -> Declaration {
-        ip_addr_std_derive_impl::Ipv6Addr::declaration()
-    }
-}
-
-#[cfg(feature = "std")]
-impl BorshSchema for core::net::IpAddr {
-    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-        <ip_addr_std_derive_impl::IpAddr>::add_definitions_recursively(definitions);
-    }
-
-    fn declaration() -> Declaration {
-        ip_addr_std_derive_impl::IpAddr::declaration()
-    }
+same_as! {
+    [] core::net::Ipv4Addr => ip::Ipv4Addr;
+    [] core::net::Ipv6Addr => ip::Ipv6Addr;
+    [] core::net::IpAddr => ip::IpAddr;
 }

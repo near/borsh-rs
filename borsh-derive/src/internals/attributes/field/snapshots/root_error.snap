@@ -1,7 +1,0 @@
----
-source: borsh-derive/src/internals/attributes/field/mod.rs
-expression: err
----
-Error(
-    "malformed borsh attribute, expected `borsh(bound(...), deserialize_with = ..., schema(...), serialize_with = ..., skip)`",
-)

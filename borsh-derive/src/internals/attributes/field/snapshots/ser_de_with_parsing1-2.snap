@@ -1,6 +1,0 @@
----
-source: borsh-derive/src/internals/attributes/field/mod.rs
-expression: debug_print_tokenizable(attrs.deserialize_with)
----
-third_party_impl :: deserialize_third_party
-

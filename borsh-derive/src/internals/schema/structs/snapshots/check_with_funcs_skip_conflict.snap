@@ -1,7 +1,0 @@
----
-source: borsh-derive/src/internals/schema/structs/mod.rs
-expression: actual.unwrap_err()
----
-Error(
-    "`skip` cannot be used at the same time as `schema(with_funcs(...))`",
-)

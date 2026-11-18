@@ -1,7 +1,0 @@
----
-source: borsh-derive/src/internals/serialize/structs/mod.rs
-expression: err
----
-Error(
-    "`skip` cannot be used at the same time as `serialize_with` or `deserialize_with`",
-)

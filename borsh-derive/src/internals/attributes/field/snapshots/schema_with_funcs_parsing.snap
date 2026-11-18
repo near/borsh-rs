@@ -1,6 +1,0 @@
----
-source: borsh-derive/src/internals/attributes/field/mod.rs
-expression: debug_print_tokenizable(with_funcs.declaration.clone())
----
-third_party_impl :: declaration :: < K , V >
-

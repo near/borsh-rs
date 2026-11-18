@@ -1,7 +1,0 @@
----
-source: borsh-derive/src/internals/attributes/field/mod.rs
-expression: err
----
-Error(
-    "malformed schema attribute, expected `schema(params = ..., with_funcs(...))`",
-)
