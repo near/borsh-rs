@@ -16,6 +16,13 @@ use crate::__private::maybestd::{
 };
 use crate::io::{Error, ErrorKind, Read, Result};
 
+#[cfg(feature = "unstable__bounded")]
+pub(crate) mod bounded;
+#[cfg(feature = "unstable__bounded")]
+pub use bounded::{
+    from_reader_bounded, from_slice_bounded, BorshDeserializeBounded, Budget, EnumExtBounded,
+};
+
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
 
@@ -183,7 +190,9 @@ impl BorshDeserialize for u8 {
         let mut pos = 0;
         while pos < len {
             if pos == vec.len() {
-                vec.resize(vec.len().saturating_mul(2).min(len), 0)
+                let new_len = vec.len().saturating_mul(2).min(len);
+                vec.reserve_exact(new_len - vec.len());
+                vec.resize(new_len, 0)
             }
             match reader.read(&mut vec[pos..]) {
                 Ok(0) => return Err(invalid(ERROR_UNEXPECTED_LENGTH_OF_INPUT)),

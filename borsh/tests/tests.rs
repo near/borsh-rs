@@ -123,6 +123,14 @@ mod schema {
     }
 }
 
+#[rustfmt::skip]
+#[cfg(feature = "unstable__bounded")]
+mod bounded {
+    mod cases;
+    mod test_box;
+    mod test_exact_charge;
+}
+
 mod deserialization_errors {
     #[cfg(feature = "ascii")]
     mod test_ascii_strings;
