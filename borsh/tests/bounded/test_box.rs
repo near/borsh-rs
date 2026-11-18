@@ -1,4 +1,4 @@
-use alloc::{boxed::Box, vec, vec::Vec};
+use alloc::{boxed::Box, string::ToString, vec, vec::Vec};
 use core::mem::size_of;
 
 use borsh::de::Budget;
@@ -17,16 +17,15 @@ fn test_box_parity() {
 }
 
 #[test]
-fn test_vec_of_boxed_units_fails_at_its_length() {
-    // Claims 2^27 boxes, which take no input bytes.
+fn test_vec_of_boxed_units_fails_like_plain_decoding() {
+    // `Box<()>` encodes to zero bytes, so the collection is rejected before its length is read.
     let input = [0, 0, 0, 8, 1, 2, 3];
     let mut reader = &input[..];
     let err = from_reader_bounded::<_, Vec<Box<()>>>(&mut reader, &mut Budget::from_bytes(64))
         .unwrap_err();
-    let requested = (1 << 27) * size_of::<Box<()>>();
-    let remaining = 64 - size_of::<Vec<Box<()>>>();
-    assert_eq!(limit_exceeded(&err), Some((64, requested, remaining)));
-    assert_eq!(reader.len(), 3);
+    let plain = borsh::from_slice::<Vec<Box<()>>>(&input).unwrap_err();
+    assert_eq!((err.kind(), err.to_string()), (plain.kind(), plain.to_string()));
+    assert_eq!(reader.len(), input.len());
 }
 
 #[allow(unused)]
@@ -54,4 +53,23 @@ fn test_deep_box_chain_fails_on_the_way_down() {
         .expect("the chain never ends");
     // The root and 9 boxes fit.
     assert_eq!(limit_exceeded(&err), Some((limit, size_of::<Chain>(), 0)));
+}
+
+#[cfg(feature = "std")]
+#[test]
+fn test_deep_box_chain_hits_the_recursion_limit() {
+    let input = vec![1u8; 1_000_000];
+    let err = from_slice_bounded::<Chain>(&input, &mut Budget::from_bytes(usize::MAX))
+        .err()
+        .expect("the chain never ends");
+    assert_eq!(err.to_string(), "Recursion limit exceeded");
+    // The limit is the one plain decoding uses.
+    let three = to_vec(&Box::new(Box::new(Box::new(7u8)))).unwrap();
+    let decode = |limit| {
+        borsh::de::with_recursion_limit(limit, || {
+            from_slice_bounded::<Box<Box<Box<u8>>>>(&three, &mut Budget::from_bytes(usize::MAX))
+        })
+    };
+    assert!(decode(3).is_ok());
+    assert_eq!(decode(2).unwrap_err().to_string(), "Recursion limit exceeded");
 }

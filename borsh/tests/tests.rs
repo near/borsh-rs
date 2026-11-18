@@ -128,6 +128,7 @@ mod schema {
 mod bounded {
     mod cases;
     mod test_box;
+    mod test_end_of_input;
     mod test_exact_charge;
 }
 

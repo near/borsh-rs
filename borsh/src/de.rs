@@ -329,17 +329,27 @@ pub mod ascii {
     }
 }
 
-/// Every length-prefixed collection decodes through here: the element type must not be
-/// zero-sized or encode to zero bytes, preallocation is cautious, and each nonempty
-/// collection is one level of the recursion limit.
+/// Starts a length-prefixed collection, for plain and bounded decoding alike: the element type
+/// must not be zero-sized or encode to zero bytes, and a nonempty collection is one level of
+/// the recursion limit. `None` for an empty one.
+#[inline]
+fn start_seq<T, R: Read>(
+    reader: &mut R,
+    encodes_to_zero_bytes: bool,
+) -> Result<Option<(u32, RecursionGuard)>> {
+    crate::error::check_zst::<T>(encodes_to_zero_bytes)?;
+    match u32::deserialize_reader(reader)? {
+        0 => Ok(None),
+        len => Ok(Some((len, RecursionGuard::enter()?))),
+    }
+}
+
+/// Every length-prefixed collection decodes through here, with cautious preallocation.
 impl<T: BorshDeserialize> BorshDeserialize for Vec<T> {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        crate::error::check_zst::<T>(T::ENCODES_TO_ZERO_BYTES)?;
-        let len = u32::deserialize_reader(reader)?;
-        if len == 0 {
+        let Some((len, _guard)) = start_seq::<T, _>(reader, T::ENCODES_TO_ZERO_BYTES)? else {
             return Ok(Vec::new());
-        }
-        let _guard = RecursionGuard::enter()?;
+        };
         if let Some(vec) = T::vec_from_reader(len, reader)? {
             return Ok(vec);
         }
@@ -762,10 +772,16 @@ pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
 /// end-of-input check retries `Interrupted` and returns any other I/O error.
 pub fn from_reader<R: Read, T: BorshDeserialize>(reader: &mut R) -> Result<T> {
     let result = T::deserialize_reader(reader)?;
+    expect_end(reader)?;
+    Ok(result)
+}
+
+/// The end-of-input check of `from_reader`, plain and bounded.
+fn expect_end<R: Read>(reader: &mut R) -> Result<()> {
     let mut buf = [0u8; 1];
     loop {
         match reader.read(&mut buf) {
-            Ok(0) => return Ok(result),
+            Ok(0) => return Ok(()),
             Ok(_) => return Err(invalid(ERROR_NOT_ALL_BYTES_READ)),
             Err(e) if e.kind() == ErrorKind::Interrupted => {}
             Err(e) => return Err(e),

@@ -1,6 +1,8 @@
-//! Each impl here is its plain twin from `de/mod.rs` plus a charge before each allocation,
-//! with the same reads, checks and constructors. Keep the twins in sync;
-//! `assert_bounded_parity` in the tests catches drift.
+//! Bounded decoding: each impl decodes like its `BorshDeserialize` twin in `de.rs`, with the
+//! same reads, checks and constructors, plus a charge before each allocation. Collections
+//! start through the same `start_seq` (zero-size check and recursion level) and the reader
+//! entry point ends with the same `expect_end`. `assert_bounded_parity` in the tests catches
+//! drift between the twins.
 
 use core::convert::TryFrom;
 use core::mem::size_of;
@@ -11,17 +13,16 @@ use crate::__private::maybestd::{
     string::{String, ToString},
     vec::Vec,
 };
-use crate::error::check_zst;
-use crate::io::{Error, ErrorKind, Read, Result};
+use crate::io::{Read, Result};
 
-use super::{BorshDeserialize, ERROR_NOT_ALL_BYTES_READ};
+use super::{cautious, expect_end, start_seq, BorshDeserialize, RecursionGuard};
+use super::{invalid, ERROR_NOT_ALL_BYTES_READ};
 
 mod budget;
-mod size;
 
 pub use budget::{Budget, LimitExceeded};
 
-#[doc = include_str!("../../../docs/rustdoc_include/borsh_bounded_charges.md")]
+#[doc = include_str!("../../docs/rustdoc_include/borsh_bounded_charges.md")]
 pub trait BorshDeserializeBounded: Sized {
     /// Deserializes this instance from a reader, charging `budget` before every allocation.
     /// `size_of::<Self>()` is charged by the entry points, or by the allocation that holds it.
@@ -45,6 +46,11 @@ pub trait BorshDeserializeBounded: Sized {
         let _ = (len, reader);
         Ok(None)
     }
+
+    /// Whether every value encodes to zero bytes, as in
+    /// [`BorshDeserialize`](crate::BorshDeserialize). Collections reject such element types.
+    #[doc(hidden)]
+    const ENCODES_TO_ZERO_BYTES: bool = false;
 }
 
 /// Bounded counterpart of [`EnumExt`](crate::de::EnumExt).
@@ -60,32 +66,22 @@ pub trait EnumExtBounded: BorshDeserializeBounded {
     ) -> Result<Self>;
 }
 
-/// Charges the vector plus `extra(n)` before reading any element.
-fn decode_seq<T, R>(
+/// `Vec<T>`'s decode: `start_seq`, then a charge for all `len` elements before reading any.
+fn decode_seq<T: BorshDeserializeBounded, R: Read>(
     reader: &mut R,
     budget: &mut Budget,
-    extra: impl FnOnce(usize) -> Option<usize>,
-) -> Result<Vec<T>>
-where
-    T: BorshDeserializeBounded,
-    R: Read,
-{
-    // Size only: `BorshDeserializeBounded` has no `ENCODES_TO_ZERO_BYTES`.
-    check_zst::<T>(false)?;
-
-    let len = u32::deserialize_bounded_alloc(reader, budget)?;
-    if len == 0 {
+) -> Result<Vec<T>> {
+    let Some((len, _guard)) = start_seq::<T, _>(reader, T::ENCODES_TO_ZERO_BYTES)? else {
         return Ok(Vec::new());
-    }
+    };
     // Only fails on 16-bit targets.
     let n = usize::try_from(len).map_err(|_| budget.exceeded(usize::MAX))?;
     budget.charge_array::<T>(n)?;
-    budget.charge_checked(extra(n))?;
     if let Some(vec) = T::vec_from_reader_bounded(len, reader)? {
         return Ok(vec);
     }
     // Grows like plain decoding but stops at `n`: a false length allocates no more than plain.
-    let mut result = Vec::with_capacity(super::cautious::<T>(len));
+    let mut result = Vec::with_capacity(cautious::<T>(len));
     for _ in 0..len {
         let value = T::deserialize_bounded_alloc(reader, budget)?;
         if result.len() == result.capacity() {
@@ -108,6 +104,8 @@ macro_rules! impl_bounded_via_plain {
                 ) -> $crate::io::Result<Self> {
                     <$type as $crate::de::BorshDeserialize>::deserialize_reader(reader)
                 }
+                const ENCODES_TO_ZERO_BYTES: bool =
+                    <$type as $crate::de::BorshDeserialize>::ENCODES_TO_ZERO_BYTES;
             }
         )+
     };
@@ -165,10 +163,8 @@ impl BorshDeserializeBounded for u8 {
 impl BorshDeserializeBounded for String {
     #[inline]
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
-        String::from_utf8(Vec::<u8>::deserialize_bounded_alloc(reader, budget)?).map_err(|err| {
-            let msg = err.to_string();
-            Error::new(ErrorKind::InvalidData, msg)
-        })
+        String::from_utf8(Vec::<u8>::deserialize_bounded_alloc(reader, budget)?)
+            .map_err(|err| invalid(err.to_string()))
     }
 }
 impl<T> BorshDeserializeBounded for Vec<T>
@@ -177,7 +173,7 @@ where
 {
     #[inline]
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
-        decode_seq(reader, budget, size::none)
+        decode_seq(reader, budget)
     }
 }
 
@@ -187,12 +183,15 @@ where
     T: ToOwned<Owned = U> + ?Sized,
     T::Owned: BorshDeserializeBounded,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = <U as BorshDeserializeBounded>::ENCODES_TO_ZERO_BYTES;
+    #[inline]
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
         // Charge first so recursion pays as it goes. On stable Rust only sized types have thin
         // pointers; an unsized `T` reuses the buffer `T::Owned` charged.
         if size_of::<*const T>() == size_of::<*const ()>() {
             budget.charge_bytes(size_of::<U>())?;
         }
+        let _guard = RecursionGuard::enter()?;
         Ok(T::Owned::deserialize_bounded_alloc(reader, budget)?.into())
     }
 }
@@ -222,7 +221,7 @@ pub fn from_slice_bounded<T: BorshDeserializeBounded>(v: &[u8], budget: &mut Bud
     let mut v_mut = v;
     let object = T::deserialize_bounded_alloc(&mut v_mut, budget)?;
     if !v_mut.is_empty() {
-        return Err(Error::new(ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ));
+        return Err(invalid(ERROR_NOT_ALL_BYTES_READ));
     }
     Ok(object)
 }
@@ -246,16 +245,14 @@ pub fn from_reader_bounded<R: Read, T: BorshDeserializeBounded>(
 ) -> Result<T> {
     budget.charge_bytes(size_of::<T>())?;
     let result = T::deserialize_bounded_alloc(reader, budget)?;
-    let mut buf = [0u8; 1];
-    match reader.read_exact(&mut buf) {
-        Err(f) if f.kind() == ErrorKind::UnexpectedEof => Ok(result),
-        _ => Err(Error::new(ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ)),
-    }
+    expect_end(reader)?;
+    Ok(result)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::io::ErrorKind;
 
     #[track_caller]
     pub(super) fn assert_exceeded(
