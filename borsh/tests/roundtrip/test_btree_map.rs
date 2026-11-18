@@ -5,6 +5,8 @@ use alloc::{
     vec::Vec,
 };
 
+use crate::common_macro::assert_bounded_parity;
+
 use borsh::{from_slice, BorshSerialize};
 
 macro_rules! btreeset_test_template [
@@ -18,6 +20,7 @@ macro_rules! btreeset_test_template [
             set_insert_deser_assert_macro!(set, data, $($key),*);
 
             let actual_set = from_slice::<BTreeSet<String>>(&data).unwrap();
+            assert_bounded_parity::<BTreeSet<String>>(&data);
             assert_eq!(set, actual_set);
 
         }
@@ -37,6 +40,7 @@ macro_rules! btreemap_test_template [
             map_insert_deser_assert_macro!(map, data, $($key => $value),*);
 
             let actual_map = from_slice::<BTreeMap<String, String>>(&data).unwrap();
+            assert_bounded_parity::<BTreeMap<String, String>>(&data);
             assert_eq!(map, actual_map);
 
         }

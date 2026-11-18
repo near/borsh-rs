@@ -1,29 +1,36 @@
-//! Each impl here is its plain twin from `de/mod.rs` plus a charge before each allocation,
-//! with the same reads, checks and constructors. Keep the twins in sync;
+//! Each impl here is its plain twin from `de/mod.rs` plus a charge before each allocation the
+//! value keeps, with the same reads, checks and constructors. Keep the twins in sync;
 //! `assert_bounded_parity` in the tests catches drift.
 
 use core::convert::TryFrom;
-use core::mem::size_of;
+use core::marker::PhantomData;
+use core::mem::{size_of, MaybeUninit};
 
 use crate::__private::maybestd::{
-    borrow::{Borrow, ToOwned},
+    borrow::{Borrow, Cow, ToOwned},
     boxed::Box,
+    collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
+    format,
     string::{String, ToString},
     vec::Vec,
 };
 use crate::error::check_zst;
 use crate::io::{Error, ErrorKind, Read, Result};
 
-use super::{BorshDeserialize, ERROR_NOT_ALL_BYTES_READ};
+use super::{ArrayDropGuard, BorshDeserialize, ERROR_NOT_ALL_BYTES_READ};
 
 mod budget;
+#[cfg(hash_collections)]
+mod hashes;
+#[cfg(feature = "rc")]
+mod rc;
 mod size;
 
 pub use budget::{Budget, LimitExceeded};
 
 #[doc = include_str!("../../../docs/rustdoc_include/borsh_bounded_charges.md")]
 pub trait BorshDeserializeBounded: Sized {
-    /// Deserializes this instance from a reader, charging `budget` before every allocation.
+    /// Deserializes this instance from a reader, charging `budget` before each allocation it keeps.
     /// `size_of::<Self>()` is charged by the entry points, or by the allocation that holds it.
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self>;
 
@@ -37,12 +44,22 @@ pub trait BorshDeserializeBounded: Sized {
         from_reader_bounded(reader, budget)
     }
 
-    /// Reads `len` elements in one go into a vector the caller has already charged for.
+    /// Reads `len` elements in one go into a vector, after the caller has charged for them.
     /// `None` must leave the reader untouched.
     #[inline]
     #[doc(hidden)]
     fn vec_from_reader_bounded<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
         let _ = (len, reader);
+        Ok(None)
+    }
+
+    /// Reads an array in one go. `None` must leave the reader untouched.
+    #[inline]
+    #[doc(hidden)]
+    fn array_from_reader_bounded<R: Read, const N: usize>(
+        reader: &mut R,
+    ) -> Result<Option<[Self; N]>> {
+        let _ = reader;
         Ok(None)
     }
 }
@@ -60,11 +77,11 @@ pub trait EnumExtBounded: BorshDeserializeBounded {
     ) -> Result<Self>;
 }
 
-/// Charges the vector plus `extra(n)` before reading any element.
+/// Charges `kept(n)`, the bytes the collection keeps, before reading any element.
 fn decode_seq<T, R>(
     reader: &mut R,
     budget: &mut Budget,
-    extra: impl FnOnce(usize) -> Option<usize>,
+    kept: impl FnOnce(usize) -> Option<usize>,
 ) -> Result<Vec<T>>
 where
     T: BorshDeserializeBounded,
@@ -78,8 +95,8 @@ where
     }
     // Only fails on 16-bit targets.
     let n = usize::try_from(len).map_err(|_| budget.exceeded(usize::MAX))?;
-    budget.charge_array::<T>(n)?;
-    budget.charge_checked(extra(n))?;
+    // A vector too large to allocate fails even when `kept(n)` fits.
+    budget.charge_checked(size::vec::<T>(n).and_then(|_| kept(n)))?;
     if let Some(vec) = T::vec_from_reader_bounded(len, reader)? {
         return Ok(vec);
     }
@@ -93,6 +110,22 @@ where
         result.push(value);
     }
     Ok(result)
+}
+
+#[cfg(feature = "de_strict_order")]
+fn check_strict_order<E>(
+    items: &[E],
+    mut cmp: impl FnMut(&E, &E) -> core::cmp::Ordering,
+) -> Result<()> {
+    for pair in items.windows(2) {
+        if !cmp(&pair[0], &pair[1]).is_lt() {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                super::ERROR_WRONG_ORDER_OF_KEYS,
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Only for types whose plain decoder never allocates.
@@ -159,6 +192,59 @@ impl BorshDeserializeBounded for u8 {
     fn vec_from_reader_bounded<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
         <u8 as BorshDeserialize>::vec_from_reader(len, reader)
     }
+
+    #[inline]
+    #[doc(hidden)]
+    fn array_from_reader_bounded<R: Read, const N: usize>(
+        reader: &mut R,
+    ) -> Result<Option<[Self; N]>> {
+        <u8 as BorshDeserialize>::array_from_reader(reader)
+    }
+}
+
+impl<T> BorshDeserializeBounded for Option<T>
+where
+    T: BorshDeserializeBounded,
+{
+    #[inline]
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        let flag = u8::deserialize_bounded_alloc(reader, budget)?;
+        if flag == 0 {
+            Ok(None)
+        } else if flag == 1 {
+            Ok(Some(T::deserialize_bounded_alloc(reader, budget)?))
+        } else {
+            let msg = format!(
+                "Invalid Option representation: {}. The first byte must be 0 or 1",
+                flag
+            );
+
+            Err(Error::new(ErrorKind::InvalidData, msg))
+        }
+    }
+}
+
+impl<T, E> BorshDeserializeBounded for core::result::Result<T, E>
+where
+    T: BorshDeserializeBounded,
+    E: BorshDeserializeBounded,
+{
+    #[inline]
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        let flag = u8::deserialize_bounded_alloc(reader, budget)?;
+        if flag == 0 {
+            Ok(Err(E::deserialize_bounded_alloc(reader, budget)?))
+        } else if flag == 1 {
+            Ok(Ok(T::deserialize_bounded_alloc(reader, budget)?))
+        } else {
+            let msg = format!(
+                "Invalid Result representation: {}. The first byte must be 0 or 1",
+                flag
+            );
+
+            Err(Error::new(ErrorKind::InvalidData, msg))
+        }
+    }
 }
 
 impl BorshDeserializeBounded for String {
@@ -176,7 +262,74 @@ where
 {
     #[inline]
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
-        decode_seq(reader, budget, size::none)
+        decode_seq(reader, budget, size::vec::<T>)
+    }
+}
+
+impl<T> BorshDeserializeBounded for Cow<'_, T>
+where
+    T: ToOwned + ?Sized,
+    T::Owned: BorshDeserializeBounded,
+{
+    #[inline]
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        Ok(Cow::Owned(
+            BorshDeserializeBounded::deserialize_bounded_alloc(reader, budget)?,
+        ))
+    }
+}
+
+impl<T> BorshDeserializeBounded for VecDeque<T>
+where
+    T: BorshDeserializeBounded,
+{
+    #[inline]
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        let vec = <Vec<T>>::deserialize_bounded_alloc(reader, budget)?;
+        Ok(vec.into())
+    }
+}
+
+impl<T> BorshDeserializeBounded for LinkedList<T>
+where
+    T: BorshDeserializeBounded,
+{
+    #[inline]
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        let vec = decode_seq::<T, _>(reader, budget, size::linked_list::<T>)?;
+        Ok(vec.into_iter().collect::<LinkedList<T>>())
+    }
+}
+
+impl<T> BorshDeserializeBounded for BTreeSet<T>
+where
+    T: BorshDeserializeBounded + Ord,
+{
+    #[inline]
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        let vec = decode_seq::<T, _>(reader, budget, size::btree::<T, ()>)?;
+
+        #[cfg(feature = "de_strict_order")]
+        check_strict_order(&vec, |a, b| a.cmp(b))?;
+
+        Ok(vec.into_iter().collect::<BTreeSet<T>>())
+    }
+}
+
+impl<K, V> BorshDeserializeBounded for BTreeMap<K, V>
+where
+    K: BorshDeserializeBounded + Ord,
+    V: BorshDeserializeBounded,
+{
+    #[inline]
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        check_zst::<K>()?;
+        let vec = decode_seq::<(K, V), _>(reader, budget, size::btree::<K, V>)?;
+
+        #[cfg(feature = "de_strict_order")]
+        check_strict_order(&vec, |(a, _), (b, _)| a.cmp(b))?;
+
+        Ok(vec.into_iter().collect::<BTreeMap<K, V>>())
     }
 }
 
@@ -193,6 +346,107 @@ where
             budget.charge_bytes(size_of::<U>())?;
         }
         Ok(T::Owned::deserialize_bounded_alloc(reader, budget)?.into())
+    }
+}
+
+impl<T, const N: usize> BorshDeserializeBounded for [T; N]
+where
+    T: BorshDeserializeBounded,
+{
+    #[inline]
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        if let Some(arr) = T::array_from_reader_bounded(reader)? {
+            Ok(arr)
+        } else {
+            let mut result = ArrayDropGuard {
+                buffer: unsafe { MaybeUninit::uninit().assume_init() },
+                init_count: 0,
+            };
+
+            result.fill_buffer(|| T::deserialize_bounded_alloc(reader, budget))?;
+
+            // SAFETY: `fill_buffer` returned `Ok`, so all `N` elements are initialized.
+            Ok(unsafe { result.transmute_to_array() })
+        }
+    }
+}
+
+macro_rules! impl_tuple {
+    ($($name:ident)+) => {
+      impl<$($name),+> BorshDeserializeBounded for ($($name,)+)
+      where $($name: BorshDeserializeBounded,)+
+      {
+        #[inline]
+        fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+
+            Ok(($($name::deserialize_bounded_alloc(reader, budget)?,)+))
+        }
+      }
+    };
+}
+
+impl_tuple!(T0);
+impl_tuple!(T0 T1);
+impl_tuple!(T0 T1 T2);
+impl_tuple!(T0 T1 T2 T3);
+impl_tuple!(T0 T1 T2 T3 T4);
+impl_tuple!(T0 T1 T2 T3 T4 T5);
+impl_tuple!(T0 T1 T2 T3 T4 T5 T6);
+impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7);
+impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8);
+impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9);
+impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10);
+impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11);
+impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12);
+impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13);
+impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14);
+impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15);
+impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16);
+impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17);
+impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18);
+impl_tuple!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19);
+
+macro_rules! impl_range {
+    ($type:ident, $make:expr, $($side:ident),*) => {
+        impl<T: BorshDeserializeBounded> BorshDeserializeBounded for core::ops::$type<T> {
+            #[inline]
+            fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+                let ($($side,)*) = <_>::deserialize_bounded_alloc(reader, budget)?;
+                Ok($make)
+            }
+        }
+    };
+}
+
+impl_range!(Range, start..end, start, end);
+impl_range!(RangeInclusive, start..=end, start, end);
+impl_range!(RangeFrom, start.., start);
+impl_range!(RangeTo, ..end, end);
+impl_range!(RangeToInclusive, ..=end, end);
+
+impl<T: ?Sized> BorshDeserializeBounded for PhantomData<T> {
+    fn deserialize_bounded_alloc<R: Read>(_: &mut R, _: &mut Budget) -> Result<Self> {
+        Ok(PhantomData)
+    }
+}
+
+impl<T> BorshDeserializeBounded for core::cell::Cell<T>
+where
+    T: BorshDeserializeBounded + Copy,
+{
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        <T as BorshDeserializeBounded>::deserialize_bounded_alloc(reader, budget)
+            .map(core::cell::Cell::new)
+    }
+}
+
+impl<T> BorshDeserializeBounded for core::cell::RefCell<T>
+where
+    T: BorshDeserializeBounded,
+{
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        <T as BorshDeserializeBounded>::deserialize_bounded_alloc(reader, budget)
+            .map(core::cell::RefCell::new)
     }
 }
 
@@ -249,6 +503,55 @@ pub fn from_reader_bounded<R: Read, T: BorshDeserializeBounded>(
     match reader.read_exact(&mut buf) {
         Err(f) if f.kind() == ErrorKind::UnexpectedEof => Ok(result),
         _ => Err(Error::new(ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ)),
+    }
+}
+
+#[test]
+fn array_deserialization_doesnt_leak() {
+    use core::sync::atomic::{AtomicUsize, Ordering};
+
+    static DESERIALIZE_COUNT: AtomicUsize = AtomicUsize::new(0);
+    static DROP_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+    #[allow(unused)]
+    struct MyType(u8);
+    impl BorshDeserializeBounded for MyType {
+        fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+            let val = u8::deserialize_bounded_alloc(reader, budget)?;
+            let v = DESERIALIZE_COUNT.fetch_add(1, Ordering::SeqCst);
+            if v >= 7 {
+                panic!("panic in deserialize");
+            }
+            Ok(MyType(val))
+        }
+    }
+    impl Drop for MyType {
+        fn drop(&mut self) {
+            DROP_COUNT.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    let budget = &mut Budget::from_bytes(0);
+    assert!(<[MyType; 5]>::deserialize_bounded_alloc(&mut &[0u8; 3][..], budget).is_err());
+    assert_eq!(DESERIALIZE_COUNT.load(Ordering::SeqCst), 3);
+    assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 3);
+
+    assert!(<[MyType; 2]>::deserialize_bounded_alloc(&mut &[0u8; 2][..], budget).is_ok());
+    assert_eq!(DESERIALIZE_COUNT.load(Ordering::SeqCst), 5);
+    assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 5);
+
+    #[cfg(feature = "std")]
+    {
+        let result = std::panic::catch_unwind(|| {
+            <[MyType; 3]>::deserialize_bounded_alloc(
+                &mut &[0u8; 3][..],
+                &mut Budget::from_bytes(0),
+            )
+            .unwrap();
+        });
+        assert!(result.is_err());
+        assert_eq!(DESERIALIZE_COUNT.load(Ordering::SeqCst), 8);
+        assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 7);
     }
 }
 
