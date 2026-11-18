@@ -4,7 +4,7 @@ use core::fmt;
 use crate::io::{Error, ErrorKind, Result};
 
 /// Memory budget available for deserialization. Decoding charges the value it returns and
-/// every allocation against it.
+/// the allocations that value keeps against it.
 ///
 /// To share one limit across several values, pass the same budget to each decode: to each
 /// [`from_slice_bounded`](crate::from_slice_bounded) call, or to

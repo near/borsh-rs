@@ -1,5 +1,5 @@
-//! Each impl here is its plain twin from `de/mod.rs` plus a charge before each allocation,
-//! with the same reads, checks and constructors. Keep the twins in sync;
+//! Each impl here is its plain twin from `de/mod.rs` plus a charge before each allocation the
+//! value keeps, with the same reads, checks and constructors. Keep the twins in sync;
 //! `assert_bounded_parity` in the tests catches drift.
 
 use core::convert::TryFrom;
@@ -30,7 +30,7 @@ pub use budget::{Budget, LimitExceeded};
 
 #[doc = include_str!("../../../docs/rustdoc_include/borsh_bounded_charges.md")]
 pub trait BorshDeserializeBounded: Sized {
-    /// Deserializes this instance from a reader, charging `budget` before every allocation.
+    /// Deserializes this instance from a reader, charging `budget` before each allocation it keeps.
     /// `size_of::<Self>()` is charged by the entry points, or by the allocation that holds it.
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self>;
 
@@ -44,7 +44,7 @@ pub trait BorshDeserializeBounded: Sized {
         from_reader_bounded(reader, budget)
     }
 
-    /// Reads `len` elements in one go into a vector the caller has already charged for.
+    /// Reads `len` elements in one go into a vector, after the caller has charged for them.
     /// `None` must leave the reader untouched.
     #[inline]
     #[doc(hidden)]
@@ -77,11 +77,11 @@ pub trait EnumExtBounded: BorshDeserializeBounded {
     ) -> Result<Self>;
 }
 
-/// Charges the vector plus `extra(n)` before reading any element.
+/// Charges `kept(n)`, the bytes the collection keeps, before reading any element.
 fn decode_seq<T, R>(
     reader: &mut R,
     budget: &mut Budget,
-    extra: impl FnOnce(usize) -> Option<usize>,
+    kept: impl FnOnce(usize) -> Option<usize>,
 ) -> Result<Vec<T>>
 where
     T: BorshDeserializeBounded,
@@ -95,8 +95,8 @@ where
     }
     // Only fails on 16-bit targets.
     let n = usize::try_from(len).map_err(|_| budget.exceeded(usize::MAX))?;
-    budget.charge_array::<T>(n)?;
-    budget.charge_checked(extra(n))?;
+    // A vector too large to allocate fails even when `kept(n)` fits.
+    budget.charge_checked(size::vec::<T>(n).and_then(|_| kept(n)))?;
     if let Some(vec) = T::vec_from_reader_bounded(len, reader)? {
         return Ok(vec);
     }
@@ -262,7 +262,7 @@ where
 {
     #[inline]
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
-        decode_seq(reader, budget, size::none)
+        decode_seq(reader, budget, size::vec::<T>)
     }
 }
 

@@ -23,9 +23,9 @@ use borsh::{
     BorshDeserializeBounded, BorshSerialize, Budget,
 };
 
+use super::cases::btree_nodes;
 #[cfg(hash_collections)]
 use super::cases::table;
-use super::cases::{btree_nodes, sort_scratch};
 use super::common::{
     assert_same_outcome, error_of, CountingReader, ERROR_UNEXPECTED_LENGTH_OF_INPUT,
 };
@@ -46,12 +46,12 @@ fn with_prefix(bytes: &[u8], offset: usize, len: u32) -> Vec<u8> {
 /// Charge for a `u32::MAX` claim. Only below 64 bits is it an invalid size: on 64-bit
 /// targets that would need elements too large for the decoder's stack.
 #[cfg(target_pointer_width = "64")]
-fn huge(array: fn(usize) -> usize) -> usize {
-    array(u32::MAX as usize)
+fn huge(charge: fn(usize) -> usize) -> usize {
+    charge(u32::MAX as usize)
 }
 
 #[cfg(not(target_pointer_width = "64"))]
-fn huge(_array: fn(usize) -> usize) -> usize {
+fn huge(_charge: fn(usize) -> usize) -> usize {
     usize::MAX
 }
 
@@ -108,26 +108,16 @@ struct Prefix {
     len: u32,
     /// Charge before the prefix.
     before: usize,
-    /// Charge for the backing vector of `n` elements.
-    array: fn(usize) -> usize,
-    /// Charge after that vector.
-    extra: fn(usize) -> usize,
+    /// Charge for a collection of `n` elements.
+    charge: fn(usize) -> usize,
 }
 
-fn outer(len: u32, array: fn(usize) -> usize) -> Prefix {
+fn outer(len: u32, charge: fn(usize) -> usize) -> Prefix {
     Prefix {
         offset: 0,
         len,
         before: 0,
-        array,
-        extra: |_| 0,
-    }
-}
-
-fn outer_with_extra(len: u32, array: fn(usize) -> usize, extra: fn(usize) -> usize) -> Prefix {
-    Prefix {
-        extra,
-        ..outer(len, array)
+        charge,
     }
 }
 
@@ -140,8 +130,7 @@ where
         offset,
         len,
         before,
-        array,
-        extra,
+        charge,
     } = prefix;
     let input = to_vec(value).unwrap();
     assert_eq!(
@@ -157,7 +146,7 @@ where
     let read = offset + 4;
 
     let lie = with_prefix(&input, offset, u32::MAX);
-    let requested = huge(array);
+    let requested = huge(charge);
     assert_limit_error::<T>(&lie, read, (LIMIT, requested, LIMIT - before));
     if requested == usize::MAX {
         // An invalid allocation size must fail even at the largest limit, without allocating.
@@ -167,10 +156,8 @@ where
     let lie = with_prefix(&input, offset, FALSE_LEN);
     assert_truncated::<T>(&lie);
     assert_like_plain::<T>(&lie, LIMIT);
-    let n = FALSE_LEN as usize;
-    let limit = before + array(n) + extra(n) - 1;
-    let last = if extra(n) == 0 { array(n) } else { extra(n) };
-    assert_limit_error::<T>(&lie, read, (limit, last, last - 1));
+    let charge = charge(FALSE_LEN as usize);
+    assert_limit_error::<T>(&lie, read, (before + charge - 1, charge, charge - 1));
 
     for len in [0, 1] {
         assert_like_plain::<T>(&with_prefix(&input, offset, len), LIMIT);
@@ -188,11 +175,7 @@ fn test_sequences() {
     );
     check(
         &(1..=3u16).collect::<LinkedList<_>>(),
-        outer_with_extra(
-            3,
-            |n| n * size_of::<u16>(),
-            |n| n * size_of::<(usize, usize, u16)>(),
-        ),
+        outer(3, |n| n * size_of::<(usize, usize, u16)>()),
     );
 }
 
@@ -218,19 +201,11 @@ fn test_btree_collections() {
         &vec![(1u32, 10u64), (2, 20)]
             .into_iter()
             .collect::<BTreeMap<_, _>>(),
-        outer_with_extra(
-            2,
-            |n| n * size_of::<(u32, u64)>(),
-            |n| sort_scratch(size_of::<(u32, u64)>(), n) + btree_nodes::<u32, u64>(n),
-        ),
+        outer(2, btree_nodes::<u32, u64>),
     );
     check(
         &(1..=3u32).collect::<BTreeSet<_>>(),
-        outer_with_extra(
-            3,
-            |n| n * size_of::<u32>(),
-            |n| sort_scratch(size_of::<u32>(), n) + btree_nodes::<u32, ()>(n),
-        ),
+        outer(3, btree_nodes::<u32, ()>),
     );
 }
 
@@ -241,15 +216,11 @@ fn test_hash_collections() {
         &vec![(1u32, 10u64), (2, 20)]
             .into_iter()
             .collect::<HashMap<_, _>>(),
-        outer_with_extra(
-            2,
-            |n| n * size_of::<(u32, u64)>(),
-            |n| table(size_of::<(u32, u64)>(), n),
-        ),
+        outer(2, |n| table(size_of::<(u32, u64)>(), n)),
     );
     check(
         &(1..=3u32).collect::<HashSet<_>>(),
-        outer_with_extra(3, |n| n * size_of::<u32>(), |n| table(size_of::<u32>(), n)),
+        outer(3, |n| table(size_of::<u32>(), n)),
     );
 }
 
@@ -258,7 +229,7 @@ fn test_hash_collections() {
 fn test_rc() {
     use alloc::{rc::Rc, sync::Arc};
 
-    // The reference-count block is charged only after the value decodes successfully.
+    // The block's overhead is charged only after the value decodes.
     check(
         &Rc::<[u32]>::from(vec![1u32, 2, 3]),
         outer(3, |n| n * size_of::<u32>()),
@@ -275,8 +246,7 @@ fn test_inner_prefixes() {
             offset: 4 + 4 + 2 * 8,
             len: 3,
             before: 3 * size_of::<Vec<u64>>() + 2 * size_of::<u64>(),
-            array: |n| n * size_of::<u64>(),
-            extra: |_| 0,
+            charge: |n| n * size_of::<u64>(),
         },
     );
 
@@ -286,8 +256,7 @@ fn test_inner_prefixes() {
             offset: 1,
             len: 2,
             before: 0,
-            array: |n| n * size_of::<u32>(),
-            extra: |_| 0,
+            charge: |n| n * size_of::<u32>(),
         },
     );
 
@@ -295,18 +264,13 @@ fn test_inner_prefixes() {
     let map = vec![(1u8, vec![10u64]), (2, vec![20, 21])]
         .into_iter()
         .collect::<BTreeMap<_, _>>();
-    let entry = size_of::<(u8, Vec<u64>)>();
     check(
         &map,
         Prefix {
             offset: 4 + 1 + 4 + 8 + 1,
             len: 2,
-            before: 2 * entry
-                + sort_scratch(entry, 2)
-                + btree_nodes::<u8, Vec<u64>>(2)
-                + size_of::<u64>(),
-            array: |n| n * size_of::<u64>(),
-            extra: |_| 0,
+            before: btree_nodes::<u8, Vec<u64>>(2) + size_of::<u64>(),
+            charge: |n| n * size_of::<u64>(),
         },
     );
 }

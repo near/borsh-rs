@@ -3,8 +3,9 @@ A data-structure that can be deserialized from Borsh, like
 
 Use it to decode untrusted input with a memory limit. The encoding is the same as for
 `BorshDeserialize`. Each decode gets a [`Budget`](crate::de::Budget), and every
-implementation charges it before it allocates. A charge that does not fit fails the decode
-with an error of kind `OutOfMemory` (see [`LimitExceeded`](crate::error::LimitExceeded)).
+implementation charges it before allocating memory the value keeps. A charge that does not
+fit fails the decode with an error of kind `OutOfMemory` (see
+[`LimitExceeded`](crate::error::LimitExceeded)).
 
 ```rust
 use borsh::{from_slice_bounded, to_vec, Budget};
@@ -25,19 +26,23 @@ fallback to plain decoding. `BorshDeserialize` is not a supertrait.
 
 # How charging works
 
-- A charge is never refunded.
-- The limit caps the total of all charges made against one budget, not the peak memory:
-  copying a growing buffer can briefly need almost twice the charged bytes. Temporaries are
-  charged too, such as the vector a map, set or list is built from.
+- The budget counts what the decoded value keeps: its own size plus its allocations, except
+  those under [What is not charged](#what-is-not-charged). Hash table and B-tree charges are
+  upper bounds.
+- A charge is made before its allocation and never refunded, so values dropped as duplicate
+  keys stay charged.
+- The limit caps the total of all charges made against one budget, not the peak memory.
+  Temporary construction and sorting allocations, and overlapping buffers during growth, can
+  make peak memory exceed the budget.
 - A collection charges for all its elements as soon as it has read its length prefix, so a
-  length that cannot fit fails before any element is read.
+  length over the budget fails before any element is read.
 - Charges only depend on the input, never on how much of the budget is left.
 
 # Allocation
 
 - **Grown, ending exact.** A buffer starts small, as with plain decoding, and grows as
-  elements arrive, ending at exactly the charged length. A decoded `Vec`, `VecDeque` or
-  `String` therefore has its capacity equal to its length, where plain decoding may leave
+  elements arrive, ending at exactly the length from the prefix. A decoded `Vec`, `VecDeque`
+  or `String` therefore has its capacity equal to its length, where plain decoding may leave
   more capacity. The values are equal either way.
 - **A false length costs no more than plain decoding.** A length prefix within the budget
   that the input does not back allocates no more than plain decoding does before decoding
@@ -63,7 +68,7 @@ contains add their own.
 `n` is the number of elements read from the length prefix, `p` is `size_of::<usize>()`, and
 `E` is `(K, V)` for maps and `T` for sets. Collections charge nothing for `n = 0`; an `Rc` or
 `Arc` of an empty slice or string still charges its block. A charge is exact when it equals
-the final size of the allocations it covers, temporaries included.
+the size of the allocations the decoded value ends up with.
 
 | Type | Allocation charge | Exactness |
 |---|---|---|
@@ -71,17 +76,15 @@ the final size of the allocations it covers, temporaries included.
 | `Option`, `Result`, tuples, ranges, `Cell`, `RefCell`, `[T; N]`, `Cow<T>` of a sized `T` | 0, plus what their contents charge | exact |
 | `Vec<T>`, `VecDeque<T>`, `String`, `Box<[T]>`, `Box<str>`, `Cow<[T]>`, `Cow<str>` | `n·size_of::<T>()` (1 byte per element of strings) | exact |
 | `Box<T>` of a sized `T` | `size_of::<T::Owned>()`, before `T` is decoded | exact for the standard library's conversions |
-| `Rc<T>`, `Arc<T>` (feature `rc`) | what `Box<T>` charges, plus `rc_block` of the value, after it is decoded | exact |
-| `LinkedList<T>` | `n·size_of::<T>() + n·size_of::<(usize, usize, T)>()` | exact under current rustc |
-| `HashMap<K, V, S>`, `HashSet<T, S>` | `n·size_of::<E>() + table(E, n)` | upper bound |
-| `BTreeMap<K, V>`, `BTreeSet<T>` | `n·size_of::<E>() + sort(E, n) + nodes(K, V, n)` | upper bound |
+| `Rc<T>`, `Arc<T>` (feature `rc`) | `rc_block` of the value: what `Box<T>` charges, then the rest after `T` is decoded | exact |
+| `LinkedList<T>` | `n·size_of::<(usize, usize, T)>()` | exact under current rustc |
+| `HashMap<K, V, S>`, `HashSet<T, S>` | `table(E, n)` | upper bound |
+| `BTreeMap<K, V>`, `BTreeSet<T>` | `nodes(K, V, n)` | upper bound |
 
 With the formulas:
 
 - `table(E, n) = b·(size_of::<E>() + 1) + 16`, with
   `b = max(16, (8n/7).next_power_of_two())`. It is exact on x86 with SSE2 when `n ≥ 8`.
-- `sort(E, n)` is the scratch memory of the stable sort: 0 for `n < 2`, `(n/2)·size_of::<E>()`
-  for `n ≤ 20`, and `max(n, 48)·size_of::<E>() + 224·p` above.
 - `nodes(K, V, n) = L·leaf + I·internal`, with `L = n/12 + 1` leaves of
   `leaf = size_of::<(usize, u16, u16, [K; 11], [V; 11])>()` bytes (`V = ()` for sets), and
   `I` internal nodes of `leaf + 12·p` bytes padded to alignment. `I` is the sum of
@@ -106,15 +109,15 @@ fn charged<T: BorshSerialize + BorshDeserializeBounded>(value: &T) -> usize {
 # #[cfg(target_pointer_width = "64")]
 # {
 assert_eq!(charged(&vec![0u64; 1000]), 8000 + 24);
-assert_eq!(charged(&(0..100u64).collect::<LinkedList<_>>()), 3200 + 24);
+assert_eq!(charged(&(0..100u64).collect::<LinkedList<_>>()), 2400 + 24);
 let pairs = || (0..1000u64).map(|k| (k, k));
-assert_eq!(charged(&pairs().collect::<BTreeMap<_, _>>()), 52224 + 24);
+assert_eq!(charged(&pairs().collect::<BTreeMap<_, _>>()), 18432 + 24);
 # #[cfg(feature = "std")]
-assert_eq!(charged(&pairs().collect::<std::collections::HashMap<_, _>>()), 50832 + 48);
+assert_eq!(charged(&pairs().collect::<std::collections::HashMap<_, _>>()), 34832 + 48);
 # #[cfg(feature = "rc")]
 # {
-assert_eq!(charged(&std::rc::Rc::new(7u8)), 1 + 24 + 8);
-assert_eq!(charged(&std::sync::Arc::<str>::from("a".repeat(5001))), 5001 + 5024 + 16);
+assert_eq!(charged(&std::rc::Rc::new(7u8)), 24 + 8);
+assert_eq!(charged(&std::sync::Arc::<str>::from("a".repeat(5001))), 5024 + 16);
 # }
 # }
 ```
@@ -146,9 +149,9 @@ assert_eq!(charged(&std::sync::Arc::<str>::from("a".repeat(5001))), 5001 + 5024 
 
 Decode each part with its `deserialize_bounded_alloc`, and call
 [`Budget::charge_bytes`](crate::de::Budget::charge_bytes) or
-[`Budget::charge_array`](crate::de::Budget::charge_array) before an allocation you make
-yourself. Use [`EnumExtBounded`](crate::de::EnumExtBounded) to dispatch on a tag you have
-already read. An implementation must:
+[`Budget::charge_array`](crate::de::Budget::charge_array) before each allocation the value
+keeps that you make yourself. Use [`EnumExtBounded`](crate::de::EnumExtBounded) to dispatch
+on a tag you have already read. An implementation must:
 
 - pass on the budget it was given, and never create a `Budget` of its own;
 - never let what it decodes depend on the budget's

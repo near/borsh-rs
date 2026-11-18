@@ -13,6 +13,7 @@ use alloc::{
     vec,
     vec::Vec,
 };
+use core::any::Any;
 use core::mem::size_of;
 
 #[cfg(feature = "hashbrown")]
@@ -28,41 +29,46 @@ use borsh::{
 
 pub const MIB: usize = 1024 * 1024;
 
-/// How `bounded_allocations.rs` compares the requested bytes with `allocations`.
+/// How `bounded_allocations.rs` compares the bytes the decoded value keeps with `charge`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Alloc {
-    /// Equal to `allocations`.
+    /// Equal to `charge`.
     Exact,
     /// `Exact` with 16-byte control groups and `entries >= 8`, otherwise `UpperBound`.
     HashTable { entries: usize },
-    /// At most `allocations`.
+    /// At most `charge`.
     UpperBound,
 }
+
+/// A decoded value on the heap, so the bytes it keeps include `size_of::<T>()`.
+pub type Decoded = Box<dyn Any>;
 
 pub struct Case {
     pub name: String,
     pub input: Vec<u8>,
-    /// `size_of::<T>()` plus `allocations`.
+    /// `size_of::<T>()` plus the allocations the value keeps.
     pub charge: usize,
-    pub allocations: usize,
     /// `(requested, remaining)` of the limit error at limit `charge - 1`. `None` when the
     /// charge is 0.
     pub below: Option<(usize, usize)>,
     pub alloc: Alloc,
     /// Decodes `input` against `budget`, failing on trailing bytes.
-    pub decode: fn(&[u8], &mut Budget) -> Result<()>,
+    pub decode: fn(&[u8], &mut Budget) -> Result<Decoded>,
     pub decode_plain: fn(&[u8]) -> Result<()>,
 }
 
-pub fn decode<T: BorshDeserializeBounded>(input: &[u8], budget: &mut Budget) -> Result<()> {
-    from_slice_bounded::<T>(input, budget).map(drop)
+pub fn decode<T: BorshDeserializeBounded + 'static>(
+    input: &[u8],
+    budget: &mut Budget,
+) -> Result<Decoded> {
+    from_slice_bounded::<T>(input, budget).map(|value| Box::new(value) as Decoded)
 }
 
 fn decode_plain<T: BorshDeserialize>(input: &[u8]) -> Result<()> {
     from_slice::<T>(input).map(drop)
 }
 
-fn case<T: BorshSerialize + BorshDeserialize + BorshDeserializeBounded>(
+fn case<T: BorshSerialize + BorshDeserialize + BorshDeserializeBounded + 'static>(
     name: String,
     value: &T,
     allocations: usize,
@@ -72,7 +78,7 @@ fn case<T: BorshSerialize + BorshDeserialize + BorshDeserializeBounded>(
     case_input::<T>(name, to_vec(value).unwrap(), allocations, below, alloc)
 }
 
-fn case_input<T: BorshDeserialize + BorshDeserializeBounded>(
+fn case_input<T: BorshDeserialize + BorshDeserializeBounded + 'static>(
     name: String,
     input: Vec<u8>,
     allocations: usize,
@@ -83,7 +89,6 @@ fn case_input<T: BorshDeserialize + BorshDeserializeBounded>(
         name,
         input,
         charge: size_of::<T>() + allocations,
-        allocations,
         below,
         alloc,
         decode: decode::<T>,
@@ -100,24 +105,15 @@ fn single(last: usize) -> Option<(usize, usize)> {
     }
 }
 
-/// The failure of a collection of `n` elements whose last charge is `extra`.
-fn seq_below<T>(n: usize, extra: usize) -> Option<(usize, usize)> {
-    single(if n == 0 { size_of::<T>() } else { extra })
+/// The failure of a collection `T` of `n` elements that charges `kept`.
+fn seq_below<T>(n: usize, kept: usize) -> Option<(usize, usize)> {
+    single(if n == 0 { size_of::<T>() } else { kept })
 }
 
 /// A hashbrown table of `n` entries of `entry` bytes.
 pub fn table(entry: usize, n: usize) -> usize {
     let buckets = core::cmp::max(16, (n * 8 / 7).next_power_of_two());
     buckets * (entry + 1) + 16
-}
-
-/// Stable sort scratch for `n` elements of `entry` bytes.
-pub fn sort_scratch(entry: usize, n: usize) -> usize {
-    match n {
-        0 | 1 => 0,
-        2..=20 => n / 2 * entry,
-        _ => core::cmp::max(n, 48) * entry + 224 * size_of::<usize>(),
-    }
 }
 
 /// The nodes of a `BTreeMap<K, V>` bulk-built from `n` distinct entries.
@@ -339,7 +335,7 @@ pub fn cases() -> Vec<Case> {
         case(
             "LinkedList<u8> of 3".into(),
             &(0..3u8).collect::<LinkedList<_>>(),
-            3 + 3 * size_of::<(usize, usize, u8)>(),
+            3 * size_of::<(usize, usize, u8)>(),
             single(3 * size_of::<(usize, usize, u8)>()),
             Alloc::Exact,
         ),
@@ -347,68 +343,79 @@ pub fn cases() -> Vec<Case> {
 
     for n in BOUNDARY_SIZES {
         let list = (0..n as u64).collect::<LinkedList<_>>();
-        let extra = n * size_of::<(usize, usize, u64)>();
+        let kept = n * size_of::<(usize, usize, u64)>();
         cases.push(case(
             format!("LinkedList<u64> of {}", n),
             &list,
-            n * 8 + extra,
-            seq_below::<LinkedList<u64>>(n, extra),
+            kept,
+            seq_below::<LinkedList<u64>>(n, kept),
             Alloc::Exact,
         ));
 
         let map = (0..n as u64)
             .map(|k| (k, k * 7))
             .collect::<BTreeMap<_, _>>();
-        let extra = if n == 0 {
+        let kept = if n == 0 {
             0
         } else {
-            sort_scratch(16, n) + btree_nodes::<u64, u64>(n)
+            btree_nodes::<u64, u64>(n)
         };
         cases.push(case(
             format!("BTreeMap<u64, u64> of {}", n),
             &map,
-            n * 16 + extra,
-            seq_below::<BTreeMap<u64, u64>>(n, extra),
+            kept,
+            seq_below::<BTreeMap<u64, u64>>(n, kept),
             Alloc::UpperBound,
         ));
 
         let set = (0..n as u32).collect::<BTreeSet<_>>();
-        let extra = if n == 0 {
-            0
-        } else {
-            sort_scratch(4, n) + btree_nodes::<u32, ()>(n)
-        };
+        let kept = if n == 0 { 0 } else { btree_nodes::<u32, ()>(n) };
         cases.push(case(
             format!("BTreeSet<u32> of {}", n),
             &set,
-            n * 4 + extra,
-            seq_below::<BTreeSet<u32>>(n, extra),
+            kept,
+            seq_below::<BTreeSet<u32>>(n, kept),
             Alloc::UpperBound,
         ));
 
         #[cfg(any(feature = "std", feature = "hashbrown"))]
         {
             let map = (0..n as u64).map(|k| (k, k * 7)).collect::<HashMap<_, _>>();
-            let extra = if n == 0 { 0 } else { table(16, n) };
+            let kept = if n == 0 { 0 } else { table(16, n) };
             cases.push(case(
                 format!("HashMap<u64, u64> of {}", n),
                 &map,
-                n * 16 + extra,
-                seq_below::<HashMap<u64, u64>>(n, extra),
+                kept,
+                seq_below::<HashMap<u64, u64>>(n, kept),
                 Alloc::HashTable { entries: n },
             ));
 
             let set = (0..n as u32).collect::<HashSet<_>>();
-            let extra = if n == 0 { 0 } else { table(4, n) };
+            let kept = if n == 0 { 0 } else { table(4, n) };
             cases.push(case(
                 format!("HashSet<u32> of {}", n),
                 &set,
-                n * 4 + extra,
-                seq_below::<HashSet<u32>>(n, extra),
+                kept,
+                seq_below::<HashSet<u32>>(n, kept),
                 Alloc::HashTable { entries: n },
             ));
         }
     }
+
+    // Charges are not refunded: a value dropped for a duplicate key stays charged.
+    #[cfg(not(feature = "de_strict_order"))]
+    cases.push(case_input::<BTreeMap<u64, Vec<u8>>>(
+        "BTreeMap<u64, Vec<u8>> with a duplicate key".into(),
+        to_vec(&vec![
+            (1u64, vec![7u8; 10]),
+            (1, vec![8; 20]),
+            (2, vec![9; 5]),
+        ])
+        .unwrap(),
+        btree_nodes::<u64, Vec<u8>>(3) + 10 + 20 + 5,
+        single(5),
+        Alloc::UpperBound,
+    ));
 
     // Hash tables reserve capacity for duplicate entries.
     #[cfg(all(
@@ -428,12 +435,11 @@ pub fn cases() -> Vec<Case> {
             (8, 18),
         ];
         let n = entries.len();
-        let extra = table(16, n);
         cases.push(case_input::<HashMap<u64, u64>>(
             "HashMap<u64, u64> with a duplicate key".into(),
             to_vec(&entries.to_vec()).unwrap(),
-            n * 16 + extra,
-            single(extra),
+            table(16, n),
+            single(table(16, n)),
             Alloc::HashTable { entries: n },
         ));
     }
@@ -444,13 +450,15 @@ pub fn cases() -> Vec<Case> {
         use core::sync::atomic::AtomicUsize;
         let rc = |size, align| rc_block::<usize>(size, align);
         let arc = |size, align| rc_block::<AtomicUsize>(size, align);
+        let vec_u8 = size_of::<Vec<u8>>();
+        let vec_u8_block = rc(vec_u8, core::mem::align_of::<Vec<u8>>());
+        // The box charges the value first; the block's overhead comes last.
         cases.extend([
             case(
                 "Rc<u8>".into(),
                 &Rc::new(7u8),
-                1 + rc(1, 1),
-                // The box fits; the block does not.
-                Some((rc(1, 1), rc(1, 1) - 1)),
+                rc(1, 1),
+                single(rc(1, 1) - 1),
                 Alloc::Exact,
             ),
             case(
@@ -463,8 +471,8 @@ pub fn cases() -> Vec<Case> {
             case(
                 "Rc<Aligned64>".into(),
                 &Rc::new(Aligned64(7)),
-                64 + rc(64, 64),
-                Some((rc(64, 64), rc(64, 64) - 1)),
+                rc(64, 64),
+                single(rc(64, 64) - 64),
                 Alloc::Exact,
             ),
             case(
@@ -475,10 +483,17 @@ pub fn cases() -> Vec<Case> {
                 Alloc::Exact,
             ),
             case(
+                "Rc<Vec<u8>> of 10".into(),
+                &Rc::new(vec![7u8; 10]),
+                vec_u8_block + 10,
+                single(vec_u8_block - vec_u8),
+                Alloc::Exact,
+            ),
+            case(
                 "Arc<str> of 5001 bytes".into(),
                 &Arc::<str>::from("a".repeat(5001)),
-                5001 + arc(5001, 1),
-                Some((arc(5001, 1), arc(5001, 1) - 1)),
+                arc(5001, 1),
+                single(arc(5001, 1) - 5001),
                 Alloc::Exact,
             ),
             case(
@@ -491,15 +506,15 @@ pub fn cases() -> Vec<Case> {
             case(
                 "Rc<[u64]> of 10".into(),
                 &Rc::<[u64]>::from(vec![7u64; 10]),
-                80 + rc(80, 8),
-                Some((rc(80, 8), rc(80, 8) - 1)),
+                rc(80, 8),
+                single(rc(80, 8) - 80),
                 Alloc::Exact,
             ),
             case(
                 "Vec<Arc<u64>> of 10".into(),
                 &(0..10).map(|_| Arc::new(7u64)).collect::<Vec<_>>(),
-                10 * p + 10 * (8 + arc(8, 8)),
-                Some((arc(8, 8), arc(8, 8) - 1)),
+                10 * p + 10 * arc(8, 8),
+                single(arc(8, 8) - 8),
                 Alloc::Exact,
             ),
         ]);

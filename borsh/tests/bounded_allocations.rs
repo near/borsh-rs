@@ -1,4 +1,5 @@
-//! Compares what bounded decoding charges with what it requests from the allocator.
+//! Compares what bounded decoding charges with what the decoded value keeps and what it
+//! requests from the allocator.
 //!
 //! Its own test binary, as it installs a global allocator; it always links std.
 
@@ -7,6 +8,7 @@ extern crate alloc;
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
 use std::fmt::Write as _;
 use std::mem::size_of;
 
@@ -19,12 +21,13 @@ mod cases;
 #[path = "common_macro.rs"]
 mod common_macro;
 
-use cases::{btree_nodes, cases, sort_scratch, Alloc};
+use cases::{btree_nodes, cases, Alloc};
 use common_macro::{assert_same_outcome, limit_exceeded};
 
 thread_local! {
     static COUNTING: Cell<bool> = const { Cell::new(false) };
     static REQUESTED: Cell<usize> = const { Cell::new(0) };
+    static LIVE: Cell<isize> = const { Cell::new(0) };
     static REALLOCS: Cell<usize> = const { Cell::new(0) };
 }
 
@@ -47,6 +50,13 @@ fn record_bytes(bytes: usize) {
     }
 }
 
+/// `change` is negative for memory freed. Allocations never exceed `isize::MAX` bytes.
+fn record_live(change: isize) {
+    if counting() {
+        let _ = LIVE.try_with(|live| live.set(live.get().saturating_add(change)));
+    }
+}
+
 fn record_realloc() {
     if counting() {
         let _ = REALLOCS.try_with(|reallocs| reallocs.set(reallocs.get().saturating_add(1)));
@@ -58,6 +68,7 @@ unsafe impl GlobalAlloc for CountingAllocator {
         let ptr = System.alloc(layout);
         if !ptr.is_null() {
             record_bytes(layout.size());
+            record_live(layout.size() as isize);
         }
         ptr
     }
@@ -66,12 +77,14 @@ unsafe impl GlobalAlloc for CountingAllocator {
         let ptr = System.alloc_zeroed(layout);
         if !ptr.is_null() {
             record_bytes(layout.size());
+            record_live(layout.size() as isize);
         }
         ptr
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        System.dealloc(ptr, layout)
+        System.dealloc(ptr, layout);
+        record_live(-(layout.size() as isize));
     }
 
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
@@ -79,6 +92,7 @@ unsafe impl GlobalAlloc for CountingAllocator {
         if !new_ptr.is_null() {
             record_realloc();
             record_bytes(new_size.saturating_sub(layout.size()));
+            record_live(new_size as isize - layout.size() as isize);
         }
         new_ptr
     }
@@ -90,11 +104,14 @@ struct Allocations {
     requested: usize,
     /// `realloc` calls, growing or shrinking.
     reallocs: usize,
+    /// Bytes allocated minus bytes freed; negative if more was freed.
+    live: isize,
 }
 
 const NO_ALLOCATIONS: Allocations = Allocations {
     requested: 0,
     reallocs: 0,
+    live: 0,
 };
 
 fn count_allocations<R>(f: impl FnOnce() -> R) -> (R, Allocations) {
@@ -109,6 +126,7 @@ fn count_allocations<R>(f: impl FnOnce() -> R) -> (R, Allocations) {
     assert!(!COUNTING.get(), "counting must not be nested");
     REQUESTED.set(0);
     REALLOCS.set(0);
+    LIVE.set(0);
     COUNTING.set(true);
     let stop_counting = StopCounting;
     let result = f();
@@ -116,6 +134,7 @@ fn count_allocations<R>(f: impl FnOnce() -> R) -> (R, Allocations) {
     let counted = Allocations {
         requested: REQUESTED.get(),
         reallocs: REALLOCS.get(),
+        live: LIVE.get(),
     };
     (result, counted)
 }
@@ -131,12 +150,19 @@ fn test_counting_allocator() {
         counted,
         Allocations {
             requested: 3000,
-            reallocs: 1
+            reallocs: 1,
+            live: 3000
         }
     );
 
     let (_, counted) = count_allocations(|| drop(buffer));
-    assert_eq!(counted, NO_ALLOCATIONS);
+    assert_eq!(
+        counted,
+        Allocations {
+            live: -3000,
+            ..NO_ALLOCATIONS
+        }
+    );
 
     let (buffer, counted) = count_allocations(|| {
         let mut buffer = vec![0u8; 500];
@@ -149,7 +175,17 @@ fn test_counting_allocator() {
         counted,
         Allocations {
             requested: 500,
-            reallocs: 1
+            reallocs: 1,
+            live: 100
+        }
+    );
+
+    let ((), counted) = count_allocations(|| drop(vec![0u8; 500]));
+    assert_eq!(
+        counted,
+        Allocations {
+            requested: 500,
+            ..NO_ALLOCATIONS
         }
     );
 }
@@ -188,7 +224,7 @@ const SIXTEEN_BYTE_GROUPS: bool = cfg!(all(
 
 fn violation(
     alloc: Alloc,
-    allocations: usize,
+    charge: usize,
     counted: Allocations,
     plain: Allocations,
 ) -> Option<&'static str> {
@@ -197,10 +233,11 @@ fn violation(
         Alloc::HashTable { entries } => SIXTEEN_BYTE_GROUPS && entries >= 8,
         Alloc::UpperBound => false,
     };
-    if counted.requested > allocations {
-        Some("requested more than the allocations")
-    } else if equal && counted.requested != allocations {
-        Some("requested less than the allocations")
+    let charge = isize::try_from(charge).unwrap();
+    if counted.live > charge {
+        Some("kept more than the charge")
+    } else if equal && counted.live != charge {
+        Some("kept less than the charge")
     } else if counted.reallocs > plain.reallocs {
         Some("reallocated more than plain decoding")
     } else {
@@ -209,12 +246,12 @@ fn violation(
 }
 
 #[test]
-fn test_decoding_requests_what_it_charges() {
+fn test_decoded_values_keep_what_they_charge() {
     let mut table = String::new();
     writeln!(
         table,
-        "{:<40} {:<28} {:>11} {:>10} {:>8} {:>14}",
-        "case", "alloc", "allocations", "requested", "reallocs", "plain reallocs"
+        "{:<44} {:<28} {:>8} {:>8} {:>10} {:>8} {:>14}",
+        "case", "alloc", "charge", "kept", "requested", "reallocs", "plain reallocs"
     )
     .unwrap();
     let mut failures = Vec::new();
@@ -224,6 +261,7 @@ fn test_decoding_requests_what_it_charges() {
         // A first, unmeasured run: building a hasher may allocate once, lazily.
         decode(case.charge).unwrap_or_else(|err| panic!("{}: {}", case.name, err));
 
+        // Each value is dropped after its window, so `live` is what it keeps.
         let (result, counted) = count_allocations(|| decode(case.charge));
         result.unwrap_or_else(|err| panic!("{}: {}", case.name, err));
         let (result, unlimited) = count_allocations(|| decode(usize::MAX));
@@ -233,16 +271,17 @@ fn test_decoding_requests_what_it_charges() {
 
         writeln!(
             table,
-            "{:<40} {:<28} {:>11} {:>10} {:>8} {:>14}",
+            "{:<44} {:<28} {:>8} {:>8} {:>10} {:>8} {:>14}",
             case.name,
             format!("{:?}", case.alloc),
-            case.allocations,
+            case.charge,
+            counted.live,
             counted.requested,
             counted.reallocs,
             plain.reallocs
         )
         .unwrap();
-        if let Some(violation) = violation(case.alloc, case.allocations, counted, plain) {
+        if let Some(violation) = violation(case.alloc, case.charge, counted, plain) {
             failures.push(format!("{}: {}", case.name, violation));
         }
         if unlimited != counted {
@@ -309,6 +348,7 @@ fn decode_over_limit<T: BorshDeserializeBounded>(
     let before_error = Allocations {
         requested: decode.requested - error.requested,
         reallocs: decode.reallocs - error.reallocs,
+        live: decode.live - error.live,
     };
     (before_error, (requested, remaining))
 }
@@ -334,7 +374,7 @@ fn test_collection_over_limit_allocates_nothing() {
     assert_collection_over_limit_allocates_nothing(&vec![7u64; n], n * 8);
     assert_collection_over_limit_allocates_nothing(
         &(0..n as u64).map(|k| (k, k)).collect::<BTreeMap<_, _>>(),
-        n * 16 + sort_scratch(16, n) + btree_nodes::<u64, u64>(n),
+        btree_nodes::<u64, u64>(n),
     );
 }
 
@@ -351,7 +391,7 @@ fn test_hash_collection_over_limit_allocates_nothing() {
     let n = 1000;
     assert_collection_over_limit_allocates_nothing(
         &(0..n as u64).map(|k| (k, k)).collect::<HashMap<_, _>>(),
-        n * 16 + table(16, n),
+        table(16, n),
     );
 }
 
@@ -363,17 +403,11 @@ fn replace_prefix(input: &mut [u8], offset: usize, expected: u32, prefix: u32) {
 #[test]
 fn test_map_value_over_limit_allocates_only_the_entries_before_it() {
     let limit = 4096;
+    let charged = size_of::<BTreeMap<u64, Vec<u8>>>() + btree_nodes::<u64, Vec<u8>>(2) + 3;
     // Only the entries vector and the first value exist when the second value fails.
-    let entry = size_of::<(u64, Vec<u8>)>();
-    let entries = 2 * entry;
-    let charged = size_of::<BTreeMap<u64, Vec<u8>>>()
-        + entries
-        + sort_scratch(entry, 2)
-        + btree_nodes::<u64, Vec<u8>>(2)
-        + 3;
     let before = Allocations {
-        requested: entries + 3,
-        reallocs: 0,
+        requested: 2 * size_of::<(u64, Vec<u8>)>() + 3,
+        ..NO_ALLOCATIONS
     };
 
     let map = BTreeMap::from([(1u64, vec![7u8; 3]), (2, vec![8; 5])]);
@@ -415,14 +449,13 @@ fn test_rc_block_over_limit_is_never_allocated() {
     use std::sync::Arc;
 
     let input = to_vec(&[7u64; 512]).unwrap();
-    // The 4096-byte box fits; the block it would be copied into does not.
+    // The 4096-byte box fits; the 16 bytes of counts the block adds to it do not.
     let boxed = Allocations {
         requested: 4096,
-        reallocs: 0,
+        ..NO_ALLOCATIONS
     };
-    let block = cases::rc_block::<core::sync::atomic::AtomicUsize>(4096, 8);
     assert_eq!(
-        decode_over_limit::<Arc<[u64; 512]>>(&input, 4096 + 100 + size_of::<Arc<[u64; 512]>>()),
-        (boxed, (block, 100))
+        decode_over_limit::<Arc<[u64; 512]>>(&input, 4096 + 15 + size_of::<Arc<[u64; 512]>>()),
+        (boxed, (16, 15))
     );
 }

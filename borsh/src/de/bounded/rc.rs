@@ -13,8 +13,8 @@ where
 {
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
         let boxed = Box::<T>::deserialize_bounded_alloc(reader, budget)?;
-        // `Rc::from` copies the value into a new block.
-        budget.charge_checked(size::rc_block::<usize>(Layout::for_value(&*boxed)))?;
+        // `Rc::from` copies the value into a new block; the box's charge counts toward it.
+        budget.charge_checked(size::rc_overhead::<usize>(Layout::for_value(&*boxed)))?;
         Ok(boxed.into())
     }
 }
@@ -26,8 +26,8 @@ where
 {
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
         let boxed = Box::<T>::deserialize_bounded_alloc(reader, budget)?;
-        // `Arc::from` copies the value into a new block.
-        budget.charge_checked(size::rc_block::<AtomicUsize>(Layout::for_value(&*boxed)))?;
+        // `Arc::from` copies the value into a new block; the box's charge counts toward it.
+        budget.charge_checked(size::rc_overhead::<AtomicUsize>(Layout::for_value(&*boxed)))?;
         Ok(boxed.into())
     }
 }
