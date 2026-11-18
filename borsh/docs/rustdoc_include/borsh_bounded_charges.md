@@ -117,7 +117,11 @@ already read. An implementation must:
   [`limit_bytes`](crate::de::Budget::limit_bytes), [`used_bytes`](crate::de::Budget::used_bytes)
   or [`remaining_bytes`](crate::de::Budget::remaining_bytes);
 - decode the same way as its `BorshDeserialize` implementation, without depending on
-  allocated capacity.
+  allocated capacity;
+- for a type whose values encode to zero bytes, such as a struct whose fields are all
+  skipped, set `const ENCODES_TO_ZERO_BYTES: bool = <Self as
+  BorshDeserialize>::ENCODES_TO_ZERO_BYTES;`, so collections of it are rejected as in plain
+  decoding.
 
 ```rust
 use borsh::io::{ErrorKind, Read, Result};

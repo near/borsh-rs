@@ -3,6 +3,8 @@ members = ["borsh", "borsh-derive", "fuzz/fuzz-run", "benchmarks"]
 # benchmarks and fuzz need extra features to build, so keep them out of bare
 # `cargo` invocations from the workspace root.
 default-members = ["borsh", "borsh-derive"]
+# Keep master's feature unification; borsh-derive is on edition 2021.
+resolver = "1"
 
 [workspace.package]
 # shared version of all public crates in the workspace

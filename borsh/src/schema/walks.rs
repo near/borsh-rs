@@ -63,7 +63,11 @@ fn members(definition: &Definition) -> Vec<&Declaration> {
 }
 
 impl BorshSchemaContainer {
-    /// Returns the largest possible size of a serialised object based solely on its type.
+    /// Returns the largest possible size of a serialized object based solely on its type.
+    ///
+    /// The result assumes the container passes [`validate`](Self::validate). For example, a
+    /// sequence with an empty length range, which `validate` rejects, is sized by the range's
+    /// end, as on master.
     ///
     /// Even when if returned upper bound is correct, the theoretical value may be
     /// *much* larger than any practical length.  For example, maximum encoded

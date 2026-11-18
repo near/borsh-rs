@@ -433,7 +433,8 @@ pub fn schema(item: &Item) -> Result<TokenStream> {
             let vdecl = declaration(&format!("{}__{}", name, v.ident), mine.bounds());
             let (fields, w, vname) = (fields_def(v), walks(v), v.ident.to_string());
             entries.push(quote! {(
-                ::core::primitive::u8::from(#t) as ::core::primitive::i64,
+                <::core::primitive::u8 as ::core::convert::From<::core::primitive::u8>>::from(#t)
+                    as ::core::primitive::i64,
                 ::core::convert::Into::into(#vname),
                 #vdecl
             )});

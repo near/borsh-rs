@@ -26,6 +26,7 @@ pub use bounded::{
 const ERROR_NOT_ALL_BYTES_READ: &str = "Not all bytes read";
 const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
 
+/// A data-structure that can be de-serialized from binary format by NBOR.
 pub trait BorshDeserialize: Sized {
     /// Deserializes this instance from a given slice of bytes, advancing it past them.
     ///
@@ -797,8 +798,6 @@ impl<T: BorshDeserialize> BorshDeserialize for core::cell::RefCell<T> {
 /// # #[cfg(feature = "derive")]
 /// assert_eq!(original, decoded);
 /// ```
-/// # Panics
-/// If the data is invalid, this function will panic.
 /// # Errors
 /// If the data is invalid, this function will return an error.
 /// # Note

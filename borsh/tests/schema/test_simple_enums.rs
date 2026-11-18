@@ -189,3 +189,26 @@ pub fn complex_enum_with_schema() {
     let obj2: A = try_from_slice_with_schema(&data).unwrap();
     assert_eq!(obj, obj2);
 }
+
+/// Variant tags don't resolve `from` through traits the caller has in scope.
+#[test]
+pub fn enum_tags_ignore_traits_in_scope() {
+    #[allow(dead_code)]
+    trait FromByte {
+        fn from(x: u8) -> Self;
+    }
+    impl FromByte for u8 {
+        fn from(x: u8) -> Self {
+            x
+        }
+    }
+    #[allow(dead_code)]
+    #[derive(borsh::BorshSchema)]
+    enum Flag {
+        Off,
+        On,
+    }
+    let mut defs = Default::default();
+    Flag::add_definitions_recursively(&mut defs);
+    assert!(defs.contains_key("Flag"));
+}
