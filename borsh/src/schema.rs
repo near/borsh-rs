@@ -271,9 +271,14 @@ pub(crate) mod helpers {
         BorshSchemaContainer::for_type::<T>()
     }
 
-    /// The largest encoding of any value of `T`, as [BorshSchemaContainer::max_serialized_size].
+    /// Returns the largest possible size of a serialised object based solely on its type `T`.
+    ///
+    /// this is a shortcut for using [BorshSchemaContainer::max_serialized_size]
+    /// # Example
     ///
     /// ```
+    /// use borsh::schema::BorshSchemaContainer;
+    ///
     /// assert_eq!(Ok(8), borsh::max_serialized_size::<usize>());
     /// ```
     pub fn max_serialized_size<T: BorshSchema + ?Sized>(

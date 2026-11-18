@@ -13,6 +13,39 @@ use crate::__private::maybestd::{
 use crate::error::check_zst;
 use crate::io::{Error, ErrorKind, Result, Write};
 
+/// A data-structure that can be serialized into binary format by NBOR.
+///
+/// ```
+/// use borsh::BorshSerialize;
+///
+/// /// derive is only available if borsh is built with `features = ["derive"]`
+/// # #[cfg(feature = "derive")]
+/// #[derive(BorshSerialize)]
+/// struct MyBorshSerializableStruct {
+///     value: String,
+/// }
+///
+///
+/// # #[cfg(feature = "derive")]
+/// let x = MyBorshSerializableStruct { value: "hello".to_owned() };
+/// let mut buffer: Vec<u8> = Vec::new();
+/// # #[cfg(feature = "derive")]
+/// x.serialize(&mut buffer).unwrap();
+/// # #[cfg(feature = "derive")]
+/// let single_serialized_buffer_len = buffer.len();
+///
+/// # #[cfg(feature = "derive")]
+/// x.serialize(&mut buffer).unwrap();
+/// # #[cfg(feature = "derive")]
+/// assert_eq!(buffer.len(), single_serialized_buffer_len * 2);
+///
+/// # #[cfg(feature = "derive")]
+/// let mut buffer: Vec<u8> = vec![0; 1024 + single_serialized_buffer_len];
+/// # #[cfg(feature = "derive")]
+/// let mut buffer_slice_enough_for_the_data = &mut buffer[1024..1024 + single_serialized_buffer_len];
+/// # #[cfg(feature = "derive")]
+/// x.serialize(&mut buffer_slice_enough_for_the_data).unwrap();
+/// ```
 pub trait BorshSerialize {
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<()>;
 
@@ -482,6 +515,11 @@ pub(crate) mod helpers {
     use crate::BorshSerialize;
 
     /// Serialize an object into a vector of bytes.
+    /// # Example
+    ///
+    /// ```
+    /// assert_eq!(vec![12, 0, 0, 0, 0, 0, 0, 0], borsh::to_vec(&12u64).unwrap());
+    /// ```
     pub fn to_vec<T: BorshSerialize + ?Sized>(value: &T) -> Result<Vec<u8>> {
         let mut result = Vec::with_capacity(1024);
         value.serialize(&mut result)?;
@@ -489,12 +527,39 @@ pub(crate) mod helpers {
     }
 
     /// Serializes an object directly into a `Writer`.
+    /// # Example
+    ///
+    /// ```
+    /// # #[cfg(feature = "std")]
+    /// let stderr = std::io::stderr();
+    /// # #[cfg(feature = "std")]
+    /// assert_eq!((), borsh::to_writer(&stderr, "hello_0x0a").unwrap());
+    /// ```
     pub fn to_writer<T: BorshSerialize + ?Sized, W: Write>(mut writer: W, value: &T) -> Result<()> {
         value.serialize(&mut writer)
     }
 
-    /// The length of an object's encoding, computed without allocating. A length past
-    /// `usize::MAX` fails with `OutOfMemory`.
+    /// Serializes an object without allocation to compute and return its length
+    /// # Example
+    ///
+    /// ```
+    /// use borsh::BorshSerialize;
+    ///
+    /// /// derive is only available if borsh is built with `features = ["derive"]`
+    /// # #[cfg(feature = "derive")]
+    /// #[derive(BorshSerialize)]
+    /// struct A {
+    ///     tag: String,
+    ///     value: u64,
+    /// };
+    ///
+    /// # #[cfg(feature = "derive")]
+    /// let a = A { tag: "hello".to_owned(), value: 42 };
+    ///
+    /// assert_eq!(8, borsh::object_length(&12u64).unwrap());
+    /// # #[cfg(feature = "derive")]
+    /// assert_eq!(17, borsh::object_length(&a).unwrap());
+    /// ```
     pub fn object_length<T: BorshSerialize + ?Sized>(value: &T) -> Result<usize> {
         struct Length(usize);
         impl Write for Length {

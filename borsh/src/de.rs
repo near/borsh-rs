@@ -58,7 +58,59 @@ pub trait BorshDeserialize: Sized {
 
 /// Additional methods offered on enums which is used by `[derive(BorshDeserialize)]`.
 pub trait EnumExt: BorshDeserialize {
-    /// Deserialize the variant with the given tag.
+    /// Deserialises given variant of an enum from the reader.
+    ///
+    /// This may be used to perform validation or filtering based on what
+    /// variant is being deserialised.
+    ///
+    /// ```
+    /// use borsh::BorshDeserialize;
+    /// use borsh::de::EnumExt as _;
+    ///
+    /// /// derive is only available if borsh is built with `features = ["derive"]`
+    /// # #[cfg(feature = "derive")]
+    /// #[derive(Debug, PartialEq, Eq, BorshDeserialize)]
+    /// enum MyEnum {
+    ///     Zero,
+    ///     One(u8),
+    ///     Many(Vec<u8>)
+    /// }
+    ///
+    /// # #[cfg(feature = "derive")]
+    /// #[derive(Debug, PartialEq, Eq)]
+    /// struct OneOrZero(MyEnum);
+    ///
+    /// # #[cfg(feature = "derive")]
+    /// impl borsh::de::BorshDeserialize for OneOrZero {
+    ///     fn deserialize_reader<R: borsh::io::Read>(
+    ///         reader: &mut R,
+    ///     ) -> borsh::io::Result<Self> {
+    ///         use borsh::de::EnumExt;
+    ///         let tag = u8::deserialize_reader(reader)?;
+    ///         if tag == 2 {
+    ///             Err(borsh::io::Error::new(
+    ///                 borsh::io::ErrorKind::InvalidData,
+    ///                 "MyEnum::Many not allowed here",
+    ///             ))
+    ///         } else {
+    ///             MyEnum::deserialize_variant(reader, tag).map(Self)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// use borsh::from_slice;
+    /// let data = b"\0";
+    /// # #[cfg(feature = "derive")]
+    /// assert_eq!(MyEnum::Zero, from_slice::<MyEnum>(&data[..]).unwrap());
+    /// # #[cfg(feature = "derive")]
+    /// assert_eq!(MyEnum::Zero, from_slice::<OneOrZero>(&data[..]).unwrap().0);
+    ///
+    /// let data = b"\x02\0\0\0\0";
+    /// # #[cfg(feature = "derive")]
+    /// assert_eq!(MyEnum::Many(Vec::new()), from_slice::<MyEnum>(&data[..]).unwrap());
+    /// # #[cfg(feature = "derive")]
+    /// assert!(from_slice::<OneOrZero>(&data[..]).is_err());
+    /// ```
     fn deserialize_variant<R: Read>(reader: &mut R, tag: u8) -> Result<Self>;
 }
 
@@ -634,7 +686,34 @@ impl<T: BorshDeserialize> BorshDeserialize for core::cell::RefCell<T> {
     }
 }
 
-/// Deserializes an object from a slice of bytes, rejecting trailing bytes.
+/// Deserializes an object from a slice of bytes.
+/// # Example
+/// ```
+/// use borsh::{BorshDeserialize, BorshSerialize, from_slice, to_vec};
+///
+/// /// derive is only available if borsh is built with `features = ["derive"]`
+/// # #[cfg(feature = "derive")]
+/// #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+/// struct MyStruct {
+///    a: u64,
+///    b: Vec<u8>,
+/// }
+///
+/// # #[cfg(feature = "derive")]
+/// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
+/// # #[cfg(feature = "derive")]
+/// let encoded = to_vec(&original).unwrap();
+/// # #[cfg(feature = "derive")]
+/// let decoded = from_slice::<MyStruct>(&encoded).unwrap();
+/// # #[cfg(feature = "derive")]
+/// assert_eq!(original, decoded);
+/// ```
+/// # Panics
+/// If the data is invalid, this function will panic.
+/// # Errors
+/// If the data is invalid, this function will return an error.
+/// # Note
+/// This function will return an error if the data is not fully read.
 pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
     let mut v_mut = v;
     let object = T::deserialize(&mut v_mut)?;
@@ -644,8 +723,31 @@ pub fn from_slice<T: BorshDeserialize>(v: &[u8]) -> Result<T> {
     Ok(object)
 }
 
-/// Deserializes an object from a reader, rejecting trailing bytes. The end-of-input check
-/// retries `Interrupted` and passes other errors on.
+/// Deserializes an object from a reader.
+/// # Example
+/// ```
+/// use borsh::{BorshDeserialize, BorshSerialize, from_reader, to_vec};
+///
+/// /// derive is only available if borsh is built with `features = ["derive"]`
+/// # #[cfg(feature = "derive")]
+/// #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+/// struct MyStruct {
+///     a: u64,
+///     b: Vec<u8>,
+/// }
+///
+/// # #[cfg(feature = "derive")]
+/// let original = MyStruct { a: 10, b: vec![1, 2, 3] };
+/// # #[cfg(feature = "derive")]
+/// let encoded = to_vec(&original).unwrap();
+/// # #[cfg(feature = "derive")]
+/// let decoded = from_reader::<_, MyStruct>(&mut encoded.as_slice()).unwrap();
+/// # #[cfg(feature = "derive")]
+/// assert_eq!(original, decoded);
+/// ```
+///
+/// After decoding, the reader must be at its end: trailing bytes are an error. The
+/// end-of-input check retries `Interrupted` and returns any other I/O error.
 pub fn from_reader<R: Read, T: BorshDeserialize>(reader: &mut R) -> Result<T> {
     let result = T::deserialize_reader(reader)?;
     let mut buf = [0u8; 1];

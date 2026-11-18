@@ -50,19 +50,50 @@ fn members(definition: &Definition) -> Vec<&Declaration> {
 }
 
 impl BorshSchemaContainer {
-    /// The largest encoding of any value of the declared type.
+    /// Returns the largest possible size of a serialised object based solely on its type.
+    ///
+    /// Even when if returned upper bound is correct, the theoretical value may be
+    /// *much* larger than any practical length.  For example, maximum encoded
+    /// length of `String` is 4 GiB while in practice one may encounter strings of
+    /// at most dozen of characters.
+    ///
+    /// # Example
     ///
     /// ```
     /// use borsh::schema::BorshSchemaContainer;
-    /// let schema = BorshSchemaContainer::for_type::<Vec<u8>>();
-    /// assert_eq!(Ok(4 + u32::MAX as usize), schema.max_serialized_size());
+    ///
+    /// let schema = BorshSchemaContainer::for_type::<()>();
+    /// assert_eq!(Ok(0), schema.max_serialized_size());
+    ///
+    /// let schema = BorshSchemaContainer::for_type::<usize>();
+    /// assert_eq!(Ok(8), schema.max_serialized_size());
+    ///
+    /// // 4 bytes of length and u32::MAX for the longest possible string.
+    /// let schema = BorshSchemaContainer::for_type::<String>();
+    /// assert_eq!(Ok(4 + 4294967295), schema.max_serialized_size());
+    ///
+    /// let schema = BorshSchemaContainer::for_type::<Vec<String>>();
+    /// assert_eq!(Err(borsh::schema::SchemaMaxSerializedSizeError::Overflow),
+    ///            schema.max_serialized_size());
     /// ```
     pub fn max_serialized_size(&self) -> Result<usize, M> {
         max_size(1, self.declaration(), self, &mut Vec::new())
     }
 
-    /// Check the schema is well-formed: every declaration is defined, tags and lengths have
-    /// valid widths, and no sequence holds elements that encode to zero bytes.
+    /// Validates container for violation of any well-known rules with
+    /// respect to `borsh` serialization.
+    ///
+    /// Every declaration must be defined, tags and lengths must have valid widths, and no
+    /// sequence may hold elements that encode to zero bytes.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use borsh::schema::BorshSchemaContainer;
+    ///
+    /// let schema = BorshSchemaContainer::for_type::<usize>();
+    /// assert_eq!(Ok(()), schema.validate());
+    /// ```
     pub fn validate(&self) -> Result<(), V> {
         validate(self.declaration(), self, &mut Vec::new())
     }
