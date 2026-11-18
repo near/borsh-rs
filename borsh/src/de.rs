@@ -432,6 +432,8 @@ impl BorshDeserialize for bytes::Bytes {
 #[cfg(feature = "bytes")]
 impl BorshDeserialize for bytes::BytesMut {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        // Its own loop, not `Vec<u8>`: that path's bulk read reserves up to 1 MiB before any
+        // byte arrives, and the result would then be copied.
         use bytes::BufMut;
         let len = u32::deserialize_reader(reader)?;
         let mut out = bytes::BytesMut::with_capacity(cautious::<u8>(len));

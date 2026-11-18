@@ -200,8 +200,13 @@ pub fn add_definition(
 }
 
 /// For derived types: add `T`'s definition, then its fields' definitions unless this walk
-/// already added them, so recursive types terminate. Walked types are tracked under a
-/// sentinel key (Rust type name and declaration) that the outermost call removes.
+/// already added them, so recursive types terminate.
+///
+/// A type is walked once per Rust type, not per declaration, so two types that share a
+/// declaration both get their fields checked. The walked types (Rust type name and
+/// declaration) are kept in `definitions` itself, under the key `"\0walked"`, since that map
+/// is the only state a walk has. The outermost call removes the key on return and on panic,
+/// so only a hand-written `add_definitions_recursively` called during a walk can see it.
 #[doc(hidden)]
 pub fn add_struct_definition<T: BorshSchema + ?Sized>(
     definition: Definition,
@@ -209,22 +214,27 @@ pub fn add_struct_definition<T: BorshSchema + ?Sized>(
     add_fields_definitions: impl FnOnce(&mut BTreeMap<Declaration, Definition>),
 ) {
     const WALKED: &str = "\0walked";
+    /// Removes the walked-types key when the outermost call ends.
+    struct Walk<'a>(&'a mut BTreeMap<Declaration, Definition>, bool);
+    impl Drop for Walk<'_> {
+        fn drop(&mut self) {
+            if self.1 {
+                self.0.remove(WALKED);
+            }
+        }
+    }
     add_definition(T::declaration(), definition, definitions);
     let outermost = !definitions.contains_key(WALKED);
-    let walked = definitions
-        .entry(WALKED.into())
-        .or_insert(Definition::Tuple {
-            elements: Vec::new(),
-        });
+    let walk = Walk(definitions, outermost);
+    let walked = walk.0.entry(WALKED.into()).or_insert(Definition::Tuple {
+        elements: Vec::new(),
+    });
     let key = format!("{}\0{}", core::any::type_name::<T>(), T::declaration());
     if let Definition::Tuple { elements } = walked {
         if !elements.contains(&key) {
             elements.push(key);
-            add_fields_definitions(definitions);
+            add_fields_definitions(&mut *walk.0);
         }
-    }
-    if outermost {
-        definitions.remove(WALKED);
     }
 }
 

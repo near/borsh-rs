@@ -279,3 +279,15 @@ fn test_same_type_name_different_declarations() {
         ["Pair<Signed<X1>, Signed<X2>>", "Signed<X1>", "Signed<X2>", "X1", "X2"]
     );
 }
+
+/// A conflict panics mid-walk; the walk's bookkeeping key must not stay in the map.
+#[cfg(feature = "std")]
+#[test]
+fn test_walk_bookkeeping_removed_on_panic() {
+    let mut defs = BTreeMap::new();
+    let walk = std::panic::AssertUnwindSafe(|| {
+        <SelfConflictingStruct as BorshSchema>::add_definitions_recursively(&mut defs)
+    });
+    assert!(std::panic::catch_unwind(walk).is_err());
+    assert!(defs.keys().all(|k| !k.starts_with('\0')), "{:?}", defs.keys());
+}

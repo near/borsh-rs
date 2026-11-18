@@ -413,7 +413,8 @@ pub fn schema(item: &Item) -> Result<TokenStream> {
             // Each variant is described as a struct `Enum__Variant` whose generics are the
             // enum's type parameters the variant mentions (all const parameters stay).
             // A parameter used only through a nested projection (`Vec<U::Out>`) counts too,
-            // so `E<u8>` and `E<u32>` get different declarations.
+            // so a `schema(params = "U => <U as Tr>::Out")` on that field names the variant.
+            // Without one, the projection isn't in either declaration, the same as a struct.
             let mut all = Uses::new(&params);
             all.phantom = true;
             all.nested_assoc = true;
@@ -471,7 +472,8 @@ pub fn schema(item: &Item) -> Result<TokenStream> {
     ))
 }
 
-/// The checks on `Self` in enum variant fields, and the variant-count limit.
+/// The checks on `Self` in enum variant fields, the variant-count limit, and the attribute
+/// errors.
 #[cfg(feature = "schema")]
 #[cfg(test)]
 mod tests {
@@ -589,5 +591,229 @@ mod tests {
         })
         .unwrap();
         assert!(out.contains("fn get () -> Self"), "{}", out);
+    }
+
+    /// Each malformed attribute and the message it's rejected with. The messages are
+    /// master's, except `init = a + b`, which master reports as "expected `,`".
+    #[test]
+    fn attribute_errors() {
+        use crate::gen::{deserialize, schema, serialize};
+        type Emit = fn(&crate::ir::Item) -> syn::Result<proc_macro2::TokenStream>;
+        let cases: &[(Emit, proc_macro2::TokenStream, &str)] = &[
+            (
+                serialize,
+                quote!(
+                    struct S {
+                        #[borsh(skipp)]
+                        a: u8,
+                    }
+                ),
+                "malformed borsh attribute, expected `borsh(bound(...), deserialize_with = ..., \
+                 schema(...), serialize_with = ..., skip)`",
+            ),
+            (
+                serialize,
+                quote!(
+                    struct S {
+                        #[borsh(skip)]
+                        #[borsh(skip)]
+                        a: u8,
+                    }
+                ),
+                "duplicate `skip` attribute",
+            ),
+            (
+                serialize,
+                quote!(
+                    struct S<T> {
+                        #[borsh(bound(serialize = 5))]
+                        a: T,
+                    }
+                ),
+                "expected borsh bound attribute to be a string: `serialize = \"...\"`",
+            ),
+            (
+                schema,
+                quote!(
+                    struct S {
+                        #[borsh(schema(with_funcs(declaration = "x")))]
+                        a: u8,
+                    }
+                ),
+                "both `declaration = ...` and `definitions = ...` have to be specified at the \
+                 same time",
+            ),
+            (
+                serialize,
+                quote!(
+                    struct S {
+                        #[borsh(skip, serialize_with = "x")]
+                        a: u8,
+                    }
+                ),
+                "`skip` cannot be used at the same time as `serialize_with` or \
+                 `deserialize_with`",
+            ),
+            (
+                schema,
+                quote!(
+                    struct S<T> {
+                        #[borsh(skip, schema(params = "T => T"))]
+                        a: T,
+                    }
+                ),
+                "`skip` cannot be used at the same time as `schema(params = ...)`",
+            ),
+            (
+                schema,
+                quote!(
+                    struct S {
+                        #[borsh(skip, schema(with_funcs(declaration = "x", definitions = "y")))]
+                        a: u8,
+                    }
+                ),
+                "`skip` cannot be used at the same time as `schema(with_funcs(...))`",
+            ),
+            (
+                serialize,
+                quote!(
+                    #[borsh(use_discriminant = 1)]
+                    enum E {
+                        A,
+                        B,
+                    }
+                ),
+                "`use_discriminant` accepts only `true` or `false`",
+            ),
+            (
+                serialize,
+                quote!(
+                    #[borsh(use_discriminant = true)]
+                    struct S {
+                        a: u8,
+                    }
+                ),
+                "borsh(use_discriminant=<bool>) does not support structs",
+            ),
+            (
+                serialize,
+                quote!(
+                    enum E {
+                        A = 1,
+                        B,
+                    }
+                ),
+                "You have to specify `#[borsh(use_discriminant=true)]` or \
+                 `#[borsh(use_discriminant=false)]` for all enums with explicit discriminant",
+            ),
+            (
+                deserialize,
+                quote!(
+                    #[borsh(init = a + b)]
+                    struct S {
+                        a: u8,
+                    }
+                ),
+                "unexpected token",
+            ),
+            (
+                serialize,
+                quote!(
+                    #[borsh(foo = 1)]
+                    struct S {
+                        a: u8,
+                    }
+                ),
+                "`crate`, `use_discriminant` or `init` are the only supported attributes for \
+                 `borsh`",
+            ),
+            (
+                serialize,
+                quote!(
+                    struct S<T> {
+                        #[borsh(bound(ser = "T: Clone"))]
+                        a: T,
+                    }
+                ),
+                "malformed bound attribute, expected `bound(deserialize = ..., serialize = ...)`",
+            ),
+            (
+                serialize,
+                quote!(
+                    struct S<T> {
+                        #[borsh(bound(serialize = "T: :"))]
+                        a: T,
+                    }
+                ),
+                "expected `,`",
+            ),
+            (
+                schema,
+                quote!(
+                    struct S<T> {
+                        #[borsh(schema(params = "T -> u8"))]
+                        a: T,
+                    }
+                ),
+                "expected `=>`",
+            ),
+            (
+                serialize,
+                quote!(
+                    struct S<T> {
+                        #[borsh(bound)]
+                        a: T,
+                    }
+                ),
+                "unexpected end of input, expected parentheses",
+            ),
+            (
+                schema,
+                quote!(
+                    struct S {
+                        #[borsh(schema(foo = "x"))]
+                        a: u8,
+                    }
+                ),
+                "malformed schema attribute, expected `schema(params = ..., with_funcs(...))`",
+            ),
+            (
+                serialize,
+                quote!(
+                    struct S {
+                        #[borsh(serialize_with = "1 + 1")]
+                        a: u8,
+                    }
+                ),
+                "expected identifier",
+            ),
+            (
+                schema,
+                quote!(union U { a: u8 }),
+                "Borsh schema does not support unions yet.",
+            ),
+        ];
+        for (emit, input, msg) in cases {
+            let input = syn::parse2(quote!(#[borsh(crate = "borsh")] #input)).unwrap();
+            let err = crate::ir::parse(&input).and_then(|item| emit(&item));
+            assert_eq!(err.err().map(|e| e.to_string()).as_deref(), Some(*msg));
+        }
+        let input = syn::parse2(quote!(
+            #[borsh(crate = "x")]
+            #[borsh(crate = "y")]
+            struct S;
+        ));
+        let err = crate::ir::parse(&input.unwrap()).err().unwrap();
+        assert_eq!(err.to_string(), "duplicate `crate` attribute");
+        let input = syn::parse2(quote!(
+            #[borsh(crate = 5)]
+            struct S;
+        ))
+        .unwrap();
+        let err = crate::ir::parse(&input).err().unwrap();
+        assert_eq!(
+            err.to_string(),
+            "expected borsh borsh attribute to be a string: `crate = \"...\"`"
+        );
     }
 }
