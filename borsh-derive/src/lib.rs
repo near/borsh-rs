@@ -6,7 +6,9 @@
 //! qualified, primitives are `::core::primitive::*`, and every impl sits in a `const _` block.
 //! The names the code introduces use the reserved `__borsh_` prefix, and each binding is also
 //! declared in that block as a function, so a user `const` of that name can't turn the binding
-//! into a constant pattern.
+//! into a constant pattern. With `use_discriminant`, the tags are evaluated in an outer block
+//! (`__BorshTags`, `__BORSH_TAGS`) where those functions aren't declared, so a discriminant
+//! means what it means on the enum.
 mod bounds;
 mod gen;
 mod ir;

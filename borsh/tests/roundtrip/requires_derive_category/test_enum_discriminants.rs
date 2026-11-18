@@ -191,3 +191,190 @@ fn test_discriminant_serde() {
         assert_eq!(from_slice::<X>(&data).unwrap(), values[index]);
     }
 }
+
+const READ: u8 = 1;
+const WRITE: u8 = 2;
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+#[repr(u8)]
+enum Operators {
+    A = READ | WRITE,
+    B, // 4, not `READ | WRITE + 1 == 3`
+    C = 1 << 4,
+    D, // 17, not `1 << 5 == 32`
+}
+
+#[test]
+fn test_discriminant_after_operator_expression() {
+    for value in [Operators::A, Operators::B, Operators::C, Operators::D] {
+        let tag = value as u8;
+        assert_eq!(to_vec(&value).unwrap(), vec![tag]);
+        assert_eq!(from_slice::<Operators>(&[tag]).unwrap(), value);
+    }
+    assert_eq!(Operators::B as u8, 4);
+    assert_eq!(Operators::D as u8, 17);
+}
+
+// Enums that the check that every tag fits in `u8` must keep accepting.
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+#[repr(u64)]
+enum UpToU8Max {
+    A = 0xfe,
+    B,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+#[repr(u8)]
+enum SelfReferring {
+    A = Self::BASE,
+    B,
+}
+
+impl SelfReferring {
+    const BASE: u8 = 0x10;
+}
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Debug)]
+#[borsh(use_discriminant = true)]
+#[repr(u8)]
+enum Generic<T> {
+    A(T) = 0xfe,
+    B(T),
+}
+
+#[test]
+fn test_discriminant_fits_in_u8() {
+    assert_eq!(to_vec(&UpToU8Max::B).unwrap(), vec![0xff]);
+    assert_eq!(from_slice::<UpToU8Max>(&[0xff]).unwrap(), UpToU8Max::B);
+    assert_eq!(to_vec(&SelfReferring::B).unwrap(), vec![0x11]);
+    assert_eq!(from_slice::<SelfReferring>(&[0x11]).unwrap(), SelfReferring::B);
+    assert_eq!(to_vec(&Generic::B(7u8)).unwrap(), vec![0xff, 7]);
+    assert_eq!(from_slice::<Generic<u8>>(&[0xff, 7]).unwrap(), Generic::B(7));
+}
+
+#[allow(unused_braces)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+#[repr(u8)]
+enum Blocks {
+    A = { 3 },
+    B,
+    C = { READ | WRITE } << 4,
+    D,
+}
+
+#[test]
+fn test_discriminant_block_expression() {
+    for value in [Blocks::A, Blocks::B, Blocks::C, Blocks::D] {
+        let tag = value as u8;
+        assert_eq!(to_vec(&value).unwrap(), vec![tag]);
+        assert_eq!(from_slice::<Blocks>(&[tag]).unwrap(), value);
+    }
+    assert_eq!(Blocks::D as u8, 0x31);
+}
+
+// Tags are evaluated in the repr type, as rustc does, not in `u8`.
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+enum Shifted {
+    A,
+    B = 16 << 4 >> 2,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+#[repr(i32)]
+enum Negative {
+    A = -1 + 1,
+    B = -(-128),
+}
+
+#[test]
+fn test_discriminant_evaluated_in_repr_type() {
+    assert_eq!(Shifted::B as u8, 64);
+    assert_eq!(to_vec(&Shifted::B).unwrap(), vec![64]);
+    assert_eq!(from_slice::<Shifted>(&[64]).unwrap(), Shifted::B);
+    assert_eq!(from_slice::<Shifted>(&[0]).unwrap(), Shifted::A);
+    assert_eq!(to_vec(&Negative::B).unwrap(), vec![128]);
+    assert_eq!(from_slice::<Negative>(&[128]).unwrap(), Negative::B);
+}
+
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[borsh(use_discriminant = true)]
+#[repr(r#u8)]
+enum RawRepr {
+    // Evaluated in `u8`, as rustc does for `repr(u8)`: 0, not 64.
+    A = 16 << 4 >> 2,
+    B = 64,
+}
+
+#[test]
+fn test_raw_repr_ident() {
+    assert_eq!(RawRepr::A as u8, 0);
+    assert_eq!(to_vec(&RawRepr::A).unwrap(), vec![0]);
+    assert_eq!(to_vec(&RawRepr::B).unwrap(), vec![64]);
+    assert_eq!(from_slice::<RawRepr>(&[64]).unwrap(), RawRepr::B);
+}
+
+/// Names in scope at the derive must not change how tags are evaluated or checked.
+#[allow(non_camel_case_types, non_upper_case_globals, dead_code)]
+mod names_in_scope {
+    use borsh::{BorshDeserialize, BorshSerialize};
+
+    type isize = core::primitive::u8;
+    type i128 = core::primitive::u8;
+
+    #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+    #[borsh(use_discriminant = true)]
+    pub enum AliasedRepr {
+        A,
+        B = 16 << 4 >> 2,
+    }
+
+    const __borsh_tag: core::primitive::u8 = 3;
+
+    #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+    #[borsh(use_discriminant = true)]
+    #[repr(u8)]
+    pub enum NamedConst {
+        A = __borsh_tag,
+        B,
+    }
+
+    #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+    #[borsh(use_discriminant = true)]
+    pub enum BorshTags {
+        A,
+        B = 5,
+    }
+
+    pub trait UserTags {
+        const TAGS: core::primitive::isize;
+    }
+
+    #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone, Copy, Debug)]
+    #[borsh(use_discriminant = true)]
+    pub enum SelfTags {
+        A = Self::TAGS,
+        B,
+    }
+
+    impl UserTags for SelfTags {
+        const TAGS: core::primitive::isize = 7;
+    }
+}
+
+#[test]
+fn test_names_in_scope() {
+    use names_in_scope::*;
+    assert_eq!(to_vec(&AliasedRepr::B).unwrap(), vec![64]);
+    assert_eq!(from_slice::<AliasedRepr>(&[64]).unwrap(), AliasedRepr::B);
+    assert_eq!(to_vec(&NamedConst::B).unwrap(), vec![4]);
+    assert_eq!(from_slice::<NamedConst>(&[3]).unwrap(), NamedConst::A);
+    assert_eq!(to_vec(&BorshTags::B).unwrap(), vec![5]);
+    assert_eq!(to_vec(&SelfTags::A).unwrap(), vec![7]);
+    assert_eq!(from_slice::<SelfTags>(&[8]).unwrap(), SelfTags::B);
+}

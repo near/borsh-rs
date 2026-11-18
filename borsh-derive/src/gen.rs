@@ -14,14 +14,19 @@ fn local(name: &str) -> Ident {
 
 /// Wrap impls in `const _: () = { ... };`, declaring a function for each bound name. The
 /// block calls them, so they aren't dead code: the output carries no allow attributes,
-/// which a user's `#![forbid(...)]` would turn into errors.
-fn wrap(names: &[Ident], items: TokenStream) -> TokenStream {
-    quote! {
+/// which a user's `#![forbid(...)]` would turn into errors. An enum's discriminant tags are
+/// evaluated in an outer block, where those functions aren't in scope.
+fn wrap(item: &Item, names: &[Ident], items: TokenStream) -> TokenStream {
+    let inner = quote! {
         const _: () = {
             #( const fn #names() {} )*
             #items
             #( #names(); )*
         };
+    };
+    match item.tag_check() {
+        check if check.is_empty() => inner,
+        check => quote!(const _: () = { #check #inner };),
     }
 }
 
@@ -147,6 +152,7 @@ pub fn serialize(item: &Item) -> Result<TokenStream> {
         .chain([w.clone(), tag, local("__borsh_s")])
         .collect();
     Ok(wrap(
+        item,
         &names,
         quote! {
             #head {
@@ -243,7 +249,7 @@ pub fn deserialize(item: &Item) -> Result<TokenStream> {
             }
         }
     };
-    Ok(wrap(&[r, tag, value, local("__borsh_s")], impls))
+    Ok(wrap(item, &[r, tag, value, local("__borsh_s")], impls))
 }
 
 /// Replace the type `Self` with the enum's own type before inferring which generics a
@@ -450,6 +456,7 @@ pub fn schema(item: &Item) -> Result<TokenStream> {
     let tr = quote!(#k::BorshSchema);
     let head = header(item, &tr, bound_all(uses.bounds(), &tr).collect());
     Ok(wrap(
+        item,
         &[defs.clone(), def],
         quote! {
             #head {

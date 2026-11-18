@@ -173,32 +173,12 @@ enum B {
 ```
 
 
-###### borsh, expressions, evaluating to `isize`, as discriminant
-This case is not supported:
-
-```rust,compile_fail
-use borsh::BorshDeserialize;
-const fn discrim() -> isize {
-    0x14
-}
-
-#[derive(BorshDeserialize)]
-#[borsh(use_discriminant = true)]
-enum X {
-    A,
-    B = discrim(), // expressions, evaluating to `isize`, which are allowed outside of `borsh` context
-    C,
-    D,
-    E = 10,
-    F,
-}
-```
-
-
 ###### borsh explicit discriminant does not support literal values outside of u8 range.
 This is not supported:
 
-```rust,compile_fail
+```rust,compile_fail,E0080
+use borsh::BorshDeserialize;
+
 #[derive(BorshDeserialize)]
 #[borsh(use_discriminant = true)]
 enum X {
@@ -211,6 +191,32 @@ enum X {
 }
 ```
 
+
+###### borsh implicit discriminant does not support values outside of u8 range
+This is not supported either:
+```rust,compile_fail,E0080
+use borsh::BorshDeserialize;
+
+#[derive(BorshDeserialize)]
+#[borsh(use_discriminant = true)]
+enum X {
+    A = 0xff,
+    B, // implicit discriminant `0x100`
+}
+```
+
+Discriminants are evaluated in the enum's `#[repr]` type (`isize` by default), like rustc does, and each must be in `0..=255`:
+```rust,compile_fail,E0080
+use borsh::BorshDeserialize;
+
+#[derive(BorshDeserialize)]
+#[borsh(use_discriminant = true)]
+#[repr(u16)]
+enum X {
+    A = 0x100,
+    B = 0,
+}
+```
 
 ### 4. `#[borsh(skip)]` (field level attribute)
 

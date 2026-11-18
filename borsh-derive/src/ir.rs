@@ -2,11 +2,11 @@
 //! enum with one untagged variant, so every emitter handles one shape. Attribute errors keep
 //! their established wording and spans.
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::{
-    meta::ParseNestedMeta, parse::Parse, punctuated::Punctuated, spanned::Spanned, Attribute, Data,
-    DeriveInput, Error, Expr, ExprLit, ExprPath, Ident, Lit, LitStr, Member, Path, Result, Token,
-    Type, WherePredicate,
+    ext::IdentExt, meta::ParseNestedMeta, parse::Parse, punctuated::Punctuated, spanned::Spanned,
+    Attribute, Data, DeriveInput, Error, Expr, ExprLit, ExprPath, Ident, Lit, LitStr, Member, Path,
+    Result, Token, Type, WherePredicate,
 };
 
 pub struct Item {
@@ -21,6 +21,8 @@ pub struct Item {
     /// `init = ...`, checked to be a path by the deserialize emitter only.
     pub init: Option<Expr>,
     pub use_discriminant: bool,
+    /// The type rustc evaluates discriminants in: the integer `#[repr]`, or `isize`.
+    pub repr: Ident,
 }
 
 pub struct Variant {
@@ -315,6 +317,7 @@ pub fn parse(input: &DeriveInput) -> Result<Item> {
         variants: vec![],
         init,
         use_discriminant: false,
+        repr: Ident::new("isize", Span::call_site()),
     };
     match &input.data {
         Data::Struct(s) => item
@@ -345,6 +348,21 @@ pub fn parse(input: &DeriveInput) -> Result<Item> {
                 }
                 None => false,
             };
+            let ints = [
+                "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128",
+                "isize",
+            ];
+            for a in input.attrs.iter().filter(|a| a.path().is_ident("repr")) {
+                let metas = a.parse_args_with(Punctuated::<syn::Meta, Token![,]>::parse_terminated);
+                // `#[repr(r#u8)]` is `#[repr(u8)]`.
+                let ids = metas
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|m| m.path().get_ident().map(IdentExt::unraw));
+                if let Some(int) = ids.into_iter().find(|i| ints.iter().any(|t| i == t)) {
+                    item.repr = int;
+                }
+            }
             for v in &e.variants {
                 item.variants.push(variant(
                     v.ident.clone(),
@@ -392,21 +410,90 @@ impl Item {
         quote!(#path { #(#fields,)* })
     }
 
-    /// Each variant's tag expression: the variant index or, with `use_discriminant`, the
-    /// discriminant.
-    pub fn tags(&self) -> Vec<TokenStream> {
+    /// Each variant's discriminant as an expression of the `repr` type, evaluated in that type as
+    /// rustc does (`B = 16 << 4` is 256, not a `u8` shift). An explicit one is parenthesized so it
+    /// stays one expression wherever it is pasted; an implicit one is the previous one `+ 1`.
+    /// `identity` types it without a `let`, whose name a constant in scope could turn into a
+    /// pattern.
+    fn discriminants(&self) -> Vec<TokenStream> {
+        let repr = &self.repr;
         let mut next = quote!(0);
-        let mut tags = vec![];
-        for (i, v) in self.variants.iter().enumerate() {
-            let discriminant = v.discriminant.as_ref().map_or(next, |e| quote!(#e));
+        let mut values = vec![];
+        for v in &self.variants {
+            let discriminant = v.discriminant.as_ref().map_or(next, |e| quote!((#e)));
             next = quote!(#discriminant + 1);
-            tags.push(if self.use_discriminant {
-                discriminant
-            } else {
-                let i = i as u8;
-                quote!(#i)
-            });
+            values
+                .push(quote!(::core::convert::identity::<::core::primitive::#repr>(#discriminant)));
         }
-        tags
+        values
+    }
+
+    /// Each variant's tag expression: the variant index or, with `use_discriminant`, its entry
+    /// in the `__BORSH_TAGS` array that `tag_check` defines. The entry is read in a `const`, so
+    /// it is a constant: indexing at run time can copy the whole array into each use's stack
+    /// frame in unoptimized builds.
+    pub fn tags(&self) -> Vec<TokenStream> {
+        (0..self.variants.len())
+            .map(|i| match self.use_discriminant {
+                true => quote!({
+                    const __BORSH_TAG: ::core::primitive::u8 = __BORSH_TAGS[#i];
+                    __BORSH_TAG
+                }),
+                false => {
+                    let i = i as u8;
+                    quote!(#i)
+                }
+            })
+            .collect()
+    }
+
+    /// With `use_discriminant`, the `__BORSH_TAGS` array: each discriminant cast to `u8`,
+    /// failing to compile (E0080) unless it is in `0..=255`, so a tag can't wrap or collide at
+    /// run time. Lints can't do this: they are capped in dependencies.
+    ///
+    /// The derive's emitters put their impls in a block nested inside the one holding this, so
+    /// the names they declare can't change what a discriminant refers to.
+    pub fn tag_check(&self) -> TokenStream {
+        if !self.use_discriminant {
+            return quote!();
+        }
+        let (name, n) = (&self.ident, self.variants.len());
+        let checks = self
+            .variants
+            .iter()
+            .zip(self.discriminants())
+            .map(|(v, value)| {
+                let msg = format!(
+                    "borsh: the discriminant of `{}::{}` doesn't fit in a u8 tag (0..=255)",
+                    name, v.ident
+                );
+                let panic = quote_spanned!(v.ident.span()=> ::core::panic!(#msg));
+                quote! {{
+                    if (#value as ::core::primitive::i128) < 0
+                        || (#value as ::core::primitive::i128) > 255
+                    {
+                        #panic;
+                    }
+                    (#value as ::core::primitive::u8)
+                }}
+            });
+        let ty = quote!([::core::primitive::u8; #n]);
+        if self.generics.params.is_empty() {
+            // In an impl for the enum, so a discriminant naming `Self` resolves. The reserved
+            // names keep the helper trait from shadowing the enum or making `Self::NAME`
+            // ambiguous.
+            quote! {
+                trait __BorshTags {
+                    const __BORSH_TAGS: #ty;
+                }
+                impl __BorshTags for #name {
+                    const __BORSH_TAGS: #ty = [#(#checks),*];
+                }
+                const __BORSH_TAGS: #ty = <#name as __BorshTags>::__BORSH_TAGS;
+            }
+        } else {
+            // A generic enum's discriminants can't name `Self`.
+            quote!(const __BORSH_TAGS: #ty = [#(#checks),*];)
+        }
     }
 }

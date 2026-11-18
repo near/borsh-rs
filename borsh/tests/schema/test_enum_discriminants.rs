@@ -100,3 +100,25 @@ fn test_schema_discriminant_no_unit_type_no_use_discriminant() {
         defs
     );
 }
+
+#[allow(unused)]
+#[derive(BorshSchema)]
+#[borsh(use_discriminant = true)]
+#[repr(u8)]
+enum Operators {
+    A = 1 | 2,
+    B,
+    C = 1 << 4,
+    D,
+}
+
+#[test]
+fn test_schema_discriminant_after_operator_expression() {
+    let mut defs = Default::default();
+    Operators::add_definitions_recursively(&mut defs);
+    let Definition::Enum { variants, .. } = &defs["Operators"] else {
+        panic!("not an enum");
+    };
+    let tags: Vec<i64> = variants.iter().map(|(tag, _, _)| *tag).collect();
+    assert_eq!(tags, vec![3, 4, 16, 17]);
+}
