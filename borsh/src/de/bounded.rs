@@ -1,8 +1,7 @@
-//! Bounded decoding: each impl decodes like its `BorshDeserialize` twin in `de.rs`, with the
-//! same reads, checks and constructors, plus a charge before each allocation. Collections
-//! start through the same `start_seq` (zero-size check and recursion level) and the reader
-//! entry point ends with the same `expect_end`. `assert_bounded_parity` in the tests catches
-//! drift between the twins.
+//! Bounded decoding: each impl decodes like its `BorshDeserialize` twin in `de.rs`, plus a
+//! charge before each allocation. Collections decode through the same `read_seq` as plain
+//! ones, scalar twins come from `de.rs`'s own type macros, and the reader entry point ends with
+//! the same `expect_end`. `assert_bounded_parity` in the tests catches drift.
 
 use core::convert::TryFrom;
 use core::mem::size_of;
@@ -15,7 +14,7 @@ use crate::__private::maybestd::{
 };
 use crate::io::{Read, Result};
 
-use super::{cautious, expect_end, start_seq, BorshDeserialize, RecursionGuard};
+use super::{expect_end, read_seq, BorshDeserialize, Elements, RecursionGuard};
 use super::{invalid, ERROR_NOT_ALL_BYTES_READ};
 
 mod budget;
@@ -67,89 +66,39 @@ pub trait EnumExtBounded: BorshDeserializeBounded {
     ) -> Result<Self>;
 }
 
-/// A collection's decode: `start_seq`, then a charge for the vector plus `extra(n)` before
-/// reading any element.
+/// Bounded decoding: the vector and `extra(n)` are charged before any element is read.
+struct Charged<'a> {
+    budget: &'a mut Budget,
+    extra: fn(usize) -> Option<usize>,
+}
+
+impl<T: BorshDeserializeBounded> Elements<T> for Charged<'_> {
+    const ENCODES_TO_ZERO_BYTES: bool = T::ENCODES_TO_ZERO_BYTES;
+    #[inline]
+    fn start(&mut self, len: u32) -> Result<()> {
+        // Only fails on 16-bit targets.
+        let n = usize::try_from(len).map_err(|_| self.budget.exceeded(usize::MAX))?;
+        self.budget.charge_array::<T>(n)?;
+        self.budget.charge_checked((self.extra)(n))
+    }
+    #[inline]
+    fn bulk<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<T>>> {
+        T::vec_from_reader_bounded(len, reader)
+    }
+    #[inline]
+    fn next<R: Read>(&mut self, reader: &mut R) -> Result<T> {
+        T::deserialize_bounded_alloc(reader, self.budget)
+    }
+}
+
+/// A collection's bounded decode: `read_seq`, charging the vector plus `extra(n)` up front.
 fn decode_seq<T: BorshDeserializeBounded, R: Read>(
     reader: &mut R,
     budget: &mut Budget,
-    extra: impl FnOnce(usize) -> Option<usize>,
+    extra: fn(usize) -> Option<usize>,
 ) -> Result<Vec<T>> {
-    let Some((len, _guard)) = start_seq::<T, _>(reader, T::ENCODES_TO_ZERO_BYTES)? else {
-        return Ok(Vec::new());
-    };
-    // Only fails on 16-bit targets.
-    let n = usize::try_from(len).map_err(|_| budget.exceeded(usize::MAX))?;
-    budget.charge_array::<T>(n)?;
-    budget.charge_checked(extra(n))?;
-    if let Some(vec) = T::vec_from_reader_bounded(len, reader)? {
-        return Ok(vec);
-    }
-    // Grows like plain decoding but stops at `n`: a false length allocates no more than plain.
-    let mut result = Vec::with_capacity(cautious::<T>(len));
-    for _ in 0..len {
-        let value = T::deserialize_bounded_alloc(reader, budget)?;
-        if result.len() == result.capacity() {
-            result.reserve_exact(result.capacity().min(n - result.len()));
-        }
-        result.push(value);
-    }
-    Ok(result)
+    read_seq(reader, &mut Charged { budget, extra })
 }
-
-/// Only for types whose plain decoder never allocates.
-macro_rules! impl_bounded_via_plain {
-    ($($type:ty),+ $(,)?) => {
-        $(
-            impl $crate::de::BorshDeserializeBounded for $type {
-                #[inline]
-                fn deserialize_bounded_alloc<R: $crate::io::Read>(
-                    reader: &mut R,
-                    _budget: &mut $crate::de::Budget,
-                ) -> $crate::io::Result<Self> {
-                    <$type as $crate::de::BorshDeserialize>::deserialize_reader(reader)
-                }
-                const ENCODES_TO_ZERO_BYTES: bool =
-                    <$type as $crate::de::BorshDeserialize>::ENCODES_TO_ZERO_BYTES;
-            }
-        )+
-    };
-}
-
-impl_bounded_via_plain!(
-    i8,
-    i16,
-    i32,
-    i64,
-    i128,
-    u16,
-    u32,
-    u64,
-    u128,
-    isize,
-    usize,
-    f32,
-    f64,
-    bool,
-    core::num::NonZeroI8,
-    core::num::NonZeroI16,
-    core::num::NonZeroI32,
-    core::num::NonZeroI64,
-    core::num::NonZeroI128,
-    core::num::NonZeroU8,
-    core::num::NonZeroU16,
-    core::num::NonZeroU32,
-    core::num::NonZeroU64,
-    core::num::NonZeroU128,
-    core::num::NonZeroUsize,
-    (),
-    core::ops::RangeFull,
-    core::net::SocketAddr,
-    core::net::IpAddr,
-    core::net::SocketAddrV4,
-    core::net::SocketAddrV6,
-    core::net::Ipv4Addr,
-    core::net::Ipv6Addr,
-);
 
 impl BorshDeserializeBounded for u8 {
     #[inline]

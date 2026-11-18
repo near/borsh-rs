@@ -210,8 +210,34 @@ impl BorshDeserialize for u8 {
     }
 }
 
+/// The bounded twin of a type whose plain decode never allocates: the same decode, with
+/// nothing to charge.
+macro_rules! bounded_as_plain {
+    ($($t:ty),*) => {$(
+        #[cfg(feature = "unstable__bounded")]
+        impl bounded::BorshDeserializeBounded for $t {
+            const ENCODES_TO_ZERO_BYTES: bool = <$t as BorshDeserialize>::ENCODES_TO_ZERO_BYTES;
+            #[inline]
+            fn deserialize_bounded_alloc<R: Read>(
+                reader: &mut R,
+                _budget: &mut bounded::Budget,
+            ) -> Result<Self> {
+                <$t as BorshDeserialize>::deserialize_reader(reader)
+            }
+        }
+    )*};
+}
+bounded_as_plain!(
+    bool,
+    core::net::SocketAddrV4,
+    core::net::SocketAddrV6,
+    core::net::Ipv4Addr,
+    core::net::Ipv6Addr
+);
+
 macro_rules! int {
     ($($t:ident)*) => {$(
+        bounded_as_plain!($t);
         impl BorshDeserialize for $t {
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                 Ok($t::from_le_bytes(bytes(reader)?))
@@ -223,6 +249,7 @@ int!(i8 i16 i32 i64 i128 u16 u32 u64 u128);
 
 macro_rules! nonzero {
     ($($t:ident)*) => {$(
+        bounded_as_plain!(core::num::$t);
         impl BorshDeserialize for core::num::$t {
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                 Self::new(BorshDeserialize::deserialize_reader(reader)?)
@@ -239,6 +266,7 @@ nonzero! {
 /// `isize`/`usize` travel as 64 bits and must fit the machine's width.
 macro_rules! size {
     ($($t:ident $wire:ident $bits:literal,)*) => {$(
+        bounded_as_plain!($t);
         impl BorshDeserialize for $t {
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                 let v: $wire = BorshDeserialize::deserialize_reader(reader)?;
@@ -252,6 +280,7 @@ size!(isize i64 "isize", usize u64 "usize",);
 
 macro_rules! float {
     ($($t:ident $bits:ident)*) => {$(
+        bounded_as_plain!($t);
         impl BorshDeserialize for $t {
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                 let v = $t::from_bits($bits::from_le_bytes(bytes(reader)?));
@@ -329,35 +358,67 @@ pub mod ascii {
     }
 }
 
-/// Starts a length-prefixed collection, for plain and bounded decoding alike: the element type
-/// must not be zero-sized or encode to zero bytes, and a nonempty collection is one level of
-/// the recursion limit. `None` for an empty one.
-#[inline]
-fn start_seq<T, R: Read>(
-    reader: &mut R,
-    encodes_to_zero_bytes: bool,
-) -> Result<Option<(u32, RecursionGuard)>> {
-    crate::error::check_zst::<T>(encodes_to_zero_bytes)?;
-    match u32::deserialize_reader(reader)? {
-        0 => Ok(None),
-        len => Ok(Some((len, RecursionGuard::enter()?))),
+/// How [`read_seq`] decodes elements: [`Plain`], or charged to a budget in bounded decoding.
+trait Elements<T> {
+    /// Whether every element encodes to zero bytes; such collections are rejected.
+    const ENCODES_TO_ZERO_BYTES: bool;
+    /// Runs once the length is known, before any element is read.
+    fn start(&mut self, len: u32) -> Result<()>;
+    /// Reads all `len` elements in one go, or `None` (leaving the reader untouched).
+    fn bulk<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<T>>>;
+    fn next<R: Read>(&mut self, reader: &mut R) -> Result<T>;
+}
+
+/// Plain decoding: nothing to charge.
+struct Plain;
+
+impl<T: BorshDeserialize> Elements<T> for Plain {
+    const ENCODES_TO_ZERO_BYTES: bool = T::ENCODES_TO_ZERO_BYTES;
+    #[inline]
+    fn start(&mut self, _len: u32) -> Result<()> {
+        Ok(())
+    }
+    #[inline]
+    fn bulk<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<T>>> {
+        T::vec_from_reader(len, reader)
+    }
+    #[inline]
+    fn next<R: Read>(&mut self, reader: &mut R) -> Result<T> {
+        T::deserialize_reader(reader)
     }
 }
 
-/// Every length-prefixed collection decodes through here, with cautious preallocation.
+/// Every length-prefixed collection decodes through here, plain and bounded alike. The element
+/// type must not encode to zero bytes, and a nonempty collection is one level of the recursion
+/// limit. The vector starts small and grows as elements arrive, never past the length, so a
+/// false length costs little.
+#[inline]
+fn read_seq<T, E: Elements<T>, R: Read>(reader: &mut R, elements: &mut E) -> Result<Vec<T>> {
+    crate::error::check_zst::<T>(E::ENCODES_TO_ZERO_BYTES)?;
+    let len = u32::deserialize_reader(reader)?;
+    if len == 0 {
+        return Ok(Vec::new());
+    }
+    let _guard = RecursionGuard::enter()?;
+    elements.start(len)?;
+    if let Some(vec) = E::bulk(len, reader)? {
+        return Ok(vec);
+    }
+    let n = usize::try_from(len).unwrap_or(usize::MAX);
+    let mut result = Vec::with_capacity(cautious::<T>(len));
+    for _ in 0..len {
+        let value = elements.next(reader)?;
+        if result.len() == result.capacity() {
+            result.reserve_exact(result.capacity().min(n - result.len()));
+        }
+        result.push(value);
+    }
+    Ok(result)
+}
+
 impl<T: BorshDeserialize> BorshDeserialize for Vec<T> {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let Some((len, _guard)) = start_seq::<T, _>(reader, T::ENCODES_TO_ZERO_BYTES)? else {
-            return Ok(Vec::new());
-        };
-        if let Some(vec) = T::vec_from_reader(len, reader)? {
-            return Ok(vec);
-        }
-        let mut result = Vec::with_capacity(cautious::<T>(len));
-        for _ in 0..len {
-            result.push(T::deserialize_reader(reader)?);
-        }
-        Ok(result)
+        read_seq(reader, &mut Plain)
     }
 }
 
@@ -520,6 +581,7 @@ impl<K: BorshDeserialize + Ord, V: BorshDeserialize> BorshDeserialize for BTreeM
 /// `flowinfo` and `scope_id` are always `0`; see the `SocketAddrV6` impl.
 macro_rules! net_enum {
     ($($t:ident $v4:ident $v6:ident,)*) => {$(
+        bounded_as_plain!(core::net::$t);
         impl BorshDeserialize for core::net::$t {
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                 match u8::deserialize_reader(reader)? {
@@ -619,6 +681,7 @@ impl<T: BorshDeserialize, const N: usize> BorshDeserialize for [T; N] {
 
 macro_rules! unit {
     ($($t:ty),*) => {$(
+        bounded_as_plain!($t);
         impl BorshDeserialize for $t {
             const ENCODES_TO_ZERO_BYTES: bool = true;
             fn deserialize_reader<R: Read>(_reader: &mut R) -> Result<Self> {
