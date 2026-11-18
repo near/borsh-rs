@@ -1,7 +1,14 @@
-//! Walks over a schema container: the largest encoding, and validation. Both are depth-first,
-//! with the declarations on the current path as the recursion check.
+//! Walks over a schema container: the largest encoding, and validation. A container can come
+//! from untrusted bytes, so no walk recurses (a deep chain can't overflow the stack) and each
+//! walks a declaration once however often it is referenced (shared declarations can't blow
+//! up the walk). Each keeps the declarations it has yet to visit on the heap.
 use super::{BorshSchemaContainer, Declaration, Definition, Fields};
-use crate::__private::maybestd::{string::ToString, vec, vec::Vec};
+use crate::__private::maybestd::{
+    collections::{BTreeMap, BTreeSet},
+    string::ToString,
+    vec,
+    vec::Vec,
+};
 use core::convert::TryFrom;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -33,10 +40,11 @@ pub enum SchemaContainerValidateError {
 use SchemaContainerValidateError as V;
 use SchemaMaxSerializedSizeError as M;
 
-/// The declarations a tuple, struct or enum holds, in order. Other definitions hold none here;
-/// each walk handles sequences itself.
+/// The declarations `definition` refers to, last first, so that popping them visits them in
+/// order.
 fn members(definition: &Definition) -> Vec<&Declaration> {
-    match definition {
+    let mut members: Vec<_> = match definition {
+        Definition::Sequence { elements, .. } => vec![elements],
         Definition::Tuple { elements }
         | Definition::Struct {
             fields: Fields::UnnamedFields(elements),
@@ -45,8 +53,13 @@ fn members(definition: &Definition) -> Vec<&Declaration> {
             fields: Fields::NamedFields(fields),
         } => fields.iter().map(|(_, d)| d).collect(),
         Definition::Enum { variants, .. } => variants.iter().map(|(_, _, d)| d).collect(),
-        _ => Vec::new(),
-    }
+        Definition::Primitive(_)
+        | Definition::Struct {
+            fields: Fields::Empty,
+        } => Vec::new(),
+    };
+    members.reverse();
+    members
 }
 
 impl BorshSchemaContainer {
@@ -77,7 +90,48 @@ impl BorshSchemaContainer {
     ///            schema.max_serialized_size());
     /// ```
     pub fn max_serialized_size(&self) -> Result<usize, M> {
-        max_size(1, self.declaration(), self, &mut Vec::new())
+        // The size of one value of each declaration sized so far. Any error ends the walk, so
+        // only sizes are kept.
+        let mut sizes = BTreeMap::new();
+        let mut zero_sizes = ZeroSizes::new();
+        // The declarations being sized: `path` to find recursion, `frames` to resume them.
+        let mut path = BTreeSet::new();
+        let mut frames: Vec<Frame> = Vec::new();
+        let mut next = Some(self.declaration().as_str());
+        // The size of the declaration reached last, once known.
+        let mut size = None;
+        loop {
+            if let Some(decl) = next.take() {
+                size = sizes.get(decl).copied();
+                if size.is_none() {
+                    if !path.insert(decl) {
+                        return Err(M::Recursive);
+                    }
+                    frames.push(Frame::new(decl, self, &path, &mut zero_sizes)?);
+                }
+            }
+            let Some(frame) = frames.last_mut() else {
+                return Ok(size.expect("the root declaration is sized"));
+            };
+            if let Some(member) = size.take() {
+                frame.acc = match frame.fold {
+                    Fold::Sum => frame.acc.checked_add(member),
+                    Fold::Max => Some(frame.acc.max(member)),
+                    Fold::Times(count) => count.checked_mul(member),
+                }
+                .ok_or(M::Overflow)?;
+            }
+            if let Some(member) = frame.members.pop() {
+                next = Some(member.as_str());
+                continue;
+            }
+            let (decl, total) = (frame.decl, frame.acc.checked_add(frame.extra));
+            let total = total.ok_or(M::Overflow)?;
+            frames.pop();
+            path.remove(decl);
+            sizes.insert(decl, total);
+            size = Some(total);
+        }
     }
 
     /// Validates container for violation of any well-known rules with
@@ -95,103 +149,155 @@ impl BorshSchemaContainer {
     /// assert_eq!(Ok(()), schema.validate());
     /// ```
     pub fn validate(&self) -> Result<(), V> {
-        validate(self.declaration(), self, &mut Vec::new())
+        // Every declaration reached so far, checked once however often it is referenced. The
+        // first error is the same as a walk that skips only the declarations on its path:
+        // everything reachable from a visited declaration is checked already or on the path.
+        let mut visited = BTreeSet::new();
+        let mut zero_sizes = ZeroSizes::new();
+        // Declarations left to check, the next one last.
+        let mut pending = vec![self.declaration()];
+        while let Some(decl) = pending.pop() {
+            let definition = self
+                .get_definition(decl)
+                .ok_or_else(|| V::MissingDefinition(decl.to_string()))?;
+            if visited.insert(decl) {
+                check(decl, definition, self, &mut zero_sizes)?;
+                pending.extend(members(definition));
+            }
+        }
+        Ok(())
     }
 }
 
-/// Look up `decl` and push it on the path of declarations being walked; a declaration
-/// already on the path is a cycle.
-fn enter<'a>(
+/// A declaration that `max_serialized_size` is sizing.
+struct Frame<'a> {
     decl: &'a str,
-    schema: &'a BorshSchemaContainer,
-    path: &mut Vec<&'a str>,
-) -> Result<&'a Definition, M> {
-    if path.contains(&decl) {
-        return Err(M::Recursive);
+    /// Members left to size, the next one last.
+    members: Vec<&'a Declaration>,
+    /// How member sizes combine into `acc`.
+    fold: Fold,
+    acc: usize,
+    /// Added once all members are sized: a tag or length width, or a primitive's size.
+    extra: usize,
+}
+
+enum Fold {
+    Sum,
+    Max,
+    Times(usize),
+}
+
+impl<'a> Frame<'a> {
+    fn new(
+        decl: &'a str,
+        schema: &'a BorshSchemaContainer,
+        path: &BTreeSet<&'a str>,
+        zero_sizes: &mut ZeroSizes<'a>,
+    ) -> Result<Self, M> {
+        let definition = schema
+            .get_definition(decl)
+            .ok_or_else(|| M::MissingDefinition(decl.to_string()))?;
+        let (members, fold, extra) = match definition {
+            Definition::Primitive(size) => (Vec::new(), Fold::Sum, usize::from(*size)),
+            Definition::Sequence {
+                length_width,
+                length_range,
+                elements,
+            } => {
+                let width = usize::from(*length_width);
+                // The longest sequence: `max_len` elements.
+                match usize::try_from(*length_range.end()) {
+                    Ok(0) => (Vec::new(), Fold::Sum, width),
+                    Ok(max_len) => (vec![elements], Fold::Times(max_len), width),
+                    Err(_) if is_zero_size(elements, schema, path, zero_sizes)? => {
+                        (Vec::new(), Fold::Sum, width)
+                    }
+                    Err(_) => return Err(M::Overflow),
+                }
+            }
+            Definition::Enum { tag_width, .. } => {
+                (members(definition), Fold::Max, usize::from(*tag_width))
+            }
+            Definition::Tuple { .. } | Definition::Struct { .. } => {
+                (members(definition), Fold::Sum, 0)
+            }
+        };
+        Ok(Frame {
+            decl,
+            members,
+            fold,
+            acc: 0,
+            extra,
+        })
     }
-    path.push(decl);
-    schema
-        .get_definition(decl)
-        .ok_or_else(|| M::MissingDefinition(decl.to_string()))
 }
 
-/// The walk behind `max_serialized_size`. `count` is at least 1.
-fn max_size<'a>(
-    count: usize,
-    decl: &'a str,
-    schema: &'a BorshSchemaContainer,
-    path: &mut Vec<&'a str>,
-) -> Result<usize, M> {
-    let definition = enter(decl, schema, path)?;
-    let mut size_of_one = |decl| max_size(1, decl, schema, path);
-    let size = match definition {
-        Definition::Primitive(size) => count.checked_mul(usize::from(*size)),
-        Definition::Sequence {
-            length_width,
-            length_range,
-            elements,
-        } => {
-            let items = match usize::try_from(*length_range.end()) {
-                Ok(0) => 0,
-                Ok(len) => max_size(len, elements, schema, path)?,
-                Err(_) if is_zero_size(elements, schema, path)? => 0,
-                Err(_) => return Err(M::Overflow),
-            };
-            let one = items.checked_add(usize::from(*length_width));
-            one.ok_or(M::Overflow)?.checked_mul(count)
-        }
-        Definition::Enum { tag_width, .. } => {
-            let mut max = 0;
-            for variant in members(definition) {
-                max = max.max(size_of_one(variant)?);
-            }
-            max.checked_add(usize::from(*tag_width))
-        }
-        Definition::Tuple { .. } | Definition::Struct { .. } => {
-            let mut sum = 0usize;
-            for member in members(definition) {
-                sum = sum.checked_add(size_of_one(member)?).ok_or(M::Overflow)?;
-            }
-            sum.checked_mul(count)
-        }
-    };
-    path.pop();
-    size.ok_or(M::Overflow)
-}
+/// The zero-size answers of one walk, so a declaration that many sequences hold is checked
+/// once. `None` marks a check under way, or one that ran into recursion; reaching it again is
+/// recursion, since each declaration on the path when recursion is found leads back into it.
+type ZeroSizes<'a> = BTreeMap<&'a str, Option<bool>>;
 
-/// Whether every value of `decl` encodes to zero bytes. Fails with `Recursive` or
-/// `MissingDefinition`.
+/// Whether every value of `decl` encodes to zero bytes. Fails with `Recursive` (also on
+/// reaching a declaration in `outer`, the path of the walk that asks) or `MissingDefinition`.
 fn is_zero_size<'a>(
     decl: &'a str,
     schema: &'a BorshSchemaContainer,
-    path: &mut Vec<&'a str>,
+    outer: &BTreeSet<&'a str>,
+    cache: &mut ZeroSizes<'a>,
 ) -> Result<bool, M> {
-    let definition = enter(decl, schema, path)?;
-    let zero = match definition {
-        Definition::Primitive(size) => *size == 0,
-        Definition::Sequence {
-            length_width,
-            length_range,
-            elements,
-        } => {
-            *length_width == 0
-                && ((length_range.clone().count() == 1 && *length_range.start() == 0)
-                    || is_zero_size(elements, schema, path)?)
-        }
-        Definition::Enum { tag_width, .. } if *tag_width != 0 => false,
-        _ => {
-            let mut all = true;
-            for member in members(definition) {
-                if !is_zero_size(member, schema, path)? {
-                    all = false;
-                    break;
-                }
+    // Declarations being checked, each with the members left to check, the next one last.
+    let mut frames: Vec<(&str, Vec<&Declaration>)> = Vec::new();
+    let mut next = Some(decl);
+    // The answer for the declaration reached last, once known.
+    let mut zero = None;
+    loop {
+        if let Some(decl) = next.take() {
+            if outer.contains(decl) {
+                return Err(M::Recursive);
             }
-            all
+            zero = match cache.get(decl) {
+                Some(known) => Some(known.ok_or(M::Recursive)?),
+                None => {
+                    let definition = schema
+                        .get_definition(decl)
+                        .ok_or_else(|| M::MissingDefinition(decl.to_string()))?;
+                    match zero_size_members(definition) {
+                        Some(members) => {
+                            cache.insert(decl, None);
+                            frames.push((decl, members));
+                            None
+                        }
+                        None => Some(false),
+                    }
+                }
+            };
         }
-    };
-    path.pop();
-    Ok(zero)
+        let Some((decl, members)) = frames.last_mut() else {
+            return Ok(zero.expect("the first declaration is checked"));
+        };
+        if zero != Some(false) {
+            if let Some(member) = members.pop() {
+                next = Some(member.as_str());
+                continue;
+            }
+        }
+        let all_zero = zero != Some(false);
+        cache.insert(decl, Some(all_zero));
+        frames.pop();
+        zero = Some(all_zero);
+    }
+}
+
+/// The members of `definition`, last first, which all encode to zero bytes exactly when it
+/// does; `None` if it never does.
+fn zero_size_members(definition: &Definition) -> Option<Vec<&Declaration>> {
+    match definition {
+        Definition::Primitive(size) => (*size == 0).then(Vec::new),
+        Definition::Sequence { length_width, .. } if *length_width != 0 => None,
+        Definition::Sequence { length_range, .. } if *length_range == (0..=0) => Some(Vec::new()),
+        Definition::Enum { tag_width, .. } if *tag_width != 0 => None,
+        _ => Some(members(definition)),
+    }
 }
 
 /// A `width`-byte length must hold `max`; widths are 0 (none), 1, 2, 4 or 8.
@@ -205,25 +311,20 @@ fn check_length_width(decl: &Declaration, width: u8, max: u64) -> Result<(), V> 
     }
 }
 
-fn validate<'a>(
+/// Checks `decl`'s own definition, not its members.
+fn check<'a>(
     decl: &'a Declaration,
+    definition: &'a Definition,
     schema: &'a BorshSchemaContainer,
-    path: &mut Vec<&'a Declaration>,
+    zero_sizes: &mut ZeroSizes<'a>,
 ) -> Result<(), V> {
-    let definition = schema
-        .get_definition(decl)
-        .ok_or_else(|| V::MissingDefinition(decl.to_string()))?;
-    if path.contains(&decl) {
-        return Ok(());
-    }
-    path.push(decl);
-    let children = match definition {
+    match definition {
         // A fixed-length array: no length to check.
         Definition::Sequence {
             length_width: Definition::ARRAY_LENGTH_WIDTH,
             length_range,
-            elements,
-        } if length_range.clone().count() == 1 => vec![elements],
+            ..
+        } if !length_range.is_empty() && length_range.start() == length_range.end() => Ok(()),
         Definition::Sequence {
             length_width,
             length_range,
@@ -234,23 +335,17 @@ fn validate<'a>(
             }
             check_length_width(decl, *length_width, *length_range.end())?;
             // A recursive element type isn't zero-sized.
-            match is_zero_size(elements, schema, &mut Vec::new()) {
-                Ok(true) => return Err(V::ZSTSequence(decl.clone())),
-                Err(M::MissingDefinition(d)) => return Err(V::MissingDefinition(d)),
-                Ok(false) | Err(_) => {}
+            match is_zero_size(elements, schema, &BTreeSet::new(), zero_sizes) {
+                Ok(true) => Err(V::ZSTSequence(decl.clone())),
+                Err(M::MissingDefinition(d)) => Err(V::MissingDefinition(d)),
+                Ok(false) | Err(_) => Ok(()),
             }
-            vec![elements]
         }
         Definition::Enum { tag_width, .. } if *tag_width > 8 => {
-            return Err(V::TagTooWide(decl.to_string()))
+            Err(V::TagTooWide(decl.to_string()))
         }
-        _ => members(definition),
-    };
-    for child in children {
-        validate(child, schema, path)?;
+        _ => Ok(()),
     }
-    path.pop();
-    Ok(())
 }
 
 #[cfg(test)]
@@ -294,7 +389,12 @@ mod tests {
         let schema = BorshSchemaContainer::for_type::<ExitsThroughSequence>();
         assert_eq!(
             Ok(false),
-            is_zero_size(schema.declaration(), &schema, &mut Vec::new())
+            is_zero_size(
+                schema.declaration(),
+                &schema,
+                &BTreeSet::new(),
+                &mut ZeroSizes::new()
+            )
         );
 
         #[derive(::borsh_derive::BorshSchema)]
@@ -303,7 +403,12 @@ mod tests {
         let schema = BorshSchemaContainer::for_type::<NoExit>();
         assert_eq!(
             Err(M::Recursive),
-            is_zero_size(schema.declaration(), &schema, &mut Vec::new())
+            is_zero_size(
+                schema.declaration(),
+                &schema,
+                &BTreeSet::new(),
+                &mut ZeroSizes::new()
+            )
         );
     }
 }

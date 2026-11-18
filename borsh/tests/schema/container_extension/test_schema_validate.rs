@@ -62,6 +62,14 @@ fn validate_for_zst_sequences() {
     test_err::<Vec<core::ops::RangeFull>>(SchemaContainerValidateError::ZSTSequence(
         "Vec<RangeFull>".to_string(),
     ));
+    // the same zero-sized array type twice must not be mistaken for recursion
+    #[derive(BorshSchema)]
+    #[allow(unused)]
+    struct RepeatedArrays([u8; 0], [u8; 0], Box<()>);
+
+    test_err::<Vec<RepeatedArrays>>(SchemaContainerValidateError::ZSTSequence(
+        "Vec<RepeatedArrays>".to_string(),
+    ));
 }
 
 /// The schema describes the encoding, and transparent wrappers declare their inner type,
@@ -141,4 +149,7 @@ fn validate_bound_vec() {
 
     test_ok::<BoundVec<1, { u8::MAX as u64 }>>();
     test_ok::<BoundVec<0, { u16::MAX as u64 }>>();
+    // more lengths than `usize::MAX`, which used to panic when counted
+    test_ok::<BoundVec<0, { u64::MAX }>>();
+    test_ok::<Vec<BoundVec<0, { u64::MAX }>>>();
 }

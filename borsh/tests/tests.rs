@@ -120,6 +120,7 @@ mod schema {
     mod container_extension {
         mod test_schema_validate;
         mod test_max_size;
+        mod test_large_schemas;
     }
 }
 
