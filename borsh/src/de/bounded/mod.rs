@@ -14,7 +14,7 @@ use crate::__private::maybestd::{
 use crate::error::check_zst;
 use crate::io::{Error, ErrorKind, Read, Result};
 
-use super::{BorshDeserialize, ERROR_NOT_ALL_BYTES_READ};
+use super::{BorshDeserialize, RecursionGuard, ERROR_NOT_ALL_BYTES_READ};
 
 mod budget;
 mod size;
@@ -76,6 +76,8 @@ where
     if len == 0 {
         return Ok(Vec::new());
     }
+    // As in plain decoding, before `vec_from_reader_bounded` too.
+    let _guard = RecursionGuard::enter()?;
     // Only fails on 16-bit targets.
     let n = usize::try_from(len).map_err(|_| budget.exceeded(usize::MAX))?;
     budget.charge_array::<T>(n)?;
@@ -192,6 +194,7 @@ where
         if size_of::<*const T>() == size_of::<*const ()>() {
             budget.charge_bytes(size_of::<U>())?;
         }
+        let _guard = RecursionGuard::enter()?;
         Ok(T::Owned::deserialize_bounded_alloc(reader, budget)?.into())
     }
 }
