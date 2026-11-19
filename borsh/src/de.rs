@@ -145,18 +145,23 @@ fn cautious<T>(hint: u32) -> usize {
     core::cmp::max(core::cmp::min(hint as usize, 4096 / size_of::<T>()), 1)
 }
 
-/// Maps and sets decode as a `Vec` of entries. A key type that encodes to zero bytes is
-/// rejected before anything is read, and under `de_strict_order` the keys must be strictly
-/// ascending: sorted, no duplicates.
-fn sorted<R, K, T, C>(reader: &mut R, key: impl Fn(&T) -> &K) -> Result<C>
+/// Maps and sets decode as a `Vec` of entries, read with `elements`. A key type that encodes to
+/// zero bytes is rejected before anything is read, and under `de_strict_order` the keys must be
+/// strictly ascending: sorted, no duplicates.
+fn sorted<T, K, C, E, R>(
+    reader: &mut R,
+    elements: &mut E,
+    key_zero_bytes: bool,
+    key: impl Fn(&T) -> &K,
+) -> Result<C>
 where
-    R: Read,
-    K: BorshDeserialize + Ord,
-    T: BorshDeserialize,
+    K: Ord,
     C: FromIterator<T>,
+    E: Elements<T>,
+    R: Read,
 {
-    crate::error::check_zst::<K>(K::ENCODES_TO_ZERO_BYTES)?;
-    let vec = Vec::<T>::deserialize_reader(reader)?;
+    crate::error::check_zst::<K>(key_zero_bytes)?;
+    let vec = read_seq(reader, elements)?;
     if cfg!(feature = "de_strict_order")
         && vec.windows(2).any(|w| !key(&w[0]).cmp(key(&w[1])).is_lt())
     {
@@ -306,30 +311,37 @@ impl BorshDeserialize for bool {
     }
 }
 
+/// The 0/1 tag of `Option` and `Result`.
+#[inline]
+fn tag<R: Read>(reader: &mut R, what: &str) -> Result<bool> {
+    match u8::deserialize_reader(reader)? {
+        0 => Ok(false),
+        1 => Ok(true),
+        flag => Err(invalid(format!(
+            "Invalid {} representation: {}. The first byte must be 0 or 1",
+            what, flag
+        ))),
+    }
+}
+
 impl<T: BorshDeserialize> BorshDeserialize for Option<T> {
     #[inline]
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        match u8::deserialize_reader(reader)? {
-            0 => Ok(None),
-            1 => Ok(Some(T::deserialize_reader(reader)?)),
-            flag => Err(invalid(format!(
-                "Invalid Option representation: {}. The first byte must be 0 or 1",
-                flag
-            ))),
-        }
+        Ok(if tag(reader, "Option")? {
+            Some(T::deserialize_reader(reader)?)
+        } else {
+            None
+        })
     }
 }
 
 impl<T: BorshDeserialize, E: BorshDeserialize> BorshDeserialize for core::result::Result<T, E> {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        match u8::deserialize_reader(reader)? {
-            0 => Ok(Err(E::deserialize_reader(reader)?)),
-            1 => Ok(Ok(T::deserialize_reader(reader)?)),
-            flag => Err(invalid(format!(
-                "Invalid Result representation: {}. The first byte must be 0 or 1",
-                flag
-            ))),
-        }
+        Ok(if tag(reader, "Result")? {
+            Ok(T::deserialize_reader(reader)?)
+        } else {
+            Err(E::deserialize_reader(reader)?)
+        })
     }
 }
 
@@ -554,7 +566,7 @@ pub mod hashes {
         H: BuildHasher + Default,
     {
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-            sorted(reader, |t: &T| t)
+            sorted(reader, &mut Plain, T::ENCODES_TO_ZERO_BYTES, |t: &T| t)
         }
     }
 
@@ -565,20 +577,30 @@ pub mod hashes {
         H: BuildHasher + Default,
     {
         fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-            sorted(reader, |(k, _): &(K, V)| k)
+            sorted(
+                reader,
+                &mut Plain,
+                K::ENCODES_TO_ZERO_BYTES,
+                |(k, _): &(K, V)| k,
+            )
         }
     }
 }
 
 impl<T: BorshDeserialize + Ord> BorshDeserialize for BTreeSet<T> {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        sorted(reader, |t: &T| t)
+        sorted(reader, &mut Plain, T::ENCODES_TO_ZERO_BYTES, |t: &T| t)
     }
 }
 
 impl<K: BorshDeserialize + Ord, V: BorshDeserialize> BorshDeserialize for BTreeMap<K, V> {
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        sorted(reader, |(k, _): &(K, V)| k)
+        sorted(
+            reader,
+            &mut Plain,
+            K::ENCODES_TO_ZERO_BYTES,
+            |(k, _): &(K, V)| k,
+        )
     }
 }
 
@@ -650,37 +672,62 @@ where
     }
 }
 
+/// An array being decoded. Drops the initialized prefix if decoding fails or panics part way.
+struct PartialArray<T, const N: usize> {
+    buffer: [MaybeUninit<T>; N],
+    init: usize,
+}
+
+impl<T, const N: usize> PartialArray<T, N> {
+    #[inline]
+    fn new() -> Self {
+        // SAFETY: an array of `MaybeUninit` needs no initialization.
+        PartialArray {
+            buffer: unsafe { MaybeUninit::uninit().assume_init() },
+            init: 0,
+        }
+    }
+
+    #[inline]
+    fn is_full(&self) -> bool {
+        self.init == N
+    }
+
+    #[inline]
+    fn push(&mut self, value: T) {
+        self.buffer[self.init].write(value);
+        self.init += 1;
+    }
+
+    /// # Safety
+    /// All `N` elements must have been pushed.
+    #[inline]
+    unsafe fn finish(mut self) -> [T; N] {
+        self.init = 0;
+        // SAFETY: all N elements are initialized, and `init = 0` keeps `drop` from dropping them.
+        core::ptr::read(&self.buffer as *const _ as *const [T; N])
+    }
+}
+
+impl<T, const N: usize> Drop for PartialArray<T, N> {
+    fn drop(&mut self) {
+        // SAFETY: the first `init` elements are initialized.
+        unsafe { core::ptr::drop_in_place(&mut self.buffer[..self.init] as *mut _ as *mut [T]) };
+    }
+}
+
 impl<T: BorshDeserialize, const N: usize> BorshDeserialize for [T; N] {
     const ENCODES_TO_ZERO_BYTES: bool = N == 0 || zero_bytes::<T>();
     fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        /// Drops the initialized prefix if decoding fails or panics part way.
-        struct Partial<T, const N: usize> {
-            buffer: [MaybeUninit<T>; N],
-            init: usize,
-        }
-        impl<T, const N: usize> Drop for Partial<T, N> {
-            fn drop(&mut self) {
-                // SAFETY: the first `init` elements are initialized.
-                unsafe {
-                    core::ptr::drop_in_place(&mut self.buffer[..self.init] as *mut _ as *mut [T])
-                };
-            }
-        }
         if let Some(arr) = T::array_from_reader(reader)? {
             return Ok(arr);
         }
-        // SAFETY: an array of `MaybeUninit` needs no initialization.
-        let mut out = Partial::<T, N> {
-            buffer: unsafe { MaybeUninit::uninit().assume_init() },
-            init: 0,
-        };
-        while out.init < N {
-            out.buffer[out.init].write(T::deserialize_reader(reader)?);
-            out.init += 1;
+        let mut out = PartialArray::<T, N>::new();
+        while !out.is_full() {
+            out.push(T::deserialize_reader(reader)?);
         }
-        out.init = 0;
-        // SAFETY: all N elements are initialized, and `init = 0` keeps `drop` from dropping them.
-        Ok(unsafe { core::ptr::read(&out.buffer as *const _ as *const [T; N]) })
+        // SAFETY: the loop pushed all `N` elements.
+        Ok(unsafe { out.finish() })
     }
 }
 
