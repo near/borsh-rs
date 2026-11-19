@@ -55,3 +55,51 @@ fn test_deep_box_chain_fails_on_the_way_down() {
     // The root and 9 boxes fit.
     assert_eq!(limit_exceeded(&err), Some((limit, size_of::<Chain>(), 0)));
 }
+
+#[cfg(feature = "std")]
+#[test]
+fn test_deep_box_chain_hits_the_recursion_limit() {
+    let input = vec![1u8; 1_000_000];
+    let err = from_slice_bounded::<Chain>(&input, &mut Budget::from_bytes(usize::MAX))
+        .err()
+        .expect("the chain never ends");
+    assert_eq!(err.to_string(), "Recursion limit exceeded");
+}
+
+#[cfg(feature = "std")]
+#[test]
+fn test_recursion_limit_matches_plain_decoding() {
+    use borsh::de::with_recursion_limit;
+    use borsh::BorshDeserialize;
+
+    fn both<T: BorshDeserialize + BorshDeserializeBounded>(
+        input: &[u8],
+        limit: usize,
+    ) -> [core::result::Result<(), alloc::string::String>; 2] {
+        let plain = with_recursion_limit(limit, || borsh::from_slice::<T>(input));
+        let bounded = with_recursion_limit(limit, || {
+            from_slice_bounded::<T>(input, &mut Budget::from_bytes(usize::MAX))
+        });
+        [plain, bounded].map(|result| result.map(drop).map_err(|err| err.to_string()))
+    }
+    let exceeded = Err("Recursion limit exceeded".to_string());
+
+    // Every `Box` is a level.
+    let three = to_vec(&Box::new(Box::new(Box::new(7u8)))).unwrap();
+    assert_eq!(both::<Box<Box<Box<u8>>>>(&three, 3), [Ok(()), Ok(())]);
+    assert_eq!(
+        both::<Box<Box<Box<u8>>>>(&three, 2),
+        [exceeded.clone(), exceeded.clone()]
+    );
+    // So is every non-empty `Vec`, also one decoded in one go.
+    let nested = to_vec(&vec![vec![1u8, 2], vec![]]).unwrap();
+    assert_eq!(both::<Vec<Vec<u8>>>(&nested, 2), [Ok(()), Ok(())]);
+    assert_eq!(
+        both::<Vec<Vec<u8>>>(&nested, 1),
+        [exceeded.clone(), exceeded.clone()]
+    );
+    let empty = to_vec(&Vec::<u64>::new()).unwrap();
+    assert_eq!(both::<Vec<u64>>(&empty, 0), [Ok(()), Ok(())]);
+    let numbers = to_vec(&vec![1u64]).unwrap();
+    assert_eq!(both::<Vec<u64>>(&numbers, 0), [exceeded.clone(), exceeded]);
+}
