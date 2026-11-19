@@ -1,6 +1,9 @@
 #![allow(clippy::float_cmp)]
 
 use borsh::{from_slice, to_vec};
+
+use crate::common_macro::assert_bounded_parity;
+
 #[cfg(feature = "derive")]
 use borsh::{BorshDeserialize, BorshSerialize};
 
@@ -12,6 +15,7 @@ macro_rules! test_array {
         #[cfg(feature = "std")]
         insta::assert_debug_snapshot!(buf);
         let actual_v: [$t; $len] = from_slice(&buf).expect("failed to deserialize");
+        assert_bounded_parity::<[$t; $len]>(&buf);
         assert_eq!($v.len(), actual_v.len());
         #[allow(clippy::reversed_empty_ranges)]
         for i in 0..$len {
@@ -73,5 +77,6 @@ fn test_string_array() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(serialized);
     let deserialized: [String; 3] = from_slice(&serialized).unwrap();
+    assert_bounded_parity::<[String; 3]>(&serialized);
     assert_eq!(arr, deserialized);
 }
