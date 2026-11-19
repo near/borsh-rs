@@ -27,6 +27,10 @@ name = "generate_schema_schema"
 path = "src/generate_schema_schema.rs"
 required-features = ["std", "unstable__schema"]
 
+[[test]]
+name = "bounded_allocations"
+required-features = ["unstable__bounded"]
+
 [dependencies]
 ascii = { version = "1.1", optional = true }
 borsh-derive = { path = "../borsh-derive", version = "~1.8.1", optional = true }

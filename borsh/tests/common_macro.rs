@@ -41,6 +41,7 @@ macro_rules! set_wrong_order_test [
             }
 
             let result = from_slice::<$set_type>(&data);
+            crate::common_macro::assert_bounded_parity::<$set_type>(&data);
 
             #[cfg(not(feature = "de_strict_order"))]
             {
@@ -90,6 +91,7 @@ macro_rules! map_wrong_order_test [
             }
 
             let result = from_slice::<$map_type>(&data);
+            crate::common_macro::assert_bounded_parity::<$map_type>(&data);
 
             #[cfg(not(feature = "de_strict_order"))]
             {
