@@ -1,21 +1,27 @@
 //! Bounded decoding: each impl decodes like its `BorshDeserialize` twin in `de.rs`, plus a
-//! charge before each allocation. Collections decode through the same `read_seq` as plain
-//! ones, scalar twins come from `de.rs`'s own type macros, and the reader entry point ends with
-//! the same `expect_end`. `assert_bounded_parity` in the tests catches drift.
+//! charge before each allocation the value keeps. Collections decode through the same
+//! `read_seq` as plain ones, maps and sets through the same `sorted`, arrays through the same
+//! `PartialArray`, and `Option` and `Result` read the same `tag`. Scalar, tuple and range twins
+//! come from `de.rs`'s own type macros, and the reader entry point ends with the same
+//! `expect_end`. `assert_bounded_parity` in the tests catches drift.
 
 use core::convert::TryFrom;
+use core::iter::FromIterator;
+use core::marker::PhantomData;
 use core::mem::size_of;
 
+use crate::__private::encodes_to_zero_bytes_bounded as zero_bytes;
 use crate::__private::maybestd::{
-    borrow::{Borrow, ToOwned},
+    borrow::{Borrow, Cow, ToOwned},
     boxed::Box,
+    collections::{BTreeMap, BTreeSet, LinkedList, VecDeque},
     string::{String, ToString},
     vec::Vec,
 };
 use crate::io::{Read, Result};
 
-use super::{expect_end, read_seq, BorshDeserialize, Elements, RecursionGuard};
-use super::{invalid, ERROR_NOT_ALL_BYTES_READ};
+use super::{expect_end, read_seq, sorted, tag, BorshDeserialize, Elements, PartialArray};
+use super::{invalid, RecursionGuard, ERROR_NOT_ALL_BYTES_READ};
 
 mod budget;
 mod size;
@@ -24,7 +30,7 @@ pub use budget::{Budget, LimitExceeded};
 
 #[doc = include_str!("../../docs/rustdoc_include/borsh_bounded_charges.md")]
 pub trait BorshDeserializeBounded: Sized {
-    /// Deserializes this instance from a reader, charging `budget` before every allocation.
+    /// Deserializes this instance from a reader, charging `budget` before each allocation it keeps.
     /// `size_of::<Self>()` is charged by the entry points, or by the allocation that holds it.
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self>;
 
@@ -38,12 +44,22 @@ pub trait BorshDeserializeBounded: Sized {
         from_reader_bounded(reader, budget)
     }
 
-    /// Reads `len` elements in one go into a vector the caller has already charged for.
+    /// Reads `len` elements in one go into a vector, after the caller has charged for them.
     /// `None` must leave the reader untouched.
     #[inline]
     #[doc(hidden)]
     fn vec_from_reader_bounded<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
         let _ = (len, reader);
+        Ok(None)
+    }
+
+    /// Reads an array in one go. `None` must leave the reader untouched.
+    #[inline]
+    #[doc(hidden)]
+    fn array_from_reader_bounded<R: Read, const N: usize>(
+        reader: &mut R,
+    ) -> Result<Option<[Self; N]>> {
+        let _ = reader;
         Ok(None)
     }
 
@@ -66,10 +82,10 @@ pub trait EnumExtBounded: BorshDeserializeBounded {
     ) -> Result<Self>;
 }
 
-/// Bounded decoding: the vector and `extra(n)` are charged before any element is read.
+/// Bounded decoding: `kept(n)`, what the collection keeps, is charged before any element is read.
 struct Charged<'a> {
     budget: &'a mut Budget,
-    extra: fn(usize) -> Option<usize>,
+    kept: fn(usize) -> Option<usize>,
 }
 
 impl<T: BorshDeserializeBounded> Elements<T> for Charged<'_> {
@@ -78,8 +94,10 @@ impl<T: BorshDeserializeBounded> Elements<T> for Charged<'_> {
     fn start(&mut self, len: u32) -> Result<()> {
         // Only fails on 16-bit targets.
         let n = usize::try_from(len).map_err(|_| self.budget.exceeded(usize::MAX))?;
-        self.budget.charge_array::<T>(n)?;
-        self.budget.charge_checked((self.extra)(n))
+        let kept = self.kept;
+        // A vector too large to allocate fails even when `kept(n)` fits.
+        self.budget
+            .charge_checked(size::vec::<T>(n).and_then(|_| kept(n)))
     }
     #[inline]
     fn bulk<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<T>>> {
@@ -91,13 +109,34 @@ impl<T: BorshDeserializeBounded> Elements<T> for Charged<'_> {
     }
 }
 
-/// A collection's bounded decode: `read_seq`, charging the vector plus `extra(n)` up front.
+/// A collection's bounded decode: `read_seq`, charging `kept(n)` up front.
 fn decode_seq<T: BorshDeserializeBounded, R: Read>(
     reader: &mut R,
     budget: &mut Budget,
-    extra: fn(usize) -> Option<usize>,
+    kept: fn(usize) -> Option<usize>,
 ) -> Result<Vec<T>> {
-    read_seq(reader, &mut Charged { budget, extra })
+    read_seq(reader, &mut Charged { budget, kept })
+}
+
+/// A map's or set's bounded decode: `sorted`, charging `kept(n)` up front.
+fn decode_sorted<T, K, C, R>(
+    reader: &mut R,
+    budget: &mut Budget,
+    kept: fn(usize) -> Option<usize>,
+    key: impl Fn(&T) -> &K,
+) -> Result<C>
+where
+    T: BorshDeserializeBounded,
+    K: BorshDeserializeBounded + Ord,
+    C: FromIterator<T>,
+    R: Read,
+{
+    sorted(
+        reader,
+        &mut Charged { budget, kept },
+        K::ENCODES_TO_ZERO_BYTES,
+        key,
+    )
 }
 
 impl BorshDeserializeBounded for u8 {
@@ -111,6 +150,39 @@ impl BorshDeserializeBounded for u8 {
     fn vec_from_reader_bounded<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
         <u8 as BorshDeserialize>::vec_from_reader(len, reader)
     }
+
+    #[inline]
+    #[doc(hidden)]
+    fn array_from_reader_bounded<R: Read, const N: usize>(
+        reader: &mut R,
+    ) -> Result<Option<[Self; N]>> {
+        <u8 as BorshDeserialize>::array_from_reader(reader)
+    }
+}
+
+impl<T: BorshDeserializeBounded> BorshDeserializeBounded for Option<T> {
+    #[inline]
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        Ok(if tag(reader, "Option")? {
+            Some(T::deserialize_bounded_alloc(reader, budget)?)
+        } else {
+            None
+        })
+    }
+}
+
+impl<T, E> BorshDeserializeBounded for core::result::Result<T, E>
+where
+    T: BorshDeserializeBounded,
+    E: BorshDeserializeBounded,
+{
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        Ok(if tag(reader, "Result")? {
+            Ok(T::deserialize_bounded_alloc(reader, budget)?)
+        } else {
+            Err(E::deserialize_bounded_alloc(reader, budget)?)
+        })
+    }
 }
 
 impl BorshDeserializeBounded for String {
@@ -120,13 +192,87 @@ impl BorshDeserializeBounded for String {
             .map_err(|err| invalid(err.to_string()))
     }
 }
+
 impl<T> BorshDeserializeBounded for Vec<T>
 where
     T: BorshDeserializeBounded,
 {
     #[inline]
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
-        decode_seq(reader, budget, size::none)
+        decode_seq(reader, budget, size::vec::<T>)
+    }
+}
+
+impl<T> BorshDeserializeBounded for Cow<'_, T>
+where
+    T: ToOwned + ?Sized,
+    T::Owned: BorshDeserializeBounded,
+{
+    const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T::Owned>();
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        Ok(Cow::Owned(T::Owned::deserialize_bounded_alloc(
+            reader, budget,
+        )?))
+    }
+}
+
+impl<T: BorshDeserializeBounded> BorshDeserializeBounded for VecDeque<T> {
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        Ok(Vec::<T>::deserialize_bounded_alloc(reader, budget)?.into())
+    }
+}
+
+impl<T: BorshDeserializeBounded> BorshDeserializeBounded for LinkedList<T> {
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        let vec = decode_seq::<T, _>(reader, budget, size::linked_list::<T>)?;
+        Ok(vec.into_iter().collect())
+    }
+}
+
+#[cfg(hash_collections)]
+mod hashes {
+    use core::hash::{BuildHasher, Hash};
+
+    use crate::__private::maybestd::collections::{HashMap, HashSet};
+    use crate::io::{Read, Result};
+
+    use super::{decode_sorted, size, BorshDeserializeBounded, Budget};
+
+    impl<T, H> BorshDeserializeBounded for HashSet<T, H>
+    where
+        T: BorshDeserializeBounded + Eq + Hash + Ord,
+        H: BuildHasher + Default,
+    {
+        fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+            decode_sorted(reader, budget, size::table::<T>, |t: &T| t)
+        }
+    }
+
+    impl<K, V, H> BorshDeserializeBounded for HashMap<K, V, H>
+    where
+        K: BorshDeserializeBounded + Eq + Hash + Ord,
+        V: BorshDeserializeBounded,
+        H: BuildHasher + Default,
+    {
+        fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+            decode_sorted(reader, budget, size::table::<(K, V)>, |(k, _): &(K, V)| k)
+        }
+    }
+}
+
+impl<T: BorshDeserializeBounded + Ord> BorshDeserializeBounded for BTreeSet<T> {
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        decode_sorted(reader, budget, size::btree::<T, ()>, |t: &T| t)
+    }
+}
+
+impl<K, V> BorshDeserializeBounded for BTreeMap<K, V>
+where
+    K: BorshDeserializeBounded + Ord,
+    V: BorshDeserializeBounded,
+{
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        decode_sorted(reader, budget, size::btree::<K, V>, |(k, _): &(K, V)| k)
     }
 }
 
@@ -136,7 +282,7 @@ where
     T: ToOwned<Owned = U> + ?Sized,
     T::Owned: BorshDeserializeBounded,
 {
-    const ENCODES_TO_ZERO_BYTES: bool = <U as BorshDeserializeBounded>::ENCODES_TO_ZERO_BYTES;
+    const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T::Owned>();
     #[inline]
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
         // Charge first so recursion pays as it goes. On stable Rust only sized types have thin
@@ -146,6 +292,77 @@ where
         }
         let _guard = RecursionGuard::enter()?;
         Ok(T::Owned::deserialize_bounded_alloc(reader, budget)?.into())
+    }
+}
+
+impl<T: BorshDeserializeBounded, const N: usize> BorshDeserializeBounded for [T; N] {
+    const ENCODES_TO_ZERO_BYTES: bool = N == 0 || zero_bytes::<T>();
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        if let Some(arr) = T::array_from_reader_bounded(reader)? {
+            return Ok(arr);
+        }
+        let mut out = PartialArray::<T, N>::new();
+        while !out.is_full() {
+            out.push(T::deserialize_bounded_alloc(reader, budget)?);
+        }
+        // SAFETY: the loop pushed all `N` elements.
+        Ok(unsafe { out.finish() })
+    }
+}
+
+#[cfg(feature = "rc")]
+mod rc {
+    use core::alloc::Layout;
+    use core::sync::atomic::AtomicUsize;
+
+    use crate::__private::maybestd::{boxed::Box, rc::Rc, sync::Arc};
+    use crate::io::{Read, Result};
+
+    use super::{size, zero_bytes, BorshDeserializeBounded, Budget};
+
+    macro_rules! shared {
+        ($($t:ident $count:ty),*) => {$(
+            /// Decoding doesn't preserve sharing: each pointer gets its own copy.
+            impl<T: ?Sized> BorshDeserializeBounded for $t<T>
+            where
+                Box<T>: BorshDeserializeBounded,
+            {
+                const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<Box<T>>();
+                #[inline]
+                fn deserialize_bounded_alloc<R: Read>(
+                    reader: &mut R,
+                    budget: &mut Budget,
+                ) -> Result<Self> {
+                    let boxed = Box::<T>::deserialize_bounded_alloc(reader, budget)?;
+                    // The box's charge counts toward the new block the value is copied into.
+                    let overhead = size::rc_overhead::<$count>(Layout::for_value(&*boxed));
+                    budget.charge_checked(overhead)?;
+                    Ok(boxed.into())
+                }
+            }
+        )*};
+    }
+    shared!(Rc usize, Arc AtomicUsize);
+}
+
+impl<T: ?Sized> BorshDeserializeBounded for PhantomData<T> {
+    const ENCODES_TO_ZERO_BYTES: bool = true;
+    fn deserialize_bounded_alloc<R: Read>(_: &mut R, _: &mut Budget) -> Result<Self> {
+        Ok(PhantomData)
+    }
+}
+
+impl<T: BorshDeserializeBounded + Copy> BorshDeserializeBounded for core::cell::Cell<T> {
+    const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T>();
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        T::deserialize_bounded_alloc(reader, budget).map(Self::new)
+    }
+}
+
+impl<T: BorshDeserializeBounded> BorshDeserializeBounded for core::cell::RefCell<T> {
+    const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T>();
+    fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
+        T::deserialize_bounded_alloc(reader, budget).map(Self::new)
     }
 }
 
@@ -311,5 +528,74 @@ mod tests {
         // The limit error wins over malformed input.
         let result = from_slice_bounded::<Vec<u8>>(&[], &mut Budget::from_bytes(root - 1));
         assert_exceeded(result.map(drop), root - 1, root, root - 1);
+    }
+
+    /// A collection fails if the vector it decodes into is too large to allocate, even when
+    /// `kept(n)` fits: the B-tree nodes of 2^31 4 GiB keys still sum within `usize`.
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn unallocatable_vector_fails_even_when_kept_fits() {
+        struct Huge(#[allow(dead_code)] [u8; 1 << 32]);
+        impl BorshDeserializeBounded for Huge {
+            fn deserialize_bounded_alloc<R: Read>(_: &mut R, _: &mut Budget) -> Result<Self> {
+                unreachable!("only the charge is tested")
+            }
+        }
+        let kept: fn(usize) -> Option<usize> = size::btree::<Huge, ()>;
+        assert!(kept(1 << 31).is_some());
+        let mut budget = Budget::from_bytes(usize::MAX);
+        let mut charged = Charged {
+            budget: &mut budget,
+            kept,
+        };
+        let result = Elements::<Huge>::start(&mut charged, 1 << 31);
+        assert_exceeded(result, usize::MAX, usize::MAX, usize::MAX);
+    }
+
+    /// A failed or panicking array decode drops exactly the elements it built.
+    #[test]
+    fn array_decode_doesnt_leak() {
+        use core::sync::atomic::{AtomicUsize, Ordering};
+        static DECODED: AtomicUsize = AtomicUsize::new(0);
+        static DROPPED: AtomicUsize = AtomicUsize::new(0);
+
+        struct Counted(#[allow(dead_code)] u8);
+        impl BorshDeserializeBounded for Counted {
+            fn deserialize_bounded_alloc<R: Read>(
+                reader: &mut R,
+                budget: &mut Budget,
+            ) -> Result<Self> {
+                let val = u8::deserialize_bounded_alloc(reader, budget)?;
+                if DECODED.fetch_add(1, Ordering::SeqCst) >= 7 {
+                    panic!("panic in deserialize");
+                }
+                Ok(Counted(val))
+            }
+        }
+        impl Drop for Counted {
+            fn drop(&mut self) {
+                DROPPED.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+        let decode = |input: &[u8]| {
+            <[Counted; 3]>::deserialize_bounded_alloc(&mut &input[..], &mut Budget::from_bytes(0))
+        };
+        let counts = || {
+            (
+                DECODED.load(Ordering::SeqCst),
+                DROPPED.load(Ordering::SeqCst),
+            )
+        };
+
+        assert!(decode(&[0; 2]).is_err());
+        assert_eq!(counts(), (2, 2));
+        assert!(decode(&[0; 3]).is_ok());
+        assert_eq!(counts(), (5, 5));
+        #[cfg(feature = "std")]
+        {
+            assert!(std::panic::catch_unwind(|| decode(&[0; 3]).map(drop)).is_err());
+            // The third element panicked before it existed.
+            assert_eq!(counts(), (8, 7));
+        }
     }
 }

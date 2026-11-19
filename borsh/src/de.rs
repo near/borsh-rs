@@ -752,6 +752,20 @@ macro_rules! tuple {
                 Ok(($($name::deserialize_reader(reader)?,)+))
             }
         }
+
+        #[cfg(feature = "unstable__bounded")]
+        impl<$($name: bounded::BorshDeserializeBounded),+> bounded::BorshDeserializeBounded
+            for ($($name,)+)
+        {
+            const ENCODES_TO_ZERO_BYTES: bool =
+                $(crate::__private::encodes_to_zero_bytes_bounded::<$name>())&&+;
+            fn deserialize_bounded_alloc<R: Read>(
+                reader: &mut R,
+                budget: &mut bounded::Budget,
+            ) -> Result<Self> {
+                Ok(($($name::deserialize_bounded_alloc(reader, budget)?,)+))
+            }
+        }
     };
 }
 tuples!(tuple []
@@ -765,6 +779,21 @@ macro_rules! range {
             const ENCODES_TO_ZERO_BYTES: bool = zero_bytes::<T>();
             fn deserialize_reader<R: Read>(reader: &mut R) -> Result<Self> {
                 let ($($side,)*) = <_>::deserialize_reader(reader)?;
+                Ok($make)
+            }
+        }
+
+        #[cfg(feature = "unstable__bounded")]
+        impl<T: bounded::BorshDeserializeBounded> bounded::BorshDeserializeBounded
+            for core::ops::$t<T>
+        {
+            const ENCODES_TO_ZERO_BYTES: bool =
+                crate::__private::encodes_to_zero_bytes_bounded::<T>();
+            fn deserialize_bounded_alloc<R: Read>(
+                reader: &mut R,
+                budget: &mut bounded::Budget,
+            ) -> Result<Self> {
+                let ($($side,)*) = <_>::deserialize_bounded_alloc(reader, budget)?;
                 Ok($make)
             }
         }

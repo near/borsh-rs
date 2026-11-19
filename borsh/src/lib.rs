@@ -74,6 +74,11 @@ pub mod __private {
         T::ENCODES_TO_ZERO_BYTES
     }
 
+    #[cfg(feature = "unstable__bounded")]
+    pub const fn encodes_to_zero_bytes_bounded<T: crate::BorshDeserializeBounded>() -> bool {
+        T::ENCODES_TO_ZERO_BYTES
+    }
+
     pub const fn encodes_to_zero_bytes_ser<T: crate::BorshSerialize + ?Sized>() -> bool {
         T::ENCODES_TO_ZERO_BYTES
     }
