@@ -1,6 +1,8 @@
 #[cfg(feature = "std")]
 use core::hash::BuildHasher;
 
+use crate::common_macro::assert_bounded_parity;
+
 #[cfg(feature = "hashbrown")]
 use hashbrown::{HashMap, HashSet};
 #[cfg(feature = "std")]
@@ -31,6 +33,7 @@ macro_rules! hashset_test_template [
             set_insert_deser_assert_macro!(set, data, $($key),*);
 
             let actual_set = from_slice::<HashSet<String>>(&data).unwrap();
+            assert_bounded_parity::<HashSet<String>>(&data);
             assert_eq!(set, actual_set);
 
         }
@@ -50,6 +53,7 @@ macro_rules! hashmap_test_template [
             map_insert_deser_assert_macro!(map, data, $($key => $value),*);
 
             let actual_map = from_slice::<HashMap<String, String>>(&data).unwrap();
+            assert_bounded_parity::<HashMap<String, String>>(&data);
             assert_eq!(map, actual_map);
 
         }
@@ -82,6 +86,7 @@ macro_rules! generic_hashset_test_template [
             set_insert_deser_assert_macro!(set, data, $($key),*);
 
             let actual_set = from_slice::<HashSet<String, NewHasher>>(&data).unwrap();
+            assert_bounded_parity::<HashSet<String, NewHasher>>(&data);
             assert_eq!(set, actual_set);
 
         }
@@ -102,6 +107,7 @@ macro_rules! generic_hashmap_test_template [
             map_insert_deser_assert_macro!(map, data, $($key => $value),*);
 
             let actual_map = from_slice::<HashMap<String, String, NewHasher>>(&data).unwrap();
+            assert_bounded_parity::<HashMap<String, String, NewHasher>>(&data);
             assert_eq!(map, actual_map);
 
         }
