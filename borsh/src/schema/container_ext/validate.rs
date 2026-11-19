@@ -1,6 +1,6 @@
-use super::{is_zero_size, ZeroSizeError};
-use super::{BorshSchemaContainer, Declaration, Definition, Fields};
-use crate::__private::maybestd::{string::ToString, vec::Vec};
+use super::{is_zero_size, members, ZeroSizeCache, ZeroSizeError};
+use super::{BorshSchemaContainer, Declaration, Definition};
+use crate::__private::maybestd::{collections::BTreeSet, string::ToString, vec};
 
 impl BorshSchemaContainer {
     /// Validates container for violation of any well-known rules with
@@ -15,8 +15,28 @@ impl BorshSchemaContainer {
     /// assert_eq!(Ok(()), schema.validate());
     /// ```
     pub fn validate(&self) -> core::result::Result<(), Error> {
-        let mut stack = Vec::new();
-        validate_impl(self.declaration(), self, &mut stack)
+        // Every declaration reached so far, so that each one is checked once
+        // however many times it is referenced.  The first error found is the
+        // same as when skipping only the declarations on the current path:
+        // everything reachable from a declaration visited before is either
+        // checked already or on the current path.
+        let mut visited = BTreeSet::new();
+        let mut zero_size = ZeroSizeCache::new();
+        // Declarations left to check, the next one last.
+        let mut pending = vec![self.declaration()];
+        while let Some(declaration) = pending.pop() {
+            let definition = match self.get_definition(declaration) {
+                Some(definition) => definition,
+                None => {
+                    return Err(Error::MissingDefinition(declaration.to_string()));
+                }
+            };
+            if visited.insert(declaration) {
+                check_definition(declaration, definition, self, &mut zero_size)?;
+                pending.extend(members(definition));
+            }
+        }
+        Ok(())
     }
 }
 
@@ -54,33 +74,22 @@ fn check_length_width(declaration: &Declaration, width: u8, max: u64) -> Result<
 
 const U64_LEN: u8 = 8;
 
-fn validate_impl<'a>(
+/// Checks the definition of `declaration`, but not its members.
+fn check_definition<'a>(
     declaration: &'a Declaration,
+    definition: &'a Definition,
     schema: &'a BorshSchemaContainer,
-    stack: &mut Vec<&'a Declaration>,
+    zero_size: &mut ZeroSizeCache<'a>,
 ) -> core::result::Result<(), Error> {
-    let definition = match schema.get_definition(declaration) {
-        Some(definition) => definition,
-        None => {
-            return Err(Error::MissingDefinition(declaration.to_string()));
-        }
-    };
-    if stack.contains(&declaration) {
-        return Ok(());
-    }
-    stack.push(declaration);
     match definition {
-        Definition::Primitive(_size) => {}
         // arrays branch
         Definition::Sequence {
             length_width,
             length_range,
-            elements,
+            ..
         } if *length_width == Definition::ARRAY_LENGTH_WIDTH
-            && length_range.clone().count() == 1 =>
-        {
-            validate_impl(elements, schema, stack)?
-        }
+            && !length_range.is_empty()
+            && length_range.start() == length_range.end() => {}
         Definition::Sequence {
             length_width,
             length_range,
@@ -90,7 +99,7 @@ fn validate_impl<'a>(
                 return Err(Error::EmptyLengthRange(declaration.clone()));
             }
             check_length_width(declaration, *length_width, *length_range.end())?;
-            match is_zero_size(elements, schema) {
+            match is_zero_size(elements, schema, zero_size) {
                 Ok(true) => return Err(Error::ZSTSequence(declaration.clone())),
                 Ok(false) => (),
                 // a recursive type either has no exit, so it cannot be instantiated
@@ -101,39 +110,14 @@ fn validate_impl<'a>(
                     return Err(Error::MissingDefinition(declaration));
                 }
             }
-            validate_impl(elements, schema, stack)?;
         }
-        Definition::Enum {
-            tag_width,
-            variants,
-        } => {
+        Definition::Enum { tag_width, .. } => {
             if *tag_width > U64_LEN {
                 return Err(Error::TagTooWide(declaration.to_string()));
             }
-            for (_, _, variant) in variants {
-                validate_impl(variant, schema, stack)?;
-            }
         }
-        Definition::Tuple { elements } => {
-            for element_type in elements {
-                validate_impl(element_type, schema, stack)?;
-            }
-        }
-        Definition::Struct { fields } => match fields {
-            Fields::NamedFields(fields) => {
-                for (_field_name, field_type) in fields {
-                    validate_impl(field_type, schema, stack)?;
-                }
-            }
-            Fields::UnnamedFields(fields) => {
-                for field_type in fields {
-                    validate_impl(field_type, schema, stack)?;
-                }
-            }
-            Fields::Empty => {}
-        },
+        Definition::Primitive(_) | Definition::Tuple { .. } | Definition::Struct { .. } => {}
     };
-    stack.pop();
     Ok(())
 }
 

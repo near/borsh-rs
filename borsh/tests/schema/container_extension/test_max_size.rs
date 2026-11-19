@@ -83,6 +83,14 @@ fn max_serialized_size_built_in_types() {
 }
 
 #[test]
+fn max_serialized_size_enum_in_sequence() {
+    test_ok::<[Option<u64>; 8]>(8 * 9);
+    test_ok::<[[Option<u8>; 2]; 2]>(4 * 2);
+    test_ok::<Vec<Option<u8>>>(4 + MAX_LEN * 2);
+    test_err::<Vec<Vec<Option<u8>>>>(SchemaMaxSerializedSizeError::Overflow);
+}
+
+#[test]
 fn max_serialized_size_derived_types() {
     #[derive(BorshSchema)]
     pub struct Empty;
