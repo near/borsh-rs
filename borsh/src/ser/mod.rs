@@ -320,6 +320,15 @@ impl BorshSerialize for bson::oid::ObjectId {
 #[cfg(feature = "indexmap")]
 // Taken from https://github.com/indexmap-rs/indexmap/blob/dd06e5773e4f91748396c67d00c83637f5c0dd49/src/borsh.rs#L74C1-L86C2
 // license: MIT OR Apache-2.0
+/// Items are written in insertion (iteration) order, **not** sorted.
+///
+/// This encoding is order-preserving and therefore **not canonical**: two
+/// `IndexSet`s that compare equal with `==` (which ignores order) but were
+/// built in a different order serialize to different bytes. Don't rely on it
+/// for hashing or signing unless the insertion order is itself deterministic.
+/// If canonical bytes are needed, call [`IndexSet::sort`](indexmap::IndexSet::sort)
+/// before serializing, or use [`BTreeSet`] or `HashSet` instead, both of which
+/// are serialized in ascending order.
 impl<T, S> BorshSerialize for indexmap::IndexSet<T, S>
 where
     T: BorshSerialize,
@@ -345,6 +354,15 @@ where
 #[cfg(feature = "indexmap")]
 // Taken from https://github.com/indexmap-rs/indexmap/blob/dd06e5773e4f91748396c67d00c83637f5c0dd49/src/borsh.rs#L15
 // license: MIT OR Apache-2.0
+/// Entries are written in insertion (iteration) order, **not** sorted by key.
+///
+/// This encoding is order-preserving and therefore **not canonical**: two
+/// `IndexMap`s that compare equal with `==` (which ignores order) but were
+/// built in a different order serialize to different bytes. Don't rely on it
+/// for hashing or signing unless the insertion order is itself deterministic.
+/// If canonical bytes are needed, call [`IndexMap::sort_keys`](indexmap::IndexMap::sort_keys)
+/// before serializing, or use [`BTreeMap`] or `HashMap` instead, both of which
+/// are serialized in ascending key order.
 impl<K, V, S> BorshSerialize for indexmap::IndexMap<K, V, S>
 where
     K: BorshSerialize,
