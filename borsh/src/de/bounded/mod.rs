@@ -11,7 +11,7 @@ use crate::__private::maybestd::{
     string::{String, ToString},
     vec::Vec,
 };
-use crate::error::check_zst;
+use crate::error::check_zst_bounded;
 use crate::io::{Error, ErrorKind, Read, Result};
 
 use super::{BorshDeserialize, ERROR_NOT_ALL_BYTES_READ};
@@ -45,6 +45,11 @@ pub trait BorshDeserializeBounded: Sized {
         let _ = (len, reader);
         Ok(None)
     }
+
+    /// Whether deserializing this type always consumes zero bytes of input, as in
+    /// [`BorshDeserialize`](crate::BorshDeserialize). Collections reject such element types.
+    #[doc(hidden)]
+    const ENCODES_TO_ZERO_BYTES: bool = false;
 }
 
 /// Bounded counterpart of [`EnumExt`](crate::de::EnumExt).
@@ -70,7 +75,7 @@ where
     T: BorshDeserializeBounded,
     R: Read,
 {
-    check_zst::<T>()?;
+    check_zst_bounded::<T>()?;
 
     let len = u32::deserialize_bounded_alloc(reader, budget)?;
     if len == 0 {
@@ -100,6 +105,9 @@ macro_rules! impl_bounded_via_plain {
     ($($type:ty),+ $(,)?) => {
         $(
             impl $crate::de::BorshDeserializeBounded for $type {
+                const ENCODES_TO_ZERO_BYTES: bool =
+                    <$type as $crate::de::BorshDeserialize>::ENCODES_TO_ZERO_BYTES;
+
                 #[inline]
                 fn deserialize_bounded_alloc<R: $crate::io::Read>(
                     reader: &mut R,
@@ -186,6 +194,8 @@ where
     T: ToOwned<Owned = U> + ?Sized,
     T::Owned: BorshDeserializeBounded,
 {
+    const ENCODES_TO_ZERO_BYTES: bool = <U as BorshDeserializeBounded>::ENCODES_TO_ZERO_BYTES;
+
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
         // Charge first so recursion pays as it goes. On stable Rust only sized types have thin
         // pointers; an unsized `T` reuses the buffer `T::Owned` charged.

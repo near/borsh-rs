@@ -25,4 +25,12 @@ pub(crate) fn check_zst_ser<T: BorshSerialize>() -> Result<()> {
 }
 
 #[cfg(feature = "unstable__bounded")]
+pub(crate) fn check_zst_bounded<T: crate::BorshDeserializeBounded>() -> Result<()> {
+    if size_of::<T>() == 0 || T::ENCODES_TO_ZERO_BYTES {
+        return Err(Error::new(ErrorKind::InvalidData, ERROR_ZST_FORBIDDEN));
+    }
+    Ok(())
+}
+
+#[cfg(feature = "unstable__bounded")]
 pub use crate::de::bounded::LimitExceeded;
