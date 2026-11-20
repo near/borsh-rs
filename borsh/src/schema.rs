@@ -792,8 +792,8 @@ pub mod indexmap {
     //!
     //! Module defines [BorshSchema] implementation for
     //! [IndexMap](indexmap::IndexMap) and [IndexSet](indexmap::IndexSet).
-    //! They are serialized as a sequence of entries in insertion order, like
-    //! `HashMap`/`HashSet`.
+    //! They use the same length prefix and entry layout as `HashMap`/`HashSet`,
+    //! but keep their stored (insertion) order rather than sorting entries.
     use crate::BorshSchema;
 
     use super::{add_definition, Declaration, Definition};
