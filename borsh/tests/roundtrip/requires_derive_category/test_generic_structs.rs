@@ -1,6 +1,8 @@
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 use core::marker::PhantomData;
 
+use crate::common_macro::assert_bounded_parity;
+
 #[cfg(feature = "hashbrown")]
 use hashbrown::HashMap;
 
@@ -17,12 +19,14 @@ use alloc::{
 };
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 enum B<W, G> {
     X { f: Vec<W> },
     Y(G),
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct A<T, F, G> {
     x: Vec<T>,
     y: String,
@@ -46,6 +50,7 @@ fn test_generic_struct() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_a = from_slice::<A<String, u64, String>>(&data).unwrap();
+    assert_bounded_parity::<A<String, u64, String>>(&data);
     assert_eq!(a, actual_a);
 }
 
@@ -61,6 +66,7 @@ impl TraitName for u32 {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct Parametrized<T, V>
 where
     T: TraitName,
@@ -79,13 +85,15 @@ fn test_generic_associated_type_field() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_a = from_slice::<Parametrized<u32, String>>(&data).unwrap();
+    assert_bounded_parity::<Parametrized<u32, String>>(&data);
     assert_eq!(a, actual_a);
 }
 
 /// `T: PartialOrd` bound is required for `BorshSerialize` derive to be successful
 /// `T: Hash + Eq` bound is required for `BorshDeserialize` derive to be successful
 #[cfg(hash_collections)]
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct C<T: Ord + Hash + Eq, U> {
     a: String,
     b: HashMap<T, U>,
@@ -105,6 +113,7 @@ fn test_generic_struct_hashmap() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_a = from_slice::<C<u32, String>>(&data).unwrap();
+    assert_bounded_parity::<C<u32, String>>(&data);
     assert_eq!(actual_a.b.get(&14), Some("value".to_string()).as_ref());
     assert_eq!(actual_a.b.get(&34), Some("another".to_string()).as_ref());
 }

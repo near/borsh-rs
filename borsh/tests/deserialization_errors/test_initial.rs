@@ -13,7 +13,8 @@ use alloc::{
 };
 
 #[cfg(feature = "derive")]
-#[derive(BorshDeserialize, Debug)]
+#[derive(BorshDeserialize, Debug, PartialEq)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 #[borsh(use_discriminant = true)]
 enum A {
     X,
@@ -21,7 +22,8 @@ enum A {
 }
 
 #[cfg(feature = "derive")]
-#[derive(BorshDeserialize, Debug)]
+#[derive(BorshDeserialize, Debug, PartialEq)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 #[borsh(use_discriminant = false)]
 enum AWithUseDiscriminantFalse {
     X,
@@ -29,7 +31,8 @@ enum AWithUseDiscriminantFalse {
 }
 
 #[cfg(feature = "derive")]
-#[derive(BorshDeserialize, Debug)]
+#[derive(BorshDeserialize, Debug, PartialEq)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct B {
     #[allow(unused)]
     x: u64,
@@ -48,6 +51,7 @@ fn test_missing_bytes() {
         from_slice::<B>(&bytes).unwrap_err().to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
     );
+    assert_bounded_parity::<B>(&bytes);
 }
 
 #[cfg(feature = "derive")]
@@ -58,6 +62,7 @@ fn test_invalid_enum_variant() {
         from_slice::<A>(&bytes).unwrap_err().to_string(),
         "Unexpected variant tag: 123"
     );
+    assert_bounded_parity::<A>(&bytes);
 }
 
 #[cfg(feature = "derive")]
@@ -70,6 +75,7 @@ fn test_invalid_enum_variant_old() {
             .to_string(),
         "Unexpected variant tag: 123"
     );
+    assert_bounded_parity::<AWithUseDiscriminantFalse>(&bytes);
 }
 
 #[test]

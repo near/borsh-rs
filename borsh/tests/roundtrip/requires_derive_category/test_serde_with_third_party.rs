@@ -4,6 +4,8 @@ use alloc::{
 };
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
+use crate::common_macro::assert_bounded_parity;
+
 #[derive(Debug, PartialEq, Eq)]
 struct ThirdParty<K, V>(pub BTreeMap<K, V>);
 
@@ -33,15 +35,32 @@ mod third_party_impl {
             reader,
         )?))
     }
+
+    #[cfg(feature = "unstable__bounded")]
+    pub(super) fn deserialize_third_party_bounded<
+        R: borsh::io::Read,
+        K: borsh::de::BorshDeserializeBounded + Ord,
+        V: borsh::de::BorshDeserializeBounded,
+    >(
+        reader: &mut R,
+        budget: &mut borsh::de::Budget,
+    ) -> ::core::result::Result<ThirdParty<K, V>, borsh::io::Error> {
+        Ok(ThirdParty(
+            borsh::BorshDeserializeBounded::deserialize_bounded_alloc(reader, budget)?,
+        ))
+    }
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct A<K, V> {
     #[borsh(
         deserialize_with = "third_party_impl::deserialize_third_party",
+        deserialize_with_bounded = "third_party_impl::deserialize_third_party_bounded",
         serialize_with = "third_party_impl::serialize_third_party",
         bound(
             deserialize = "K: borsh::de::BorshDeserialize + Ord, V: borsh::de::BorshDeserialize",
+            deserialize_bounded = "K: borsh::de::BorshDeserializeBounded + Ord, V: borsh::de::BorshDeserializeBounded",
         )
     )]
     x: ThirdParty<K, V>,
@@ -50,15 +69,18 @@ struct A<K, V> {
 
 #[allow(unused)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 enum C<K, V> {
     C3(u64, u64),
     C4(
         u64,
         #[borsh(
             deserialize_with = "third_party_impl::deserialize_third_party",
+            deserialize_with_bounded = "third_party_impl::deserialize_third_party_bounded",
             serialize_with = "third_party_impl::serialize_third_party",
             bound(
                 deserialize = "K: borsh::de::BorshDeserialize + Ord, V: borsh::de::BorshDeserialize",
+                deserialize_bounded = "K: borsh::de::BorshDeserializeBounded + Ord, V: borsh::de::BorshDeserializeBounded",
             )
         )]
         ThirdParty<K, V>,
@@ -78,6 +100,7 @@ fn test_overriden_struct() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_a = from_slice::<A<u64, String>>(&data).unwrap();
+    assert_bounded_parity::<A<u64, String>>(&data);
     assert_eq!(a, actual_a);
 }
 
@@ -94,5 +117,6 @@ fn test_overriden_enum() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_c = from_slice::<C<u64, String>>(&data).unwrap();
+    assert_bounded_parity::<C<u64, String>>(&data);
     assert_eq!(c, actual_c);
 }

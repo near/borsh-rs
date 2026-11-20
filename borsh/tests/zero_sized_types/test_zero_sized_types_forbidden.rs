@@ -1,5 +1,7 @@
 use alloc::{string::ToString, vec, vec::Vec};
 
+use crate::common_macro::assert_bounded_parity;
+
 #[cfg(feature = "std")]
 use std::collections::{HashMap, HashSet};
 
@@ -15,6 +17,7 @@ use borsh::BorshSerialize;
 
 use borsh::error::ERROR_ZST_FORBIDDEN;
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct A();
 
 #[test]
@@ -22,6 +25,7 @@ fn test_deserialize_vec_of_zst() {
     let v = [0u8, 0u8, 0u8, 64u8];
     let res = from_slice::<Vec<A>>(&v);
     assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+    assert_bounded_parity::<Vec<A>>(&v);
 }
 
 #[test]
@@ -50,6 +54,7 @@ fn test_deserialize_vec_deque_of_zst() {
     let v = [0u8, 0u8, 0u8, 64u8];
     let res = from_slice::<VecDeque<A>>(&v);
     assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+    assert_bounded_parity::<VecDeque<A>>(&v);
 }
 
 #[test]
@@ -64,6 +69,7 @@ fn test_deserialize_linked_list_of_zst() {
     let v = [0u8, 0u8, 0u8, 64u8];
     let res = from_slice::<LinkedList<A>>(&v);
     assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+    assert_bounded_parity::<LinkedList<A>>(&v);
 }
 
 #[test]
@@ -78,6 +84,7 @@ fn test_deserialize_btreeset_of_zst() {
     let v = [0u8, 0u8, 0u8, 64u8];
     let res = from_slice::<BTreeSet<A>>(&v);
     assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+    assert_bounded_parity::<BTreeSet<A>>(&v);
 }
 
 #[test]
@@ -93,6 +100,7 @@ fn test_deserialize_hashset_of_zst() {
     let v = [0u8, 0u8, 0u8, 64u8];
     let res = from_slice::<HashSet<A>>(&v);
     assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+    assert_bounded_parity::<HashSet<A>>(&v);
 }
 
 #[cfg(hash_collections)]
@@ -108,6 +116,7 @@ fn test_deserialize_btreemap_of_zst() {
     let v = [0u8, 0u8, 0u8, 64u8];
     let res = from_slice::<BTreeMap<A, u64>>(&v);
     assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+    assert_bounded_parity::<BTreeMap<A, u64>>(&v);
 }
 
 #[test]
@@ -123,6 +132,7 @@ fn test_deserialize_hashmap_of_zst() {
     let v = [0u8, 0u8, 0u8, 64u8];
     let res = from_slice::<HashMap<A, u64>>(&v);
     assert_eq!(res.unwrap_err().to_string(), ERROR_ZST_FORBIDDEN);
+    assert_bounded_parity::<HashMap<A, u64>>(&v);
 }
 
 #[cfg(hash_collections)]
@@ -134,12 +144,14 @@ fn test_serialize_hashmap_of_zst() {
 }
 
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct B(u32);
 #[test]
 fn test_deserialize_non_zst() {
     let v = [1, 0, 0, 0, 64, 0, 0, 0];
     let res = Vec::<B>::try_from_slice(&v);
     assert!(res.is_ok());
+    assert_bounded_parity::<Vec<B>>(&v);
 }
 
 #[test]

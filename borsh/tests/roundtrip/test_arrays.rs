@@ -57,6 +57,7 @@ test_arrays!(test_array_zst, (), ());
 
 #[cfg(feature = "derive")]
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct CustomStruct(u8);
 
 #[cfg(feature = "derive")]
@@ -67,6 +68,7 @@ fn test_custom_struct_array() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(serialized);
     let deserialized: [CustomStruct; 3] = from_slice(&serialized).unwrap();
+    assert_bounded_parity::<[CustomStruct; 3]>(&serialized);
     assert_eq!(arr, deserialized);
 }
 

@@ -1,8 +1,11 @@
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
+use crate::common_macro::assert_bounded_parity;
+
 use alloc::vec;
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 enum MixedWithUnitVariants {
     A(u16),
     B,
@@ -24,6 +27,7 @@ fn test_mixed_enum() {
         insta::assert_debug_snapshot!(encoded);
 
         let decoded = from_slice::<MixedWithUnitVariants>(&encoded).unwrap();
+        assert_bounded_parity::<MixedWithUnitVariants>(&encoded);
 
         assert_eq!(variant, decoded);
     }

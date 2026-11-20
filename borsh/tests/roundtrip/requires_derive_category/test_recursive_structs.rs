@@ -1,7 +1,10 @@
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
+use crate::common_macro::assert_bounded_parity;
+
 use alloc::{string::{String, ToString}, vec::Vec, vec};
 #[derive(Debug, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct CRecB {
     a: String,
     b: Vec<CRecB>,
@@ -27,5 +30,6 @@ fn test_recursive_struct() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_three = from_slice::<CRecB>(&data).unwrap();
+    assert_bounded_parity::<CRecB>(&data);
     assert_eq!(three, actual_three);
 }

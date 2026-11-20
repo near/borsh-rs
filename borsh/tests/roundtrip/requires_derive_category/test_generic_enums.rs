@@ -1,5 +1,7 @@
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
+use crate::common_macro::assert_bounded_parity;
+
 use alloc::{
     string::{String, ToString},
     vec,
@@ -7,6 +9,7 @@ use alloc::{
 };
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 enum B<W, G> {
     X { f: Vec<W> },
     Y(G),
@@ -24,6 +27,7 @@ fn test_generic_enum() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_list = from_slice::<Vec<B<String, u64>>>(&data).unwrap();
+    assert_bounded_parity::<Vec<B<String, u64>>>(&data);
 
     assert_eq!(list, actual_list);
 }
