@@ -49,7 +49,7 @@
   Gates implementation of [BorshSerialize] and [BorshDeserialize]
   for [ObjectId](https://docs.rs/bson/2.9.0/bson/oid/struct.ObjectId.html).
 * **indexmap** -
-  Gates implementation of [BorshSerialize] and [BorshDeserialize]
+  Gates implementation of [BorshSerialize], [BorshDeserialize], [BorshSchema]
   for [indexmap::IndexMap](https://docs.rs/indexmap/2.8.0/indexmap/map/struct.IndexMap.html) and [IndexSet](https://docs.rs/indexmap/2.8.0/indexmap/set/struct.IndexSet.html)
 * **ascii** -
   Gates implementation of [BorshSerialize], [BorshDeserialize], [BorshSchema] for

@@ -96,6 +96,8 @@ mod schema {
     mod test_box;
     #[cfg(hash_collections)]
     mod test_hash_map;
+    #[cfg(feature = "indexmap")]
+    mod test_indexmap;
     mod test_btree_map;
     mod test_cow;
     mod test_cells;
