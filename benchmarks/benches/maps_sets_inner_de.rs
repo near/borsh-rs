@@ -5,14 +5,20 @@ use std::{
 };
 
 use benchmarks::{Generate, PublicKey};
-use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
+use borsh::{
+    from_slice, from_slice_bounded, to_vec, BorshDeserialize, BorshDeserializeBounded,
+    BorshSerialize, Budget,
+};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::SeedableRng;
+
+/// A limit far above what the generated collections need.
+const BOUNDED_LIMIT: usize = 1 << 30;
 
 fn de_obj<T, U>(num_samples: usize, c: &mut Criterion)
 where
     T: Generate + BorshDeserialize + BorshSerialize + 'static,
-    U: FromIterator<T> + BorshDeserialize + BorshSerialize,
+    U: FromIterator<T> + BorshDeserialize + BorshDeserializeBounded + BorshSerialize,
 {
     let mut rng = rand_xorshift::XorShiftRng::from_seed([0u8; 16]);
 
@@ -26,6 +32,13 @@ where
     group.bench_with_input(BenchmarkId::new("borsh_de", ""), &serialized, |b, d| {
         b.iter(|| from_slice::<U>(d).unwrap());
     });
+    group.bench_with_input(
+        BenchmarkId::new("borsh_de_bounded", ""),
+        &serialized,
+        |b, d| {
+            b.iter(|| from_slice_bounded::<U>(d, &mut Budget::from_bytes(BOUNDED_LIMIT)).unwrap());
+        },
+    );
 }
 fn de_string_hashmap_10(c: &mut Criterion) {
     de_obj::<(String, String), HashMap<String, String>>(10, c);
