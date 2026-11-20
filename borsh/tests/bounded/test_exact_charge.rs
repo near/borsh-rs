@@ -87,3 +87,37 @@ fn test_duplicate_keys_resolve_like_plain() {
         assert_bounded_parity::<HashSet<u32>>(&keys);
     }
 }
+
+/// Even with `de_strict_order`, duplicate keys keep their first position and last value.
+#[cfg(feature = "indexmap")]
+#[test]
+fn test_index_map_duplicate_keys_resolve_like_plain() {
+    use alloc::vec::Vec;
+    use borsh::{from_slice, from_slice_bounded, to_vec};
+    use indexmap::IndexMap;
+
+    use super::cases::INDEX_MAP_DUPLICATES;
+    use crate::common_macro::{assert_bounded_parity, PARITY_LIMIT};
+
+    let entries = to_vec(&INDEX_MAP_DUPLICATES.to_vec()).unwrap();
+    assert_bounded_parity::<IndexMap<u64, u64>>(&entries);
+    // Indexmap's `PartialEq` ignores order, so compare iteration order too.
+    let plain = from_slice::<IndexMap<u64, u64>>(&entries).unwrap();
+    let mut budget = Budget::from_bytes(PARITY_LIMIT);
+    let bounded = from_slice_bounded::<IndexMap<u64, u64>>(&entries, &mut budget).unwrap();
+    let bounded = bounded.into_iter().collect::<Vec<_>>();
+    assert_eq!(bounded, plain.into_iter().collect::<Vec<_>>());
+    assert_eq!(
+        bounded,
+        [
+            (3, 30),
+            (1, 11),
+            (2, 20),
+            (4, 40),
+            (5, 50),
+            (6, 60),
+            (7, 70),
+            (8, 80)
+        ]
+    );
+}

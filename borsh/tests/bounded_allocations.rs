@@ -395,6 +395,22 @@ fn test_hash_collection_over_limit_allocates_nothing() {
     );
 }
 
+/// `Bytes` and `AsciiString` decode a `Vec<u8>`, covered above.
+#[cfg(any(feature = "bytes", feature = "indexmap"))]
+#[test]
+fn test_optional_collection_over_limit_allocates_nothing() {
+    let n = 1000;
+    #[cfg(feature = "bytes")]
+    assert_collection_over_limit_allocates_nothing(&bytes::BytesMut::from(&vec![7u8; n][..]), n);
+    #[cfg(feature = "indexmap")]
+    assert_collection_over_limit_allocates_nothing(
+        &(0..n as u64)
+            .map(|k| (k, k))
+            .collect::<indexmap::IndexMap<_, _>>(),
+        cases::index_map::<u64, u64>(n),
+    );
+}
+
 fn replace_prefix(input: &mut [u8], offset: usize, expected: u32, prefix: u32) {
     assert_eq!(input[offset..offset + 4], expected.to_le_bytes());
     input[offset..offset + 4].copy_from_slice(&prefix.to_le_bytes());
@@ -432,6 +448,20 @@ fn test_input_ending_at_a_growth_boundary_allocates_like_plain() {
     assert_same_outcome(&plain, &bounded, "512 of 1000 u64s");
     assert_eq!(allocations, plain_allocations);
     assert_eq!(allocations.reallocs, 0);
+}
+
+#[cfg(feature = "bytes")]
+#[test]
+fn test_bytes_mut_with_a_false_length_allocates_like_plain() {
+    let mut input = to_vec(&bytes::BytesMut::from(&[7u8; 10][..])).unwrap();
+    replace_prefix(&mut input, 0, 10, 1 << 20);
+    let (plain, plain_allocations) = count_allocations(|| from_slice::<bytes::BytesMut>(&input));
+    let (bounded, allocations) = count_allocations(|| {
+        from_slice_bounded::<bytes::BytesMut>(&input, &mut Budget::from_bytes(usize::MAX))
+    });
+    assert!(plain.is_err());
+    assert_same_outcome(&plain, &bounded, "10 of 1 MiB bytes");
+    assert_eq!(allocations, plain_allocations);
 }
 
 #[test]

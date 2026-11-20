@@ -132,6 +132,11 @@ pub fn btree_nodes<K, V>(n: usize) -> usize {
     leaves * leaf + internals * internal
 }
 
+/// The entries and index table of an `IndexMap<K, V>` of `n` entries; sets use `V = ()`.
+pub fn index_map<K, V>(n: usize) -> usize {
+    n * size_of::<(usize, K, V)>() + table(size_of::<usize>(), n)
+}
+
 /// The `Rc`/`Arc` block: two counts of type `C`, then `size` bytes aligned to `align`.
 pub fn rc_block<C>(size: usize, align: usize) -> usize {
     let counts = 2 * size_of::<C>();
@@ -212,6 +217,20 @@ pub mod derived {
 /// The collection sizes around the thresholds of the formulas.
 pub const BOUNDARY_SIZES: [usize; 22] = [
     1, 2, 3, 4, 7, 8, 11, 12, 14, 15, 20, 21, 23, 24, 28, 29, 47, 48, 143, 144, 1000, 0,
+];
+
+/// Nine entries with eight distinct keys.
+#[cfg(feature = "indexmap")]
+pub const INDEX_MAP_DUPLICATES: [(u64, u64); 9] = [
+    (3, 30),
+    (1, 10),
+    (2, 20),
+    (1, 11),
+    (4, 40),
+    (5, 50),
+    (6, 60),
+    (7, 70),
+    (8, 80),
 ];
 
 pub fn cases() -> Vec<Case> {
@@ -487,6 +506,48 @@ pub fn cases() -> Vec<Case> {
         ));
     }
 
+    #[cfg(feature = "indexmap")]
+    {
+        use indexmap::{IndexMap, IndexSet};
+
+        // The index table doubles from 16 to 32 buckets at 15 entries.
+        for n in [1, 14, 15, 1000, 0] {
+            let map = (0..n as u64)
+                .map(|k| (k, k * 7))
+                .collect::<IndexMap<_, _>>();
+            let kept = if n == 0 { 0 } else { index_map::<u64, u64>(n) };
+            cases.push(case(
+                format!("IndexMap<u64, u64> of {}", n),
+                &map,
+                kept,
+                seq_below::<IndexMap<u64, u64>>(n, kept),
+                Alloc::HashTable { entries: n },
+            ));
+
+            let set = (0..n as u32).collect::<IndexSet<_>>();
+            let kept = if n == 0 { 0 } else { index_map::<u32, ()>(n) };
+            cases.push(case(
+                format!("IndexSet<u32> of {}", n),
+                &set,
+                kept,
+                seq_below::<IndexSet<u32>>(n, kept),
+                Alloc::HashTable { entries: n },
+            ));
+        }
+
+        // IndexMap keeps the first position and last value, even with `de_strict_order`.
+        // Entries and indices are allocated for every input entry.
+        let n = INDEX_MAP_DUPLICATES.len();
+        let kept = index_map::<u64, u64>(n);
+        cases.push(case_input::<IndexMap<u64, u64>>(
+            "IndexMap<u64, u64> with a duplicate key".into(),
+            to_vec(&INDEX_MAP_DUPLICATES.to_vec()).unwrap(),
+            kept,
+            single(kept),
+            Alloc::HashTable { entries: n },
+        ));
+    }
+
     #[cfg(feature = "rc")]
     {
         use alloc::{rc::Rc, sync::Arc};
@@ -562,6 +623,72 @@ pub fn cases() -> Vec<Case> {
             ),
         ]);
     }
+
+    // Converting the decoded vector into a byte string reuses its buffer.
+    #[cfg(feature = "bytes")]
+    {
+        use bytes::{Bytes, BytesMut};
+
+        cases.extend([
+            case(
+                "Bytes of 1 MiB + 1".into(),
+                &Bytes::from(vec![7u8; MIB + 1]),
+                MIB + 1,
+                single(MIB + 1),
+                Alloc::Exact,
+            ),
+            case(
+                "empty BytesMut".into(),
+                &BytesMut::new(),
+                0,
+                single(size_of::<BytesMut>()),
+                Alloc::Exact,
+            ),
+        ]);
+        // At the cautious start, one byte past it, and past several doublings.
+        for n in [4096, 4097, MIB + 1] {
+            cases.push(case(
+                format!("BytesMut of {}", n),
+                &BytesMut::from(&vec![7u8; n][..]),
+                n,
+                single(n),
+                Alloc::Exact,
+            ));
+        }
+    }
+    #[cfg(feature = "ascii")]
+    cases.push(case(
+        "AsciiString of 1 MiB + 1".into(),
+        &ascii::AsciiString::from_ascii(vec![b'a'; MIB + 1]).unwrap(),
+        MIB + 1,
+        single(MIB + 1),
+        Alloc::Exact,
+    ));
+
+    #[cfg(feature = "ascii")]
+    cases.push(case(
+        "AsciiChar".into(),
+        &ascii::AsciiChar::A,
+        0,
+        single(size_of::<ascii::AsciiChar>()),
+        Alloc::Exact,
+    ));
+    #[cfg(feature = "uuid")]
+    cases.push(case(
+        "Uuid".into(),
+        &uuid::Uuid::from_bytes([7; 16]),
+        0,
+        single(size_of::<uuid::Uuid>()),
+        Alloc::Exact,
+    ));
+    #[cfg(feature = "bson")]
+    cases.push(case(
+        "ObjectId".into(),
+        &bson::oid::ObjectId::from_bytes([7; 12]),
+        0,
+        single(size_of::<bson::oid::ObjectId>()),
+        Alloc::Exact,
+    ));
 
     #[cfg(feature = "derive")]
     {

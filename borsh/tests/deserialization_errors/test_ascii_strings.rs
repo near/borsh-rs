@@ -1,6 +1,8 @@
 use alloc::string::ToString;
 use borsh::from_slice;
 
+use crate::common_macro::assert_bounded_parity;
+
 #[test]
 fn test_non_ascii() {
     let buf = borsh::to_vec(&[0xbf, 0xf3, 0xb3, 0x77][..]).unwrap();
@@ -10,6 +12,7 @@ fn test_non_ascii() {
             .to_string(),
         "the byte at index 0 is not ASCII"
     );
+    assert_bounded_parity::<ascii::AsciiString>(&buf);
 
     let buf = borsh::to_vec("żółw").unwrap();
     assert_eq!(
@@ -18,6 +21,7 @@ fn test_non_ascii() {
             .to_string(),
         "the byte at index 0 is not ASCII"
     );
+    assert_bounded_parity::<ascii::AsciiString>(&buf);
 
     assert_eq!(
         from_slice::<ascii::AsciiChar>(&[0xbf])
@@ -25,4 +29,5 @@ fn test_non_ascii() {
             .to_string(),
         "not an ASCII character"
     );
+    assert_bounded_parity::<ascii::AsciiChar>(&[0xbf]);
 }

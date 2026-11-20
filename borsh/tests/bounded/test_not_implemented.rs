@@ -10,8 +10,8 @@ use alloc::{
     vec::Vec,
 };
 use core::cell::{Cell, RefCell};
-#[cfg(hash_collections)]
-use core::hash::{BuildHasherDefault, Hasher};
+#[cfg(any(hash_collections, feature = "indexmap"))]
+use core::hash::{BuildHasher, BuildHasherDefault, Hasher};
 use core::marker::PhantomData;
 use core::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use core::num::{
@@ -25,6 +25,9 @@ use core::time::Duration;
 use hashbrown::{HashMap, HashSet};
 #[cfg(feature = "std")]
 use std::collections::{HashMap, HashSet};
+
+#[cfg(feature = "indexmap")]
+use indexmap::{IndexMap, IndexSet};
 
 use borsh::de::{EnumExt, EnumExtBounded};
 use borsh::io::Read;
@@ -133,11 +136,11 @@ impl BorshDeserializeBounded for Bare {
     }
 }
 
-#[cfg(hash_collections)]
+#[cfg(any(hash_collections, feature = "indexmap"))]
 #[derive(Default)]
 struct ZeroHasher;
 
-#[cfg(hash_collections)]
+#[cfg(any(hash_collections, feature = "indexmap"))]
 impl Hasher for ZeroHasher {
     fn finish(&self) -> u64 {
         0
@@ -146,8 +149,19 @@ impl Hasher for ZeroHasher {
     fn write(&mut self, _: &[u8]) {}
 }
 
-// Every impl in `de/mod.rs`, in its order. The impls for `ascii`, `bytes`, `bson`,
-// `indexmap` and `uuid` types are left out: their bounded twins come separately.
+/// A `BuildHasher` without `Default`, which both decoders require.
+#[cfg(any(hash_collections, feature = "indexmap"))]
+#[allow(dead_code)]
+struct NoDefaultState;
+
+#[cfg(any(hash_collections, feature = "indexmap"))]
+impl BuildHasher for NoDefaultState {
+    type Hasher = ZeroHasher;
+
+    fn build_hasher(&self) -> ZeroHasher {
+        ZeroHasher
+    }
+}
 
 assert_both!(u8, i8, i16, i32, i64, i128, u16, u32, u64, u128);
 assert_both!(
@@ -167,8 +181,24 @@ assert_both!(isize, usize, f32, f64, bool);
 
 assert_both!(Option<u8>, Result<u8, String>);
 assert_both!(String);
+#[cfg(feature = "ascii")]
+assert_both!(ascii::AsciiString, ascii::AsciiChar);
 // Zero-sized elements and keys are rejected at run time by both decoders, not by bounds.
 assert_both!(Vec<u8>, Vec<()>);
+#[cfg(feature = "bytes")]
+assert_both!(bytes::Bytes, bytes::BytesMut);
+#[cfg(feature = "bson")]
+assert_both!(bson::oid::ObjectId);
+#[cfg(feature = "indexmap")]
+assert_both!(
+    IndexSet<u8>,
+    IndexSet<u8, BuildHasherDefault<ZeroHasher>>,
+    IndexMap<u8, u8>,
+    IndexMap<u8, u8, BuildHasherDefault<ZeroHasher>>,
+    IndexMap<(), u8>,
+);
+#[cfg(feature = "uuid")]
+assert_both!(uuid::Uuid);
 assert_both!(Cow<'static, [u8]>, Cow<'static, u8>);
 assert_both!(VecDeque<u8>, LinkedList<u8>);
 
@@ -255,6 +285,13 @@ assert_plain_only!(
     HashMap<PlainOnly, u8>,
 );
 
+#[cfg(feature = "indexmap")]
+assert_plain_only!(
+    IndexSet<PlainOnly>,
+    IndexMap<u8, PlainOnly>,
+    IndexMap<PlainOnly, u8>,
+);
+
 #[cfg(feature = "rc")]
 assert_plain_only!(Rc<PlainOnly>, Arc<PlainOnly>);
 
@@ -285,6 +322,13 @@ assert_bounded_only!(
     HashMap<BoundedOnly, u8>,
 );
 
+#[cfg(feature = "indexmap")]
+assert_bounded_only!(
+    IndexSet<BoundedOnly>,
+    IndexMap<u8, BoundedOnly>,
+    IndexMap<BoundedOnly, u8>,
+);
+
 #[cfg(feature = "rc")]
 assert_bounded_only!(Rc<BoundedOnly>, Arc<BoundedOnly>);
 
@@ -313,6 +357,19 @@ assert_neither!(
 assert_both!(HashMap<u8, Bare>);
 #[cfg(hash_collections)]
 assert_neither!(HashSet<Bare>, HashMap<Bare, u8>);
+#[cfg(hash_collections)]
+assert_neither!(HashSet<u8, NoDefaultState>, HashMap<u8, u8, NoDefaultState>);
+
+// Indexmap requires `Eq + Hash`, not `Ord`: `Bare` qualifies, but `f32` does not.
+#[cfg(feature = "indexmap")]
+assert_both!(IndexMap<u8, Bare>, IndexMap<Bare, u8>, IndexSet<Bare>);
+#[cfg(feature = "indexmap")]
+assert_neither!(
+    IndexMap<f32, u8>,
+    IndexSet<f32>,
+    IndexMap<u8, u8, NoDefaultState>,
+    IndexSet<u8, NoDefaultState>,
+);
 
 #[cfg(feature = "rc")]
 assert_neither!(Rc<Bare>, Arc<Bare>);

@@ -1,5 +1,7 @@
 use borsh::{from_slice, to_vec};
 
+use crate::common_macro::assert_bounded_parity;
+
 use alloc::{
     string::String,
     vec::Vec,
@@ -14,6 +16,7 @@ fn check_ascii(value: &str) -> Vec<u8> {
     assert_eq!(buf, to_vec(&ascii::AsciiString::from(ascii_str)).unwrap());
     // Check round trip.
     let got = from_slice::<ascii::AsciiString>(&buf).unwrap();
+    assert_bounded_parity::<ascii::AsciiString>(&buf);
     assert_eq!(ascii_str, got);
     buf
 }
@@ -48,6 +51,8 @@ fn test_ascii_char() {
     let buf = to_vec(&AsciiChar::Dot).unwrap();
     assert_eq!(".".as_bytes(), buf);
     assert_eq!(AsciiChar::Dot, from_slice::<AsciiChar>(&buf).unwrap());
+    assert_bounded_parity::<AsciiChar>(&buf);
 
     from_slice::<AsciiChar>(&[b'\x80']).unwrap_err();
+    assert_bounded_parity::<AsciiChar>(b"\x80");
 }
