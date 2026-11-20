@@ -13,7 +13,7 @@ use crate::common_macro::{limit_exceeded, OneByteReader, PARITY_LIMIT};
 
 pub const ERROR_UNEXPECTED_LENGTH_OF_INPUT: &str = "Unexpected length of input";
 
-fn kind_and_message(err: &Error) -> (ErrorKind, String) {
+pub fn kind_and_message(err: &Error) -> (ErrorKind, String) {
     (err.kind(), err.to_string())
 }
 

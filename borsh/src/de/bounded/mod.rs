@@ -64,7 +64,8 @@ pub trait BorshDeserializeBounded: Sized {
     }
 }
 
-/// Bounded counterpart of [`EnumExt`](crate::de::EnumExt).
+/// Bounded counterpart of [`EnumExt`](crate::de::EnumExt). Implemented for enums by
+/// `#[derive(BorshDeserializeBounded)]`.
 pub trait EnumExtBounded: BorshDeserializeBounded {
     /// Decodes the variant for an already read `tag`, charging `budget` like
     /// [`deserialize_bounded_alloc`](BorshDeserializeBounded::deserialize_bounded_alloc). Like

@@ -8,7 +8,8 @@ use self::bounds::BOUNDS_FIELD_PARSE_MAP;
 use super::{
     collect_borsh_attributes,
     parsing::{attrs_get_by_symbol_keys, meta_get_by_symbol_keys, parse_lit_into},
-    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, SERIALIZE_WITH, SKIP,
+    BoundType, Symbol, BORSH, BOUND, DESERIALIZE_WITH, DESERIALIZE_WITH_BOUNDED, SERIALIZE_WITH,
+    SKIP,
 };
 
 #[cfg(feature = "schema")]
@@ -25,6 +26,7 @@ enum Variants {
     Bounds(bounds::Bounds),
     SerializeWith(syn::ExprPath),
     DeserializeWith(syn::ExprPath),
+    DeserializeWithBounded(syn::ExprPath),
     Skip(()),
     #[cfg(feature = "schema")]
     Schema(schema::Attributes),
@@ -52,6 +54,11 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
             .map(Variants::DeserializeWith)
     });
 
+    let f_deserialize_with_bounded: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
+        parse_lit_into::<syn::ExprPath>(attr_name, meta_item_name, meta)
+            .map(Variants::DeserializeWithBounded)
+    });
+
     #[cfg(feature = "schema")]
     let f_schema: Box<ParseFn> = Box::new(|_attr_name, _meta_item_name, meta| {
         let map_result = meta_get_by_symbol_keys(SCHEMA, meta, &SCHEMA_FIELD_PARSE_MAP)?;
@@ -64,6 +71,7 @@ static BORSH_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::new(|
     m.insert(BOUND, f_bounds);
     m.insert(SERIALIZE_WITH, f_serialize_with);
     m.insert(DESERIALIZE_WITH, f_deserialize_with);
+    m.insert(DESERIALIZE_WITH_BOUNDED, f_deserialize_with_bounded);
     m.insert(SKIP, f_skip);
     #[cfg(feature = "schema")]
     m.insert(SCHEMA, f_schema);
@@ -75,6 +83,7 @@ pub(crate) struct Attributes {
     pub bounds: Option<bounds::Bounds>,
     pub serialize_with: Option<syn::ExprPath>,
     pub deserialize_with: Option<syn::ExprPath>,
+    pub deserialize_with_bounded: Option<syn::ExprPath>,
     pub skip: bool,
     #[cfg(feature = "schema")]
     pub schema: Option<schema::Attributes>,
@@ -85,6 +94,7 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
         let bounds = map.remove(&BOUND);
         let serialize_with = map.remove(&SERIALIZE_WITH);
         let deserialize_with = map.remove(&DESERIALIZE_WITH);
+        let deserialize_with_bounded = map.remove(&DESERIALIZE_WITH_BOUNDED);
         let skip = map.remove(&SKIP);
         let bounds = bounds.map(|variant| match variant {
             Variants::Bounds(bounds) => bounds,
@@ -98,6 +108,11 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
 
         let deserialize_with = deserialize_with.map(|variant| match variant {
             Variants::DeserializeWith(deserialize_with) => deserialize_with,
+            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
+        });
+
+        let deserialize_with_bounded = deserialize_with_bounded.map(|variant| match variant {
+            Variants::DeserializeWithBounded(deserialize_with_bounded) => deserialize_with_bounded,
             _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
 
@@ -120,6 +135,7 @@ impl From<BTreeMap<Symbol, Variants>> for Attributes {
             bounds,
             serialize_with,
             deserialize_with,
+            deserialize_with_bounded,
             skip: skip.is_some(),
             #[cfg(feature = "schema")]
             schema,
@@ -142,6 +158,15 @@ impl Attributes {
                 format!(
                     "`{}` cannot be used at the same time as `{}` or `{}`",
                     SKIP.0, SERIALIZE_WITH.0, DESERIALIZE_WITH.0
+                ),
+            ));
+        }
+        if self.skip && self.deserialize_with_bounded.is_some() {
+            return Err(syn::Error::new_spanned(
+                attr,
+                format!(
+                    "`{}` cannot be used at the same time as `{}`",
+                    SKIP.0, DESERIALIZE_WITH_BOUNDED.0
                 ),
             ));
         }
@@ -175,6 +200,7 @@ impl Attributes {
         bounds.and_then(|bounds| match ty {
             BoundType::Serialize => bounds.serialize.clone(),
             BoundType::Deserialize => bounds.deserialize.clone(),
+            BoundType::DeserializeBounded => bounds.deserialize_bounded.clone(),
         })
     }
     pub(crate) fn collect_bounds(&self, ty: BoundType) -> Vec<WherePredicate> {
@@ -393,6 +419,66 @@ mod tests {
         let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
         assert!(attrs.serialize.is_none());
         local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize));
+    }
+
+    #[test]
+    fn test_bounds_parsing_deserialize_bounded() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(bound(deserialize_bounded = "K: Hash + Ord,
+                     V: Eq + Ord",
+                    deserialize = "K: Hash"
+                ))]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = parse_bounds(&first_field.attrs).unwrap().unwrap();
+        assert!(attrs.serialize.is_none());
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize.clone()));
+        local_insta_assert_snapshot!(debug_print_vec_of_tokenizable(attrs.deserialize_bounded));
+    }
+
+    #[test]
+    fn test_deserialize_with_bounded_parsing() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(
+                    deserialize_with = "third_party_impl::deserialize_third_party",
+                    deserialize_with_bounded = "third_party_impl::deserialize_third_party_bounded",
+                )]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let attrs = Attributes::parse(&first_field.attrs).unwrap();
+        local_insta_assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with.as_ref()));
+        local_insta_assert_snapshot!(debug_print_tokenizable(attrs.deserialize_with_bounded));
+    }
+
+    #[test]
+    fn test_skip_conflicts_with_deserialize_with_bounded() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            struct A {
+                #[borsh(skip, deserialize_with_bounded = "third_party_impl::deserialize_third_party_bounded")]
+                x: u64,
+                y: String,
+            }
+        })
+        .unwrap();
+
+        let first_field = &item_struct.fields.into_iter().collect::<Vec<_>>()[0];
+        let err = match Attributes::parse(&first_field.attrs) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        local_insta_assert_debug_snapshot!(err);
     }
 
     #[test]

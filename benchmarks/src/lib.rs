@@ -1,6 +1,6 @@
 //! This library contains data structures used for benchmarking.
 
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{BorshDeserialize, BorshDeserializeBounded, BorshSerialize};
 use rand::distributions::{Alphanumeric, Distribution, Standard};
 use rand::Rng;
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
@@ -12,7 +12,15 @@ pub trait Generate {
 }
 
 #[derive(
-    BorshSerialize, BorshDeserialize, Debug, Clone, Eq, PartialEq, SerdeSerialize, SerdeDeserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    BorshDeserializeBounded,
+    Debug,
+    Clone,
+    Eq,
+    PartialEq,
+    SerdeSerialize,
+    SerdeDeserialize,
 )]
 pub struct CryptoHash([u8; 32]);
 impl Generate for CryptoHash {
@@ -44,7 +52,15 @@ impl<C: Context> Writable<C> for CryptoHash {
 }
 
 #[derive(
-    BorshSerialize, BorshDeserialize, Debug, Clone, Eq, PartialEq, SerdeSerialize, SerdeDeserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    BorshDeserializeBounded,
+    Debug,
+    Clone,
+    Eq,
+    PartialEq,
+    SerdeSerialize,
+    SerdeDeserialize,
 )]
 pub struct MerkleHash([u8; 32]);
 impl Generate for MerkleHash {
@@ -76,7 +92,15 @@ impl<C: Context> Writable<C> for MerkleHash {
 }
 
 #[derive(
-    BorshSerialize, BorshDeserialize, Debug, Clone, Eq, PartialEq, SerdeSerialize, SerdeDeserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    BorshDeserializeBounded,
+    Debug,
+    Clone,
+    Eq,
+    PartialEq,
+    SerdeSerialize,
+    SerdeDeserialize,
 )]
 pub struct Signature([u8; 32]);
 impl Generate for Signature {
@@ -110,6 +134,7 @@ impl<C: Context> Writable<C> for Signature {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -158,6 +183,7 @@ impl<C: Context> Writable<C> for PublicKey {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -192,6 +218,7 @@ pub type Balance = u64;
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -249,6 +276,7 @@ pub fn generate_vec<T: Generate, R: rand::Rng>(
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -291,6 +319,7 @@ impl Generate for BlockHeaderInner {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -319,6 +348,7 @@ impl Generate for BlockHeader {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -345,6 +375,7 @@ impl Generate for Block {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -375,6 +406,7 @@ pub type Nonce = u64;
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -407,6 +439,7 @@ impl Generate for Transaction {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -451,6 +484,7 @@ impl Generate for Action {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -470,6 +504,7 @@ impl Generate for CreateAccountAction {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -504,6 +539,7 @@ pub type Gas = u64;
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -533,6 +569,7 @@ impl Generate for FunctionCallAction {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -556,6 +593,7 @@ impl Generate for TransferAction {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -582,6 +620,7 @@ impl Generate for StakeAction {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -608,6 +647,7 @@ impl Generate for AddKeyAction {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -632,6 +672,7 @@ impl Generate for DeleteKeyAction {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -656,6 +697,7 @@ impl Generate for DeleteAccountAction {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -682,6 +724,7 @@ impl Generate for AccessKey {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -709,6 +752,7 @@ impl Generate for AccessKeyPermission {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,
@@ -751,6 +795,7 @@ impl Generate for FunctionCallPermission {
 #[derive(
     BorshSerialize,
     BorshDeserialize,
+    BorshDeserializeBounded,
     Debug,
     Clone,
     Eq,

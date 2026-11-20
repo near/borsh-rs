@@ -86,6 +86,32 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     })
 }
 
+/// See the `BorshDeserializeBounded` derive documentation in the `borsh` crate.
+#[proc_macro_derive(BorshDeserializeBounded, attributes(borsh))]
+pub fn borsh_deserialize_bounded(input: TokenStream) -> TokenStream {
+    let cratename = match check_attrs_get_cratename(&input) {
+        Ok(cratename) => cratename,
+        Err(err) => {
+            return err.to_compile_error().into();
+        }
+    };
+
+    let res = if let Ok(input) = syn::parse::<ItemStruct>(input.clone()) {
+        deserialize::structs::process_bounded(&input, cratename)
+    } else if let Ok(input) = syn::parse::<ItemEnum>(input.clone()) {
+        deserialize::enums::process_bounded(&input, cratename)
+    } else if let Ok(input) = syn::parse::<ItemUnion>(input) {
+        deserialize::unions::process(&input, cratename)
+    } else {
+        // Derive macros can only be defined on structs, enums, and unions.
+        unreachable!()
+    };
+    TokenStream::from(match res {
+        Ok(res) => res,
+        Err(err) => err.to_compile_error(),
+    })
+}
+
 /// ---
 ///
 /// moved to docs of **Derive Macro** `BorshSchema` in `borsh` crate

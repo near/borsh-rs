@@ -323,3 +323,113 @@ assert_not_impl!(Option<u8>: EnumExt);
 assert_not_impl!(Option<u8>: EnumExtBounded);
 assert_not_impl!(Result<u8, u8>: EnumExt);
 assert_not_impl!(Result<u8, u8>: EnumExtBounded);
+
+#[cfg(feature = "derive")]
+mod derived {
+    use core::marker::PhantomData;
+
+    use borsh::de::{EnumExt, EnumExtBounded};
+    use borsh::{BorshDeserialize, BorshDeserializeBounded};
+
+    use super::{Bare, BoundedOnly, PlainOnly};
+
+    #[allow(dead_code)]
+    #[derive(Default)]
+    struct DefaultOnly;
+
+    /// A decoded type parameter gets a `BorshDeserializeBounded` bound, and nothing else.
+    #[allow(dead_code)]
+    #[derive(BorshDeserializeBounded)]
+    struct Wrap<T>(T);
+
+    assert_impl!(Wrap<Bare>: BorshDeserializeBounded);
+    assert_bounded_only!(Wrap<BoundedOnly>);
+    assert_neither!(Wrap<PlainOnly>);
+
+    /// A skipped type parameter gets a `Default` bound instead.
+    #[allow(dead_code)]
+    #[derive(BorshDeserializeBounded)]
+    struct Skipped<T>(#[borsh(skip)] T, u8);
+
+    assert_impl!(Skipped<DefaultOnly>: BorshDeserializeBounded);
+    assert_not_impl!(Skipped<BoundedOnly>: BorshDeserializeBounded);
+
+    /// A type parameter only in `PhantomData` gets no bound.
+    #[allow(dead_code)]
+    #[derive(BorshDeserializeBounded)]
+    struct Phantom<T>(PhantomData<T>, u8);
+
+    assert_impl!(Phantom<PlainOnly>: BorshDeserializeBounded);
+
+    /// `bound(deserialize_bounded = ...)` replaces the derived bound.
+    #[allow(dead_code)]
+    #[derive(BorshDeserializeBounded)]
+    struct Overridden<T>(
+        #[borsh(bound(deserialize_bounded = "T: BorshDeserializeBounded + Clone"))] T,
+    );
+
+    assert_impl!(Overridden<BoundedOnly>: BorshDeserializeBounded);
+    assert_not_impl!(Overridden<Bare>: BorshDeserializeBounded);
+
+    /// Each derive reads only its own `bound(...)` key.
+    #[allow(dead_code)]
+    #[derive(BorshDeserialize, BorshDeserializeBounded)]
+    struct PlainKey<T>(#[borsh(bound(deserialize = "T: BorshDeserialize + Clone"))] T);
+
+    assert_impl!(PlainKey<Bare>: BorshDeserializeBounded);
+    assert_not_impl!(PlainKey<Bare>: BorshDeserialize);
+
+    #[allow(dead_code)]
+    #[derive(BorshDeserialize, BorshDeserializeBounded)]
+    struct BoundedKey<T>(
+        #[borsh(bound(deserialize_bounded = "T: BorshDeserializeBounded + Clone"))] T,
+    );
+
+    assert_impl!(BoundedKey<Bare>: BorshDeserialize);
+    assert_not_impl!(BoundedKey<Bare>: BorshDeserializeBounded);
+
+    /// Each derive implements its own trait only.
+    #[allow(dead_code)]
+    #[derive(BorshDeserialize)]
+    struct PlainDerived(u8);
+
+    #[allow(dead_code)]
+    #[derive(BorshDeserializeBounded)]
+    struct BoundedDerived(u8);
+
+    assert_plain_only!(PlainDerived);
+    assert_bounded_only!(BoundedDerived);
+
+    /// Enums get `EnumExt` from the plain derive and `EnumExtBounded` from the bounded one.
+    #[allow(dead_code)]
+    #[derive(BorshDeserialize)]
+    enum PlainEnum {
+        A,
+        B(u8),
+    }
+
+    #[allow(dead_code)]
+    #[derive(BorshDeserializeBounded)]
+    enum BoundedEnum {
+        A,
+        B(u8),
+    }
+
+    #[allow(dead_code)]
+    #[derive(BorshDeserializeBounded)]
+    enum WrapEnum<T> {
+        A(T),
+        B,
+    }
+
+    assert_plain_only!(PlainEnum);
+    assert_impl!(PlainEnum: EnumExt);
+    assert_not_impl!(PlainEnum: EnumExtBounded);
+
+    assert_bounded_only!(BoundedEnum);
+    assert_impl!(BoundedEnum: EnumExtBounded);
+    assert_not_impl!(BoundedEnum: EnumExt);
+
+    assert_impl!(WrapEnum<u8>: EnumExtBounded);
+    assert_not_impl!(WrapEnum<PlainOnly>: EnumExtBounded);
+}

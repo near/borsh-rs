@@ -21,6 +21,12 @@ mod compile_derives {
     mod test_generic_structs;
     mod test_generic_enums;
     mod test_recursive_structs;
+    #[cfg(feature = "unstable__bounded")]
+    mod test_bounded_namespace_collisions;
+    #[cfg(feature = "unstable__bounded")]
+    mod test_bounded_generic;
+    #[cfg(feature = "unstable__bounded")]
+    mod test_bounded_recursive;
 
     #[cfg(feature = "unstable__schema")]
     mod schema {
@@ -135,6 +141,8 @@ mod bounded {
     mod test_errors_and_readers;
     mod test_hand_written;
     mod test_not_implemented;
+    #[cfg(feature = "derive")]
+    mod test_derive;
 }
 
 mod deserialization_errors {

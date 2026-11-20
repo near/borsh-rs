@@ -1,0 +1,7 @@
+---
+source: borsh-derive/src/internals/deserialize/structs/mod.rs
+expression: err
+---
+Error(
+    "`deserialize_with` has no bounded counterpart; add `deserialize_with_bounded = \"...\"`",
+)

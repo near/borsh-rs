@@ -1,5 +1,8 @@
 use benchmarks::{Account, Block, BlockHeader, Generate, SignedTransaction};
-use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
+use borsh::{
+    from_slice, from_slice_bounded, to_vec, BorshDeserialize, BorshDeserializeBounded,
+    BorshSerialize, Budget,
+};
 use rand::SeedableRng;
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 use speedy::Endianness;
@@ -64,11 +67,15 @@ where
     group.finish();
 }
 
+/// A limit far above what the generated objects need.
+const BOUNDED_LIMIT: usize = 1 << 30;
+
 fn de_obj<T>(group_name: &str, num_samples: usize, c: &mut Criterion)
 where
     for<'a> T: Generate
         + BorshSerialize
         + BorshDeserialize
+        + BorshDeserializeBounded
         + SerdeSerialize
         + SerdeDeserialize<'a>
         + Readable<'a, speedy::Endianness>
@@ -124,6 +131,15 @@ where
             borsh_data,
             |b, d| {
                 b.iter(|| from_slice::<T>(d).unwrap());
+            },
+        );
+        group.bench_with_input(
+            BenchmarkId::new("borsh_bounded", benchmark_param_display.clone()),
+            borsh_data,
+            |b, d| {
+                b.iter(|| {
+                    from_slice_bounded::<T>(d, &mut Budget::from_bytes(BOUNDED_LIMIT)).unwrap()
+                });
             },
         );
         group.bench_with_input(

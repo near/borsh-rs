@@ -16,6 +16,10 @@ pub use borsh_derive::BorshSchema;
 #[cfg(feature = "derive")]
 pub use borsh_derive::BorshDeserialize;
 
+#[doc = include_str!("../docs/rustdoc_include/borsh_deserialize_bounded.md")]
+#[cfg(all(feature = "derive", feature = "unstable__bounded"))]
+pub use borsh_derive::BorshDeserializeBounded;
+
 #[doc = include_str!("../docs/rustdoc_include/borsh_serialize.md")]
 #[cfg(feature = "derive")]
 pub use borsh_derive::BorshSerialize;

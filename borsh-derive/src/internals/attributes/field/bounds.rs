@@ -2,12 +2,15 @@ use std::collections::BTreeMap;
 
 use syn::{meta::ParseNestedMeta, WherePredicate};
 
-use crate::internals::attributes::{parsing::parse_lit_into_vec, Symbol, DESERIALIZE, SERIALIZE};
+use crate::internals::attributes::{
+    parsing::parse_lit_into_vec, Symbol, DESERIALIZE, DESERIALIZE_BOUNDED, SERIALIZE,
+};
 use once_cell::sync::Lazy;
 
 pub enum Variants {
     Serialize(Vec<WherePredicate>),
     Deserialize(Vec<WherePredicate>),
+    DeserializeBounded(Vec<WherePredicate>),
 }
 
 type ParseFn = dyn Fn(Symbol, Symbol, &ParseNestedMeta) -> syn::Result<Variants> + Send + Sync;
@@ -24,8 +27,13 @@ pub static BOUNDS_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::
         parse_lit_into_vec::<WherePredicate>(attr_name, meta_item_name, meta)
             .map(Variants::Deserialize)
     });
+    let f_deserialize_bounded: Box<ParseFn> = Box::new(|attr_name, meta_item_name, meta| {
+        parse_lit_into_vec::<WherePredicate>(attr_name, meta_item_name, meta)
+            .map(Variants::DeserializeBounded)
+    });
     m.insert(SERIALIZE, f_serialize);
     m.insert(DESERIALIZE, f_deserialize);
+    m.insert(DESERIALIZE_BOUNDED, f_deserialize_bounded);
     m
 });
 
@@ -33,12 +41,14 @@ pub static BOUNDS_FIELD_PARSE_MAP: Lazy<BTreeMap<Symbol, Box<ParseFn>>> = Lazy::
 pub struct Bounds {
     pub serialize: Option<Vec<WherePredicate>>,
     pub deserialize: Option<Vec<WherePredicate>>,
+    pub deserialize_bounded: Option<Vec<WherePredicate>>,
 }
 
 impl From<BTreeMap<Symbol, Variants>> for Bounds {
     fn from(mut map: BTreeMap<Symbol, Variants>) -> Self {
         let serialize = map.remove(&SERIALIZE);
         let deserialize = map.remove(&DESERIALIZE);
+        let deserialize_bounded = map.remove(&DESERIALIZE_BOUNDED);
         let serialize = serialize.map(|variant| match variant {
             Variants::Serialize(ser) => ser,
             _ => unreachable!("only one enum variant is expected to correspond to given map key"),
@@ -47,9 +57,14 @@ impl From<BTreeMap<Symbol, Variants>> for Bounds {
             Variants::Deserialize(de) => de,
             _ => unreachable!("only one enum variant is expected to correspond to given map key"),
         });
+        let deserialize_bounded = deserialize_bounded.map(|variant| match variant {
+            Variants::DeserializeBounded(de) => de,
+            _ => unreachable!("only one enum variant is expected to correspond to given map key"),
+        });
         Self {
             serialize,
             deserialize,
+            deserialize_bounded,
         }
     }
 }

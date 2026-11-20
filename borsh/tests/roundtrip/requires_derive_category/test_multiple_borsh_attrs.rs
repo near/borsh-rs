@@ -4,6 +4,8 @@ use alloc::{
 };
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
+use crate::common_macro::assert_bounded_parity;
+
 // the `BorshSchema` derive expands to code that uses the `format!` macro at the
 // struct definition site, so it has to be in scope here too.
 #[cfg(feature = "unstable__schema")]
@@ -39,6 +41,20 @@ mod third_party_impl {
         )?))
     }
 
+    #[cfg(feature = "unstable__bounded")]
+    pub(super) fn deserialize_third_party_bounded<
+        R: borsh::io::Read,
+        K: borsh::de::BorshDeserializeBounded + Ord,
+        V: borsh::de::BorshDeserializeBounded,
+    >(
+        reader: &mut R,
+        budget: &mut borsh::de::Budget,
+    ) -> ::core::result::Result<ThirdParty<K, V>, borsh::io::Error> {
+        Ok(ThirdParty(
+            borsh::BorshDeserializeBounded::deserialize_bounded_alloc(reader, budget)?,
+        ))
+    }
+
     #[cfg(feature = "unstable__schema")]
     use alloc::{collections::BTreeMap, format, vec};
 
@@ -71,11 +87,14 @@ mod third_party_impl {
 // disjoint top-level keys of all `#[borsh(...)]` attributes into one.
 #[cfg_attr(feature = "unstable__schema", derive(borsh::BorshSchema))]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct A<K, V> {
     #[borsh(serialize_with = "third_party_impl::serialize_third_party")]
     #[borsh(deserialize_with = "third_party_impl::deserialize_third_party")]
+    #[borsh(deserialize_with_bounded = "third_party_impl::deserialize_third_party_bounded")]
     #[borsh(bound(
         deserialize = "K: borsh::de::BorshDeserialize + Ord, V: borsh::de::BorshDeserialize",
+        deserialize_bounded = "K: borsh::de::BorshDeserializeBounded + Ord, V: borsh::de::BorshDeserializeBounded",
     ))]
     #[cfg_attr(
         feature = "unstable__schema",
@@ -99,6 +118,7 @@ fn test_overridden_struct_multiple_attrs() {
     let data = to_vec(&a).unwrap();
 
     let actual_a = from_slice::<A<u64, String>>(&data).unwrap();
+    assert_bounded_parity::<A<u64, String>>(&data);
     assert_eq!(a, actual_a);
 }
 
@@ -122,8 +142,10 @@ fn test_overridden_struct_multiple_attrs_schema() {
 // one `#[borsh(...)]` attribute and `init` in a separate one. Both have to take
 // effect for the assertions below to hold.
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 #[borsh(use_discriminant = true)]
 #[borsh(init = initialization_method)]
+#[cfg_attr(feature = "unstable__bounded", borsh(init_bounded = init_bounded))]
 enum WithSplitItemAttrs {
     A,
     B = 10,
@@ -133,6 +155,12 @@ enum WithSplitItemAttrs {
 impl WithSplitItemAttrs {
     fn initialization_method(&mut self) {
         *self = WithSplitItemAttrs::C;
+    }
+
+    #[cfg(feature = "unstable__bounded")]
+    fn init_bounded(&mut self, _budget: &mut borsh::Budget) -> borsh::io::Result<()> {
+        self.initialization_method();
+        Ok(())
     }
 }
 
@@ -149,5 +177,6 @@ fn test_item_level_multiple_attrs() {
     // `init = initialization_method` (second attribute) runs after decoding, so
     // the deserialized value is rewritten to `C`.
     let decoded = from_slice::<WithSplitItemAttrs>(&data).unwrap();
+    assert_bounded_parity::<WithSplitItemAttrs>(&data);
     assert_eq!(decoded, WithSplitItemAttrs::C);
 }

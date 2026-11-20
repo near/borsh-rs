@@ -5,7 +5,10 @@ use alloc::{
 };
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
+use crate::common_macro::assert_bounded_parity;
+
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 enum ERecD {
     B { x: String, y: i32 },
     C(u8, Vec<ERecD>),
@@ -24,5 +27,6 @@ fn test_recursive_enum() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(data);
     let actual_three = from_slice::<ERecD>(&data).unwrap();
+    assert_bounded_parity::<ERecD>(&data);
     assert_eq!(three, actual_three);
 }

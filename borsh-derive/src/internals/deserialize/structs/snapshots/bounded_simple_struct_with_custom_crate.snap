@@ -1,0 +1,22 @@
+---
+source: borsh-derive/src/internals/deserialize/structs/mod.rs
+expression: actual
+---
+#[automatically_derived]
+impl reexporter::borsh::de::BorshDeserializeBounded for A {
+    fn deserialize_bounded_alloc<__R: reexporter::borsh::io::Read>(
+        reader: &mut __R,
+        __budget: &mut reexporter::borsh::de::Budget,
+    ) -> ::core::result::Result<Self, reexporter::borsh::io::Error> {
+        Ok(Self {
+            x: reexporter::borsh::BorshDeserializeBounded::deserialize_bounded_alloc(
+                reader,
+                __budget,
+            )?,
+            y: reexporter::borsh::BorshDeserializeBounded::deserialize_bounded_alloc(
+                reader,
+                __budget,
+            )?,
+        })
+    }
+}

@@ -1,0 +1,7 @@
+---
+source: borsh-derive/src/internals/attributes/field/mod.rs
+expression: err
+---
+Error(
+    "`skip` cannot be used at the same time as `deserialize_with_bounded`",
+)

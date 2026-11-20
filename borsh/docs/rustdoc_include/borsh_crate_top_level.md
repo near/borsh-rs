@@ -30,6 +30,7 @@
 * **unstable__bounded** -
   Gates `BorshDeserializeBounded` trait and the `from_slice_bounded`/`from_reader_bounded`
   functions, which decode untrusted input with a memory limit.
+  Its derive macro requires **derive** to be enabled too.
 * **rc** -
   Gates implementation of [BorshSerialize] and [BorshDeserialize]
   for [`Rc<T>`](std::rc::Rc)/[`Arc<T>`](std::sync::Arc) respectively.

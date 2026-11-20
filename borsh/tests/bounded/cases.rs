@@ -166,6 +166,49 @@ impl BorshDeserializeBounded for Aligned64 {
     }
 }
 
+#[cfg(feature = "derive")]
+pub mod derived {
+    use alloc::{boxed::Box, string::String, vec, vec::Vec};
+
+    use borsh::{BorshDeserialize, BorshDeserializeBounded, BorshSerialize};
+
+    #[derive(
+        BorshSerialize, BorshDeserialize, BorshDeserializeBounded, Clone, Debug, PartialEq,
+    )]
+    pub enum Action {
+        Small(u8),
+        Big(Box<[u64; 4]>),
+    }
+
+    /// Skipped fields' `Default` allocations are not charged.
+    #[derive(BorshSerialize, BorshDeserialize, BorshDeserializeBounded, Debug, PartialEq)]
+    pub struct Record {
+        pub id: u64,
+        pub numbers: Vec<u32>,
+        pub digest: Box<[u8; 16]>,
+        #[borsh(skip)]
+        pub cache: Vec<u8>,
+        pub name: String,
+    }
+
+    #[derive(BorshSerialize, BorshDeserialize, BorshDeserializeBounded, Debug, PartialEq)]
+    pub enum Tree {
+        Leaf(u32),
+        Node(Vec<Self>),
+    }
+
+    /// Charges for eight child slots; the final allocation holds one child.
+    pub fn tree() -> Tree {
+        use Tree::{Leaf, Node};
+        Node(vec![
+            Leaf(1),
+            Node(vec![]),
+            Node(vec![Leaf(2), Leaf(3)]),
+            Node(vec![Node(vec![Leaf(4)])]),
+        ])
+    }
+}
+
 /// The collection sizes around the thresholds of the formulas.
 pub const BOUNDARY_SIZES: [usize; 22] = [
     1, 2, 3, 4, 7, 8, 11, 12, 14, 15, 20, 21, 23, 24, 28, 29, 47, 48, 143, 144, 1000, 0,
@@ -515,6 +558,58 @@ pub fn cases() -> Vec<Case> {
                 &(0..10).map(|_| Arc::new(7u64)).collect::<Vec<_>>(),
                 10 * p + 10 * arc(8, 8),
                 single(arc(8, 8) - 8),
+                Alloc::Exact,
+            ),
+        ]);
+    }
+
+    #[cfg(feature = "derive")]
+    {
+        use derived::{tree, Action, Record, Tree};
+        let action = size_of::<Action>();
+        let big = || Action::Big(Box::new([7u64; 4]));
+        cases.extend([
+            case(
+                "derived Vec<Action> of 100 boxed variants".into(),
+                &vec![big(); 100],
+                100 * action + 100 * 32,
+                Some((32, 31)),
+                Alloc::Exact,
+            ),
+            case(
+                "derived Vec<Action> of 50 small and 50 boxed".into(),
+                &(0..100u8)
+                    .map(|i| if i % 2 == 0 { Action::Small(i) } else { big() })
+                    .collect::<Vec<_>>(),
+                100 * action + 50 * 32,
+                Some((32, 31)),
+                Alloc::Exact,
+            ),
+            case(
+                "derived Action::Small".into(),
+                &Action::Small(7),
+                0,
+                single(action),
+                Alloc::Exact,
+            ),
+            case(
+                "derived struct with a skipped Vec".into(),
+                &Record {
+                    id: 7,
+                    numbers: vec![1, 2, 3],
+                    digest: Box::new([7; 16]),
+                    cache: vec![9; 100],
+                    name: "x".repeat(500),
+                },
+                12 + 16 + 500,
+                single(500),
+                Alloc::Exact,
+            ),
+            case(
+                "derived recursive enum".into(),
+                &tree(),
+                8 * size_of::<Tree>(),
+                single(size_of::<Tree>()),
                 Alloc::Exact,
             ),
         ]);
