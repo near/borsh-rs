@@ -17,7 +17,7 @@ pub(super) fn vec<T>(n: usize) -> Option<usize> {
 
 /// Upper bound for a hashbrown table with `n` entries of type `E`.
 /// A 16-byte control group covers all supported hashbrown versions, including std's.
-#[cfg(hash_collections)]
+#[cfg(any(hash_collections, feature = "indexmap"))]
 pub(super) fn table<E>(n: usize) -> Option<usize> {
     let buckets = (n.checked_mul(8)? / 7).checked_next_power_of_two()?.max(16);
     let size = buckets
@@ -52,6 +52,12 @@ pub(super) fn btree<K, V>(n: usize) -> Option<usize> {
 
 pub(super) fn linked_list<T>(n: usize) -> Option<usize> {
     allocations::<(usize, usize, T)>(n)
+}
+
+/// `IndexMap<K, V>` entries and indices; sets use `V = ()`.
+#[cfg(feature = "indexmap")]
+pub(super) fn index_map<K, V>(n: usize) -> Option<usize> {
+    vec::<(usize, K, V)>(n)?.checked_add(table::<usize>(n)?)
 }
 
 /// What the `Rc`/`Arc` block adds to its value: two counts of type `C`, plus padding.
@@ -107,6 +113,16 @@ mod tests {
         assert_eq!(linked_list::<u8>(100), Some(2400));
         assert_eq!(linked_list::<u128>(1), Some(32));
         assert_eq!(linked_list::<u64>(usize::MAX), None);
+    }
+
+    #[test]
+    #[cfg(feature = "indexmap")]
+    fn index_map_values() {
+        assert_eq!(index_map::<u64, u64>(1000), Some(24_000 + 2048 * 9 + 16));
+        assert_eq!(index_map::<u64, ()>(1000), Some(16_000 + 2048 * 9 + 16));
+        // Entries are flat: `(usize, u128, u8)` is 32 bytes, `(usize, (u128, u8))` 48.
+        assert_eq!(index_map::<u128, u8>(1), Some(32 + 16 * 9 + 16));
+        assert_eq!(index_map::<u64, u64>(usize::MAX), None);
     }
 
     #[test]

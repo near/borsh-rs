@@ -94,23 +94,40 @@ where
     if len == 0 {
         return Ok(Vec::new());
     }
+    let n = charge_seq::<T>(budget, len, kept)?;
+    if let Some(vec) = T::vec_from_reader_bounded(len, reader)? {
+        return Ok(vec);
+    }
+    let mut result = Vec::with_capacity(super::hint::cautious::<T>(len));
+    for _ in 0..len {
+        push_capped(
+            &mut result,
+            T::deserialize_bounded_alloc(reader, budget)?,
+            n,
+        );
+    }
+    Ok(result)
+}
+
+/// Charges `kept(n)` for `len` values of `T`; returns `len` as a `usize`.
+fn charge_seq<T>(
+    budget: &mut Budget,
+    len: u32,
+    kept: impl FnOnce(usize) -> Option<usize>,
+) -> Result<usize> {
     // Only fails on 16-bit targets.
     let n = usize::try_from(len).map_err(|_| budget.exceeded(usize::MAX))?;
     // A vector too large to allocate fails even when `kept(n)` fits.
     budget.charge_checked(size::vec::<T>(n).and_then(|_| kept(n)))?;
-    if let Some(vec) = T::vec_from_reader_bounded(len, reader)? {
-        return Ok(vec);
+    Ok(n)
+}
+
+/// Grows like plain decoding but stops at `n`: a false length allocates no more than plain.
+fn push_capped<T>(vec: &mut Vec<T>, value: T, n: usize) {
+    if vec.len() == vec.capacity() {
+        vec.reserve_exact(vec.capacity().min(n - vec.len()));
     }
-    // Grows like plain decoding but stops at `n`: a false length allocates no more than plain.
-    let mut result = Vec::with_capacity(super::hint::cautious::<T>(len));
-    for _ in 0..len {
-        let value = T::deserialize_bounded_alloc(reader, budget)?;
-        if result.len() == result.capacity() {
-            result.reserve_exact(result.capacity().min(n - result.len()));
-        }
-        result.push(value);
-    }
-    Ok(result)
+    vec.push(value);
 }
 
 #[cfg(feature = "de_strict_order")]
@@ -181,6 +198,16 @@ impl_bounded_via_plain!(
     core::net::Ipv4Addr,
     core::net::Ipv6Addr,
 );
+
+// After `impl_bounded_via_plain!`, which it uses.
+#[cfg(any(
+    feature = "ascii",
+    feature = "bson",
+    feature = "bytes",
+    feature = "indexmap",
+    feature = "uuid"
+))]
+mod ext;
 
 impl BorshDeserializeBounded for u8 {
     #[inline]

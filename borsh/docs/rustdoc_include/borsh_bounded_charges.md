@@ -19,10 +19,10 @@ assert_eq!(decoded, vec!["abc"; 3]);
 assert!(from_slice_bounded::<Vec<String>>(&encoded, &mut Budget::from_bytes(limit - 1)).is_err());
 ```
 
-The trait is implemented for the same types as `BorshDeserialize`, except those of the
-`ascii`, `bytes`, `bson`, `indexmap`, `uuid` and `unstable__schema` features. A type without
-an implementation cannot be decoded bounded: that is a compile error, never a silent
-fallback to plain decoding. `BorshDeserialize` is not a supertrait.
+The trait is implemented for the same types as `BorshDeserialize`, except the schema types
+of `unstable__schema`. A type without an implementation cannot be decoded bounded: that is
+a compile error, never a silent fallback to plain decoding. `BorshDeserialize` is not a
+supertrait.
 
 # How charging works
 
@@ -81,6 +81,9 @@ the size of the allocations the decoded value ends up with.
 | `LinkedList<T>` | `n·size_of::<(usize, usize, T)>()` | exact under current rustc |
 | `HashMap<K, V, S>`, `HashSet<T, S>` | `table(E, n)` | upper bound |
 | `BTreeMap<K, V>`, `BTreeSet<T>` | `nodes(K, V, n)` | upper bound |
+| `ascii::AsciiChar`, `uuid::Uuid`, `bson::oid::ObjectId` (features `ascii`, `uuid`, `bson`) | 0 | exact |
+| `ascii::AsciiString`, `bytes::Bytes`, `bytes::BytesMut` (features `ascii`, `bytes`) | `n` | exact |
+| `indexmap::IndexMap<K, V, S>`, `indexmap::IndexSet<T, S>` (feature `indexmap`) | `n·size_of::<(usize, K, V)>() + table(usize, n)`, with `V = ()` for sets | upper bound |
 
 With the formulas:
 
@@ -115,6 +118,8 @@ let pairs = || (0..1000u64).map(|k| (k, k));
 assert_eq!(charged(&pairs().collect::<BTreeMap<_, _>>()), 18432 + 24);
 # #[cfg(feature = "std")]
 assert_eq!(charged(&pairs().collect::<std::collections::HashMap<_, _>>()), 34832 + 48);
+# #[cfg(feature = "indexmap")]
+assert_eq!(charged(&pairs().collect::<indexmap::IndexMap<_, _>>()), 42448 + 72);
 # #[cfg(feature = "rc")]
 # {
 assert_eq!(charged(&std::rc::Rc::new(7u8)), 24 + 8);
@@ -138,8 +143,9 @@ assert_eq!(charged(&std::sync::Arc::<str>::from("a".repeat(5001))), 5024 + 16);
 
 # Caveats
 
-- The `LinkedList`, `BTreeMap` and hash table formulas mirror private standard library and
-  hashbrown internals, checked only on the toolchains and versions borsh is tested with.
+- The `LinkedList`, `BTreeMap`, `IndexMap` and hash table formulas mirror private standard
+  library, indexmap and hashbrown internals, checked only on the toolchains and versions borsh
+  is tested with.
 - The formulas are unstable and may change in any release; a change can move an input's
   threshold in either direction.
 - Charges are computed from `size_of`, so they depend on the target and on compiler and
