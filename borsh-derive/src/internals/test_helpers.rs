@@ -50,6 +50,12 @@ macro_rules! local_insta_assert_snapshot {
             insta::assert_snapshot!($value);
         });
     }};
+    ($name:expr, $value:expr) => {{
+
+        insta::with_settings!({prepend_module_to_snapshot => false}, {
+            insta::assert_snapshot!($name, $value);
+        });
+    }};
 }
 
 pub(crate) fn default_cratename() -> Path {

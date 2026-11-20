@@ -2,9 +2,22 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{Fields, ItemEnum, Path, Variant};
 
-use crate::internals::{attributes::item, deserialize, enum_discriminant::Discriminants, generics};
+use crate::internals::{
+    attributes::item,
+    deserialize::{self, Flavor},
+    enum_discriminant::Discriminants,
+    generics,
+};
 
 pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
+    process_flavor(input, cratename, Flavor::Plain)
+}
+
+pub fn process_bounded(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
+    process_flavor(input, cratename, Flavor::Bounded)
+}
+
+fn process_flavor(input: &ItemEnum, cratename: Path, flavor: Flavor) -> syn::Result<TokenStream2> {
     let name = &input.ident;
     let generics = generics::without_defaults(&input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
@@ -12,7 +25,7 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
     let mut variant_arms = TokenStream2::new();
     let use_discriminant = item::contains_use_discriminant(input)?;
     let discriminants = Discriminants::new(&input.variants);
-    let mut generics_output = deserialize::GenericsOutput::new(&generics);
+    let mut generics_output = deserialize::GenericsOutput::new(&generics, flavor);
 
     for (variant_idx, variant) in input.variants.iter().enumerate() {
         let variant_body = process_variant(variant, &cratename, &mut generics_output)?;
@@ -31,34 +44,68 @@ pub fn process(input: &ItemEnum, cratename: Path) -> syn::Result<TokenStream2> {
         quote! {}
     };
     generics_output.extend(&mut where_clause, &cratename);
+    let budget = deserialize::budget_ident(&generics);
 
-    Ok(quote! {
-        #[automatically_derived]
-        impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
-            fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
-                let tag = <u8 as #cratename::de::BorshDeserialize>::deserialize_reader(reader)?;
-                <Self as #cratename::de::EnumExt>::deserialize_variant(reader, tag)
+    match flavor {
+        Flavor::Plain => Ok(quote! {
+            #[automatically_derived]
+            impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
+                fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
+                    let tag = <u8 as #cratename::de::BorshDeserialize>::deserialize_reader(reader)?;
+                    <Self as #cratename::de::EnumExt>::deserialize_variant(reader, tag)
+                }
             }
-        }
 
-        #[automatically_derived]
-        impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
-            fn deserialize_variant<__R: #cratename::io::Read>(
-                reader: &mut __R,
-                variant_tag: u8,
-            ) -> ::core::result::Result<Self, #cratename::io::Error> {
-                let mut return_value =
-                    #variant_arms {
-                    return Err(#cratename::io::Error::new(
-                        #cratename::io::ErrorKind::InvalidData,
-                        #cratename::__private::maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
-                    ))
-                };
-                #init
-                Ok(return_value)
+            #[automatically_derived]
+            impl #impl_generics #cratename::de::EnumExt for #name #ty_generics #where_clause {
+                fn deserialize_variant<__R: #cratename::io::Read>(
+                    reader: &mut __R,
+                    variant_tag: u8,
+                ) -> ::core::result::Result<Self, #cratename::io::Error> {
+                    let mut return_value =
+                        #variant_arms {
+                        return Err(#cratename::io::Error::new(
+                            #cratename::io::ErrorKind::InvalidData,
+                            #cratename::__private::maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
+                        ))
+                    };
+                    #init
+                    Ok(return_value)
+                }
             }
-        }
-    })
+        }),
+        Flavor::Bounded => Ok(quote! {
+            #[automatically_derived]
+            impl #impl_generics #cratename::de::BorshDeserializeBounded for #name #ty_generics #where_clause {
+                fn deserialize_bounded_alloc<__R: #cratename::io::Read>(
+                    reader: &mut __R,
+                    #budget: &mut #cratename::de::Budget,
+                ) -> ::core::result::Result<Self, #cratename::io::Error> {
+                    let tag = <u8 as #cratename::de::BorshDeserializeBounded>::deserialize_bounded_alloc(reader, #budget)?;
+                    <Self as #cratename::de::EnumExtBounded>::deserialize_variant_bounded_alloc(reader, tag, #budget)
+                }
+            }
+
+            #[automatically_derived]
+            impl #impl_generics #cratename::de::EnumExtBounded for #name #ty_generics #where_clause {
+                fn deserialize_variant_bounded_alloc<__R: #cratename::io::Read>(
+                    reader: &mut __R,
+                    variant_tag: u8,
+                    #budget: &mut #cratename::de::Budget,
+                ) -> ::core::result::Result<Self, #cratename::io::Error> {
+                    let mut return_value =
+                        #variant_arms {
+                        return Err(#cratename::io::Error::new(
+                            #cratename::io::ErrorKind::InvalidData,
+                            #cratename::__private::maybestd::format!("Unexpected variant tag: {:?}", variant_tag),
+                        ))
+                    };
+                    #init
+                    Ok(return_value)
+                }
+            }
+        }),
+    }
 }
 
 fn process_variant(
@@ -88,10 +135,23 @@ fn process_variant(
 #[cfg(test)]
 mod tests {
     use crate::internals::test_helpers::{
-        default_cratename, local_insta_assert_snapshot, pretty_print_syn_str,
+        default_cratename, local_insta_assert_debug_snapshot, local_insta_assert_snapshot,
+        pretty_print_syn_str,
     };
 
     use super::*;
+
+    fn assert_bounded(name: &str, item: &ItemEnum, cratename: Path) {
+        let actual = process_bounded(item, cratename).unwrap();
+        let actual = pretty_print_syn_str(&actual).unwrap();
+        let without_bounded = actual
+            .replace("BorshDeserializeBounded", "")
+            .replace("EnumExtBounded", "");
+        assert!(!without_bounded.contains("BorshDeserialize"), "{}", actual);
+        assert!(!without_bounded.contains("EnumExt"), "{}", actual);
+        assert!(!actual.contains("deserialize_reader"), "{}", actual);
+        local_insta_assert_snapshot!(format!("bounded_{}", name), actual);
+    }
 
     #[test]
     fn borsh_skip_struct_variant_field() {
@@ -244,7 +304,10 @@ mod tests {
                     a: String,
                     #[borsh(bound(deserialize =
                         "T: PartialOrd + Hash + Eq + borsh::de::BorshDeserialize,
-                         U: borsh::de::BorshDeserialize"
+                         U: borsh::de::BorshDeserialize",
+                        deserialize_bounded =
+                        "T: PartialOrd + Hash + Eq + borsh::de::BorshDeserializeBounded,
+                         U: borsh::de::BorshDeserializeBounded"
                     ))]
                     b: HashMap<T, U>,
                 },
@@ -265,7 +328,10 @@ mod tests {
                 C3(u64, u64),
                 C4 {
                     x: u64,
-                    #[borsh(deserialize_with = "third_party_impl::deserialize_third_party")]
+                    #[borsh(
+                        deserialize_with = "third_party_impl::deserialize_third_party",
+                        deserialize_with_bounded = "third_party_impl::deserialize_third_party_bounded",
+                    )]
                     y: ThirdParty<K, V>
                 },
             }
@@ -312,6 +378,7 @@ mod tests {
         let actual = process(&item_enum, default_cratename()).unwrap();
 
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        assert_bounded("borsh_discriminant_true", &item_enum, default_cratename());
     }
     #[test]
     fn borsh_init_func() {
@@ -329,5 +396,73 @@ mod tests {
         .unwrap();
         let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+    }
+
+    #[test]
+    fn bounded_rejects_deserialize_with_alone() {
+        let item_enum: ItemEnum = syn::parse2(quote! {
+            enum C<K: Ord, V> {
+                C3(u64, u64),
+                C4 {
+                    x: u64,
+                    #[borsh(deserialize_with = "third_party_impl::deserialize_third_party")]
+                    y: ThirdParty<K, V>
+                },
+            }
+        })
+        .unwrap();
+
+        process(&item_enum, default_cratename()).unwrap();
+        let err = match process_bounded(&item_enum, default_cratename()) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        local_insta_assert_debug_snapshot!(err);
+    }
+
+    #[test]
+    fn plain_output_ignores_bounded_keys() {
+        let with_keys: ItemEnum = syn::parse2(quote! {
+            enum C<K: Ord, V, T> {
+                C3(#[borsh(bound(deserialize_bounded = "T: Eq"))] T, u64),
+                C4 {
+                    x: u64,
+                    #[borsh(
+                        deserialize_with = "third_party_impl::deserialize_third_party",
+                        deserialize_with_bounded = "third_party_impl::deserialize_third_party_bounded",
+                    )]
+                    y: ThirdParty<K, V>
+                },
+            }
+        })
+        .unwrap();
+        let without_keys: ItemEnum = syn::parse2(quote! {
+            enum C<K: Ord, V, T> {
+                C3(T, u64),
+                C4 {
+                    x: u64,
+                    #[borsh(deserialize_with = "third_party_impl::deserialize_third_party")]
+                    y: ThirdParty<K, V>
+                },
+            }
+        })
+        .unwrap();
+
+        assert_eq!(
+            process(&with_keys, default_cratename())
+                .unwrap()
+                .to_string(),
+            process(&without_keys, default_cratename())
+                .unwrap()
+                .to_string()
+        );
+        assert_eq!(
+            crate::internals::serialize::enums::process(&with_keys, default_cratename())
+                .unwrap()
+                .to_string(),
+            crate::internals::serialize::enums::process(&without_keys, default_cratename())
+                .unwrap()
+                .to_string()
+        );
     }
 }

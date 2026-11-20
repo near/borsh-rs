@@ -19,6 +19,8 @@ pub const USE_DISCRIMINANT: Symbol = Symbol("use_discriminant", "use_discriminan
 pub const SERIALIZE: Symbol = Symbol("serialize", "serialize = ...");
 /// deserialize - sub-bound nested meta attribute
 pub const DESERIALIZE: Symbol = Symbol("deserialize", "deserialize = ...");
+/// Nested in `bound(...)`.
+pub const DESERIALIZE_BOUNDED: Symbol = Symbol("deserialize_bounded", "deserialize_bounded = ...");
 /// skip - sub-borsh nested meta, field-level only attribute, `BorshSerialize`, `BorshDeserialize`, `BorshSchema` contexts
 pub const SKIP: Symbol = Symbol("skip", "skip");
 /// init - sub-borsh nested meta, item-level only attribute  `BorshDeserialize` context
@@ -27,6 +29,9 @@ pub const INIT: Symbol = Symbol("init", "init = ...");
 pub const SERIALIZE_WITH: Symbol = Symbol("serialize_with", "serialize_with = ...");
 /// deserialize_with - sub-borsh nested meta, field-level only, `BorshDeserialize` context
 pub const DESERIALIZE_WITH: Symbol = Symbol("deserialize_with", "deserialize_with = ...");
+/// Field-level custom decoder for `BorshDeserializeBounded`.
+pub const DESERIALIZE_WITH_BOUNDED: Symbol =
+    Symbol("deserialize_with_bounded", "deserialize_with_bounded = ...");
 /// crate - sub-borsh nested meta, item-level only, `BorshSerialize`, `BorshDeserialize`, `BorshSchema` contexts
 pub const CRATE: Symbol = Symbol("crate", "crate = ...");
 
@@ -51,6 +56,7 @@ pub mod schema_keys {
 pub enum BoundType {
     Serialize,
     Deserialize,
+    DeserializeBounded,
 }
 impl PartialEq<Symbol> for Path {
     fn eq(&self, word: &Symbol) -> bool {
