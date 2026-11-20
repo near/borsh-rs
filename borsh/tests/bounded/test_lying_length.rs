@@ -24,6 +24,8 @@ use borsh::{
 };
 
 use super::cases::btree_nodes;
+#[cfg(feature = "indexmap")]
+use super::cases::index_map;
 #[cfg(hash_collections)]
 use super::cases::table;
 use super::common::{
@@ -221,6 +223,36 @@ fn test_hash_collections() {
     check(
         &(1..=3u32).collect::<HashSet<_>>(),
         outer(3, |n| table(size_of::<u32>(), n)),
+    );
+}
+
+#[cfg(any(feature = "bytes", feature = "ascii"))]
+#[test]
+fn test_byte_strings() {
+    #[cfg(feature = "bytes")]
+    {
+        check(&bytes::Bytes::from(vec![1u8, 2, 3]), outer(3, |n| n));
+        check(&bytes::BytesMut::from(&[1u8, 2, 3][..]), outer(3, |n| n));
+    }
+    #[cfg(feature = "ascii")]
+    check(
+        &ascii::AsciiString::from_ascii("abc").unwrap(),
+        outer(3, |n| n),
+    );
+}
+
+#[cfg(feature = "indexmap")]
+#[test]
+fn test_index_collections() {
+    check(
+        &vec![(1u32, 10u64), (2, 20)]
+            .into_iter()
+            .collect::<indexmap::IndexMap<_, _>>(),
+        outer(2, index_map::<u32, u64>),
+    );
+    check(
+        &(1..=3u32).collect::<indexmap::IndexSet<_>>(),
+        outer(3, index_map::<u32, ()>),
     );
 }
 

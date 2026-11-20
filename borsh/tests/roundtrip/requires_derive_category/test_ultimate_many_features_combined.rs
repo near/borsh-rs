@@ -1,5 +1,7 @@
 use core::{ops, result::Result};
 
+use crate::common_macro::assert_bounded_parity;
+
 use alloc::{
     borrow,
     boxed::Box,
@@ -14,6 +16,7 @@ use bytes::{Bytes, BytesMut};
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct A<'a> {
     x: u64,
     b: B,
@@ -40,6 +43,7 @@ struct A<'a> {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct B {
     x: u64,
     y: i32,
@@ -47,6 +51,7 @@ struct B {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 enum C {
     C1,
     C2(u64),
@@ -56,6 +61,7 @@ enum C {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct D {
     x: u64,
 }
@@ -70,7 +76,8 @@ struct F1<'a, 'b> {
     aa: &'a [&'a A<'b>],
 }
 
-#[derive(BorshDeserialize)]
+#[derive(BorshDeserialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct F2<'b> {
     aa: Vec<A<'b>>,
 }
@@ -120,6 +127,7 @@ fn test_ultimate_combined_all_features() {
     insta::assert_debug_snapshot!(encoded_a);
 
     let decoded_a = from_slice::<A>(&encoded_a).unwrap();
+    assert_bounded_parity::<A>(&encoded_a);
     let expected_a = A {
         x: 1,
         b: B {
@@ -158,6 +166,7 @@ fn test_ultimate_combined_all_features() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(encoded_f1);
     let decoded_f2 = from_slice::<F2>(&encoded_f1).unwrap();
+    assert_bounded_parity::<F2>(&encoded_f1);
     assert_eq!(decoded_f2.aa.len(), 2);
     assert!(decoded_f2.aa.iter().all(|f2_a| f2_a == &expected_a));
 }

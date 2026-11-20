@@ -1,6 +1,8 @@
 use borsh::BorshDeserialize;
 use indexmap::{IndexMap, IndexSet};
 
+use crate::common_macro::assert_bounded_parity;
+
 #[test]
 // Taken from https://github.com/indexmap-rs/indexmap/blob/dd06e5773e4f91748396c67d00c83637f5c0dd49/src/borsh.rs#L100
 // license: MIT OR Apache-2.0
@@ -18,6 +20,7 @@ fn test_indexmap_roundtrip() {
 
     let deserialized_map: IndexMap<i32, i32> =
         BorshDeserialize::try_from_slice(&serialized_map).unwrap();
+    assert_bounded_parity::<IndexMap<i32, i32>>(&serialized_map);
     assert_eq!(original_map, deserialized_map);
 }
 
@@ -37,5 +40,6 @@ fn test_indexset_roundtrip() {
 
     let deserialized_set: IndexSet<i32> =
         BorshDeserialize::try_from_slice(&serialized_set).unwrap();
+    assert_bounded_parity::<IndexSet<i32>>(&serialized_set);
     assert_eq!(original_set, deserialized_set);
 }

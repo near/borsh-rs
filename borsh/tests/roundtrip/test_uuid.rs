@@ -1,6 +1,8 @@
 use borsh::BorshDeserialize;
 use uuid::Uuid;
 
+use crate::common_macro::assert_bounded_parity;
+
 #[test]
 fn test_uuid_roundtrip() {
     let original_uuid = Uuid::from_bytes([
@@ -13,5 +15,6 @@ fn test_uuid_roundtrip() {
 
     let deserialized_uuid: Uuid =
         BorshDeserialize::try_from_slice(&serialized_uuid).unwrap();
+    assert_bounded_parity::<Uuid>(&serialized_uuid);
     assert_eq!(original_uuid, deserialized_uuid);
 }

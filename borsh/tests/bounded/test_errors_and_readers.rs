@@ -140,6 +140,8 @@ fn test_zero_sized_elements_are_rejected_first() {
     assert_zst_rejected_first::<BTreeMap<(), u8>>();
     #[cfg(hash_collections)]
     assert_zst_rejected_first::<HashMap<(), u8>>();
+    #[cfg(feature = "indexmap")]
+    assert_zst_rejected_first::<indexmap::IndexMap<(), u8>>();
     #[cfg(feature = "rc")]
     assert_zst_rejected_first::<alloc::rc::Rc<[()]>>();
 }
@@ -277,6 +279,30 @@ fn test_byte_vector_read_windows() {
         let (result, _) = traced::<Vec<u8>>(&input, 300_000);
         assert!(result.unwrap() == value, "{} bytes", len);
     }
+}
+
+/// `Bytes` and `AsciiString` use the `u8` vector hook and must preserve its read windows.
+#[cfg(any(feature = "bytes", feature = "ascii"))]
+#[track_caller]
+fn assert_byte_vector_read_windows<T>(value: &T)
+where
+    T: BorshSerialize + BorshDeserialize + BorshDeserializeBounded + PartialEq + Debug,
+{
+    let input = to_vec(value).unwrap();
+    assert_eq!(input.len(), 4 + MIB + 1);
+    let (result, trace) = traced::<T>(&input, usize::MAX);
+    // `assert!` rather than `assert_eq!`, so a failure does not print megabytes.
+    assert!(&result.unwrap() == value);
+    assert_eq!(trace, vec![4, MIB, 1, 1]);
+}
+
+#[cfg(any(feature = "bytes", feature = "ascii"))]
+#[test]
+fn test_byte_strings_read_like_byte_vectors() {
+    #[cfg(feature = "bytes")]
+    assert_byte_vector_read_windows(&bytes::Bytes::from(vec![7u8; MIB + 1]));
+    #[cfg(feature = "ascii")]
+    assert_byte_vector_read_windows(&ascii::AsciiString::from_ascii(vec![b'a'; MIB + 1]).unwrap());
 }
 
 #[test]
@@ -450,6 +476,47 @@ fn test_reader_failing_with_unexpected_eof() {
             );
         } else {
             assert_eq!(result.unwrap(), bytes, "at {}", at);
+        }
+    }
+}
+
+/// `BytesMut` reads one byte at a time through `read_exact`, which retries interruptions
+/// and handles errors through the `u8` decoder.
+#[cfg(feature = "bytes")]
+#[test]
+fn test_bytes_mut_reads_like_plain() {
+    use bytes::BytesMut;
+
+    for n in [0, 5] {
+        let value = BytesMut::from(&vec![7u8; n][..]);
+        let (result, trace) = traced::<BytesMut>(&to_vec(&value).unwrap(), usize::MAX);
+        assert_eq!(result.unwrap(), value, "{} bytes", n);
+        // The length prefix, one call per byte, then the check for trailing bytes.
+        let expected = [&[4][..], &vec![1; n][..], &[1][..]].concat();
+        assert_eq!(trace, expected, "{} bytes", n);
+    }
+
+    let value = BytesMut::from(&[1u8, 2, 3][..]);
+    assert_interruptions(&value, 0..0);
+    assert_reader_failures(&value);
+
+    // Unlike the byte loop of `Vec<u8>`, the `u8` decoder turns `UnexpectedEof` into
+    // "Unexpected length of input", also between the bytes.
+    let input = to_vec(&value).unwrap();
+    for at in 0..=input.len() {
+        let result = failing::<BytesMut>(&input, at, ErrorKind::UnexpectedEof);
+        if at < input.len() {
+            assert_eq!(
+                error_of(result),
+                (
+                    ErrorKind::InvalidData,
+                    ERROR_UNEXPECTED_LENGTH_OF_INPUT.to_string()
+                ),
+                "at {}",
+                at
+            );
+        } else {
+            assert_eq!(result.unwrap(), value, "at {}", at);
         }
     }
 }

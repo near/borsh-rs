@@ -3,7 +3,10 @@
 use borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize};
 use bson::oid::ObjectId;
 
+use crate::common_macro::assert_bounded_parity;
+
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug)]
+#[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 struct StructWithObjectId(i32, ObjectId, u8);
 
 #[test]
@@ -17,5 +20,6 @@ fn test_object_id() {
     #[cfg(feature = "std")]
     insta::assert_debug_snapshot!(serialized);
     let deserialized: StructWithObjectId = from_slice(&serialized).unwrap();
+    assert_bounded_parity::<StructWithObjectId>(&serialized);
     assert_eq!(obj, deserialized);
 }
