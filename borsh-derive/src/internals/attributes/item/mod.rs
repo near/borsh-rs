@@ -1,4 +1,4 @@
-use crate::internals::attributes::{BORSH, CRATE, INIT, USE_DISCRIMINANT};
+use crate::internals::attributes::{Symbol, BORSH, CRATE, INIT, INIT_BOUNDED, USE_DISCRIMINANT};
 use quote::ToTokens;
 use std::collections::HashSet;
 use syn::{spanned::Spanned, Attribute, DeriveInput, Error, Expr, ItemEnum, Path};
@@ -13,16 +13,22 @@ pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
     let mut seen_keys: HashSet<&'static str> = HashSet::new();
     for attr in borsh_attrs {
         attr.parse_nested_meta(|meta| {
-            if meta.path != USE_DISCRIMINANT && meta.path != INIT && meta.path != CRATE {
+            if meta.path != USE_DISCRIMINANT
+                && meta.path != INIT
+                && meta.path != INIT_BOUNDED
+                && meta.path != CRATE
+            {
                 return Err(syn::Error::new(
                     meta.path.span(),
-                    "`crate`, `use_discriminant` or `init` are the only supported attributes for `borsh`",
+                    "`crate`, `use_discriminant`, `init` or `init_bounded` are the only supported attributes for `borsh`",
                 ));
             }
             let key = if meta.path == USE_DISCRIMINANT {
                 USE_DISCRIMINANT.0
             } else if meta.path == INIT {
                 INIT.0
+            } else if meta.path == INIT_BOUNDED {
+                INIT_BOUNDED.0
             } else {
                 CRATE.0
             };
@@ -37,7 +43,7 @@ pub fn check_attributes(derive_input: &DeriveInput) -> Result<(), Error> {
                         "borsh(use_discriminant=<bool>) does not support structs",
                     ));
                 }
-            } else if meta.path == INIT || meta.path == CRATE {
+            } else if meta.path == INIT || meta.path == INIT_BOUNDED || meta.path == CRATE {
                 let _expr: Expr = meta.value()?.parse()?;
             }
 
@@ -74,7 +80,7 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
                         ));
                     }
                 };
-            } else if meta.path == INIT || meta.path == CRATE {
+            } else if meta.path == INIT || meta.path == INIT_BOUNDED || meta.path == CRATE {
                 let _value_expr: Expr = meta.value()?.parse()?;
             }
             Ok(())
@@ -94,13 +100,26 @@ pub(crate) fn contains_use_discriminant(input: &ItemEnum) -> Result<bool, syn::E
 }
 
 pub(crate) fn contains_initialize_with(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
+    init_path(attrs, INIT)
+}
+
+pub(crate) fn contains_initialize_bounded_with(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
+    init_path(attrs, INIT_BOUNDED)
+}
+
+/// The path of the `init` or `init_bounded` key.
+fn init_path(attrs: &[Attribute], key: Symbol) -> Result<Option<Path>, Error> {
     let mut res = None;
     for attr in collect_borsh_attributes(attrs) {
         attr.parse_nested_meta(|meta| {
-            if meta.path == INIT {
+            if meta.path == key {
                 let value_expr: Path = meta.value()?.parse()?;
                 res = Some(value_expr);
-            } else if meta.path == USE_DISCRIMINANT || meta.path == CRATE {
+            } else if meta.path == USE_DISCRIMINANT
+                || meta.path == INIT
+                || meta.path == INIT_BOUNDED
+                || meta.path == CRATE
+            {
                 let _value_expr: Expr = meta.value()?.parse()?;
             }
 
@@ -118,7 +137,10 @@ pub(crate) fn get_crate(attrs: &[Attribute]) -> Result<Option<Path>, Error> {
             if meta.path == CRATE {
                 let value_expr: Path = parsing::parse_lit_into(BORSH, CRATE, &meta)?;
                 res = Some(value_expr);
-            } else if meta.path == USE_DISCRIMINANT || meta.path == INIT {
+            } else if meta.path == USE_DISCRIMINANT
+                || meta.path == INIT
+                || meta.path == INIT_BOUNDED
+            {
                 let _value_expr: Expr = meta.value()?.parse()?;
             }
 
@@ -456,5 +478,50 @@ mod tests {
             crate_.unwrap().to_token_stream().to_string(),
             "reexporter :: borsh"
         );
+    }
+
+    /// Every item parser accepts `init_bounded` next to the other keys.
+    #[test]
+    fn test_init_bounded_with_every_key() {
+        let derive_input = syn::parse2::<DeriveInput>(quote! {
+            #[borsh(init = plain_init, init_bounded = bounded_init)]
+            #[borsh(crate = "reexporter::borsh", use_discriminant = true)]
+            enum A {
+                B,
+                C = 10,
+            }
+        })
+        .unwrap();
+        let item_enum = syn::parse2::<ItemEnum>(derive_input.to_token_stream()).unwrap();
+
+        assert!(check_attributes(&derive_input).is_ok());
+        assert!(contains_use_discriminant(&item_enum).unwrap());
+        let path = |path: Option<Path>| path.unwrap().to_token_stream().to_string();
+        assert_eq!(
+            path(contains_initialize_with(&item_enum.attrs).unwrap()),
+            "plain_init"
+        );
+        assert_eq!(
+            path(contains_initialize_bounded_with(&item_enum.attrs).unwrap()),
+            "bounded_init"
+        );
+        assert_eq!(
+            path(get_crate(&item_enum.attrs).unwrap()),
+            "reexporter :: borsh"
+        );
+    }
+
+    #[test]
+    fn test_reject_duplicate_init_bounded() {
+        let derive_input = syn::parse2::<DeriveInput>(quote! {
+            #[borsh(init_bounded = a)]
+            #[borsh(init_bounded = b)]
+            struct A {
+                x: u64,
+            }
+        })
+        .unwrap();
+        let err = check_attributes(&derive_input).unwrap_err();
+        assert_eq!(err.to_string(), "duplicate `init_bounded` attribute");
     }
 }

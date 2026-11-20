@@ -1,9 +1,11 @@
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{ExprPath, Generics, Ident, Path};
+use syn::{Attribute, ExprPath, Generics, Ident, Path};
 
 use super::{
-    attributes::{field, BoundType, DESERIALIZE_WITH, DESERIALIZE_WITH_BOUNDED},
+    attributes::{
+        field, item, BoundType, DESERIALIZE_WITH, DESERIALIZE_WITH_BOUNDED, INIT, INIT_BOUNDED,
+    },
     generics,
 };
 
@@ -67,6 +69,35 @@ impl Flavor {
                 (None, None) => Ok(None),
             },
         }
+    }
+
+    /// Reject a plain-only `init`: it would allocate without charging.
+    fn init_fn(self, attrs: &[Attribute]) -> syn::Result<Option<Path>> {
+        match self {
+            Flavor::Plain => item::contains_initialize_with(attrs),
+            Flavor::Bounded => match (
+                item::contains_initialize_bounded_with(attrs)?,
+                item::contains_initialize_with(attrs)?,
+            ) {
+                (Some(bounded), _) => Ok(Some(bounded)),
+                (None, Some(plain)) => Err(syn::Error::new_spanned(
+                    plain,
+                    format!(
+                        "`{}` has no bounded counterpart; add `{} = ...`",
+                        INIT.0, INIT_BOUNDED.0
+                    ),
+                )),
+                (None, None) => Ok(None),
+            },
+        }
+    }
+
+    /// Calls the item's init function on `return_value`, if it has one.
+    fn init_call(self, attrs: &[Attribute], budget: &Ident) -> syn::Result<Option<TokenStream2>> {
+        Ok(self.init_fn(attrs)?.map(|method| match self {
+            Flavor::Plain => quote! { return_value.#method(); },
+            Flavor::Bounded => quote! { return_value.#method(#budget)?; },
+        }))
     }
 }
 

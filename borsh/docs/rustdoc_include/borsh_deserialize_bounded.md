@@ -4,9 +4,10 @@ Derive macro available if borsh is built with `features = ["derive", "unstable__
 
 The derived implementation decodes the same bytes as `#[derive(BorshDeserialize)]`, field by
 field and variant by variant, and passes the [`Budget`](crate::de::Budget) on to every field.
-It honors the same `#[borsh(...)]` attributes, with bounded counterparts for the two that
-name plain items: `deserialize_with` and `bound(deserialize = ...)`. What each type charges
-is documented on the [`BorshDeserializeBounded`](trait@crate::BorshDeserializeBounded) trait.
+It honors the same `#[borsh(...)]` attributes, with bounded counterparts for the three that
+name plain items: `init`, `deserialize_with` and `bound(deserialize = ...)`. What each type
+charges is documented on the [`BorshDeserializeBounded`](trait@crate::BorshDeserializeBounded)
+trait.
 
 ```rust
 use borsh::{
@@ -112,27 +113,70 @@ struct B {
 }
 ```
 
-### 2. `#[borsh(init=...)]` (item level attribute)
+### 2. `#[borsh(init_bounded = ...)]` (item level attribute)
 
-The function runs right after decoding, as for `BorshDeserialize`. It gets no budget, so what
-it allocates is not charged.
+###### syntax
+
+Attribute's value is a path to a method, as for `init`.
+
+###### usage
+
+The method runs right after decoding, in place of `init`, and gets the budget:
+
+```rust,ignore
+fn init_bounded(&mut self, budget: &mut borsh::Budget) -> borsh::io::Result<()>
+```
+
+It must charge the budget before each allocation the value keeps, fail only with an error from
+the budget, and otherwise change the value as `init` does, so that both derives decode the same
+value.
 
 ```rust
+use borsh::{BorshDeserialize, BorshDeserializeBounded, Budget};
+
+#[derive(BorshDeserialize, BorshDeserializeBounded)]
+#[borsh(init = init, init_bounded = init_bounded)]
+struct Name {
+    original: String,
+    #[borsh(skip)]
+    lowercase: String,
+}
+
+impl Name {
+    fn init(&mut self) {
+        self.lowercase = self.original.to_ascii_lowercase();
+    }
+
+    fn init_bounded(&mut self, budget: &mut Budget) -> borsh::io::Result<()> {
+        // `to_ascii_lowercase` allocates `original.len()` bytes.
+        budget.charge_bytes(self.original.len())?;
+        self.init();
+        Ok(())
+    }
+}
+
+let input = borsh::to_vec("Borsh").unwrap();
+// The `Name` itself, 5 bytes for the string and 5 for its lowercase copy.
+let limit = core::mem::size_of::<Name>() + 10;
+let name = borsh::from_slice_bounded::<Name>(&input, &mut Budget::from_bytes(limit)).unwrap();
+assert_eq!(name.lowercase, "borsh");
+assert!(borsh::from_slice_bounded::<Name>(&input, &mut Budget::from_bytes(limit - 1)).is_err());
+```
+
+`init` alone is rejected by this derive, since its allocations would not be charged.
+`init_bounded` alone is allowed, and `BorshDeserialize` ignores it.
+
+```rust,compile_fail
 use borsh::BorshDeserializeBounded;
 
 #[derive(BorshDeserializeBounded)]
-#[borsh(init=init)]
-struct Message {
-    message: String,
-    timestamp: u64,
-    #[borsh(skip)]
-    length: usize,
+#[borsh(init = init)]
+struct A {
+    x: u64,
 }
 
-impl Message {
-    pub fn init(&mut self) {
-        self.length = self.message.len();
-    }
+impl A {
+    fn init(&mut self) {}
 }
 ```
 
@@ -351,7 +395,8 @@ Unions are not supported, as with `BorshDeserialize`.
    values you decode with a limit. The compiler points at each field type that is missing it.
 2. For each `deserialize_with = "f"`, write a bounded `f` that takes the budget, and add
    `deserialize_with_bounded`.
-3. For each `bound(deserialize = "...")`, add the matching `deserialize_bounded = "..."`.
-4. Write a bounded twin of each hand-written `BorshDeserialize` implementation; see
+3. For each `init = f`, write a bounded `f` that takes the budget, and add `init_bounded`.
+4. For each `bound(deserialize = "...")`, add the matching `deserialize_bounded = "..."`.
+5. Write a bounded twin of each hand-written `BorshDeserialize` implementation; see
    [`BorshDeserializeBounded`](trait@crate::BorshDeserializeBounded) for how.
-5. Decode with [`from_slice_bounded`] or [`from_reader_bounded`].
+6. Decode with [`from_slice_bounded`] or [`from_reader_bounded`].

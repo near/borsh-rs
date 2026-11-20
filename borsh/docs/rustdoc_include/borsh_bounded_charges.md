@@ -56,10 +56,9 @@ fallback to plain decoding. `BorshDeserialize` is not a supertrait.
 - After a successful decode with a fresh budget,
   [`used_bytes()`](crate::de::Budget::used_bytes) is the smallest limit that decodes this input.
 
-Both assume that the reader is deterministic, that hand-written implementations follow the
-[rules](#writing-an-implementation-by-hand), and that allocations succeed. In derived
-implementations, `deserialize_with_bounded` functions must follow the same rules, and
-`#[borsh(init)]` functions must not depend on allocated capacity.
+Both assume that the reader is deterministic, that hand-written implementations, and the
+`deserialize_with_bounded` and `init_bounded` functions of derived ones, follow the
+[rules](#writing-an-implementation-by-hand), and that allocations succeed.
 
 # What is charged
 
@@ -127,10 +126,11 @@ assert_eq!(charged(&std::sync::Arc::<str>::from("a".repeat(5001))), 5024 + 16);
 # What is not charged
 
 - stack used while decoding (temporaries, recursion depth);
-- allocations of `#[borsh(init)]` functions and of `Default` values of skipped fields;
-- allocations inside hand-written implementations and `deserialize_with_bounded` functions,
-  unless they charge for them or decode their parts with `deserialize_bounded_alloc`; plain
-  `BorshDeserialize` calls made from there are not charged either;
+- allocations of `Default` values of skipped fields;
+- allocations inside hand-written implementations and `deserialize_with_bounded` and
+  `init_bounded` functions, unless they charge for them or decode their parts with
+  `deserialize_bounded_alloc`; plain `BorshDeserialize` calls made from there are not
+  charged either;
 - allocations made by a custom conversion from `T::Owned` into `Box<T>`;
 - allocations of the hasher (`S::default()`) and of user `Hash`, `Eq`, `Ord` and `Drop`
   implementations;

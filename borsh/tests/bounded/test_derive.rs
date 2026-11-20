@@ -258,7 +258,7 @@ fn test_derived_enum_ext_bounded_charges_like_the_derived_impl() {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, BorshDeserializeBounded, PartialEq, Debug)]
-#[borsh(init = init)]
+#[borsh(init = init, init_bounded = init_bounded)]
 struct WithInit {
     text: String,
     #[borsh(skip)]
@@ -272,10 +272,32 @@ impl WithInit {
         self.init_calls += 1;
         self.words = self.text.split(' ').map(String::from).collect();
     }
+
+    /// The words of `init`, in a vector of their exact count.
+    fn init_bounded(&mut self, budget: &mut Budget) -> Result<()> {
+        self.init_calls += 1;
+        let count = self.text.split(' ').count();
+        budget.charge_array::<String>(count)?;
+        let mut words = Vec::with_capacity(count);
+        for word in self.text.split(' ') {
+            budget.charge_bytes(word.len())?;
+            words.push(String::from(word));
+        }
+        self.words = words;
+        Ok(())
+    }
+}
+
+fn with_init(text: &str, words: &[&str], init_calls: u8) -> WithInit {
+    WithInit {
+        text: text.to_string(),
+        words: words.iter().map(|word| word.to_string()).collect(),
+        init_calls,
+    }
 }
 
 #[derive(BorshSerialize, BorshDeserialize, BorshDeserializeBounded, PartialEq, Debug)]
-#[borsh(init = init)]
+#[borsh(init = init, init_bounded = init_bounded)]
 enum InitEnum {
     Numbers {
         numbers: Vec<u32>,
@@ -288,17 +310,21 @@ enum InitEnum {
 
 impl InitEnum {
     fn init(&mut self) {
-        match self {
-            InitEnum::Numbers {
-                numbers,
-                sorted,
-                init_calls,
-            } => {
-                *init_calls += 1;
-                *sorted = numbers.clone();
-                sorted.sort_unstable();
-            }
-        }
+        let InitEnum::Numbers {
+            numbers,
+            sorted,
+            init_calls,
+        } = self;
+        *init_calls += 1;
+        *sorted = numbers.clone();
+        sorted.sort_unstable();
+    }
+
+    fn init_bounded(&mut self, budget: &mut Budget) -> Result<()> {
+        let InitEnum::Numbers { numbers, .. } = self;
+        budget.charge_array::<u32>(numbers.len())?;
+        self.init();
+        Ok(())
     }
 }
 
@@ -311,29 +337,57 @@ fn init_numbers(numbers: &[u32], sorted: &[u32], init_calls: u8) -> InitEnum {
 }
 
 #[test]
-fn test_derived_init_runs_once_and_is_not_charged() {
+fn test_derived_init_bounded_runs_once_and_charges() {
     let text = "decoded with a limit";
-    let input = to_vec(&WithInit {
-        text: text.to_string(),
-        words: Vec::new(),
-        init_calls: 0,
-    })
-    .unwrap();
-    let expected = WithInit {
-        text: text.to_string(),
-        words: vec![
-            "decoded".to_string(),
-            "with".to_string(),
-            "a".to_string(),
-            "limit".to_string(),
-        ],
-        init_calls: 1,
-    };
-    assert_charge(&input, &expected, text.len(), text.len(), text.len() - 1);
+    let input = to_vec(&with_init(text, &[], 0)).unwrap();
+    let expected = with_init(text, &["decoded", "with", "a", "limit"], 1);
+    // The text, then the hook's four `String`s and their 17 bytes. One byte short, the
+    // hook's last charge, for "limit", fails.
+    let charge = text.len() + 4 * size_of::<String>() + 17;
+    assert_charge(&input, &expected, charge, 5, 4);
 
     let input = to_vec(&init_numbers(&[3, 1, 2], &[], 0)).unwrap();
     let expected = init_numbers(&[3, 1, 2], &[1, 2, 3], 1);
-    assert_charge(&input, &expected, 12, 12, 11);
+    // The numbers, then their sorted copy.
+    assert_charge(&input, &expected, 12 + 12, 12, 11);
+}
+
+#[test]
+fn test_derived_enum_ext_bounded_runs_init_bounded_once() {
+    let input = to_vec(&init_numbers(&[3, 1, 2], &[], 0)).unwrap();
+    let (&tag, rest) = input.split_first().unwrap();
+    let mut budget = Budget::from_bytes(PARITY_LIMIT);
+    let decoded =
+        InitEnum::deserialize_variant_bounded_alloc(&mut &rest[..], tag, &mut budget).unwrap();
+    assert_eq!(decoded, init_numbers(&[3, 1, 2], &[1, 2, 3], 1));
+    assert_eq!(budget.used_bytes(), 12 + 12);
+}
+
+/// `BorshDeserialize` ignores `init_bounded`.
+#[derive(BorshSerialize, BorshDeserialize, BorshDeserializeBounded, PartialEq, Debug)]
+#[borsh(init_bounded = init_bounded)]
+struct OnlyInitBounded {
+    value: u8,
+    #[borsh(skip)]
+    init_calls: u8,
+}
+
+impl OnlyInitBounded {
+    fn init_bounded(&mut self, _budget: &mut Budget) -> Result<()> {
+        self.init_calls += 1;
+        Ok(())
+    }
+}
+
+#[test]
+fn test_derived_init_bounded_alone() {
+    let decoded = |init_calls| OnlyInitBounded {
+        value: 7,
+        init_calls,
+    };
+    assert_eq!(from_slice::<OnlyInitBounded>(&[7]).unwrap(), decoded(0));
+    let bounded = from_slice_bounded::<OnlyInitBounded>(&[7], &mut Budget::from_bytes(2));
+    assert_eq!(bounded.unwrap(), decoded(1));
 }
 
 /// Stands in for a type from another crate, which has no borsh impls.

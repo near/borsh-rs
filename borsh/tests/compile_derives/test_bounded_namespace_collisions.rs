@@ -98,7 +98,7 @@ mod shadowed_names {
 
     #[allow(dead_code)]
     #[derive(::borsh::BorshDeserializeBounded)]
-    #[borsh(init = init)]
+    #[borsh(init_bounded = init)]
     struct Named<T, U> {
         x: T,
         #[borsh(skip)]
@@ -109,12 +109,14 @@ mod shadowed_names {
 
     impl<T, U> Named<T, U> {
         #[allow(dead_code)]
-        fn init(&mut self) {}
+        fn init(&mut self, _: &mut ::borsh::de::Budget) -> ::borsh::io::Result<()> {
+            Ok(())
+        }
     }
 
     #[allow(dead_code)]
     #[derive(::borsh::BorshDeserializeBounded)]
-    #[borsh(init = init)]
+    #[borsh(init_bounded = init)]
     enum WithFields<T> {
         A {
             x: T,
@@ -127,7 +129,9 @@ mod shadowed_names {
 
     impl<T> WithFields<T> {
         #[allow(dead_code)]
-        fn init(&mut self) {}
+        fn init(&mut self, _: &mut ::borsh::de::Budget) -> ::borsh::io::Result<()> {
+            Ok(())
+        }
     }
 }
 
@@ -193,5 +197,17 @@ mod budget_names {
     #[derive(borsh::BorshDeserialize, borsh::BorshDeserializeBounded)]
     struct WithRawConstGeneric<const r#__budget: usize> {
         x: [u8; r#__budget],
+    }
+
+    #[derive(borsh::BorshDeserializeBounded)]
+    #[borsh(init_bounded = budget)]
+    struct WithHook<__budget> {
+        x: __budget,
+    }
+
+    impl<__budget> WithHook<__budget> {
+        fn budget(&mut self, _: &mut Budget) -> Result<()> {
+            Ok(())
+        }
     }
 }

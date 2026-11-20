@@ -25,6 +25,8 @@ pub const DESERIALIZE_BOUNDED: Symbol = Symbol("deserialize_bounded", "deseriali
 pub const SKIP: Symbol = Symbol("skip", "skip");
 /// init - sub-borsh nested meta, item-level only attribute  `BorshDeserialize` context
 pub const INIT: Symbol = Symbol("init", "init = ...");
+/// Item-level hook for `BorshDeserializeBounded`.
+pub const INIT_BOUNDED: Symbol = Symbol("init_bounded", "init_bounded = ...");
 /// serialize_with - sub-borsh nested meta, field-level only, `BorshSerialize` context
 pub const SERIALIZE_WITH: Symbol = Symbol("serialize_with", "serialize_with = ...");
 /// deserialize_with - sub-borsh nested meta, field-level only, `BorshDeserialize` context

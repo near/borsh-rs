@@ -1,0 +1,54 @@
+---
+source: borsh-derive/src/internals/deserialize/enums/mod.rs
+expression: actual
+---
+#[automatically_derived]
+impl borsh::de::BorshDeserializeBounded for A {
+    fn deserialize_bounded_alloc<__R: borsh::io::Read>(
+        reader: &mut __R,
+        __budget: &mut borsh::de::Budget,
+    ) -> ::core::result::Result<Self, borsh::io::Error> {
+        let tag = <u8 as borsh::de::BorshDeserializeBounded>::deserialize_bounded_alloc(
+            reader,
+            __budget,
+        )?;
+        <Self as borsh::de::EnumExtBounded>::deserialize_variant_bounded_alloc(
+            reader,
+            tag,
+            __budget,
+        )
+    }
+}
+#[automatically_derived]
+impl borsh::de::EnumExtBounded for A {
+    fn deserialize_variant_bounded_alloc<__R: borsh::io::Read>(
+        reader: &mut __R,
+        variant_tag: u8,
+        __budget: &mut borsh::de::Budget,
+    ) -> ::core::result::Result<Self, borsh::io::Error> {
+        let mut return_value = if variant_tag == 0u8 {
+            A::A
+        } else if variant_tag == 1u8 {
+            A::B
+        } else if variant_tag == 2u8 {
+            A::C
+        } else if variant_tag == 3u8 {
+            A::D
+        } else if variant_tag == 4u8 {
+            A::E
+        } else if variant_tag == 5u8 {
+            A::F
+        } else {
+            return Err(
+                borsh::io::Error::new(
+                    borsh::io::ErrorKind::InvalidData,
+                    borsh::__private::maybestd::format!(
+                        "Unexpected variant tag: {:?}", variant_tag
+                    ),
+                ),
+            )
+        };
+        return_value.initialization_bounded(__budget)?;
+        Ok(return_value)
+    }
+}

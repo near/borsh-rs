@@ -145,6 +145,7 @@ fn test_overridden_struct_multiple_attrs_schema() {
 #[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 #[borsh(use_discriminant = true)]
 #[borsh(init = initialization_method)]
+#[cfg_attr(feature = "unstable__bounded", borsh(init_bounded = init_bounded))]
 enum WithSplitItemAttrs {
     A,
     B = 10,
@@ -154,6 +155,12 @@ enum WithSplitItemAttrs {
 impl WithSplitItemAttrs {
     fn initialization_method(&mut self) {
         *self = WithSplitItemAttrs::C;
+    }
+
+    #[cfg(feature = "unstable__bounded")]
+    fn init_bounded(&mut self, _budget: &mut borsh::Budget) -> borsh::io::Result<()> {
+        self.initialization_method();
+        Ok(())
     }
 }
 

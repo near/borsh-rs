@@ -5,6 +5,7 @@ use crate::common_macro::assert_bounded_parity;
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 #[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 #[borsh(init=init)]
+#[cfg_attr(feature = "unstable__bounded", borsh(init_bounded = init_bounded))]
 struct A {
     lazy: Option<u64>,
 }
@@ -14,6 +15,12 @@ impl A {
         if let Some(v) = self.lazy.as_mut() {
             *v *= 10;
         }
+    }
+
+    #[cfg(feature = "unstable__bounded")]
+    fn init_bounded(&mut self, _budget: &mut borsh::Budget) -> borsh::io::Result<()> {
+        self.init();
+        Ok(())
     }
 }
 #[test]
@@ -42,6 +49,7 @@ fn test_simple_struct() {
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 #[cfg_attr(feature = "unstable__bounded", derive(borsh::BorshDeserializeBounded))]
 #[borsh(init=initialization_method)]
+#[cfg_attr(feature = "unstable__bounded", borsh(init_bounded = init_bounded))]
 enum AEnum {
     A,
     B,
@@ -51,6 +59,12 @@ enum AEnum {
 impl AEnum {
     pub fn initialization_method(&mut self) {
         *self = AEnum::C;
+    }
+
+    #[cfg(feature = "unstable__bounded")]
+    fn init_bounded(&mut self, _budget: &mut borsh::Budget) -> borsh::io::Result<()> {
+        self.initialization_method();
+        Ok(())
     }
 }
 

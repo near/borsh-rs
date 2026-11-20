@@ -3,7 +3,6 @@ use quote::quote;
 use syn::{Fields, ItemStruct, Path};
 
 use crate::internals::{
-    attributes::item,
     deserialize::{self, Flavor},
     generics,
 };
@@ -53,15 +52,15 @@ fn process_flavor(
     };
     generics_output.extend(&mut where_clause, &cratename);
 
-    let init = item::contains_initialize_with(&input.attrs)?;
     let budget = deserialize::budget_ident(&generics);
+    let init = flavor.init_call(&input.attrs, &budget)?;
     match (flavor, init) {
-        (Flavor::Plain, Some(method_ident)) => Ok(quote! {
+        (Flavor::Plain, Some(init)) => Ok(quote! {
             #[automatically_derived]
             impl #impl_generics #cratename::de::BorshDeserialize for #name #ty_generics #where_clause {
                 fn deserialize_reader<__R: #cratename::io::Read>(reader: &mut __R) -> ::core::result::Result<Self, #cratename::io::Error> {
                     let mut return_value = #return_value;
-                    return_value.#method_ident();
+                    #init
                     Ok(return_value)
                 }
             }
@@ -74,7 +73,7 @@ fn process_flavor(
                 }
             }
         }),
-        (Flavor::Bounded, Some(method_ident)) => Ok(quote! {
+        (Flavor::Bounded, Some(init)) => Ok(quote! {
             #[automatically_derived]
             impl #impl_generics #cratename::de::BorshDeserializeBounded for #name #ty_generics #where_clause {
                 fn deserialize_bounded_alloc<__R: #cratename::io::Read>(
@@ -82,7 +81,7 @@ fn process_flavor(
                     #budget: &mut #cratename::de::Budget,
                 ) -> ::core::result::Result<Self, #cratename::io::Error> {
                     let mut return_value = #return_value;
-                    return_value.#method_ident();
+                    #init
                     Ok(return_value)
                 }
             }
@@ -330,7 +329,7 @@ mod tests {
     #[test]
     fn borsh_init_func() {
         let item_enum: ItemStruct = syn::parse2(quote! {
-            #[borsh(init=initialization_method)]
+            #[borsh(init=initialization_method, init_bounded=initialization_bounded)]
             struct A {
                 x: u64,
                 y: String,
@@ -340,6 +339,24 @@ mod tests {
         let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
         assert_bounded("borsh_init_func", &item_enum, default_cratename());
+    }
+
+    #[test]
+    fn bounded_rejects_init_alone() {
+        let item_struct: ItemStruct = syn::parse2(quote! {
+            #[borsh(init=initialization_method)]
+            struct A {
+                x: u64,
+            }
+        })
+        .unwrap();
+
+        process(&item_struct, default_cratename()).unwrap();
+        let err = match process_bounded(&item_struct, default_cratename()) {
+            Ok(..) => unreachable!("expecting error here"),
+            Err(err) => err,
+        };
+        local_insta_assert_debug_snapshot!(err);
     }
 
     #[test]
@@ -365,6 +382,7 @@ mod tests {
     #[test]
     fn plain_output_ignores_bounded_keys() {
         let with_keys: ItemStruct = syn::parse2(quote! {
+            #[borsh(init = initialization_method, init_bounded = initialization_bounded)]
             struct A<K: Ord, V, T, U> {
                 #[borsh(
                     deserialize_with = "third_party_impl::deserialize_third_party",
@@ -378,6 +396,7 @@ mod tests {
         })
         .unwrap();
         let without_keys: ItemStruct = syn::parse2(quote! {
+            #[borsh(init = initialization_method)]
             struct A<K: Ord, V, T, U> {
                 #[borsh(
                     deserialize_with = "third_party_impl::deserialize_third_party",

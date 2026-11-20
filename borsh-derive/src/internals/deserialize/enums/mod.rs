@@ -36,15 +36,9 @@ fn process_flavor(input: &ItemEnum, cratename: Path, flavor: Flavor) -> syn::Res
             if variant_tag == #discriminant_value { #name::#variant_ident #variant_body } else
         });
     }
-    let init = if let Some(method_ident) = item::contains_initialize_with(&input.attrs)? {
-        quote! {
-            return_value.#method_ident();
-        }
-    } else {
-        quote! {}
-    };
-    generics_output.extend(&mut where_clause, &cratename);
     let budget = deserialize::budget_ident(&generics);
+    let init = flavor.init_call(&input.attrs, &budget)?;
+    generics_output.extend(&mut where_clause, &cratename);
 
     match flavor {
         Flavor::Plain => Ok(quote! {
@@ -383,7 +377,7 @@ mod tests {
     #[test]
     fn borsh_init_func() {
         let item_enum: ItemEnum = syn::parse2(quote! {
-            #[borsh(init = initialization_method)]
+            #[borsh(init = initialization_method, init_bounded = initialization_bounded)]
             enum A {
                 A,
                 B,
@@ -396,6 +390,7 @@ mod tests {
         .unwrap();
         let actual = process(&item_enum, default_cratename()).unwrap();
         local_insta_assert_snapshot!(pretty_print_syn_str(&actual).unwrap());
+        assert_bounded("borsh_init_func", &item_enum, default_cratename());
     }
 
     #[test]
@@ -423,6 +418,7 @@ mod tests {
     #[test]
     fn plain_output_ignores_bounded_keys() {
         let with_keys: ItemEnum = syn::parse2(quote! {
+            #[borsh(init = initialization_method, init_bounded = initialization_bounded)]
             enum C<K: Ord, V, T> {
                 C3(#[borsh(bound(deserialize_bounded = "T: Eq"))] T, u64),
                 C4 {
@@ -437,6 +433,7 @@ mod tests {
         })
         .unwrap();
         let without_keys: ItemEnum = syn::parse2(quote! {
+            #[borsh(init = initialization_method)]
             enum C<K: Ord, V, T> {
                 C3(T, u64),
                 C4 {
