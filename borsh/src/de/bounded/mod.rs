@@ -245,10 +245,16 @@ pub fn from_reader_bounded<R: Read, T: BorshDeserializeBounded>(
 ) -> Result<T> {
     budget.charge_bytes(size_of::<T>())?;
     let result = T::deserialize_bounded_alloc(reader, budget)?;
+    // As in `from_reader`: `read`, not `read_exact`, so that end of input (`Ok(0)`) is not
+    // confused with an `UnexpectedEof` error from the reader itself.
     let mut buf = [0u8; 1];
-    match reader.read_exact(&mut buf) {
-        Err(f) if f.kind() == ErrorKind::UnexpectedEof => Ok(result),
-        _ => Err(Error::new(ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ)),
+    loop {
+        match reader.read(&mut buf) {
+            Ok(0) => return Ok(result),
+            Ok(_) => return Err(Error::new(ErrorKind::InvalidData, ERROR_NOT_ALL_BYTES_READ)),
+            Err(e) if e.kind() == ErrorKind::Interrupted => {}
+            Err(e) => return Err(e),
+        }
     }
 }
 
