@@ -48,7 +48,7 @@ pub trait BorshDeserializeBounded: Sized {
     /// `None` must leave the reader untouched.
     #[inline]
     #[doc(hidden)]
-    fn vec_from_reader_bounded<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
+    fn vec_from_reader_uncharged<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
         let _ = (len, reader);
         Ok(None)
     }
@@ -56,7 +56,7 @@ pub trait BorshDeserializeBounded: Sized {
     /// Reads an array in one go. `None` must leave the reader untouched.
     #[inline]
     #[doc(hidden)]
-    fn array_from_reader_bounded<R: Read, const N: usize>(
+    fn array_from_reader_uncharged<R: Read, const N: usize>(
         reader: &mut R,
     ) -> Result<Option<[Self; N]>> {
         let _ = reader;
@@ -97,7 +97,7 @@ where
     let n = usize::try_from(len).map_err(|_| budget.exceeded(usize::MAX))?;
     // A vector too large to allocate fails even when `kept(n)` fits.
     budget.charge_checked(size::vec::<T>(n).and_then(|_| kept(n)))?;
-    if let Some(vec) = T::vec_from_reader_bounded(len, reader)? {
+    if let Some(vec) = T::vec_from_reader_uncharged(len, reader)? {
         return Ok(vec);
     }
     // Grows like plain decoding but stops at `n`: a false length allocates no more than plain.
@@ -189,13 +189,13 @@ impl BorshDeserializeBounded for u8 {
 
     #[inline]
     #[doc(hidden)]
-    fn vec_from_reader_bounded<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
+    fn vec_from_reader_uncharged<R: Read>(len: u32, reader: &mut R) -> Result<Option<Vec<Self>>> {
         <u8 as BorshDeserialize>::vec_from_reader(len, reader)
     }
 
     #[inline]
     #[doc(hidden)]
-    fn array_from_reader_bounded<R: Read, const N: usize>(
+    fn array_from_reader_uncharged<R: Read, const N: usize>(
         reader: &mut R,
     ) -> Result<Option<[Self; N]>> {
         <u8 as BorshDeserialize>::array_from_reader(reader)
@@ -355,7 +355,7 @@ where
 {
     #[inline]
     fn deserialize_bounded_alloc<R: Read>(reader: &mut R, budget: &mut Budget) -> Result<Self> {
-        if let Some(arr) = T::array_from_reader_bounded(reader)? {
+        if let Some(arr) = T::array_from_reader_uncharged(reader)? {
             Ok(arr)
         } else {
             let mut result = ArrayDropGuard {
