@@ -72,7 +72,7 @@ pub(super) fn linked_list<T>(n: usize) -> Option<usize> {
 #[cfg(feature = "rc")]
 pub(super) fn rc_overhead<C>(value: Layout) -> Option<usize> {
     let block = Layout::new::<[C; 2]>().extend(value).ok()?.0.pad_to_align();
-    Some(block.size() - value.size())
+    block.size().checked_sub(value.size())
 }
 
 #[cfg(all(test, target_pointer_width = "64"))]
