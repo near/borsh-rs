@@ -2,11 +2,14 @@ pub use alloc::{rc, sync};
 
 use borsh::{from_slice, to_vec};
 
+use crate::common_macro::assert_bounded_parity;
+
 #[test]
 fn test_rc_roundtrip() {
     let value = rc::Rc::new(8u8);
     let serialized = to_vec(&value).unwrap();
     let deserialized = from_slice::<rc::Rc<u8>>(&serialized).unwrap();
+    assert_bounded_parity::<rc::Rc<u8>>(&serialized);
     assert_eq!(value, deserialized);
 }
 
@@ -16,6 +19,7 @@ fn test_slice_rc() {
     let shared: rc::Rc<[i32]> = rc::Rc::from(original);
     let serialized = to_vec(&shared).unwrap();
     let deserialized = from_slice::<rc::Rc<[i32]>>(&serialized).unwrap();
+    assert_bounded_parity::<rc::Rc<[i32]>>(&serialized);
     assert_eq!(original, &*deserialized);
 }
 
@@ -24,6 +28,7 @@ fn test_arc_roundtrip() {
     let value = sync::Arc::new(8u8);
     let serialized = to_vec(&value).unwrap();
     let deserialized = from_slice::<sync::Arc<u8>>(&serialized).unwrap();
+    assert_bounded_parity::<sync::Arc<u8>>(&serialized);
     assert_eq!(value, deserialized);
 }
 
@@ -33,5 +38,6 @@ fn test_slice_arc() {
     let shared: sync::Arc<[i32]> = sync::Arc::from(original);
     let serialized = to_vec(&shared).unwrap();
     let deserialized = from_slice::<sync::Arc<[i32]>>(&serialized).unwrap();
+    assert_bounded_parity::<sync::Arc<[i32]>>(&serialized);
     assert_eq!(original, &*deserialized);
 }

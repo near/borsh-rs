@@ -105,6 +105,7 @@ fn test_invalid_option() {
                 i
             )
         );
+        assert_bounded_parity::<Option<u8>>(&bytes);
     }
 }
 
@@ -121,6 +122,7 @@ fn test_invalid_result() {
                 i
             )
         );
+        assert_bounded_parity::<Result<u64, String>>(&bytes);
     }
 }
 
@@ -173,6 +175,7 @@ fn test_evil_bytes_vec_with_extra() {
         from_slice::<Vec<[u8; 32]>>(&bytes).unwrap_err().to_string(),
         ERROR_UNEXPECTED_LENGTH_OF_INPUT
     );
+    assert_bounded_parity::<Vec<[u8; 32]>>(&bytes);
 }
 
 #[test]
