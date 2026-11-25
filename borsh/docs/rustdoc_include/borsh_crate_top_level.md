@@ -71,6 +71,25 @@
   and [BorshSchema]
   for [HashMap](std::collections::HashMap)/[HashSet](std::collections::HashSet).
 
+# Collections of zero-sized types
+
+Collections with a length prefix, such as `Vec`, `VecDeque`, `LinkedList`, `BTreeMap`,
+`BTreeSet`, `HashMap`, `HashSet` and the `indexmap` types, return an error
+([`ERROR_ZST_FORBIDDEN`](crate::error::ERROR_ZST_FORBIDDEN)) when their element or key type
+is zero-sized, for example `Vec<()>`. This happens on serialization as well as on deserialization.
+
+Deserialization rejects them because a zero-sized element takes up no bytes: a 4-byte length
+prefix of `u32::MAX` would make the reader build about 4 billion elements without consuming any
+more input, which makes an easy denial-of-service.
+
+Serialization rejects them too, even though writing them is harmless on its own. Borsh is designed
+for round trips, where a value of type `A` is serialized and later deserialized back into `A`.
+Failing at serialization time reports the problem when the data is written, instead of producing
+bytes that can never be read back as the same type.
+
+Fixed-size arrays such as `[(); 3]` are not affected, because their length is part of the type and
+is not encoded.
+
 # Shortcuts
 
 Following pages are highlighted here just to give reader a chance at learning that
