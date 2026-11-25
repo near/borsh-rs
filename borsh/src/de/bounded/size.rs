@@ -15,35 +15,49 @@ pub(super) fn vec<T>(n: usize) -> Option<usize> {
     Layout::array::<T>(n).ok().map(|layout| layout.size())
 }
 
-/// Upper bound for a hashbrown table with `n` entries of type `E`.
-/// A 16-byte control group covers all supported hashbrown versions, including std's.
+/// Upper bound for a hashbrown table with `n` entries of type `E`, after hashbrown's
+/// `capacity_to_buckets` and `TableLayout::calculate_layout_for`. 1/8 of the buckets stay
+/// empty, so a table has `n·8/7` buckets rounded up to a power of two; under 15 entries it has
+/// 4, 8 or 16, and 16 bounds those, padding included. Each bucket holds an `E` and a control
+/// byte, and `GROUP_WIDTH` more control bytes follow the last one.
 #[cfg(hash_collections)]
 pub(super) fn table<E>(n: usize) -> Option<usize> {
+    // The widest control group (SSE2): covers all supported hashbrown versions, including std's.
+    const GROUP_WIDTH: usize = 16;
     let buckets = (n.checked_mul(8)? / 7).checked_next_power_of_two()?.max(16);
     let size = buckets
         .checked_mul(size_of::<E>().checked_add(1)?)?
-        .checked_add(16)?;
-    Layout::from_size_align(size, core::mem::align_of::<E>().max(16))
+        .checked_add(GROUP_WIDTH)?;
+    // `buckets` is a power of two of at least 16, so the `E`s end on the control bytes'
+    // alignment: no padding comes between.
+    Layout::from_size_align(size, core::mem::align_of::<E>().max(GROUP_WIDTH))
         .ok()
         .map(|layout| layout.size())
 }
 
-/// The nodes of a bulk-built `BTreeMap<K, V>`; sets use `V = ()`.
+/// The nodes of a bulk-built `BTreeMap<K, V>`; sets use `V = ()`. `Leaf` mirrors std's
+/// `LeafNode` (parent pointer, parent index, length, keys, values); an internal node is a leaf
+/// plus `2·B` edges. `bulk_push` fills each leaf with `CAPACITY` entries and puts the next one
+/// in a parent, so `n` entries take `n / (CAPACITY + 1) + 1` leaves; each level above has one
+/// node per `2·B` nodes below, up to a single root.
 pub(super) fn btree<K, V>(n: usize) -> Option<usize> {
-    type Leaf<K, V> = (usize, u16, u16, [K; 11], [V; 11]);
+    // As in std's `btree::node`.
+    const B: usize = 6;
+    const CAPACITY: usize = 2 * B - 1;
+    type Leaf<K, V> = (usize, u16, u16, [K; CAPACITY], [V; CAPACITY]);
     let leaf = Layout::new::<Leaf<K, V>>();
     let internal = leaf
-        .extend(Layout::new::<[usize; 12]>())
+        .extend(Layout::new::<[usize; 2 * B]>())
         .ok()?
         .0
         .pad_to_align()
         .size();
 
-    let leaves = n / 12 + 1;
+    let leaves = n / (CAPACITY + 1) + 1;
     let mut internals = 0usize;
     let mut level = leaves;
     while level > 1 {
-        level = level.div_ceil(12);
+        level = level.div_ceil(2 * B);
         internals += level;
     }
 
