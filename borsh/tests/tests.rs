@@ -94,6 +94,7 @@ mod schema {
     mod test_phantom_data;
     mod test_option;
     mod test_box;
+    mod test_references;
     #[cfg(hash_collections)]
     mod test_hash_map;
     mod test_btree_map;

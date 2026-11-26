@@ -306,6 +306,17 @@ where
         );
     }
 }
+
+impl<T: BorshSchema + ?Sized> BorshSchema for &T {
+    fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+        T::add_definitions_recursively(definitions);
+    }
+
+    fn declaration() -> Declaration {
+        T::declaration()
+    }
+}
+
 impl<T> BorshSchema for Box<T>
 where
     T: BorshSchema + ?Sized,
