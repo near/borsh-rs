@@ -51,6 +51,10 @@
 * **indexmap** -
   Gates implementation of [BorshSerialize] and [BorshDeserialize]
   for [indexmap::IndexMap](https://docs.rs/indexmap/2.8.0/indexmap/map/struct.IndexMap.html) and [IndexSet](https://docs.rs/indexmap/2.8.0/indexmap/set/struct.IndexSet.html)
+* **uuid** -
+  Gates implementation of [BorshSerialize], [BorshDeserialize], [BorshSchema]
+  for [Uuid](https://docs.rs/uuid/1/uuid/struct.Uuid.html).
+  A `Uuid` is encoded as its 16 raw bytes, with no length prefix.
 * **ascii** -
   Gates implementation of [BorshSerialize], [BorshDeserialize], [BorshSchema] for
   types from [ascii](https://docs.rs/ascii/1.1.0/ascii/) crate.

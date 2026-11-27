@@ -37,6 +37,7 @@ cargo test --features bytes,derive 'roundtrip::requires_derive_category::test_ul
 cargo test --features bytes,unstable__schema 'schema::test_bytes'
 ########## features = ["uuid"] group
 cargo test --features uuid,derive 'roundtrip::test_uuid'
+cargo test --features uuid,unstable__schema 'schema::test_uuid'
 ########## bounded decoding (`BorshDeserializeBounded`) group
 cargo test --features unstable__bounded
 
@@ -65,6 +66,7 @@ cargo test --no-default-features --features bytes,derive 'roundtrip::requires_de
 cargo test --no-default-features --features bytes,unstable__schema 'schema::test_bytes'
 ########## features = ["uuid"] group
 cargo test --no-default-features --features uuid,derive 'roundtrip::test_uuid'
+cargo test --no-default-features --features uuid,unstable__schema 'schema::test_uuid'
 ########## bounded decoding (`BorshDeserializeBounded`) group
 cargo test --no-default-features --features unstable__bounded
 popd

@@ -578,6 +578,37 @@ pub mod bytes {
     }
 }
 
+#[cfg(feature = "uuid")]
+pub mod uuid {
+    //! Module is available if borsh is built with `features = ["uuid"]`.
+    //!
+    //! Module defines [BorshSchema] implementation for
+    //! Uuid from the uuid crate.
+    use crate::BorshSchema;
+
+    use super::{add_definition, Declaration, Definition};
+    use crate::__private::maybestd::collections::BTreeMap;
+
+    /// `Uuid` is serialized as its 16 raw bytes, with no length prefix,
+    /// which is the same layout as `[u8; 16]`.
+    impl BorshSchema for ::uuid::Uuid {
+        #[inline]
+        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
+            let definition = Definition::Sequence {
+                length_width: Definition::ARRAY_LENGTH_WIDTH,
+                length_range: 16..=16,
+                elements: u8::declaration(),
+            };
+            add_definition(Self::declaration(), definition, definitions);
+            u8::add_definitions_recursively(definitions);
+        }
+        #[inline]
+        fn declaration() -> Declaration {
+            "uuid::Uuid".into()
+        }
+    }
+}
+
 impl BorshSchema for core::ops::RangeFull {
     #[inline]
     fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {

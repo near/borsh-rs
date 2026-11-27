@@ -82,6 +82,8 @@ mod schema {
     mod test_ascii_strings;
     #[cfg(feature = "bytes")]
     mod test_bytes;
+    #[cfg(feature = "uuid")]
+    mod test_uuid;
     mod test_strings;
     mod test_arrays;
     mod test_vecs;
